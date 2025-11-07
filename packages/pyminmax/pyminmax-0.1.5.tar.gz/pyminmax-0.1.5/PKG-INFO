@@ -1,0 +1,81 @@
+Metadata-Version: 2.4
+Name: pyminmax
+Version: 0.1.5
+Summary: minmax(x): min(x), max(x) in one pass
+Author: Owain Davies
+License: MIT License
+        
+        Copyright (c) 2023 Owain Davies
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: homepage, https://github.com/OTheDev/pyminmax
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Requires-Python: >=3.10.1
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# pyminmax
+
+```
+minmax(iterable, *, key=None)
+minmax(iterable, *, default, key=None)
+minmax(arg1, arg2, *args, key=None)
+```
+With a single iterable argument, return its smallest and largest items as a
+tuple pair. The *default* keyword-only argument specifies an object to return if
+the provided iterable is empty. If the iterable is empty and *default* is not
+provided, a *ValueError* is raised.
+
+With two or more arguments, return the smallest and largest arguments as a
+tuple pair.
+
+The *key* argument specifies a one-argument ordering function like that used
+for ``list.sort()``.
+
+If multiple items are minimal or maximal, the function returns the first ones
+encountered.
+
+It is [written in C](https://github.com/OTheDev/pyminmax/blob/main/src/pyminmax/_pyminmaxmodule.c),
+adapted straight from CPython's [implementation](https://github.com/python/cpython/blob/a74cd3ba5de1aad1a1e1ee57328b54c22be47f77/Python/bltinmodule.c#L1728)
+of ``min()``, ``max()``.
+
+## Installation
+
+```
+pip install pyminmax
+```
+
+## Basic Usage
+
+```python3
+>>> from pyminmax import minmax
+>>> minmax([5, 2, 0, 100, -100, 10])
+(-100, 100)
+>>> minmax((), default=1)
+1
+>>> minmax(5, 2, 0, 100, -100, 10)
+(-100, 100)
+>>> minmax(5, 2, 0, 100, -100, 10, key=lambda x: -x)
+(100, -100)
+```
