@@ -1,0 +1,459 @@
+# 🤖 Lunr Chatbot Library
+
+Bibliothèque Python pour créer des bots pour l'application **Ondes Chat** avec chiffrement de bout en bout (E2E).
+
+## 📋 Table des matières
+
+- [Installation](#-installation)
+- [Démarrage rapide](#-démarrage-rapide)
+- [Création d'un bot](#-création-dun-bot)
+- [Exemples](#-exemples)
+- [Référence API](#-référence-api)
+- [Sécurité](#-sécurité)
+- [Contribution](#-contribution)
+
+## 🚀 Installation
+
+```bash
+pip install lunr_chatbot
+```
+
+Ou installez directement depuis le dépôt:
+
+```bash
+git clone https://github.com/MartinBellot/ondes_chat.git
+cd ondes_chat/chatbot
+pip install -e .
+```
+
+### Dépendances
+
+- Python >= 3.9
+- aiohttp >= 3.9.0
+- websockets >= 12.0
+- cryptography >= 41.0.0
+
+## ⚡ Démarrage rapide
+
+### 1. Créer un bot depuis l'application LunR
+
+Pour créer un bot, rendez-vous dans l'application **LunR** :
+
+1. Allez dans votre **page Profil**
+2. Cliquez sur **"Gérer mes bots"**
+3. Créez un nouveau bot en remplissant les informations :
+   - Nom du bot
+   - Description
+   - Capacités (optionnel)
+4. Une fois créé, vous obtiendrez :
+   - **`bot_token`** : Token JWT pour authentifier le bot (copiez-le depuis l'appli)
+   - **`api_key`** : Clé API unique (gardez-la secrète!)
+
+⚠️ **Important** : Conservez précieusement ces tokens, ils ne seront plus affichés après la création.
+
+### 2. Créer un bot simple
+
+```python
+from lunr_chatbot import OndesBotClient
+
+# Configurer le bot avec le token copié depuis l'application
+bot = OndesBotClient(
+    api_url="http://localhost:8000",
+    bot_token="YOUR_BOT_TOKEN_HERE"  # Token copié depuis LunR
+)
+
+# Handler pour les messages
+@bot.on_message
+async def handle_message(message):
+    if message.content == "/hello":
+        await bot.send_message(
+            message.group_id,
+            "Hello! 👋 Je suis un bot LunR!"
+        )
+
+# Lancer le bot
+bot.run("GROUP_ID_HERE")
+```
+
+### 3. Ajouter le bot à un groupe
+
+Depuis l'application LunR ou via l'API (en tant qu'admin du groupe):
+
+```bash
+curl -X POST http://localhost:8000/api/groups/{GROUP_ID}/add-bot/ \
+  -H "Authorization: Bearer YOUR_USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"bot_id": BOT_PROFILE_ID}'
+```
+
+## 🎯 Création d'un bot
+
+### Fonctionnalités principales
+
+#### 1. Recevoir des messages
+
+```python
+@bot.on_message
+async def handle_message(message):
+    print(f"Message de {message.sender.display_name}: {message.content}")
+    
+    # Le contenu est automatiquement déchiffré
+    if message.content.startswith("/"):
+        # Traiter les commandes
+        await handle_command(message)
+```
+
+#### 2. Envoyer des messages
+
+```python
+# Message simple
+await bot.send_message(group_id, "Bonjour le monde!")
+
+# Avec indicateur "en train d'écrire"
+await bot.send_typing(True)
+await asyncio.sleep(1)
+await bot.send_typing(False)
+await bot.send_message(group_id, "Message après réflexion...")
+```
+
+#### 3. Réactions
+
+```python
+@bot.on_reaction
+async def handle_reaction(reaction_data):
+    emoji = reaction_data['reaction']
+    message_id = reaction_data['message_id']
+    user = reaction_data['user']
+    
+    print(f"{user['username']} a réagi avec {emoji}")
+
+# Ajouter une réaction
+await bot.add_reaction(message_id, "👍")
+```
+
+#### 4. Indicateurs de frappe
+
+```python
+@bot.on_typing
+async def handle_typing(typing_data):
+    if typing_data['type'] == 'user_typing':
+        user = typing_data['user']
+        print(f"{user['username']} est en train d'écrire...")
+```
+
+### Structure d'un bot complet
+
+```python
+import logging
+from lunr_chatbot import OndesBotClient
+
+# Configuration du logging
+logging.basicConfig(level=logging.INFO)
+
+# Configuration
+API_URL = "http://localhost:8000"
+BOT_TOKEN = "your_token"
+GROUP_ID = "group_uuid"
+
+# Créer le bot
+bot = OndesBotClient(api_url=API_URL, bot_token=BOT_TOKEN)
+
+@bot.on_message
+async def handle_message(message):
+    """Handler principal pour les messages"""
+    
+    # Ignorer les messages de bots (éviter les boucles)
+    if message.sender.is_bot:
+        return
+    
+    content = message.content.lower().strip()
+    
+    if content == "/help":
+        await bot.send_message(message.group_id, "Aide du bot...")
+    
+    elif content.startswith("/"):
+        await bot.send_message(
+            message.group_id,
+            f"Commande inconnue: {content}"
+        )
+
+if __name__ == "__main__":
+    bot.run(GROUP_ID)
+```
+
+## 📚 Exemples
+
+### Echo Bot
+
+Bot simple qui répète les messages:
+
+```bash
+python examples/echo_bot.py
+```
+
+### Weather Bot
+
+Bot qui donne la météo (données fictives):
+
+```bash
+python examples/weather_bot.py
+```
+
+### AI Assistant Bot
+
+Bot assistant avec calculs et base de connaissances:
+
+```bash
+python examples/ai_assistant_bot.py
+```
+
+## 📖 Référence API
+
+### OndesBotClient
+
+#### Méthodes
+
+##### `__init__(api_url, bot_token, auto_decrypt=True)`
+
+Initialise le client bot.
+
+**Paramètres:**
+- `api_url` (str): URL de l'API (ex: "http://localhost:8000")
+- `bot_token` (str): Token JWT du bot
+- `auto_decrypt` (bool): Déchiffrer automatiquement les messages entrants
+
+##### `async initialize()`
+
+Initialise le bot (authentification, clés de chiffrement).
+
+##### `async join_group(group_id)`
+
+Rejoint un groupe et établit la connexion WebSocket.
+
+**Paramètres:**
+- `group_id` (str): UUID du groupe
+
+##### `async send_message(group_id, content, message_type='text')`
+
+Envoie un message chiffré dans un groupe.
+
+**Paramètres:**
+- `group_id` (str): UUID du groupe
+- `content` (str): Contenu du message (sera chiffré automatiquement)
+- `message_type` (str): Type de message ('text', 'image', 'file', 'voice')
+
+##### `async send_typing(is_typing=True)`
+
+Envoie un indicateur "en train d'écrire".
+
+##### `async add_reaction(message_id, reaction)`
+
+Ajoute une réaction emoji à un message.
+
+**Paramètres:**
+- `message_id` (str): UUID du message
+- `reaction` (str): Emoji (ex: '👍', '❤️')
+
+##### `run(group_id)`
+
+Lance le bot de manière synchrone (bloquante).
+
+##### `async run_async(group_id)`
+
+Lance le bot de manière asynchrone.
+
+#### Décorateurs
+
+##### `@bot.on_message`
+
+Enregistre un handler pour les messages entrants.
+
+```python
+@bot.on_message
+async def handle(message):
+    # message.content - Contenu déchiffré
+    # message.sender - Objet User
+    # message.group_id - ID du groupe
+    pass
+```
+
+##### `@bot.on_reaction`
+
+Enregistre un handler pour les réactions.
+
+```python
+@bot.on_reaction
+async def handle(reaction_data):
+    # reaction_data['reaction'] - Emoji
+    # reaction_data['message_id'] - ID du message
+    # reaction_data['user'] - Utilisateur
+    pass
+```
+
+##### `@bot.on_typing`
+
+Enregistre un handler pour les indicateurs de frappe.
+
+### Modèles de données
+
+#### Message
+
+```python
+@dataclass
+class Message:
+    id: str                      # UUID du message
+    content: str                 # Contenu déchiffré
+    content_encrypted: str       # Contenu chiffré (brut)
+    sender: User                 # Expéditeur
+    group_id: str               # ID du groupe
+    message_type: str           # 'text', 'image', 'file', 'voice', 'poll'
+    created_at: datetime        # Date de création
+    is_edited: bool             # Message modifié?
+    reply_to: Optional[Message] # Message auquel on répond
+    reactions: Dict[str, List[User]]  # Réactions
+```
+
+#### User
+
+```python
+@dataclass
+class User:
+    id: int
+    username: str
+    email: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    avatar: Optional[str]
+    is_online: bool
+    is_bot: bool
+    
+    @property
+    def display_name(self) -> str:
+        # Retourne le nom d'affichage
+```
+
+#### Group
+
+```python
+@dataclass
+class Group:
+    id: str
+    name: Optional[str]
+    group_type: str  # 'private' ou 'group'
+    members: List[User]
+    description: Optional[str]
+    avatar: Optional[str]
+    
+    @property
+    def is_private(self) -> bool:
+        # True si discussion privée
+```
+
+## 🔒 Sécurité
+
+### Chiffrement E2E
+
+Tous les messages sont automatiquement chiffrés de bout en bout:
+
+1. **Génération de clés RSA**: Le bot génère une paire de clés RSA 2048 bits
+2. **Échange de clés**: La clé publique est partagée avec le serveur
+3. **Clés de groupe**: Chaque groupe a une clé AES-256-GCM unique
+4. **Chiffrement des messages**: Les messages sont chiffrés avec AES-256-GCM
+5. **Déchiffrement automatique**: La bibliothèque déchiffre automatiquement les messages entrants
+
+### Bonnes pratiques
+
+✅ **À faire:**
+- Garder le `bot_token` et `api_key` secrets
+- Utiliser HTTPS en production (`wss://` pour WebSocket)
+- Limiter les permissions des bots
+- Valider toutes les entrées utilisateur
+- Implémenter un rate limiting personnalisé si nécessaire
+
+❌ **À ne pas faire:**
+- Commiter les tokens dans Git
+- Partager les clés API publiquement
+- Ignorer les erreurs de chiffrement
+- Faire confiance aveuglément aux entrées utilisateur
+
+### Variables d'environnement
+
+Utilisez des variables d'environnement pour les secrets:
+
+```python
+import os
+
+API_URL = os.getenv("ONDES_API_URL", "http://localhost:8000")
+BOT_TOKEN = os.getenv("ONDES_BOT_TOKEN")
+GROUP_ID = os.getenv("ONDES_GROUP_ID")
+
+if not BOT_TOKEN:
+    raise ValueError("ONDES_BOT_TOKEN est requis")
+```
+
+## 🐛 Débogage
+
+### Activer les logs détaillés
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+```
+
+### Problèmes courants
+
+#### Erreur d'authentification
+
+```
+AuthenticationError: Token invalide ou expiré
+```
+
+**Solution:** Vérifiez que le token est correct et qu'il n'a pas expiré.
+
+#### Erreur de chiffrement
+
+```
+EncryptionError: Clé de groupe non disponible
+```
+
+**Solution:** Assurez-vous que le bot est membre du groupe et a reçu la clé de chiffrement.
+
+#### WebSocket déconnecté
+
+```
+WebSocketError: WebSocket non connecté
+```
+
+**Solution:** Appelez `await bot.join_group(group_id)` avant d'envoyer des messages.
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues!
+
+1. Forkez le projet
+2. Créez une branche feature (`git checkout -b feature/amazing-feature`)
+3. Committez vos changements (`git commit -m 'Add amazing feature'`)
+4. Pushez vers la branche (`git push origin feature/amazing-feature`)
+5. Ouvrez une Pull Request
+
+## 📄 Licence
+
+MIT License - Voir le fichier LICENSE pour plus de détails.
+
+## 📞 Support
+
+- 📧 Email: support@ondeschat.com
+- 🐛 Issues: https://github.com/MartinBellot/ondes_chat/issues
+- 📚 Documentation: https://docs.ondeschat.com
+
+## 🎉 Remerciements
+
+Merci à tous les contributeurs qui ont participé à ce projet!
+
+---
+
+Fait avec ❤️ par l'équipe Ondes Chat
