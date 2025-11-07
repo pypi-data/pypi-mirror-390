@@ -1,0 +1,38 @@
+Metadata-Version: 2.4
+Name: llm_watermark
+Version: 0.1.18
+Summary: easy way to use llm watermarking techniques
+Author-email: Lin Li <xhaughearl@gmail.com>
+Keywords: AI,ML,LLM
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: accelerate>=1.11.0
+Requires-Dist: google>=3.0.0
+Requires-Dist: google-genai>=1.49.0
+Requires-Dist: langchain>=1.0.4
+Requires-Dist: langchain-community>=0.4.1
+Requires-Dist: langchain-openai>=1.0.2
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: tqdm>=4.67.1
+Requires-Dist: transformers>=4.57.1
+
+this is the initial version for myself usage
+
+example usage:
+```python
+from llm_watermark import assembly_qwen3, huggingface_model
+
+
+wm_model: huggingface_model = assembly_qwen3("8B")
+prompt = "Write a short story about a robot learning to love."
+messages = [{"role": "user", "content": prompt}]
+
+wm_response = wm_model.generate(messages, do_watermark=True, max_new_tokens=256)
+print("Watermarked Response:", wm_response)
+print(wm_model.detect_watermark(wm_response))
+print("----------------")
+
+non_wm_response = wm_model.generate(messages, do_watermark=False, max_new_tokens=256)
+print("Non-Watermarked Response:", non_wm_response)
+print(wm_model.detect_watermark(non_wm_response))
+```
