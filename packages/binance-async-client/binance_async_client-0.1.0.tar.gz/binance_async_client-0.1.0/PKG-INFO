@@ -1,0 +1,309 @@
+Metadata-Version: 2.4
+Name: binance-async-client
+Version: 0.1.0
+Summary: 异步币安API客户端，支持现货和期货交易，内置智能限流器
+Author: binance-async-client contributors
+License: MIT
+Project-URL: Homepage, https://github.com/hamartia0/binance-async-client
+Project-URL: Documentation, https://github.com/hamartia0/binance-async-client#readme
+Project-URL: Repository, https://github.com/hamartia0/binance-async-client
+Project-URL: Issues, https://github.com/hamartia0/binance-async-client/issues
+Keywords: binance,async,api,client,cryptocurrency,trading
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Office/Business :: Financial :: Investment
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp>=3.8.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Dynamic: license-file
+
+# 币安异步客户端
+
+一个高性能的异步币安API客户端，支持现货和期货交易，内置智能限流器。
+
+## 📦 组件架构
+
+### 客户端类（Client Classes）
+
+#### 1. **AsyncBinanceClient** - 现货客户端（基础类）
+- **作用**: 币安现货市场的异步API客户端
+- **功能**: 
+  - 获取现货K线数据（`get_historical_klines_async`）
+  - 获取交易所信息（`get_exchange_info_async`）
+  - 获取24小时价格统计（`get_24hr_ticker_async`）
+- **API端点**: `https://api.binance.com` 及其备用端点
+- **限流器**: 可配置使用本地限流器或全局限流器
+
+#### 2. **FuturesAsyncClient** - 期货客户端（继承自 AsyncBinanceClient）
+- **作用**: 币安期货市场的异步API客户端
+- **继承关系**: `FuturesAsyncClient` → `AsyncBinanceClient`
+- **特点**:
+  - 自动使用 `GlobalRateLimiter`（全局限流器）
+  - 覆盖API端点为期货专用端点
+  - 支持更大的数据量限制（最大1500条）
+- **API端点**: `https://fapi.binance.com` 及其备用端点
+- **主要方法**:
+  - `get_futures_klines_async()`: 获取期货K线数据
+  - `get_futures_exchange_info_async()`: 获取期货交易所信息
+  - `get_futures_24hr_ticker_async()`: 获取期货24小时行情
+
+### 限流器类（Rate Limiter Classes）
+
+#### 3. **AsyncRateLimiter** - 本地限流器
+- **作用**: 单个客户端专用的限流器
+- **特点**:
+  - 每个客户端实例可以有自己的限流器
+  - 独立管理API调用频率
+  - 适合单一客户端场景
+- **配置**: 通过 `RateLimitConfig` 自定义限流参数
+
+#### 4. **GlobalRateLimiter** - 全局限流器（单例模式）
+- **作用**: 统一管理多个客户端的API调用频率
+- **特点**:
+  - **单例模式**: 全局只有一个实例
+  - **统一配额**: 现货和期货共享API配额
+  - **统计功能**: 区分现货和期货请求的统计
+  - **推荐使用**: 当同时使用现货和期货客户端时，必须使用全局限流器
+- **优势**: 避免多个客户端同时调用时触发币安API限制
+
+### 类关系图
+
+```
+AsyncBinanceClient (现货客户端)
+    ├── 可配置限流器: AsyncRateLimiter 或 GlobalRateLimiter
+    ├── API端点: api.binance.com
+    └── 方法: get_historical_klines_async(), get_exchange_info_async(), ...
+
+FuturesAsyncClient (期货客户端)
+    ├── 继承自: AsyncBinanceClient
+    ├── 强制使用: GlobalRateLimiter (全局限流器)
+    ├── API端点: fapi.binance.com
+    └── 方法: get_futures_klines_async(), get_futures_exchange_info_async(), ...
+
+GlobalRateLimiter (全局限流器 - 单例)
+    ├── 统一管理: 现货 + 期货的API配额
+    └── 统计: 区分 spot_requests 和 futures_requests
+
+AsyncRateLimiter (本地限流器)
+    └── 独立管理: 单个客户端的API调用频率
+```
+
+### 使用场景建议
+
+#### 场景1: 只使用现货交易
+```python
+# 选项A: 使用本地限流器（简单场景）
+client = AsyncBinanceClient()  # 自动创建本地限流器
+
+# 选项B: 使用全局限流器（推荐，更灵活）
+rate_limiter = GlobalRateLimiter()
+client = AsyncBinanceClient(rate_limiter=rate_limiter)
+```
+
+#### 场景2: 只使用期货交易
+```python
+# FuturesAsyncClient 自动使用全局限流器，无需手动配置
+client = FuturesAsyncClient()
+```
+
+#### 场景3: 同时使用现货和期货（推荐使用全局限流器）
+```python
+# 创建全局限流器实例（单例，多次调用返回同一个实例）
+rate_limiter = GlobalRateLimiter()
+
+# 现货客户端使用全局限流器
+spot_client = AsyncBinanceClient(rate_limiter=rate_limiter)
+
+# 期货客户端自动使用全局限流器（内部会自动获取同一个实例）
+futures_client = FuturesAsyncClient()
+
+# 这样两个客户端共享API配额，避免超限
+```
+
+### 配置 API 凭证
+
+若要访问需要签名的接口（如订单、资金流水），需提供 API Key 与 Secret。建议将凭证写入环境变量，再在代码里读取：
+
+```bash
+export DEBRIEF_BINANCE_API_KEY="你的API_KEY"
+export DEBRIEF_BINANCE_API_SECRET="你的API_SECRET"
+```
+
+```python
+import os
+from binance_async_client import FuturesAsyncClient
+
+client = FuturesAsyncClient(
+    api_key=os.getenv("DEBRIEF_BINANCE_API_KEY"),
+    api_secret=os.getenv("DEBRIEF_BINANCE_API_SECRET"),
+    # verify_ssl 默认 True，若在本地代理导致证书校验失败，可暂时设为 False
+    # ⚠️ 关闭后将接受任意证书，仅适合本地调试，严禁在生产环境使用
+    verify_ssl=True,
+)
+```
+
+## 📦 关于包名和导入
+
+### 包名说明
+
+本项目有两个相关的名称，容易混淆：
+
+1. **PyPI 包名**（安装时使用）：`binance-async-client`
+   ```bash
+   pip install binance-async-client  # 使用连字符
+   ```
+
+2. **Python 导入名**（代码中使用）：`binance_async_client`
+   ```python
+   from binance_async_client import AsyncBinanceClient  # 使用下划线
+   ```
+
+### 为什么不同？
+
+- **PyPI 包名** (`binance-async-client`)：遵循 PyPI 命名规范，使用连字符
+- **Python 导入名** (`binance_async_client`)：遵循 Python 标识符规范，使用下划线
+- **目录名** (`binance_async_client/`)：对应项目中的包目录
+
+### 项目结构
+
+```
+binance-async-client/          # 项目根目录
+├── binance_async_client/      # Python 包目录（导入时使用这个名称）
+│   ├── __init__.py           # 包初始化文件，导出所有公开类
+│   ├── client.py             # AsyncBinanceClient
+│   ├── futures_client.py     # FuturesAsyncClient
+│   └── rate_limiter.py        # GlobalRateLimiter
+├── pyproject.toml            # 包配置（定义 PyPI 包名为 binance-async-client）
+└── README.md
+```
+
+### 导入机制
+
+当你执行 `from binance_async_client import AsyncBinanceClient` 时：
+
+1. Python 查找名为 `binance_async_client` 的包
+2. 找到 `binance_async_client/` 目录
+3. 执行 `binance_async_client/__init__.py`
+4. `__init__.py` 中导出了所有公开的类和函数
+5. 你就可以使用 `AsyncBinanceClient` 了
+
+## 🚀 快速开始
+
+### 安装
+
+#### 方式1: 从 PyPI 安装（发布后）
+```bash
+pip install binance-async-client
+```
+
+#### 方式2: 从源码安装（开发时）
+```bash
+# 克隆仓库后
+pip install -r requirements.txt
+# 或者以开发模式安装
+pip install -e .
+```
+
+### 基本使用
+
+### 现货客户端使用
+
+```python
+import asyncio
+from binance_async_client import AsyncBinanceClient, GlobalRateLimiter
+
+async def main():
+    # 使用全局限流器
+    rate_limiter = GlobalRateLimiter()
+    client = AsyncBinanceClient(rate_limiter=rate_limiter)
+    
+    # 使用客户端
+    async with client:
+        # 获取K线数据
+        import time
+        end_time = int(time.time() * 1000)
+        start_time = end_time - (24 * 60 * 60 * 1000)  # 24小时前
+        
+        klines = await client.get_historical_klines_async(
+            symbol='BTCUSDT',
+            interval='1h',
+            start_time=start_time,
+            end_time=end_time
+        )
+        
+        print(f"获取到 {len(klines)} 条K线数据")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### 期货客户端使用
+
+```python
+import asyncio
+from binance_async_client import FuturesAsyncClient
+
+async def main():
+    # 期货客户端自动使用全局限流器
+    client = FuturesAsyncClient()
+    
+    async with client:
+        # 获取期货K线数据
+        import time
+        end_time = int(time.time() * 1000)
+        start_time = end_time - (24 * 60 * 60 * 1000)  # 24小时前
+        
+        klines = await client.get_futures_klines_async(
+            symbol='BTCUSDT',
+            interval='1h',
+            start_time=start_time,
+            end_time=end_time,
+            limit=1500  # 期货最大1500条
+        )
+        
+        print(f"获取到 {len(klines)} 条期货K线数据")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## ⚠️ 注意事项
+
+1. **环境变量**: 非生产环境会自动读取代理环境变量（通过 `ENV_MODE` 环境变量控制）
+2. **限流器**: 建议使用 `GlobalRateLimiter` 来统一管理API调用频率，避免触发币安API限制
+3. **异步上下文**: 客户端支持异步上下文管理器，建议使用 `async with` 确保资源正确释放
+
+## 📚 API文档
+
+### AsyncBinanceClient
+
+主要方法：
+- `get_historical_klines_async()`: 获取历史K线数据
+- `get_exchange_info_async()`: 获取交易所信息
+- `get_24hr_ticker_async()`: 获取24小时价格统计
+
+### FuturesAsyncClient
+
+主要方法：
+- `get_futures_klines_async()`: 获取期货K线数据（最大1500条）
+- `get_futures_exchange_info_async()`: 获取期货交易所信息
+- `get_futures_24hr_ticker_async()`: 获取期货24小时行情
+- `get_all_orders_async()`: 获取指定交易对的所有历史订单（需签名）
+- `get_income_history_async()`: 获取资金流水（需签名）
+
+## 📄 许可证
+
+MIT License
+
