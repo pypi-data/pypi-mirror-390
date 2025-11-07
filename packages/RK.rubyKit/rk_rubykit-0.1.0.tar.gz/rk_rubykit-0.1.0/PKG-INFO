@@ -1,0 +1,187 @@
+Metadata-Version: 2.4
+Name: RK.rubyKit
+Version: 0.1.0
+Summary: Python library for developing apps for RubyOS
+Home-page: https://github.com/rubykit/rk.rubykit
+Author: RubyKit Team
+Author-email: RubyKit Team <contact@rubykit.dev>
+License: MIT
+Project-URL: Homepage, https://github.com/rubykit/rk.rubykit
+Project-URL: Documentation, https://github.com/rubykit/rk.rubykit#readme
+Project-URL: Repository, https://github.com/rubykit/rk.rubykit
+Project-URL: Bug Tracker, https://github.com/rubykit/rk.rubykit/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Application Frameworks
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# RK.rubyKit
+
+Python library for developing apps for RubyOS (Release: December 2025 - January 2026)
+
+## Installation
+
+```bash
+pip install RK.rubyKit
+```
+
+## Quick Start
+
+### Creating a Box
+
+```python
+import rk
+
+# Create a mask for UI
+ui_mask = rk.mask(rk.UI)
+
+# Create a box at coordinates
+box = rk.Box.new(x=0, y=0, z=1)
+```
+
+### Using Variables, Waits and Repeats
+
+Create a `def.py` file with your Python definitions:
+
+```python
+# def.py
+def wait(seconds):
+    import time
+    time.sleep(seconds)
+
+def coolFunc():
+    print("Cool function!")
+```
+
+In your `.rk` file, reference these definitions:
+
+```python
+import rk
+
+# Read wait function from def.py line 80
+machine_context = rk.Machine.Know(ui_mask, 100)
+rk.line("80", header="wait", time=10)
+
+# Read function definition from line 20
+rk.Machine.Know(ui_mask, 45)
+rk.line("20", header="def", var1="coolFunc")
+```
+
+### String Creation
+
+```python
+# Create a text string with Arial font
+text = rk.string("Arial:Text", "Hello RubyOS!")
+```
+
+## File Structure
+
+Your RubyKit project should have:
+
+- `def.py` - Python code definitions (waits, functions, etc.)
+- `app.rk` - RubyKit commands and UI definitions
+- `compile.py` - Compilation script
+
+### Example `app.rk` File
+
+```ruby
+make_header(10)
+def.py = def
+-l import def as d
+host(cmd:1)
+host(cmd:2)
+host(cmd:3)
+
+xa:1 create as:
+mask(n.UI)
+box.new = coordinates(x:0, y:0, z:1)
+
+xa:2 create as:
+machine.Know(mask, 100)
+line("80", header: wait, time: 10)
+
+xa:3 create as:
+string(Arial:Text, coool)
+
+run(x1-x3)
+```
+
+### Example `compile.py` File
+
+```python
+import rk
+
+rk_compiler = rk.RubyKit()
+
+def compile_app(app_name):
+    rk_compiler.compile_sh("def.py", app_name)
+    print("Finished installing.")
+
+compile_app("myApp")
+```
+
+Or use the shorthand:
+
+```python
+import rk
+rk.compile("myApp")
+```
+
+## API Reference
+
+### Classes
+
+- **`RubyKit`** - Main compiler and runtime
+- **`Mask`** - UI masking operations
+- **`Box`** - UI box element with coordinates
+- **`Machine`** - Read external code definitions
+- **`String`** - Text creation and editing
+
+### Functions
+
+- **`mask(ui_type)`** - Create a new UI mask
+- **`coordinates(x, y, z)`** - Create coordinate dictionary
+- **`line(line_num, header, **kwargs)`** - Reference line from def.py
+- **`string(font_text, content)`** - Create formatted text
+- **`compile(app_name)`** - Compile RubyKit application
+
+## Development
+
+To install in development mode:
+
+```bash
+cd RK.rubyKit
+pip install -e .
+```
+
+## Building and Distribution
+
+```bash
+# Build the package
+python setup.py sdist bdist_wheel
+
+# Upload to PyPI (requires account)
+pip install twine
+twine upload dist/*
+```
+
+## License
+
+MIT License
+
+## Support
+
+For issues and questions, visit: [github.com/rubykit/rk.rubykit](https://github.com/rubykit/rk.rubykit)
