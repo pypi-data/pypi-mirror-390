@@ -1,0 +1,59 @@
+# This workflow will upload a Python Package to PyPI when a release is created
+
+name: Upload Python Package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  release-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build 
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: 'pip' # caching pip dependencies
+
+      - name: Build release distributions
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v5
+        with:
+          name: release-dists
+          path: dist/
+
+  pypi-publish:
+    runs-on: ubuntu-latest
+    needs:
+      - release-build
+    permissions:
+      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
+
+    environment:
+      name: pypi
+      url: https://pypi.org/project/commizard
+      
+    steps:
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v6
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Publish release distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          user: __token__
+          password: ${{ secrets.PYPI_PASSWORD }}

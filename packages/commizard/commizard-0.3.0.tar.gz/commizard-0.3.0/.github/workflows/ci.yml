@@ -1,0 +1,43 @@
+# This workflow runs a basic check on pushes and PRs
+
+name: CI check
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Run sanitizing checks
+
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Cache Python packages
+        id: cache-py
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-py-${{ hashFiles('pyproject.toml') }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install project with dev packages and Nox
+        run: |
+          pip install nox
+          pip install .[dev]
+
+      - name: Run Nox check session
+        run: |
+          nox -s check -- CI
