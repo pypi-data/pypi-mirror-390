@@ -1,0 +1,47 @@
+[project]
+name = "adsdatahub"
+version = "0.0.7"
+description = "Ads Data Hub API client for Python"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "ya7010", email = "ya7010@outlook.com" }]
+dependencies = [
+  "google-api-python-client",
+  "google-cloud-bigquery",
+  "httpx",
+  "pydantic",
+  "typing-extensions",
+]
+
+[dependency-groups]
+dev = [
+  "db-dtypes",
+  "google-api-python-client-stubs",
+  "ipython",
+  "pandas",
+  "pyright",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "pytest-xdist",
+  "ruff",
+  "taskipy",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+markers = [
+  "long: marks tests as long (deselect with '-m \"not long\"')",
+  "mock: marks tests as mock (select with '-m \"mock\"')",
+]
+
+[tool.taskipy.tasks]
+ci = "task format && task lint && task typecheck && task test"
+format = "ruff format ."
+lint = "ruff check ."
+test = "pytest -n auto --cov=src --cov-report=term --cov-report=xml tests"
+typecheck = "pyright src/** tests/** examples/**"
