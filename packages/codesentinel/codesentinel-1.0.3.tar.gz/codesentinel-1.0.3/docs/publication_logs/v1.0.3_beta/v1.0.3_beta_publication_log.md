@@ -1,0 +1,153 @@
+# v1.0.3.beta Publication Instructions - READY TO PUBLISH
+
+**Status:** ✅ ALL CHECKS PASSED - READY FOR PyPI UPLOAD
+
+## Current Status Summary
+
+✅ **Distributions validated** (both pass twine check)
+✅ **Version numbers verified** across all files (1.0.3.beta)
+✅ **Root directory cleaned** (consolidated documentation to docs/)
+✅ **Documentation complete** (distribution report includes task scheduling & customization)
+✅ **Testing complete** (22/22 tests passed)
+✅ **All commits pushed** to feature/v1.0.3-integrity-validation
+
+## Ready-to-Upload Files
+
+```
+dist/codesentinel-1.0.3b0.tar.gz       (91 KB - source distribution)
+dist/codesentinel-1.0.3b0-py3-none-any.whl (77 KB - wheel distribution)
+```
+
+## QUICK PUBLICATION WORKFLOW
+
+### Step 1: Prepare PyPI Token
+
+**First time setup:**
+
+1. Go to: <https://test.pypi.org/account/register/>
+2. Create account and verify email
+3. Go to: <https://test.pypi.org/manage/account/tokens/>
+4. Create new token named "CodeSentinel v1.0.3beta"
+5. **COPY TOKEN** (shown only once!)
+
+### Step 2: Create .pypirc Configuration
+
+**Windows:**
+
+Create or edit: `C:\Users\joedi\AppData\Roaming\pip\pip.ini`
+
+```ini
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-YOUR_TOKEN_HERE
+```
+
+**macOS/Linux:**
+
+Create: `~/.pypirc`
+
+```ini
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-YOUR_TOKEN_HERE
+```
+
+### Step 3: Upload to Test PyPI
+
+```powershell
+cd c:\Users\joedi\Documents\CodeSentinel
+python -m twine upload --repository testpypi dist/codesentinel-1.0.3b0*
+```
+
+**When prompted:**
+
+- Username: `__token__`
+- Password: Paste your token
+
+**Expected output:**
+
+```
+Uploading codesentinel-1.0.3b0-py3-none-any.whl
+Uploading codesentinel-1.0.3b0.tar.gz
+```
+
+### Step 4: Verify Test PyPI Upload
+
+1. Visit: <https://test.pypi.org/project/codesentinel/>
+2. Should show version `1.0.3b0`
+3. Both files should be listed
+
+### Step 5: Test Installation from Test PyPI
+
+```powershell
+# Create test environment
+python -m venv pypi_test
+pypi_test\Scripts\activate
+
+# Install from test PyPI
+pip install --index-url https://test.pypi.org/simple/ codesentinel==1.0.3b0
+
+# Verify
+codesentinel status
+codesentinel --help
+
+# Deactivate
+deactivate
+```
+
+### Step 6: Publish to Production PyPI
+
+If test PyPI installation works:
+
+1. Get production PyPI token: <https://pypi.org/manage/account/tokens/>
+2. Update pip.ini password with production token
+3. Upload to production:
+
+```powershell
+python -m twine upload dist/codesentinel-1.0.3b0*
+```
+
+4. Verify at: <https://pypi.org/project/codesentinel/>
+
+### Step 7: Create GitHub Release
+
+After successful production upload:
+
+1. Go to: <https://github.com/joediggidyyy/CodeSentinel/releases/new>
+2. Tag: `v1.0.3-beta`
+3. Title: `CodeSentinel v1.0.3.beta - File Integrity Validation System`
+4. Copy release notes from CHANGELOG.md
+
+### Step 8: Merge to Main
+
+After publication verified:
+
+```powershell
+# Switch to main
+git checkout main
+
+# Merge feature branch
+git merge feature/v1.0.3-integrity-validation
+
+# Push
+git push origin main
+```
+
+## After Publication
+
+✅ Beta period: 2 weeks feedback collection
+✅ Monitor: GitHub Issues for bug reports
+✅ Next: v1.0.3 final release after feedback
+✅ Then: Development begins on v1.0.4+
+
+---
+
+**Next Action:** Execute Step 1-3 above to publish to test.pypi.org
+
+**Documentation Location:** See `docs/` folder for:
+
+- PYPI_PUBLICATION_GUIDE.md (complete guide)
+- V1_0_3_BETA_TEST_REPORT.md (all test results)
+- V1_0_3_DISTRIBUTION_REPORT.md (technical overview)
