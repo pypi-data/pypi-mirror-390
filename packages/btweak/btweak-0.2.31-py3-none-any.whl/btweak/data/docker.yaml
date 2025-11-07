@@ -1,0 +1,297 @@
+- name: "BerserkArch"
+  description: "BerserkArch Docker Containers"
+  containers:
+    - name: berserkarch-latest
+      description: BerserkArch Latest Docker Image
+      command: "docker pull berserkarch/berserkarch:latest"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --privileged --name berserkarch --hostname berserk berserkarch/berserkarch:latest"
+
+    - name: berserkarch-offsec
+      description: BerserkArch Offsec Docker Image
+      command: "docker pull berserkarch/berserkarch:offsec"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --privileged --name berserkarch --hostname berserk --user user -w /home/user berserkarch/berserkarch:offsec"
+
+    - name: berserkarch-base-devel
+      description: BerserkArch Latest Docker Image
+      command: "docker pull berserkarch/berserkarch:base-devel"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --privileged --name berserkarch --hostname berserk berserkarch/berserkarch:base-devel"
+
+    - name: berserkarch-novnc
+      description: BerserkArch Latest Docker Image
+      command: "docker pull berserkarch/berserkarch:novnc"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --hostname berserk --name berserkarch --privileged -p 5901:5901 -p 6080:6080 -p 2222:22 -p 8080:8080 berserkarch/berserkarch:novnc"
+
+- name: "Penetration Testing"
+  description: "Docker containers for penetration testing"
+  categories:
+    - name: "Kali Linux"
+      description: "Kali Linux docker containers"
+      containers:
+        - name: "kali-cli"
+          description: "Official Kali Linux container with full toolset"
+          command: "docker pull kalilinux/kali-rolling"
+          run: "docker run -it --rm --network host kalilinux/kali-rolling /bin/bash"
+
+        - name: "kali-gui"
+          description: "Lightweight Kali Linux container"
+          command: "docker pull lscr.io/linuxserver/kali-linux:latest"
+          run: "docker run -d --rm --name=kali-linux -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/kali-linux:/config --shm-size='1gb' lscr.io/linuxserver/kali-linux:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop kali-linux"
+            - "- Access at: https://localhost:3001/"
+            - "- Access via shell: docker exec -it kali-linux /bin/bash"
+            - "- More Info: https://github.com/linuxserver/docker-kali-linux"
+    - name: "Parrot OS"
+      description: "Parrot OS docker containers"
+      containers:
+        - name: "parrot-security"
+          description: "Parrot Security OS container"
+          command: "docker pull parrotsec/security"
+          run: "docker run -it --rm --privileged parrotsec/security /bin/bash"
+
+- name: "Tool Containers"
+  description: "Standalone tools in docker containers"
+  categories:
+    - name: "Web Security"
+      description: "Containers for web application security testing"
+      containers:
+        - name: "owasp-zap"
+          description: "OWASP ZAP security testing proxy"
+          command: "docker pull zaproxy/zap-stable"
+          run: "docker run -u zap -p 8080:8080 -i zaproxy/zap-stable zap-webswing.sh"
+
+        - name: "burpsuite"
+          description: "Burp Suite Community Edition"
+          command: "docker pull secsi/burpsuite"
+          run: "docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix secsi/burpsuite"
+
+        - name: "sqlmap"
+          description: "Automated SQL injection tool"
+          command: "docker pull paoloo/sqlmap"
+          run: "docker run -it --rm paoloo/sqlmap -u 'http://target.com/?id=1' --dbs"
+
+        - name: "wpscan"
+          description: "WordPress security scanner"
+          command: "docker pull wpscanteam/wpscan"
+          run: "docker run -it --rm wpscanteam/wpscan --url https://target.com"
+
+    - name: "Network Analysis"
+      description: "Network scanning and analysis containers"
+      containers:
+        - name: "nmap"
+          description: "Network discovery and security auditing"
+          command: "docker pull instrumentisto/nmap"
+          run: "docker run --rm instrumentisto/nmap -sV -p- target.com"
+
+        - name: "Wireshark"
+          description: "Network protocol analyzer with GUI"
+          command: "docker pull lscr.io/linuxserver/wireshark:latest"
+          run: "docker run -d --rm --name=wireshark --net=host --cap-add=NET_ADMIN -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/wireshark:/config --shm-size='1gb' lscr.io/linuxserver/wireshark:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop wireshark"
+            - "- Access at: https://localhost:3001/"
+            - "- More Info: https://github.com/linuxserver/docker-wireshark"
+
+        - name: "masscan"
+          description: "Fast TCP port scanner"
+          command: "docker pull secsi/masscan"
+          run: "docker run --rm secsi/masscan -p1-65535 --rate=1000 192.168.1.0/24"
+
+    - name: "Password Cracking"
+      description: "Password recovery and cracking tools"
+      containers:
+        - name: "hashcat"
+          description: "Advanced password recovery"
+          command: "docker pull dizcza/docker-hashcat"
+          run: "docker run --rm -it --gpus all -v $(pwd):/data dizcza/docker-hashcat -m 0 -a 0 /data/hashes.txt /data/wordlist.txt"
+
+        - name: "john"
+          description: "John the Ripper password cracker"
+          command: "docker pull secsi/john"
+          run: "docker run --rm -v $(pwd):/data secsi/john /data/passwords.txt"
+
+        - name: "hydra"
+          description: "Network logon cracker"
+          command: "docker pull secsi/hydra"
+          run: "docker run --rm secsi/hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://target.com"
+
+    - name: "Forensics"
+      description: "Digital forensics and incident response"
+      containers:
+        - name: "volatility"
+          description: "Memory forensics framework"
+          command: "docker pull phocean/volatility"
+          run: "docker run --rm -v $(pwd):/dumps phocean/volatility -f /dumps/memory.dmp imageinfo"
+
+        - name: "autopsy"
+          description: "Digital forensics platform"
+          command: "docker pull acastaner/autopsy"
+          run: "docker run -d -p 9999:9999 --name autopsy acastaner/autopsy"
+
+        - name: "sleuthkit"
+          description: "Forensic analysis tools"
+          command: "docker pull secsi/sleuthkit"
+          run: "docker run --rm -v $(pwd):/evidence secsi/sleuthkit fls /evidence/disk.dd"
+
+    - name: "Others"
+      description: "Other security tools"
+      containers:
+        - name: "metasploit"
+          description: "Metasploit Framework container"
+          command: "docker pull metasploitframework/metasploit-framework"
+          run: "docker run -it --rm -v ~/.msf4:/root/.msf4 metasploitframework/metasploit-framework"
+
+- name: "GUI Applications"
+  description: "Standalone applications in docker containers"
+  categories:
+    - name: "Browser"
+      description: "Disposable browsers in docker containers"
+      containers:
+        - name: "firefox"
+          description: "Firefox browser"
+          command: "docker pull lscr.io/linuxserver/firefox:latest"
+          run: "docker run --rm -d --name=firefox -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e FIREFOX_CLI=https://berserkarch.xyz -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/firefox:/config --shm-size='1gb' lscr.io/linuxserver/firefox:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop firefox"
+            - "- Access the container at: https://localhost:3001/"
+            - "- More Info at: https://github.com/linuxserver/docker-firefox"
+
+        - name: "Chromium"
+          description: "Chromium Browser"
+          command: "docker pull lscr.io/linuxserver/chromium:latest"
+          run: "docker run --rm -d --name=chromium -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e CHROME_CLI=https://berserkarch.xyz/ -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/chromium/:/config --shm-size='1gb' lscr.io/linuxserver/chromium:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop chromium"
+            - "- Access the container at: https://localhost:3001/"
+            - "- More Info at: https://github.com/linuxserver/docker-chromium"
+
+        - name: "Brave"
+          description: "Brave Browser"
+          command: "docker pull lscr.io/linuxserver/brave:latest"
+          run: "docker run --rm -d --name=brave -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e CHROME_CLI=https://berserkarch.xyz/ -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/brave/:/config --shm-size='1gb' lscr.io/linuxserver/brave:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop brave"
+            - "- Access the container at: https://localhost:3001/"
+            - "- More Info at: https://github.com/linuxserver/docker-brave"
+
+        - name: "Ungooglechromium"
+          description: "Google chromium browser with google stripped away"
+          command: "docker pull lscr.io/linuxserver/ungoogled-chromium:latest"
+          run: "docker run -d --name=ungoogled-chromium -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e CHROME_CLI=https://berserkarch.xyz/ -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/ungoogled-chromium:/config --shm-size='1gb' --restart unless-stopped lscr.io/linuxserver/ungoogled-chromium:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop ungoogled-chromium"
+            - "- Access the container at: https://localhost:3001/"
+            - "- More Info at: https://github.com/linuxserver/docker-ungoogled-chromium"
+
+        - name: "Chrome"
+          description: "Chrome Browser"
+          command: "docker pull lscr.io/linuxserver/chrome:latest"
+          run: "docker run --rm -d --name=chrome -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e CHROME_CLI=https://berserkarch.xyz/ -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/chrome/:/config --shm-size='1gb' lscr.io/linuxserver/chrome:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop chrome"
+            - "- Access the container at: https://localhost:3001/"
+            - "- More Info at: https://github.com/linuxserver/docker-chrome"
+
+    - name: "Office & Utility"
+      description: "Office suites and essential tools in Docker containers"
+      containers:
+        - name: "LibreOffice"
+          description: "Full LibreOffice suite in Docker"
+          command: "docker pull lscr.io/linuxserver/libreoffice:latest"
+          run: "docker run -d --rm --name=libreoffice -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/libreoffice:/config --shm-size='1gb' lscr.io/linuxserver/libreoffice:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop libreoffice"
+            - "- Access at: https://localhost:3001/"
+            - "- More Info: https://github.com/linuxserver/docker-libreoffice"
+
+        - name: "OnlyOffice"
+          description: "OnlyOffice suite for documents and spreadsheets"
+          command: "docker pull lscr.io/linuxserver/onlyoffice:latest"
+          run: "docker run -d --rm --name=onlyoffice -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/onlyoffice:/config --shm-size='1gb' lscr.io/linuxserver/onlyoffice:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop onlyoffice"
+            - "- Access at: https://localhost:3001/"
+            - "- More Info: https://github.com/linuxserver/docker-onlyoffice"
+
+        - name: "WPS Office"
+          description: "WPS Office suite"
+          command: "docker pull lscr.io/linuxserver/wps-office:latest"
+          run: "docker run -d --rm --name=wps-office -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/wps-office:/config --shm-size='1gb' lscr.io/linuxserver/wps-office:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop wps-office"
+            - "- Access at: https://localhost:3001/"
+            - "- More Info: https://github.com/linuxserver/docker-wps-office"
+
+    - name: "Downloaders"
+      description: "Media and file download management containers"
+      containers:
+        - name: "PyLoad-NG"
+          description: "Download manager for various sources"
+          command: "docker pull lscr.io/linuxserver/pyload-ng:latest"
+          run: "docker run -d --rm --name=pyload-ng -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 8000:8000 -p 9666:9666 -v ~/.config/btweak/docker/pyload-ng:/config -v ~/.config/btweak/docker/pyload-ng/downloads:/downloads lscr.io/linuxserver/pyload-ng:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop pyload-ng"
+            - "- Access at: http://localhost:8000/"
+            - "- Default creds: pyload:pyload"
+            - "- More Info: https://github.com/linuxserver/docker-pyload-ng"
+
+        - name: "qBittorrent"
+          description: "Torrent client with web UI"
+          command: "docker pull lscr.io/linuxserver/qbittorrent:latest"
+          run: "docker run -d --rm --name=qbittorrent -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e WEBUI_PORT=8080 -e TORRENTING_PORT=6881 -p 8080:8080 -p 6881:6881 -p 6881:6881/udp -v ~/.config/btweak/docker/qbittorrent:/config -v ~/.config/btweak/docker/qbittorrent/downloads:/downloads lscr.io/linuxserver/qbittorrent:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop qbittorrent"
+            - "- Access at: http://localhost:8080/"
+            - "- Username is: admin, for password run: docker logs -f qbittorrent"
+            - "- More Info: https://github.com/linuxserver/docker-qbittorrent"
+
+    - name: "Networking & Security"
+      description: "Network monitoring and VPN tools"
+      containers:
+        - name: "WireGuard"
+          description: "VPN container for secure networking"
+          command: "docker pull lscr.io/linuxserver/wireguard:latest"
+          run: "docker run -d --rm --name=wireguard --cap-add=NET_ADMIN --cap-add=SYS_MODULE -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e SERVERURL=wireguard.domain.com -e SERVERPORT=51820 -e PEERS=1 -e PEERDNS=auto -e INTERNAL_SUBNET=10.13.13.0 -e ALLOWEDIPS=0.0.0.0/0 -e PERSISTENTKEEPALIVE_PEERS= -e LOG_CONFS=true -p 51820:51820/udp -v ~/.config/btweak/docker/wireguard:/config -v /lib/modules:/lib/modules --sysctl='net.ipv4.conf.all.src_valid_mark=1' lscr.io/linuxserver/wireguard:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop wireguard"
+            - "- Configs saved in ~/.config/btweak/docker/wireguard"
+            - "- More Info: https://github.com/linuxserver/docker-wireguard"
+
+        - name: "DuckDNS"
+          description: "Dynamic DNS client for DuckDNS domains"
+          command: "docker pull lscr.io/linuxserver/duckdns:latest"
+          run: "docker run -d --rm --name=duckdns --net=host -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e SUBDOMAINS=subdomain1,subdomain2 -e TOKEN=token -e UPDATE_IP=ipv4 -e LOG_FILE=false -v ~/.config/btweak/docker/duckdns:/config lscr.io/linuxserver/duckdns:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop duckdns"
+            - "- Configs saved in ~/.config/btweak/docker/duckdns"
+            - "- More Info: https://github.com/linuxserver/docker-duckdns"
+
+    - name: "Miscellaneous Tools"
+      description: "General purpose tools and utilities"
+      containers:
+        - name: "PwnDrop"
+          description: "Self-hosted file hosting and sharing service"
+          command: "docker pull lscr.io/linuxserver/pwndrop:latest"
+          run: "docker run -d --rm --name=pwndrop -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e SECRET_PATH=/pwndrop -p 8080:8080 -v ~/.config/btweak/docker/pwndrop:/config lscr.io/linuxserver/pwndrop:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop pwndrop"
+            - "- Access at: http://localhost:8080/"
+            - "- More Info: https://github.com/linuxserver/docker-pwndrop"
+
+        - name: "VS Codium"
+          description: "VSCodium – open source VS Code alternative"
+          command: "docker pull lscr.io/linuxserver/vscodium:latest"
+          run: "docker run -d --rm --name=vscodium --cap-add=IPC_LOCK -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/docker/vscodium:/config --shm-size='1gb' lscr.io/linuxserver/vscodium:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop vscodium"
+            - "- Access at: https://localhost:3001/"
+            - "- More Info: https://github.com/linuxserver/docker-vscodium"
+
+        - name: "FreshRSS"
+          description: "RSS aggregator for self-hosted feeds"
+          command: "docker pull lscr.io/linuxserver/freshrss:latest"
+          run: "docker run -d --rm --name=freshrss -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -p 80:80 -v ~/.config/btweak/docker/freshrss:/config lscr.io/linuxserver/freshrss:latest"
+          runtime_comments:
+            - "- To stop the container run: docker stop freshrss"
+            - "- Access at: http://localhost/"
+            - "- More Info: https://github.com/linuxserver/docker-freshrss"
