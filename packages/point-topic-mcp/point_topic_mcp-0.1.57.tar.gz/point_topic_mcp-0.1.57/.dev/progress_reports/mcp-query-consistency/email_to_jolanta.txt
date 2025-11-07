@@ -1,0 +1,38 @@
+hey jolanta,
+
+sorted out the query consistency issue..
+
+**the problem**:
+- cityfibre exists as 6 different operator names in the db (wholesale relationships)
+- chat agent was counting 'CityFibre Vodafone', 'CityFibre TalkTalk', etc as separate operators
+- this inflated the overbuild counts massively
+
+**bonus bug found**:
+- nexfibre virgin media (80k postcodes) should be excluded from altnet queries
+- your non-chat version was also including it incorrectly
+- new version fixes both issues
+
+**the fix (v0.1.57)**:
+- added explicit operator canonicalization rules to context
+- clarified when to use time-series vs static tables
+- added correct sql pattern example for overbuild queries
+- added nexfibre exclusion to all altnet queries
+
+**verification**:
+```
+wrong way (chat):       1=9.6M, 2=1.6M, 3=3.1M, 4=881k, 5-7=more nonsense
+better (non-chat):      1=13.3M, 2=1.9M, 3=180k, 4=17k (but included nexfibre bug)
+correct (fixed):        1=13.0M, 2=1.2M, 3=100k, 4=8k
+```
+
+**to test**:
+```bash
+pip install --upgrade point-topic-mcp==0.1.57
+```
+
+then rerun your original prompts.. should be consistent and more accurate now.
+
+see `.dev/progress_reports/mcp-query-consistency/summary_for_jolanta.md` for full technical breakdown if you need it..
+
+~ peter
+
