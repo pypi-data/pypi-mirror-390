@@ -1,0 +1,439 @@
+# 🌍 Worldflow
+
+**DX-first durable workflow orchestration for Python.**
+
+Write normal async code, survive restarts, run anywhere.
+
+[![PyPI version](https://badge.fury.io/py/worldflow.svg)](https://badge.fury.io/py/worldflow)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://static.pepy.tech/badge/worldflow)](https://pepy.tech/project/worldflow)
+
+---
+
+## ✨ Features
+
+- **🎯 DX-First**: Write normal async Python, no YAML, minimal boilerplate
+- **💾 Durable**: Survive restarts and crashes; resume after sleeps and signals
+- **☁️ Serverless-Friendly**: Steps run in short-lived environments (Lambda, Cloud Run, etc.)
+- **🔌 Pluggable Worlds**: Same code runs on local dev, AWS, GCP, K8s
+- **🎲 Deterministic**: Side effects only in steps; workflows are replayable
+- **📊 Observable**: Inspect runs, steps, retries, inputs, outputs
+- **🔁 Retry Logic**: Configurable retry policies with exponential backoff
+- **⚡ Parallel Execution**: Fan-out/fan-in with bounded concurrency
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+pip install worldflow
+
+# For AWS support
+pip install "worldflow[aws]"
+```
+
+### Your First Workflow
+
+```python
+from worldflow import workflow, step, sleep, signal, parallel, RetryPolicy
+
+@step(retries=RetryPolicy(max_attempts=3, backoff="exponential"))
+async def charge_card(user_id: str, amount_cents: int) -> str:
+    # Side effects happen here (HTTP, DB, etc.)
+    return f"payment_{user_id}_{amount_cents}"
+
+@step
+async def send_email(user_id: str, template: str) -> None:
+    # Send email...
+    pass
+
+@workflow
+async def onboarding(user_id: str):
+    # Step 1: Send welcome email
+    await send_email(user_id, "welcome")
+    
+    # Step 2: Durable sleep (survives restarts!)
+    await sleep("3d")
+    
+    # Step 3: Charge card
+    payment_id = await charge_card(user_id, 999)
+    
+    # Step 4: Parallel execution
+    await parallel([
+        lambda: send_email(user_id, "receipt"),
+        lambda: send_email(user_id, "survey")
+    ])
+    
+    # Step 5: Wait for external signal (webhook)
+    choice = await signal("user_choice", timeout="7d")
+    
+    # Step 6: Conditional logic
+    if choice == "upgrade":
+        await charge_card(user_id, 4999)
+    
+    return {"user_id": user_id, "choice": choice}
+```
+
+### Run It
+
+```bash
+# Start local dev server with dashboard
+worldflow dev
+
+# Start a workflow
+worldflow start myapp.workflows onboarding -i user_id=user_123
+
+# List running workflows
+worldflow ps
+
+# View logs
+worldflow logs <run_id>
+
+# Send a signal
+worldflow signal <run_id> user_choice '"upgrade"'
+```
+
+Or run the demo:
+
+```bash
+python main.py
+```
+
+---
+
+## 📖 Core Concepts
+
+### Workflows = Orchestration
+
+Workflows are **deterministic coordination logic** only:
+
+```python
+@workflow
+async def my_workflow(input: str):
+    result = await my_step(input)
+    await sleep("1h")
+    return result
+```
+
+**Rules:**
+- ✅ Call steps, sleep, signal, parallel
+- ✅ Use conditional logic, loops
+- ❌ No HTTP calls, database writes, random/time access
+- ❌ All non-determinism must be in steps
+
+### Steps = Side Effects
+
+Steps are **where side effects happen**:
+
+```python
+@step(retries=RetryPolicy(max_attempts=5))
+async def my_step(input: str) -> str:
+    # Side effects allowed here!
+    response = await http.post("https://api.example.com", json={"data": input})
+    return response.json()
+```
+
+**Features:**
+- Automatic retry with exponential backoff
+- Idempotency keys generated automatically
+- At-least-once execution semantics
+
+### Durable Primitives
+
+#### `sleep(duration)`
+
+Durable sleep that survives restarts:
+
+```python
+await sleep("3d")   # 3 days
+await sleep("2h")   # 2 hours
+await sleep("30m")  # 30 minutes
+await sleep("10s")  # 10 seconds
+```
+
+#### `signal(name, timeout)`
+
+Wait for external signals/webhooks:
+
+```python
+choice = await signal("user_decision", timeout="7d")
+```
+
+Send signals via CLI or HTTP:
+
+```bash
+worldflow signal <run_id> user_decision '"approve"'
+```
+
+#### `parallel(tasks, concurrency)`
+
+Execute tasks in parallel with bounded concurrency:
+
+```python
+results = await parallel(
+    [lambda: process_item(item_id) for item_id in item_ids],
+    concurrency=rate_limit(50)
+)
+```
+
+---
+
+## 🌍 Run Anywhere
+
+### Local Development
+
+```python
+from worldflow.worlds import LocalWorld
+
+world = LocalWorld()  # SQLite, perfect for dev
+```
+
+### Production on AWS
+
+```python
+from worldflow.worlds import AWSWorld
+
+world = AWSWorld()  # DynamoDB + Lambda + SQS
+```
+
+**Same workflow code, different backend!**
+
+See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md) for complete AWS setup guide.
+
+---
+
+## 🏗️ How It Works
+
+Worldflow uses **deterministic replay** (Temporal-style) with an **event log**:
+
+1. Each workflow run has an append-only event log
+2. When a workflow resumes, it replays from the start
+3. Primitives check the log:
+   - If event exists → return recorded result
+   - If not → schedule operation and suspend
+4. External completions trigger replay
+5. Workflow advances deterministically
+
+### Event Types
+
+- `WorkflowStarted`, `WorkflowCompleted`, `WorkflowFailed`
+- `StepScheduled`, `StepCompleted`, `StepFailed`
+- `TimerScheduled`, `TimerFired`
+- `SignalRequested`, `SignalReceived`
+- `ParallelStarted`, `ParallelCompleted`
+
+---
+
+## 🔁 Retry Policies
+
+Configure retries per step:
+
+```python
+from worldflow import RetryPolicy, BackoffStrategy
+
+@step(retries=RetryPolicy(
+    max_attempts=5,
+    backoff=BackoffStrategy.EXPONENTIAL,
+    initial_delay_seconds=1.0,
+    max_delay_seconds=3600.0,
+    multiplier=2.0
+))
+async def flaky_operation():
+    # Will retry up to 5 times with exponential backoff
+    pass
+```
+
+**Built-in policies:**
+- `NO_RETRY` - Don't retry
+- `QUICK_RETRY` - 3 attempts, constant 1s delay
+- `STANDARD_RETRY` - 5 attempts, exponential backoff
+- `AGGRESSIVE_RETRY` - 10 attempts, slower exponential
+
+---
+
+## 🔧 FastAPI Integration
+
+```python
+from fastapi import FastAPI
+from worldflow.fastapi_integration import create_app as create_worldflow_app
+
+app = FastAPI()
+worldflow_app = create_worldflow_app(world)
+app.mount("/worldflow", worldflow_app)
+```
+
+Endpoints:
+- `GET /worldflow/` - Dashboard
+- `GET /worldflow/runs` - List runs
+- `GET /worldflow/runs/{run_id}` - Run details
+- `POST /worldflow/signal/{run_id}/{signal_name}` - Receive signals
+
+---
+
+## 📊 CLI
+
+```bash
+worldflow dev                           # Start dev server with dashboard
+worldflow start <module> <workflow>     # Start a workflow
+worldflow ps                            # List workflow runs
+worldflow logs <run_id>                 # View detailed logs
+worldflow signal <run_id> <name> <val>  # Send a signal
+worldflow replay <run_id>               # Replay workflow (debugging)
+```
+
+---
+
+## 🎯 Examples
+
+See the `examples/` directory:
+
+- **`onboarding.py`** - User onboarding with email, payment, signals
+- **`batch_processing.py`** - Parallel batch processing with rate limiting
+- **`fastapi_app.py`** - FastAPI integration example
+- **`aws_workflow.py`** - AWS production deployment example
+
+Run examples:
+
+```bash
+python examples/onboarding.py
+```
+
+---
+
+## 📚 Documentation
+
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute tutorial
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical deep-dive
+- **[AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md)** - AWS deployment guide
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guide
+
+---
+
+## 🚀 Deploying to AWS
+
+Quick start:
+
+```bash
+# 1. Set up infrastructure
+python -m worldflow.aws_setup setup
+
+# 2. Set environment variables
+export WORLDFLOW_EVENTS_TABLE="worldflow-events"
+export WORLDFLOW_RUNS_TABLE="worldflow-runs"
+export WORLDFLOW_STEP_QUEUE_URL="https://sqs...."
+
+# 3. Use AWSWorld
+from worldflow.worlds import AWSWorld
+world = AWSWorld()
+```
+
+Or use AWS CDK:
+
+```bash
+cd infrastructure/cdk
+cdk deploy
+```
+
+See [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md) for complete guide.
+
+**Cost estimate**: $20-100/month for most workloads.
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         Workflow Code                        │
+│  @workflow async def my_workflow():                         │
+│      await my_step()                                        │
+│      await sleep("1h")                                      │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      Orchestrator                            │
+│  • Deterministic replay from event log                      │
+│  • Schedules steps, timers, waits for signals               │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ↓
+┌─────────────────────────────────────────────────────────────┐
+│                         World                                │
+│  • Persistence (event log, runs)                            │
+│  • Compute (execute steps)                                  │
+│  • Scheduling (timers, signals)                             │
+│                                                              │
+│  LocalWorld:  SQLite + async                                │
+│  AWSWorld:    DynamoDB + Lambda + SQS                       │
+│  GCPWorld:    Firestore + Cloud Run (coming soon)           │
+│  K8sWorld:    Postgres + K8s Jobs (coming soon)             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Development Setup
+
+```bash
+git clone https://github.com/yourusername/worldflow.git
+cd worldflow
+pip install -e ".[dev]"
+pytest
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Core orchestration engine
+- [x] LocalWorld for development
+- [x] CLI and dashboard
+- [x] FastAPI integration
+- [x] AWS World implementation
+- [ ] GCP World implementation
+- [ ] K8s World implementation
+- [ ] Workflow versioning
+- [ ] OpenTelemetry integration
+- [ ] Circuit breakers and DLQ
+- [ ] CRON/scheduled workflows
+
+---
+
+## 💬 Community
+
+- **GitHub Issues**: Bug reports and feature requests
+- **Discussions**: Questions and ideas
+
+---
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file
+
+---
+
+## 🙏 Acknowledgments
+
+Inspired by:
+- **Temporal** - Event sourcing and replay mechanism
+- **Inngest** - DX-first approach and durable sleep
+- **Restate** - Durable execution for modern stacks
+- **Durable Task Framework** - .NET durable orchestration
+
+---
+
+## ⭐ Star History
+
+If you find Worldflow useful, please star the repo! It helps others discover the project.
+
+---
+
+**Built with ❤️ for the Python async community**
