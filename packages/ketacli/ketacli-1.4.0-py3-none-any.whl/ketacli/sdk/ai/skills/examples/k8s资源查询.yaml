@@ -1,0 +1,36 @@
+name: k8s资源查询
+summary: 查询 Kubernetes 资源（Pod、Deployment、Service、Node等），支持状态筛选与按命名空间聚合
+enabled: true
+triggers: [k8s资源查询, 查询k8s, k8s pods, k8s deployments, 查询pod, 查询deployment]
+permissions: [read_only]
+tools_whitelist: [get_docs, search_data, get_repo_fields]
+description: |
+  ## 使用说明
+  - 本技能面向已采集到 KetaDB 的 Kubernetes 数据（事件/指标/元信息）。
+  - 推荐先阅读 SPL 语法参考：`get_docs metric_search_syntax` 或 `get_docs log_search_syntax`。
+  - 查询使用 `search_data spl="..."`
+
+  ## 常用资源查询示例
+
+  ### 1. 按命名空间统计 Pod 数量（近30分钟）
+  - 目的：快速查看各命名空间 Pod 数量分布
+  - 调用：
+    `search_data spl='search2 start="-30m" repo="infrastructure_monitoring_metrics" AND (infra_type="kubernetes" OR service="kubernetes") AND name="pod" AND origin="kubernetes_cluster" | stats count() as c by namespace | sort 20 by c desc'`
+
+  ### 2. 列出持续启动失败的 Pod（StartError，近30分钟）
+  - 目的：定位持续出现启动错误的容器
+  - 调用：
+    `search_data spl='search2 start="-30m" repo="infrastructure_monitoring_metrics" AND service="kubernetes" AND name="pod_container" AND status_state_reason="StartError" | bin span="1m" _time | stats latest(status_state) as container_state by _time,container_name,namespace | stats count() as c by container_state,container_name,namespace | where c >= 5'`
+
+  ### 3. 列出持续崩溃的 Pod（CrashLoopBackOff，近30分钟）
+  - 调用：
+    `search_data spl='search2 start="-30m" repo="infrastructure_monitoring_metrics" AND service="kubernetes" AND name="pod_container" AND status_state_reason="CrashLoopBackOff" | stats latest(status_state) as container_state by container_name,namespace'`
+
+  ### 4. 镜像拉取失败的 Pod（ImagePullBackOff，近30分钟）
+  - 调用：
+    `search_data spl='search2 start="-30m" repo="infrastructure_monitoring_metrics" AND service="kubernetes" AND name="pod_container" AND status_state_reason="ImagePullBackOff" | stats latest(status_state) as container_state by container_name,namespace'`
+
+  ### 7. 查询 Node 资源与状态摘要（近1小时）
+  - 调用：
+    `search_data spl='mstats latest(kubernetes_pod_container_cpu_usage_nanocores) as cpu_usage_cores, latest(kubernetes_pod_container_memory_usage_bytes) as memory_usage_bytes by kube_cluster_name, node_name, namespace, pod_name, container_name | stats sum(cpu_usage_cores)as cpu_usage_cores, sum(memory_usage_bytes)as memory_usage_bytes, count() as container_num by kube_cluster_name, node_name | eval key=concat(kube_cluster_name, "_", node_name),cpu_usage_cores=round(cpu_usage_cores/1000000000, 4)'`
+
