@@ -1,0 +1,106 @@
+Metadata-Version: 2.4
+Name: speedtune
+Version: 0.1.2
+Summary: Thin wrappers around transformers to help speed up training/fine-tuning.
+Author-email: Hari Shankar <shanh042.310@gmail.com>
+License: MIT License
+        
+        Copyright (c) 2025 Hari Shankar
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch>=2.0.0
+Requires-Dist: transformers>=4.30.0
+Requires-Dist: typing-extensions; python_version < "3.12"
+Provides-Extra: test
+Requires-Dist: pytest>=7.0; extra == "test"
+Dynamic: license-file
+
+# speedtune
+
+Lightweight helpers to "patch" token embeddings for causal and seq2seq
+transformer models. Grouping tokens into fixed-size patches reduces the
+effective sequence length and can speed up training or inference for long
+inputs. The project provides a thin wrapper around Hugging Face
+transformers models that computes patch-level embeddings and forwards them to
+the base model while preserving a compatible `forward` API.
+
+## Features
+
+- Compress token embeddings into patches (mean pooling by default).
+- Forward patched embeddings to causal LMs and seq2seq LMs (seq2seq implementation pending).
+- Optional user-provided patch function for custom aggregation.
+
+## Quick install
+
+This package requires PyTorch and Hugging Face Transformers. Because PyTorch
+is platform-specific (CPU vs GPU/CUDA), install it first following the
+official instructions for your platform, then install this package.
+
+Example (Windows PowerShell):
+
+```powershell
+# create venv and activate
+python -m venv .venv; .\.venv\Scripts\Activate.ps1
+
+# Install PyTorch for your platform first. Example CPU-only wheel:
+pip install "torch>=2.0.0" --index-url https://download.pytorch.org/whl/cpu
+
+# Then install transformers and this package
+pip install "transformers>=4.30.0"
+pip install -U pip build wheel twine
+
+# Build and install the local wheel for development/testing
+python -m build
+pip install dist\speedtune-0.1.1py3-none-any.whl
+```
+
+## Minimal usage example
+
+```python
+import torch
+from speedtune.speedtune import AutoPatchModelForCausalLM
+
+# Create wrapper around a pretrained model (small model for quick tests)
+model = AutoPatchModelForCausalLM.from_pretrained("gpt2", patch_size=2)
+model.eval()
+
+input_ids = torch.tensor([[50256, 50257, 50258, 50259]])  # example token ids
+outputs = model(input_ids=input_ids)
+logits = outputs.logits
+```
+
+## Testing
+
+Run the unit tests with `pytest` after installing test dependencies:
+
+```powershell
+# from the repo root
+pip install pytest
+pytest -q
+```
+
+## License
+
+This project is MIT licensed (see `LICENSE`).
