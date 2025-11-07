@@ -1,0 +1,14 @@
+<ul hx-swap-oob="afterbegin:#notifications">
+    {% for notification in notifications %}
+        <li 
+            x-init="setTimeout(() => {
+                $el.classList.add('notification-out');
+                $el.addEventListener('animationend', () => $el.remove());
+            }, {{ notification.duration_in_ms }})"
+            x-transition
+            class="bg-surface-light dark:bg-surface-dark border-2 border-blue-dark px-7 rounded m-5 w-lg"
+            >
+            <p>{{ notification.text }}</p>
+        </li>
+    {% endfor %}
+</ul>

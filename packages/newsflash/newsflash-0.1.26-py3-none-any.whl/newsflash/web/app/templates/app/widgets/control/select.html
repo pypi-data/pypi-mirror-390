@@ -1,0 +1,90 @@
+<div 
+id="{{ id }}"
+class="w-full"
+x-data="{ 
+    isOpen: false, 
+    options: {{ options }}, 
+    currentValue: '{{ selected }}',
+    filteredOptions: {{ options }}
+}"
+{% if swap_oob %}hx-swap-oob="true"{% endif %}
+>
+    <div
+    @click.outside="isOpen = false;"
+    x-data="{
+        selectValue(value) {
+            currentValue = value;
+            $refs.input.value = value;
+            $refs.input.dispatchEvent(new Event('selectedByClick', { bubbles: true }));
+            isOpen = false;
+            $refs.input.blur();
+        },
+        resetInput() {
+            $refs.input.value = currentValue;
+            isOpen = false;
+            $refs.input.blur();
+        }
+    }"
+    >
+        {% csrf_token %}
+        <input id="{{ id }}-id" type="hidden" name="select-id" value="{{ id }}">
+        
+        <input 
+            x-ref="input"
+            id="{{ id }}-input"
+            @focus="filteredOptions = options; isOpen = true; $refs.input.select();"
+            @input="
+            filteredOptions = $refs.input.value == '' ? options : options.filter((option) => option.toLowerCase().includes($refs.input.value.toLowerCase()));
+            "
+            @keydown="
+            if ($event.key == 'Enter') selectValue(filteredOptions[0]);
+            if ($event.key == 'Escape') resetInput();
+            "
+            name="{{ id }}-value"
+            class="w-full py-3 px-4 cursor-pointer shadow dark:shadow-xl
+            outline-none outline-stone-500
+            rounded bg-surface-light dark:bg-surface-dark
+            "
+            placeholder="search..."
+            value="{{ selected }}"
+            autocomplete="off"
+            {% if callback %}
+            hx-post="{% url callback.endpoint_name %}"
+            hx-trigger="selectedByClick"
+            hx-swap="none"
+            hx-include="
+            {% for element in callback.inputs %}
+                #{{ element }},
+            {% endfor %}
+            previous [name=csrfmiddlewaretoken]
+            "
+            hx-indicator="{{ callback.target_wrapper_ids }}"
+            {% endif %}
+        />
+        <div class="relative">
+            <div
+                class="input-dropdown absolute w-full overflow-y-auto 
+                shadow-2xl border-stone-500 z-10
+                bg-surface-light dark:bg-surface-dark rounded"
+                style="
+                    max-height: 40vh;
+                "
+                x-show="isOpen"
+                x-collapse
+            >
+                <ul>
+
+                    <template x-for="option in filteredOptions">
+                        <li 
+                            class="hover:bg-surface-2-light dark:hover:bg-surface-2-dark rounded py-3 px-4 cursor-pointer"
+                            @click="selectValue(option);"
+                            x-text="option"
+                        >
+                        </li>
+                    </template>
+
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
