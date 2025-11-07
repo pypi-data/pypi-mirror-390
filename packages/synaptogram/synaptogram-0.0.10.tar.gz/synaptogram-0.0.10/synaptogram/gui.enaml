@@ -1,0 +1,275 @@
+import logging
+log = logging.getLogger(__name__)
+
+from importlib import resources
+from pathlib import Path
+import urllib.request
+
+from enaml.application import deferred_call
+from enaml.core.api import Conditional
+from enaml.icon import Icon, IconImage
+from enaml.image import Image
+from enaml.layout.api import (
+    align, hbox, spacer, AreaLayout, DockBarLayout, HSplitLayout,
+    InsertTab, TabLayout, vbox, VSplitLayout
+)
+from enaml.stdlib.fields import FloatField
+from enaml.stdlib.message_box import critical, information, question
+from enaml.widgets.api import (
+    Action, Container, DockArea, DockItem, Feature, FileDialogEx, Html, Label,
+    MainWindow, Menu, MenuBar, MPLCanvas, ObjectCombo, PushButton, Splitter,
+    SplitItem
+)
+
+
+from ndimage_enaml.gui import bind_focus, DisplayConfig, NDImageCanvas, NDImageContainer
+
+from .presenter import SynaptogramPresenter
+
+
+def load_icon(name):
+    data = resources.files('synaptogram.icons').joinpath(f'{name}.png').read_bytes()
+    icg = IconImage(image=Image(data=data))
+    return Icon(images=[icg])
+
+
+def open_imaris_file(window):
+    path = FileDialogEx.get_open_file_name(window, current_path=str(window.current_path))
+    if path:
+        load_dataset(path, window)
+
+
+def load_dataset(path, window):
+    area = window.find('area')
+    items = area.dock_items()
+    n_items = len(items)
+    target = items[-1].name
+
+    from .reader import ImarisReader
+    window.current_path = path
+    reader = ImarisReader(path)
+
+    presenter = SynaptogramPresenter(obj=reader.load(), reader=reader)
+    presenter.load_state()
+    item = PointsDockItem(area, reader=reader, presenter=presenter, name=reader.path.stem)
+    area.update_layout(InsertTab(item=item.name, target=target))
+    # The timing of this call is important since the canvas needs to be
+    # generated in the GUI so that the images are properly resized after display.
+    deferred_call(presenter.points.select_next_tile, None)
+
+
+def get_title(reader, unsaved_changes):
+    title = f'{reader.path.stem}'
+    if unsaved_changes:
+        return f'*{title}'
+    return title
+
+
+def save_state(parent, presenters):
+    q = 'Your previous analysis will be overwritten. Are you sure?'
+    button = question(parent, 'Confirm action', q)
+    if button is not None and button.text == 'Yes':
+        for presenter in presenters:
+            presenter.save_state()
+        information(parent, 'Analysis saved', 'Analysis has been saved.')
+
+
+def load_state(parent, presenters):
+    if any(p.unsaved_changes for p in presenters):
+        q = 'There are unsaved changes. Your current analysis will be lost. Are you sure?'
+        button = question(parent, 'Confirm action', q)
+        if button is None or button.text == 'No':
+            return
+    try:
+        for presenter in presenters:
+            presenter.load_state()
+        information(parent, 'Analysis loaded', 'Analysis has been loaded.')
+    except Exception as e:
+        log.exception(e)
+        information(parent, 'Error', str(e))
+
+
+enamldef PointsContainer(Container): container:
+    attr presenter
+    attr main_presenter
+
+    initialized ::
+        # This tries to force focus back to the canvas where possible
+        bind_focus(container.children, canvas.set_focus)
+        deferred_call(bind_focus, container.children, canvas.set_focus)
+        deferred_call(canvas.set_focus)
+
+    constraints = [
+        vbox(
+            dc,
+            hbox(sort_label, sort, sort_value, sort_value_label, sort_radius, sort_radius_label, spacer(0)),
+            hbox(pb_artifact, pb_orphan, pb_clear, spacer(0), pb_load, pb_save),
+            canvas,
+        ),
+        align('v_center', sort_label, sort, sort_value, sort_value_label, sort_radius, sort_radius_label),
+        align('v_center', pb_artifact, pb_orphan, pb_clear, pb_load, pb_save),
+        align('left', dc.children[1], sort)
+    ]
+
+    DisplayConfig: dc:
+        presenter << container.presenter
+
+    Label: sort_label:
+        text = 'Sort by'
+    ObjectCombo: sort:
+        items << presenter.obj.channel_names
+        selected := presenter.artist.sort_channel
+    ObjectCombo: sort_value:
+        items = ['mean', 'max', 'median']
+        selected := presenter.artist.sort_value
+    Label: sort_value_label:
+        text = 'intensity using a'
+    FloatField: sort_radius:
+        value := presenter.artist.sort_radius
+    Label: sort_radius_label:
+        text = 'um radius'
+
+    PushButton: pb_artifact:
+        text = 'Artifact'
+        clicked ::
+            presenter.apply_label('artifact')
+    PushButton: pb_orphan:
+        text = 'Orphan'
+        clicked ::
+            presenter.apply_label('orphan')
+    PushButton: pb_clear:
+        text = 'Clear'
+        clicked ::
+            presenter.clear_label()
+
+    PushButton: pb_save:
+        text = 'Save'
+        clicked ::
+            save_state(self, [main_presenter])
+    PushButton: pb_load:
+        text = 'Load'
+        clicked ::
+            load_state(self, [main_presenter])
+
+    NDImageCanvas: canvas:
+        figure = container.presenter.figure
+        resist_width = 'ignore'
+        resist_height = 'ignore'
+        hug_height = 'ignore'
+        hug_width = 'ignore'
+
+
+enamldef PointsDockItem(DockItem): di:
+    name = 'points'
+    title = 'Points'
+    attr presenter
+    attr reader
+    title << get_title(reader, presenter.unsaved_changes)
+
+    closing ::
+        if presenter.unsaved_changes:
+            button = question(self, 'Question', 'There are unsaved changes. Are you sure you want to close this tab?')
+            if button is None or button.text == 'No':
+                change['value'].ignore()
+
+    Container:
+        Splitter:
+            orientation = 'horizontal'
+            SplitItem:
+                Container:
+                    Splitter:
+                        orientation = 'vertical'
+                        SplitItem:
+                            NDImageContainer:
+                                focus_canvas = False
+                                presenter = di.presenter.overview
+                                canvas_resist_width = 'ignore'
+                                canvas_resist_height = 'ignore'
+                                canvas_hug_height = 'ignore'
+                                canvas_hug_width = 'ignore'
+                        SplitItem:
+                            Container:
+                                NDImageCanvas:
+                                    figure = di.presenter.point_projection.figure
+                                    resist_width = 'ignore'
+                                    resist_height = 'ignore'
+                                    hug_height = 'ignore'
+                                    hug_width = 'ignore'
+            SplitItem:
+                PointsContainer:
+                    presenter = di.presenter.points
+                    main_presenter = di.presenter
+
+
+enamldef SynaptogramWindow(MainWindow): window:
+
+    initial_size = (1200, 800)
+    icon = load_icon('main-icon')
+    attr current_path
+
+    title = 'Synaptogram'
+
+    closing ::
+        presenters = [di.presenter for di in workspace.dock_items() if isinstance(di, PointsDockItem)]
+        if any(p.unsaved_changes for p in presenters):
+            button = question(window, 'Question', 'There are unsaved changes. Are you sure you want to exit?')
+            if button is None or button.text == 'No':
+                change['value'].ignore()
+
+    MenuBar:
+        Menu:
+            title = '&File'
+            Action:
+                text = 'Open Imaris file\tCtrl+O'
+                triggered::
+                    try:
+                        open_imaris_file(window)
+                    except Exception as e:
+                        log.exception(e)
+                        critical(window, 'Open', str(e))
+            Action:
+                separator = True
+            Action:
+                text = 'Save analysis'
+                triggered::
+                    presenters = [di.presenter for di in workspace.dock_items() if isinstance(di, PointsDockItem)]
+                    save_state(window, presenters)
+            Action:
+                text = 'Load analysis'
+                triggered::
+                    presenters = [di.presenter for di in workspace.dock_items() if isinstance(di, PointsDockItem)]
+                    load_state(window, presenters)
+
+    Container:
+        DockArea: workspace:
+            name = 'area'
+            features = Feature.DropEnabled
+            layout = AreaLayout('help')
+
+            drag_enter => (event):
+                if event.mime_data().has_format('text/uri-list'):
+                    event.accept_proposed_action()
+
+            drop => (event):
+                text = event.mime_data().data('text/uri-list').decode('utf-8')
+                filenames = []
+                for t in text.strip().split('\n'):
+                    t = urllib.parse.unquote(t).strip()
+                    fragments = urllib.parse.urlsplit(t)
+                    path = Path(urllib.request.url2pathname(fragments.path))
+                    if path.suffix == '.ims':
+                        filenames.append(path)
+                for filename in filenames:
+                    load_dataset(filename, window)
+                    print('done loading')
+
+            DockItem:
+                name = 'help'
+                title = 'Help'
+                closable = False
+
+                Container:
+                    Html:
+                        source = resources.files('synaptogram') \
+                            .joinpath('instructions.html') \
+                            .read_text()
