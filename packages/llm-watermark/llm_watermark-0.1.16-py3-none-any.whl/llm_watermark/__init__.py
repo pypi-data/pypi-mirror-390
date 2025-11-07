@@ -1,0 +1,4 @@
+from .gen_model import huggingface_model
+from .assembly_models import assembly_gpt_oss, assembly_qwen3, assembly_gemini
+
+__all__ = ["huggingface_model", "assembly_gpt_oss", "assembly_qwen3", "assembly_gemini"]
