@@ -1,0 +1,58 @@
+[project]
+name = "webbed-duck"
+version = "0.35.0"
+description = "A parameterized SQL web server for DuckDB routes compiled from Markdown"
+authors = [
+  { name = "Isaac Moore" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "duckdb>=0.9.2",
+  "fastapi>=0.104.1",
+  "httpx>=0.25",
+  "uvicorn>=0.23.2",
+  "pyarrow>=14.0.1",
+  "pyzipper>=0.3.6",
+  "keyring>=24.2",
+  "markdown>=3.5",
+  "tzdata; platform_system == \"Windows\"",
+]
+
+[project.optional-dependencies]
+test = [
+  "build>=1.2",
+  "hypothesis>=6.100",
+]
+
+[project.scripts]
+webbed-duck = "webbed_duck.cli:main"
+
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["webbed_duck*"]
+
+[tool.setuptools.package-data]
+"webbed_duck.static.chartjs" = ["LICENSE", "chart.umd.min.js"]
+"webbed_duck.static" = ["assets/wd/*"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+markers = [
+  "duckdb: tests that interact with DuckDB connections or files",
+  "integration: tests that span multiple subsystems or require compiled routes",
+  "docs: tests that validate documentation examples or narratives",
+]
+filterwarnings = [
+  "error::DeprecationWarning",
+]
+
+[tool.hypothesis]
+deadline = 750
+max_examples = 75
+stateful_step_count = 15
+print_blob = true
