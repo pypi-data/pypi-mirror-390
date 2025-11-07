@@ -1,0 +1,63 @@
+Metadata-Version: 2.4
+Name: pykon
+Version: 0.2
+Summary: A module allowing for constant and publicly immutable data.
+Project-URL: Repository, https://github.com/sneekyfoxx/Pykon.git
+Author-email: Rayshawn Levy <sneekyfoxx09@gmail.com>
+Maintainer-email: Rayshawn Levy <sneekyfoxx09@gmail.com>
+License-Expression: MIT
+License-File: LICENSE
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+
+                        ██████╗ ██╗   ██╗██╗  ██╗ ██████╗ ███╗   ██╗
+                        ██╔══██╗╚██╗ ██╔╝██║ ██╔╝██╔═══██╗████╗  ██║
+                        ██████╔╝ ╚████╔╝ █████╔╝ ██║   ██║██╔██╗ ██║
+                        ██╔═══╝   ╚██╔╝  ██╔═██╗ ██║   ██║██║╚██╗██║
+                        ██║        ██║   ██║  ██╗╚██████╔╝██║ ╚████║
+                        ╚═╝        ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+                                            
+
+> Pykon is a way to allow constant and publicly immutable data.
+
+> Though, data can be modified its type cannot.
+
+> With Pykon, errors are returned rather than being raised
+
+> giving the user the ability to control when an error should be raised.
+
+## Example
+```python
+from pykon import Pykon
+from typing import Union
+
+mylist: Pykon = Pykon(list, [1,2,3,4])
+
+if hasattr(mylist, "error"):
+    raise mylist.error
+else:
+    print(mylist.data)
+
+
+# Using a try except block
+#
+# try:
+#    print(mylist.data)
+# except AttributeError:
+#    raise mylist.error
+
+
+# Return a PykonError from a function
+#
+# def test() -> Union[None, Pykon.PykonError]:
+#     constantInt: Pykon = Pykon(int, 20)
+#     if hasattr(constantInt, "data"):
+#         print(constantInt.data)
+#         return None
+#     else:
+#         return constantInt.error
+```
