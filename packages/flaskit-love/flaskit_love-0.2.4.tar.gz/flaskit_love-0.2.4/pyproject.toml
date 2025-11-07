@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flaskit-love"
+version = "0.2.4"
+description = "The Modern Fullstack Love Framework - Build Flask apps with elegance"
+readme = "README.md"
+authors = [{ name = "Lovken Olustra", email = "lovken@example.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: Flask",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+keywords = ["flask", "framework", "web", "api", "routing", "mvc"]
+dependencies = ["flask>=2.3.0", "click>=8.0.0", "rich>=13.0.0", "requests>=2.31.0", "python-dotenv>=1.0.0", "psutil>=5.9.0"]
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/lovkenolustra/flaskit"
+Documentation = "https://github.com/lovkenolustra/flaskit#readme"
+Repository = "https://github.com/lovkenolustra/flaskit"
+Issues = "https://github.com/lovkenolustra/flaskit/issues"
+
+[project.scripts]
+flaskit = "flaskit.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["flaskit*"]
+exclude = ["tests*", "examples*", "docs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=flaskit --cov-report=html --cov-report=term"
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
