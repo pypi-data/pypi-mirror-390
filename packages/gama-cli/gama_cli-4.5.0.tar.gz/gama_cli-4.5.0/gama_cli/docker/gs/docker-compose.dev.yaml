@@ -1,0 +1,22 @@
+name: gama
+
+services:
+  gama_gs:
+    build:
+      dockerfile: ./projects/gama_gs/Dockerfile
+      # cache_from:
+      #   - ${CACHE_FROM:-}
+      # cache_to:
+      #   - ${CACHE_TO:-}
+      secrets:
+        - apt_conf
+        - API_TOKEN_GITHUB
+    volumes:
+      - ./projects/gama_gs/launch:/home/ros/gama_gs/launch
+      - ./projects/gama_gs/src:/home/ros/gama_gs/src
+
+secrets:
+  API_TOKEN_GITHUB:
+    file: ./.secrets/API_TOKEN_GITHUB
+  apt_conf:
+    file: ./.secrets/apt.conf
