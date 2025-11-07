@@ -1,0 +1,36 @@
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <chrono>
+#include <condition_variable>
+#include <cstdint>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <future>
+#include <initializer_list>
+#include <iostream>
+#include <iterator>
+#include <list>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <random>
+#include <regex>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#include <curl/curl.h>
+#include <zlib.h>
