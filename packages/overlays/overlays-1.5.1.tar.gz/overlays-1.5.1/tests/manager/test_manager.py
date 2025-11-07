@@ -1,0 +1,267 @@
+import signal
+import threading
+import time
+import os
+import pytest
+import win32gui
+
+from overlays import manager
+
+
+# Dummy Timer to execute callbacks immediately
+class DummyTimer:
+    def __init__(self, interval, function, args=None, kwargs=None):
+        self.function = function
+
+    def start(self):
+        pass
+
+
+@pytest.fixture(autouse=True)
+def patch_timer_and_threads(monkeypatch):
+    monkeypatch.setattr(threading, "Timer", DummyTimer)
+    monkeypatch.setattr(manager.OverlayManager, "_run_pipe_server", lambda self: None)
+    monkeypatch.setattr(
+        manager.OverlayManager, "_run_command_thread", lambda self: None
+    )
+
+    # Stub window init/pump
+    def fake_init_window(self):
+        self.hwnd = 1
+        self._ready.set()
+
+    monkeypatch.setattr(
+        manager.OverlayManager, "_init_window_and_pump", fake_init_window
+    )
+    monkeypatch.setattr(win32gui, "PumpMessages", lambda: None)
+    monkeypatch.setattr(win32gui, "InvalidateRect", lambda hwnd, rect, b: None)
+
+    yield
+
+
+def test_add_highlight_window():
+    om = manager.OverlayManager()
+    om.rectangles.clear()
+    # first rectangle
+    om.add_highlight_window(7, 7, 7, 7, duration_s=10)
+    # second
+    win_id = om.add_highlight_window(1, 2, 3, 4, duration_s=0)
+    assert win_id == 2
+    assert len(om.rectangles) == 2
+    rect = om.rectangles[1]
+    assert rect["id"] == 2
+    assert rect["coords"] == (1, 2, 3, 4)
+
+
+def test_remove_rectangle():
+    om = manager.OverlayManager()
+    om.rectangles = [{"id": 1, "coords": (0, 0, 1, 1)}]
+    om._remove_rectangle(1)
+    assert om.rectangles == []
+
+
+def test_add_countdown_window_and_tick(monkeypatch):
+    # freeze time at t0
+    t0 = 1_000.0
+    times = [t0]
+    monkeypatch.setattr(time, "time", lambda: times[-1])
+
+    class NoopTimer:
+        def __init__(self, interval, function, args=None, kwargs=None):
+            pass
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(threading, "Timer", NoopTimer)
+
+    om = manager.OverlayManager()
+    cid = om.add_countdown_window("msg", 3)
+    assert cid == 1
+    cd = om.countdowns[cid]
+    assert cd["message"] == "msg"
+    assert cd["remaining"] == 3
+
+    times.append(t0 + 4)
+
+    # monkey-patch sleep
+    def fake_sleep(sec):
+        # stop the loop
+        om.shutdown_event.set()
+        raise StopIteration
+
+    monkeypatch.setattr(time, "sleep", fake_sleep)
+
+    with pytest.raises(StopIteration):
+        om._run_countdown_manager()
+
+    assert cid not in om.countdowns
+
+
+def test_add_and_remove_qrcode_window(monkeypatch):
+    # disable auto-remove timer
+    class NoopTimer:
+        def __init__(self, interval, function, args=None, kwargs=None):
+            pass
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(threading, "Timer", NoopTimer)
+
+    om = manager.OverlayManager()
+    qr_id = om.add_qrcode_window({"data": "x"}, timeout_seconds=0, caption="c")
+    assert qr_id == 1
+    assert qr_id in om.qrcodes
+
+    om.remove_qrcode_window(qr_id)
+    assert qr_id not in om.qrcodes
+
+    # try again on a fresh manager
+    om = manager.OverlayManager()
+    qr_id = om.add_qrcode_window("foo", timeout_seconds=0, caption=None)
+    assert qr_id == 1
+    assert qr_id in om.qrcodes
+    om.remove_qrcode_window(qr_id)
+    assert qr_id not in om.qrcodes
+
+
+def test_close_and_update_window():
+    om = manager.OverlayManager()
+    om.countdowns = {1: {"message": "old", "order": 1}}
+    assert om.update_window(1, "new") is True
+    assert om.countdowns[1]["message"] == "new"
+    om.close_window(1)
+    assert 1 not in om.countdowns
+
+
+def test_process_pipe_command_unknown():
+    om = manager.OverlayManager()
+    resp = om._process_pipe_command({"command": "foo", "args": {}})
+    assert resp["status"] == "error"
+    assert "Unknown command" in resp["message"]
+
+
+def test_signal_handler_exits():
+    with pytest.raises(SystemExit):
+        manager.signal_handler(signal.SIGINT, None)
+
+
+def test_main_sets_signals_and_shuts_down(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(signal, "signal", lambda sig, handler: calls.append(sig))
+
+    class DummyOverlay:
+        def __init__(self, pipe_name="dummy"):
+            self.pipe_name = pipe_name
+
+        def start(self):
+            calls.append("started")
+
+        def shutdown(self):
+            calls.append("shutdown")
+
+    # patch into main
+    monkeypatch.setattr(manager, "OverlayManager", DummyOverlay)
+    monkeypatch.setattr(
+        time, "sleep", lambda _: (_ for _ in ()).throw(KeyboardInterrupt())
+    )
+
+    manager.main()
+
+    assert signal.SIGINT in calls
+    assert signal.SIGTERM in calls
+    assert "started" in calls
+    assert "shutdown" in calls
+
+
+def test_overlay_manager_env():
+    om = manager.OverlayManager()
+    assert om.pipe_name == r"\\.\pipe\overlay_manager"  # default
+    os.environ["OVERLAY_PIPE_NAME"] = "overlay_manager_env"
+    om_env = manager.OverlayManager()
+    assert om_env.pipe_name == r"\\.\pipe\overlay_manager_env"  # default
+
+
+def test_remove_rectangle_handles_invalidate_failure(monkeypatch, caplog):
+    """
+    Test that when InvalidateRect fails during rectangle removal,
+    a warning is logged to alert about potential stale rectangles on screen.
+
+    This verifies the fix for a bug where:
+    1. Rectangle is removed from the data structure
+    2. InvalidateRect fails (e.g., invalid hwnd)
+    3. Screen never redraws, leaving the rectangle visible
+    """
+    import pywintypes
+    import logging
+
+    # Track InvalidateRect calls
+    invalidate_calls = []
+    invalidate_should_fail = [False]  # Use list to allow mutation in closure
+
+    def mock_invalidate_rect(hwnd, rect, erase):
+        invalidate_calls.append({"hwnd": hwnd, "rect": rect, "erase": erase})
+        # Simulate failure when flag is set
+        if invalidate_should_fail[0]:
+            raise pywintypes.error(1, "InvalidateRect", "Mock error: window handle invalid")
+
+    # Patch InvalidateRect before creating OverlayManager
+    monkeypatch.setattr(win32gui, "InvalidateRect", mock_invalidate_rect)
+
+    om = manager.OverlayManager()
+
+    # Add a rectangle (this should succeed)
+    rid = om.add_highlight_window(10, 10, 100, 100, duration_s=1)
+    assert len(om.rectangles) == 1
+    assert om.rectangles[0]["id"] == rid
+    assert len(invalidate_calls) == 1, "InvalidateRect called once during add"
+
+    # Now make InvalidateRect fail
+    invalidate_should_fail[0] = True
+
+    # Capture logs
+    with caplog.at_level(logging.WARNING):
+        # Try to remove the rectangle
+        om._remove_rectangle(rid)
+
+    # Verify the fix: rectangle is removed and a warning is logged
+    assert len(om.rectangles) == 0, "Rectangle removed from data structure"
+    assert len(invalidate_calls) == 2, "InvalidateRect was called during removal"
+
+    # Verify warning was logged about stale overlays
+    assert any(
+        "Failed to invalidate window rect" in record.message and "stale overlays" in record.message
+        for record in caplog.records
+    ), "Warning should be logged when InvalidateRect fails"
+
+
+def test_remove_rectangle_during_shutdown_is_noop(monkeypatch):
+    """
+    Test that rectangle removal during shutdown doesn't attempt to invalidate
+    the window, preventing errors from timers firing after shutdown.
+    """
+    invalidate_calls = []
+
+    def mock_invalidate_rect(hwnd, rect, erase):
+        invalidate_calls.append({"hwnd": hwnd, "rect": rect, "erase": erase})
+
+    monkeypatch.setattr(win32gui, "InvalidateRect", mock_invalidate_rect)
+
+    om = manager.OverlayManager()
+
+    # Add a rectangle
+    rid = om.add_highlight_window(10, 10, 100, 100, duration_s=1)
+    assert len(om.rectangles) == 1
+    assert len(invalidate_calls) == 1
+
+    # Simulate shutdown
+    om.shutdown_event.set()
+
+    # Try to remove rectangle during shutdown
+    om._remove_rectangle(rid)
+
+    # Rectangle should not be removed and InvalidateRect should not be called again
+    assert len(om.rectangles) == 1, "Rectangle not removed during shutdown"
+    assert len(invalidate_calls) == 1, "InvalidateRect not called during shutdown"
