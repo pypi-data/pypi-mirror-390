@@ -1,0 +1,372 @@
+#!/usr/bin/env python3
+"""
+MCP Interface for Guardian Agent - {{ project_name }}
+Domain: {{ domain }}
+Generated from working abi-core implementation
+"""
+
+import os
+import json
+import asyncio
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+from pathlib import Path
+
+from fastmcp import FastMCP
+from agent_guardian import GuardianSecure
+from abi_core.common.utils import abi_logging
+
+class GuardianMCPInterface:
+    """MCP Interface for Guardian Security Agent"""
+    
+    def __init__(self):
+        self.guardian = GuardianSecure()
+        self.project_name = "{{ project_name }}"
+        self.domain = "{{ domain }}"
+        
+        abi_logging(f"🔌 Guardian MCP Interface initialized for {self.project_name}")
+    
+    def setup_mcp_server(self, host: str = "0.0.0.0", port: int = 11438):
+        """Setup MCP server with Guardian tools"""
+        
+        mcp = FastMCP(f'guardian-{self.project_name.lower()}', host=host, port=port)
+        
+        @mcp.tool(
+            name='validate_semantic_access',
+            description='Validate semantic access for an agent using Guardian security policies'
+        )
+        async def validate_semantic_access(
+            agent_id: str,
+            agent_card: dict,
+            request_metadata: dict = None,
+            _request_context: dict = None
+        ) -> dict:
+            """Validate semantic access for an agent
+            
+            Args:
+                agent_id: ID of the agent requesting access
+                agent_card: Agent card with metadata
+                request_metadata: Additional request metadata
+                
+            Returns:
+                dict: Validation result with allow/deny decision
+            """
+            try:
+                # Prepare request data
+                request_data = {
+                    "agent_id": agent_id,
+                    "agent_card": agent_card,
+                    "source_ip": request_metadata.get("source_ip", "unknown") if request_metadata else "unknown",
+                    "user_agent": request_metadata.get("user_agent", "") if request_metadata else "",
+                    "tool_name": request_metadata.get("tool_name", "unknown") if request_metadata else "unknown",
+                    "method": request_metadata.get("method", "unknown") if request_metadata else "unknown",
+                    "headers": request_metadata.get("headers", {}) if request_metadata else {},
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                # Validate using Guardian
+                result = await self.guardian.validate_semantic_access(request_data)
+                
+                abi_logging(f"🛡️ Validation result for {agent_id}: {'ALLOWED' if result.get('allowed') else 'DENIED'}")
+                return result
+                
+            except Exception as e:
+                abi_logging(f"❌ Error in semantic access validation: {e}")
+                return {
+                    "allowed": False,
+                    "reason": f"Guardian validation error: {str(e)}",
+                    "risk_score": 1.0,
+                    "error_code": "GUARDIAN_MCP_ERROR",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        @mcp.tool(
+            name='get_guardian_status',
+            description='Get current status of the Guardian security agent'
+        )
+        def get_guardian_status(_request_context: dict = None) -> dict:
+            """Get Guardian status
+            
+            Returns:
+                dict: Current Guardian status and configuration
+            """
+            try:
+                status = self.guardian.get_status()
+                abi_logging("📊 Guardian status requested")
+                return status
+                
+            except Exception as e:
+                abi_logging(f"❌ Error getting Guardian status: {e}")
+                return {
+                    "error": str(e),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        @mcp.tool(
+            name='get_security_metrics',
+            description='Get security metrics and emergency event history'
+        )
+        def get_security_metrics(_request_context: dict = None) -> dict:
+            """Get security metrics
+            
+            Returns:
+                dict: Security metrics including emergency events
+            """
+            try:
+                metrics = self.guardian.get_security_metrics()
+                abi_logging("📈 Security metrics requested")
+                return metrics
+                
+            except Exception as e:
+                abi_logging(f"❌ Error getting security metrics: {e}")
+                return {
+                    "error": str(e),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        @mcp.tool(
+            name='block_agent',
+            description='Block an agent from accessing the system'
+        )
+        def block_agent(
+            agent_id: str,
+            reason: str = "Manual block via MCP",
+            _request_context: dict = None
+        ) -> dict:
+            """Block an agent
+            
+            Args:
+                agent_id: ID of the agent to block
+                reason: Reason for blocking
+                
+            Returns:
+                dict: Result of the block operation
+            """
+            try:
+                self.guardian.block_agent(agent_id, reason)
+                
+                result = {
+                    "success": True,
+                    "message": f"Agent {agent_id} blocked successfully",
+                    "agent_id": agent_id,
+                    "reason": reason,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                abi_logging(f"🚫 Agent {agent_id} blocked via MCP: {reason}")
+                return result
+                
+            except Exception as e:
+                abi_logging(f"❌ Error blocking agent {agent_id}: {e}")
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "agent_id": agent_id,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        @mcp.tool(
+            name='unblock_agent',
+            description='Unblock a previously blocked agent'
+        )
+        def unblock_agent(
+            agent_id: str,
+            _request_context: dict = None
+        ) -> dict:
+            """Unblock an agent
+            
+            Args:
+                agent_id: ID of the agent to unblock
+                
+            Returns:
+                dict: Result of the unblock operation
+            """
+            try:
+                self.guardian.unblock_agent(agent_id)
+                
+                result = {
+                    "success": True,
+                    "message": f"Agent {agent_id} unblocked successfully",
+                    "agent_id": agent_id,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                abi_logging(f"✅ Agent {agent_id} unblocked via MCP")
+                return result
+                
+            except Exception as e:
+                abi_logging(f"❌ Error unblocking agent {agent_id}: {e}")
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "agent_id": agent_id,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        {% if domain == "finance" %}
+        @mcp.tool(
+            name='validate_financial_transaction',
+            description='Validate financial transaction with compliance checks'
+        )
+        async def validate_financial_transaction(
+            transaction_data: dict,
+            agent_id: str,
+            _request_context: dict = None
+        ) -> dict:
+            """Validate financial transaction
+            
+            Args:
+                transaction_data: Transaction details
+                agent_id: Agent requesting the transaction
+                
+            Returns:
+                dict: Validation result with compliance status
+            """
+            try:
+                # Enhanced validation for financial transactions
+                request_data = {
+                    "agent_id": agent_id,
+                    "agent_card": {"id": agent_id, "metadata": {"status": "active"}},
+                    "tool_name": "financial_transaction",
+                    "transaction_data": transaction_data,
+                    "compliance_verified": transaction_data.get("compliance_verified", False)
+                }
+                
+                validation_result = await self.guardian.validate_semantic_access(request_data)
+                
+                # Add financial-specific checks
+                if validation_result.get("allowed"):
+                    amount = transaction_data.get("amount", 0)
+                    if amount > 10000:  # Large transaction threshold
+                        validation_result["requires_additional_approval"] = True
+                        validation_result["approval_reason"] = "Large transaction amount"
+                
+                return validation_result
+                
+            except Exception as e:
+                abi_logging(f"❌ Error validating financial transaction: {e}")
+                return {
+                    "allowed": False,
+                    "reason": f"Financial validation error: {str(e)}",
+                    "risk_score": 1.0,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        {% endif %}
+        
+        {% if domain == "healthcare" %}
+        @mcp.tool(
+            name='validate_patient_data_access',
+            description='Validate patient data access with HIPAA compliance'
+        )
+        async def validate_patient_data_access(
+            patient_id: str,
+            data_type: str,
+            agent_id: str,
+            _request_context: dict = None
+        ) -> dict:
+            """Validate patient data access
+            
+            Args:
+                patient_id: Patient identifier
+                data_type: Type of patient data
+                agent_id: Agent requesting access
+                
+            Returns:
+                dict: Validation result with HIPAA compliance status
+            """
+            try:
+                # Enhanced validation for patient data
+                request_data = {
+                    "agent_id": agent_id,
+                    "agent_card": {"id": agent_id, "metadata": {"status": "active"}},
+                    "tool_name": "patient_data_access",
+                    "patient_data": {"patient_id": patient_id, "data_type": data_type},
+                    "hipaa_compliant": True  # Assume compliance for this example
+                }
+                
+                validation_result = await self.guardian.validate_semantic_access(request_data)
+                
+                # Add healthcare-specific metadata
+                if validation_result.get("allowed"):
+                    validation_result["hipaa_audit_required"] = True
+                    validation_result["data_classification"] = "PHI"  # Protected Health Information
+                
+                return validation_result
+                
+            except Exception as e:
+                abi_logging(f"❌ Error validating patient data access: {e}")
+                return {
+                    "allowed": False,
+                    "reason": f"Healthcare validation error: {str(e)}",
+                    "risk_score": 1.0,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        {% endif %}
+        
+        @mcp.resource(
+            'resource://guardian/status',
+            mime_type='application/json'
+        )
+        def get_guardian_status_resource(_request_context: dict = None) -> dict:
+            """Get Guardian status as MCP resource
+            
+            Returns:
+                dict: Guardian status information
+            """
+            return self.guardian.get_status()
+        
+        @mcp.resource(
+            'resource://guardian/metrics',
+            mime_type='application/json'
+        )
+        def get_security_metrics_resource(_request_context: dict = None) -> dict:
+            """Get security metrics as MCP resource
+            
+            Returns:
+                dict: Security metrics and emergency events
+            """
+            return self.guardian.get_security_metrics()
+        
+        return mcp
+    
+    def run_server(self, host: str = "0.0.0.0", port: int = 11438):
+        """Run the Guardian MCP server"""
+        
+        abi_logging(f"🚀 Starting Guardian MCP Server for {self.project_name}")
+        abi_logging(f"🌐 Server will run on {host}:{port}")
+        abi_logging(f"🏷️ Domain: {self.domain}")
+        
+        mcp = self.setup_mcp_server(host, port)
+        
+        try:
+            mcp.run()
+        except KeyboardInterrupt:
+            abi_logging("🛑 Guardian MCP Server stopped by user")
+        except Exception as e:
+            abi_logging(f"❌ Guardian MCP Server error: {e}")
+            raise
+
+def main():
+    """Main entry point for Guardian MCP Interface"""
+    
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='{{ project_name }} Guardian MCP Interface')
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
+    parser.add_argument('--port', type=int, default=11438, help='Port to bind to')
+    parser.add_argument('--log-level', default='INFO', help='Log level')
+    
+    args = parser.parse_args()
+    
+    # Configure logging
+    logging.basicConfig(
+        level=getattr(logging, args.log_level.upper()),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Create and run Guardian MCP Interface
+    guardian_mcp = GuardianMCPInterface()
+    guardian_mcp.run_server(args.host, args.port)
+
+if __name__ == "__main__":
+    main()
