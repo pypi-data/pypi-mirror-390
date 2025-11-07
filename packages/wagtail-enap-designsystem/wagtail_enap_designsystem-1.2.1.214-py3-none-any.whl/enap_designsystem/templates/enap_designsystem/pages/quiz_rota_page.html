@@ -1,0 +1,667 @@
+{% extends "enap_designsystem/base.html" %}
+{% load static %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block title %}
+    <title>{{ page.page_title }}</title>
+{% endblock %}
+
+{%block govnavbar %}
+        <div style="background-color: #071E41;">
+            <div class="menu">
+                <div class="logo">
+                    <img style="width: 51px; height: 18px;" src="{% static 'enap_designsystem/icons/logo-white.png' %}" alt="Passar pro lado esquerdo" alt="Logo GovBR" height="40">
+                </div>
+                <a href="https://www.gov.br/secom/pt-br/acesso-a-informacao/comunicabr">Comunica BR</a>
+                <div class="separator"></div>
+                <a href="https://www.gov.br/acessoainformacao/pt-br">Acesso à informação</a>
+                <div class="separator"></div>
+                <a href="https://www.gov.br/pt-br/participacao-social/">Participe</a>
+                <div class="separator"></div>
+                <a href="https://www4.planalto.gov.br/legislacao/">Legislação</a>
+                <div class="separator"></div>
+                <a href="https://www.gov.br/pt-br/orgaos-do-governo">Órgãos do Governo</a>
+            </div>
+        </div>
+    {% endblock %}
+
+{% block navbar %}
+    {% if page.navbar %}
+        {% include "enap_designsystem/blocks/navbar/navbar_block.html" with navbar=page.navbar %}
+    {% else %}
+        <p style="color: red;">DEBUG: Nenhuma Navbar foi definida.</p>
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos para o formulário de perguntas */
+    .quiz-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        font-family: 'Roboto', sans-serif;
+    }
+
+    .question-number {
+        display: inline-block;
+        width: 36px;
+        height: 36px;
+        background-color: #024248;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 36px;
+        font-weight: bold;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    .question-subtitle {
+        margin-left: 46px;
+        margin-bottom: 1.5rem;
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .options-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .option-card {
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+    }
+
+    .option-card:hover {
+        border-color: #024248;
+        box-shadow: 0 0 10px rgba(7, 29, 65, 0.1);
+    }
+
+    .option-card.selected {
+        border-color: #024248;
+        background-color: rgba(7, 29, 65, 0.05);
+    }
+
+    .option-checkbox {
+        margin-right: 12px;
+    }
+
+    .option-icon {
+        margin-right: 12px;
+        font-size: 1.2rem;
+        width: 24px;
+        color: #024248;
+    }
+
+    .option-text {
+        font-weight: 500;
+    }
+
+    /* Estilo para os cards selecionados múltiplos */
+    .badge-filtros {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 15px 0;
+    }
+    
+    .badge-filtro {
+        background-color: #E3F2FD;
+        border: 1px solid #2196F3;
+        border-radius: 20px;
+        padding: 6px 12px;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        color: #0D47A1;
+    }
+    
+    .badge-filtro .remove-badge {
+        margin-left: 8px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if e_resultado %}
+<!-- TELA DE RESULTADO -->
+<div class="mapa-personalizado">
+    <div class="container">
+        <div class="header-icon">
+            <div class="icon-circle">
+                <i class="fas fa-star-sparkles"></i>
+            </div>
+        </div>
+
+        <header class="mapa-header">
+            <h1>Seu Mapa Personalizado</h1>
+            
+            <div class="categoria-badge">
+                {% for chave, resposta in respostas.items %}
+                    {% if forloop.first %}
+                        {{ resposta.texto|upper }}
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            {% if page.texto_resultado %}
+                <div class="texto-resultado">
+                    {{ page.texto_resultado|richtext }}
+                </div>
+            {% endif %}
+        </header>
+        
+        <div class="capsula-principal">
+            <div class="capsula-card-two">
+                <div class="card-icon">
+                    <div class="icon-target">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                </div>
+                
+                <div class="card-content">
+                    <div class="comece-aqui">
+                        <span class="rocket-icon">🚀</span> COMECE AQUI
+                    </div>
+                    
+                    {% if capsulas_recomendadas.0 %}
+                        <h2 class="capsula-title">{{ capsulas_recomendadas.0.title }}</h2>
+                        <p class="capsula-subtitle">{{ capsulas_recomendadas.0.resumo_card }}</p>
+                        
+                        <div class="action-button">
+                            <a href="{{ capsulas_recomendadas.0.url }}" class="btn primary large">
+                                <i class="fas fa-book-open"></i> Acessar Cápsula
+                            </a>
+                        </div>
+                    {% else %}
+                        <h2 class="capsula-title">Nenhuma cápsula encontrada</h2>
+                        <p class="capsula-subtitle">Não encontramos cápsulas para os critérios selecionados.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if capsulas_recomendadas|length > 1 %}
+            <section class="proximos-passos">
+                <h2 class="section-title">
+                    <span class="section-icon-two"><i class="fas fa-route"></i></span> Seus próximos passos
+                </h2>
+                <p class="section-subtitle">Continue sua jornada com estas cápsulas complementares</p>
+                
+                <div class="capsulas-complementares">
+                    {% for capsula in capsulas_recomendadas %}
+                        {% if not forloop.first %}
+                            <a href="{{ capsula.url }}" class="capsula-item">
+                                <div class="item-number">{{ forloop.counter0 }}</div>
+                                <div class="item-content">
+                                    <h3 class="item-title">{{ capsula.title }}</h3>
+                                </div>
+                                <div class="item-action">
+                                    <div class="item-link">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </div>
+                                </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+        
+        <div class="acoes-resultado">
+            <a href="{{ page.url }}" class="btn secondary"> 
+                <i class="fa-solid fa-refresh"></i> Refazer quiz
+            </a>
+            
+            <button onclick="window.print()" class="btn primary">
+                <i class="fa-solid fa-print"></i> Salvar PDF
+            </button>
+        </div>
+    </div>
+</div>
+{% else %}
+
+<!-- TELA DE PERGUNTAS -->
+<div class="quiz-container">
+    <div class="quiz-header">
+        <h1>Quiz de Recomendações Personalizadas</h1>
+        {{ page.introducao|richtext }}
+    </div>
+    
+    <form id="quiz-form">
+        <!-- Pergunta 1 - Perfil Profissional (para todos) -->
+        <div class="question-block" id="pergunta1">
+            <span class="question-number">1</span>
+            <h2 class="question-title">Qual o seu perfil profissional?</h2>
+            <p class="question-subtitle">Selecione uma ou mais opções que mais se aproximam da sua atuação</p>
+            
+            <div class="badge-filtros" id="filtros-perfil"></div>
+            
+            <div class="options-grid">
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'designer_instrucional', 'Designer instrucional')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="designer_instrucional">
+                    <i class="option-icon fa-solid fa-pencil-ruler"></i>
+                    <span class="option-text">Designer instrucional</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'designer_grafico', 'Designer gráfico')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="designer_grafico">
+                    <i class="option-icon fa-solid fa-pen-fancy"></i>
+                    <span class="option-text">Designer gráfico</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'implementador_web', 'Implementador web')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="implementador_web">
+                    <i class="option-icon fa-solid fa-code"></i>
+                    <span class="option-text">Implementador web</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'editor_video', 'Editor de vídeo')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="editor_video">
+                    <i class="option-icon fa-solid fa-film"></i>
+                    <span class="option-text">Editor de vídeo</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'docente', 'Docente')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="docente">
+                    <i class="option-icon fa-solid fa-chalkboard-teacher"></i>
+                    <span class="option-text">Docente</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'curador_conteudo', 'Curador de conteúdo')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="curador_conteudo">
+                    <i class="option-icon fa-solid fa-tasks"></i>
+                    <span class="option-text">Curador de conteúdo</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta1', 'conteudista', 'Conteudista')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta1" value="conteudista">
+                    <i class="option-icon fa-solid fa-feather-alt"></i>
+                    <span class="option-text">Conteudista</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Pergunta 2 - Formato de Ação (condicional, só aparece para docente, curador, conteudista) -->
+        <div class="question-block" id="pergunta2_formato">
+            <span class="question-number">2</span>
+            <h2 class="question-title">Qual o formato da ação de desenvolvimento?</h2>
+            <p class="question-subtitle">Selecione uma ou mais opções que melhor descrevem seu contexto</p>
+            
+            <div class="badge-filtros" id="filtros-formato"></div>
+            
+            <div class="options-grid">
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta2_formato', 'distancia_sincrono', 'A distância síncrono')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta2_formato" value="distancia_sincrono">
+                    <i class="option-icon fa-solid fa-satellite-dish"></i>
+                    <span class="option-text">A distância síncrono</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta2_formato', 'distancia_assincrono', 'A distância assíncrono')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta2_formato" value="distancia_assincrono">
+                    <i class="option-icon fa-solid fa-clock"></i>
+                    <span class="option-text">A distância assíncrono</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta2_formato', 'presencial', 'Presencial')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta2_formato" value="presencial">
+                    <i class="option-icon fa-solid fa-users"></i>
+                    <span class="option-text">Presencial</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta2_formato', 'semipresencial', 'Semipresencial')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta2_formato" value="semipresencial">
+                    <i class="option-icon fa-solid fa-laptop-house"></i>
+                    <span class="option-text">Semipresencial</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- Pergunta 3 - Tipo de Recurso (para todos) -->
+        <div class="question-block" id="pergunta3_recurso">
+            <span class="question-number">3</span>
+            <h2 class="question-title">Qual tipo de recurso?</h2>
+            <p class="question-subtitle">Elemento prático a que se aplica</p>
+            
+            <div class="badge-filtros" id="filtros-recurso"></div>
+            
+            <div class="options-grid">
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'imagem', 'Imagem')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="imagem">
+                    <i class="option-icon fa-solid fa-image"></i>
+                    <span class="option-text">Imagem</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'video', 'Vídeo')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="video">
+                    <i class="option-icon fa-solid fa-film"></i>
+                    <span class="option-text">Vídeo</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'tabela', 'Tabela')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="tabela">
+                    <i class="option-icon fa-solid fa-table"></i>
+                    <span class="option-text">Tabela</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'grafico', 'Gráfico')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="grafico">
+                    <i class="option-icon fa-solid fa-chart-bar"></i>
+                    <span class="option-text">Gráfico</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'botao', 'Botão')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="botao">
+                    <i class="option-icon fa-solid fa-toggle-on"></i>
+                    <span class="option-text">Botão</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'texto', 'Texto')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="texto">
+                    <i class="option-icon fa-solid fa-file-alt"></i>
+                    <span class="option-text">Texto</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'audio', 'Áudio')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="audio">
+                    <i class="option-icon fa-solid fa-volume-up"></i>
+                    <span class="option-text">Áudio</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'hiperlink', 'Hiperlink')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="hiperlink">
+                    <i class="option-icon fa-solid fa-link"></i>
+                    <span class="option-text">Hiperlink</span>
+                </label>
+                
+                <label class="option-card" onclick="selecionarOpcaoMultipla(this, 'pergunta3_recurso', 'videoconferencia', 'Videoconferência')">
+                    <input type="checkbox" class="option-checkbox" name="pergunta3_recurso" value="videoconferencia">
+                    <i class="option-icon fa-solid fa-video"></i>
+                    <span class="option-text">Videoconferência</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="form-buttons">
+            <button type="button" class="btn large secondary" onclick="limparFormulario()">Limpar respostas</button>
+            <button type="button" class="btn large primary" onclick="enviarFormulario()">Ver minhas recomendações <i class="fa-solid fa-circle-chevron-right"></i></button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<script>
+    // Objeto para armazenar as respostas (múltiplas seleções)
+    let respostas = {
+        perfil_profissional: [], // Array de objetos {valor, texto}
+        formato_acao: [],
+        tipo_recurso: []
+    };
+    
+    // Função para selecionar uma opção (seleção múltipla)
+    function selecionarOpcaoMultipla(element, perguntaId, valor, texto) {
+        // Verifica se o checkbox está marcado
+        const checkbox = element.querySelector('input[type="checkbox"]');
+        const isSelected = element.classList.contains('selected');
+        
+        // Toggle da seleção
+        if (isSelected) {
+            // Remover seleção
+            element.classList.remove('selected');
+            checkbox.checked = false;
+            
+            // Remover do array de respostas
+            if (perguntaId === 'pergunta1') {
+                respostas.perfil_profissional = respostas.perfil_profissional.filter(item => item.valor !== valor);
+            } 
+            else if (perguntaId === 'pergunta2_formato') {
+                respostas.formato_acao = respostas.formato_acao.filter(item => item.valor !== valor);
+            } 
+            else if (perguntaId === 'pergunta3_recurso') {
+                respostas.tipo_recurso = respostas.tipo_recurso.filter(item => item.valor !== valor);
+            }
+            
+            // Atualizar badges
+            atualizarBadges();
+        } else {
+            // Adicionar seleção
+            element.classList.add('selected');
+            checkbox.checked = true;
+            
+            // Adicionar ao array de respostas
+            if (perguntaId === 'pergunta1') {
+                respostas.perfil_profissional.push({
+                    valor: valor,
+                    texto: texto
+                });
+                
+                // Se selecionou Docente, Curador ou Conteudista, mostra pergunta de formato
+                if (valor === 'docente' || valor === 'curador_conteudo' || valor === 'conteudista') {
+                    document.getElementById('pergunta2_formato').style.display = 'block';
+                }
+            } 
+            else if (perguntaId === 'pergunta2_formato') {
+                respostas.formato_acao.push({
+                    valor: valor,
+                    texto: texto
+                });
+            } 
+            else if (perguntaId === 'pergunta3_recurso') {
+                respostas.tipo_recurso.push({
+                    valor: valor,
+                    texto: texto
+                });
+            }
+            
+            // Atualizar badges
+            atualizarBadges();
+        }
+    }
+    
+    // Função para atualizar os badges de seleção
+    function atualizarBadges() {
+        // Atualizar badges de perfil
+        const badgesPerfil = document.getElementById('filtros-perfil');
+        badgesPerfil.innerHTML = '';
+        
+        respostas.perfil_profissional.forEach(item => {
+            const badge = document.createElement('div');
+            badge.className = 'badge-filtro';
+            badge.innerHTML = `
+                ${item.texto} 
+                <span class="remove-badge" onclick="removerFiltro('perfil_profissional', '${item.valor}')">&times;</span>
+            `;
+            badgesPerfil.appendChild(badge);
+        });
+        
+        // Atualizar badges de formato
+        const badgesFormato = document.getElementById('filtros-formato');
+        badgesFormato.innerHTML = '';
+        
+        respostas.formato_acao.forEach(item => {
+            const badge = document.createElement('div');
+            badge.className = 'badge-filtro';
+            badge.innerHTML = `
+                ${item.texto} 
+                <span class="remove-badge" onclick="removerFiltro('formato_acao', '${item.valor}')">&times;</span>
+            `;
+            badgesFormato.appendChild(badge);
+        });
+        
+        // Atualizar badges de recurso
+        const badgesRecurso = document.getElementById('filtros-recurso');
+        badgesRecurso.innerHTML = '';
+        
+        respostas.tipo_recurso.forEach(item => {
+            const badge = document.createElement('div');
+            badge.className = 'badge-filtro';
+            badge.innerHTML = `
+                ${item.texto} 
+                <span class="remove-badge" onclick="removerFiltro('tipo_recurso', '${item.valor}')">&times;</span>
+            `;
+            badgesRecurso.appendChild(badge);
+        });
+    }
+    
+    // Função para remover um filtro (chamada pelo X no badge)
+    function removerFiltro(tipo, valor) {
+        if (tipo === 'perfil_profissional') {
+            respostas.perfil_profissional = respostas.perfil_profissional.filter(item => item.valor !== valor);
+            
+            // Desmarcar card correspondente
+            const cards = document.querySelectorAll('#pergunta1 .option-card');
+            cards.forEach(card => {
+                const input = card.querySelector('input');
+                if (input && input.value === valor) {
+                    card.classList.remove('selected');
+                    input.checked = false;
+                }
+            });
+            
+            // Verificar se ainda tem algum docente/curador/conteudista selecionado
+            const temPerfisFormatados = respostas.perfil_profissional.some(
+                item => ['docente', 'curador_conteudo', 'conteudista'].includes(item.valor)
+            );
+            
+            if (!temPerfisFormatados) {
+                document.getElementById('pergunta2_formato').style.display = 'none';
+                respostas.formato_acao = [];
+            }
+        } 
+        else if (tipo === 'formato_acao') {
+            respostas.formato_acao = respostas.formato_acao.filter(item => item.valor !== valor);
+            
+            // Desmarcar card correspondente
+            const cards = document.querySelectorAll('#pergunta2_formato .option-card');
+            cards.forEach(card => {
+                const input = card.querySelector('input');
+                if (input && input.value === valor) {
+                    card.classList.remove('selected');
+                    input.checked = false;
+                }
+            });
+        } 
+        else if (tipo === 'tipo_recurso') {
+            respostas.tipo_recurso = respostas.tipo_recurso.filter(item => item.valor !== valor);
+            
+            // Desmarcar card correspondente
+            const cards = document.querySelectorAll('#pergunta3_recurso .option-card');
+            cards.forEach(card => {
+                const input = card.querySelector('input');
+                if (input && input.value === valor) {
+                    card.classList.remove('selected');
+                    input.checked = false;
+                }
+            });
+        }
+        
+        // Atualizar os badges
+        atualizarBadges();
+    }
+    
+    // Função para limpar todas as respostas
+    function limparFormulario() {
+        // Limpa o objeto de respostas
+        respostas = {
+            perfil_profissional: [],
+            formato_acao: [],
+            tipo_recurso: []
+        };
+        
+        // Remove a classe 'selected' de todos os cards
+        document.querySelectorAll('.option-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Desmarca todos os inputs de checkbox
+        document.querySelectorAll('input[type="checkbox"]').forEach(input => {
+            input.checked = false;
+        });
+        
+        // Limpa os badges
+        document.getElementById('filtros-perfil').innerHTML = '';
+        document.getElementById('filtros-formato').innerHTML = '';
+        document.getElementById('filtros-recurso').innerHTML = '';
+        
+        // Esconde a pergunta condicional
+        document.getElementById('pergunta2_formato').style.display = 'none';
+    }
+    
+    // Função para enviar o formulário
+    function enviarFormulario() {
+        // Verifica se pelo menos a pergunta 1 foi respondida
+        if (respostas.perfil_profissional.length === 0) {
+            alert('Por favor, selecione pelo menos um perfil profissional.');
+            return;
+        }
+        
+        // Para perfis que exigem formato, verifica se respondeu
+        const precisaFormato = respostas.perfil_profissional.some(
+            item => ['docente', 'curador_conteudo', 'conteudista'].includes(item.valor)
+        );
+        
+        if (precisaFormato && respostas.formato_acao.length === 0) {
+            alert('Por favor, selecione pelo menos um formato de ação de desenvolvimento.');
+            return;
+        }
+        
+        // Verifica se respondeu sobre o tipo de recurso
+        if (respostas.tipo_recurso.length === 0) {
+            alert('Por favor, selecione pelo menos um tipo de recurso.');
+            return;
+        }
+        
+        // Constrói a URL para o resultado
+        let params = new URLSearchParams();
+        
+        // Adiciona os parâmetros da URL (arrays separados por vírgulas)
+        if (respostas.perfil_profissional.length > 0) {
+            const valores = respostas.perfil_profissional.map(item => item.valor).join(',');
+            const textos = respostas.perfil_profissional.map(item => item.texto).join(', ');
+            params.append('perfil', valores);
+            params.append('perfil_texto', textos);
+        }
+        
+        if (respostas.formato_acao.length > 0) {
+            const valores = respostas.formato_acao.map(item => item.valor).join(',');
+            const textos = respostas.formato_acao.map(item => item.texto).join(', ');
+            params.append('formato', valores);
+            params.append('formato_texto', textos);
+        }
+        
+        if (respostas.tipo_recurso.length > 0) {
+            const valores = respostas.tipo_recurso.map(item => item.valor).join(',');
+            const textos = respostas.tipo_recurso.map(item => item.texto).join(', ');
+            params.append('recurso', valores);
+            params.append('recurso_texto', textos);
+        }
+        
+        // Adiciona o parâmetro de resultado
+        params.append('resultado', '1');
+        
+        // Redireciona para a página de resultados
+        window.location.href = '{{ page.url }}?' + params.toString();
+    }
+    
+    // Inicialização - esconder a pergunta de formato inicialmente
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('pergunta2_formato').style.display = 'none';
+    });
+</script>
+
+<!-- Adicionar Font Awesome -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+{% endblock %}
