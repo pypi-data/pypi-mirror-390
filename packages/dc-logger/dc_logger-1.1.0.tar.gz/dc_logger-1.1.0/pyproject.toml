@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dc_logger"
+version = "1.1.0"
+description = "A flexible logging library with support for cloud providers, multi-tenancy, and structured logging"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    {name = "Jae Wilson", email = "jaewilson07@gmail.com"}
+]
+keywords = ["logging", "datadog", "cloud", "observability", "structured-logging"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Logging",
+]
+dependencies = [
+    "pydantic",
+    "typing-extensions",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "black",
+    "bandit",
+    "isort",
+    "pre-commit",
+    "nbstripout",
+]
+datadog = [
+    "datadog-api-client>=2.0.0",
+]
+all = [
+    "dc_logger[dev,datadog]",
+]
+
+[project.urls]
+Homepage = "https://github.com/jaewilson07/dc_logger"
+Documentation = "https://jaewilson07.github.io/dc_logger"
+Repository = "https://github.com/jaewilson07/dc_logger"
+Issues = "https://github.com/jaewilson07/dc_logger/issues"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+split-on-trailing-comma = true
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+force_grid_wrap = 0
+combine_as_imports = true
+remove_redundant_aliases = true
+split_on_trailing_comma = true
+include_trailing_comma = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = "dc_logger.*"
+ignore_missing_imports = true
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dc_logger*"]
