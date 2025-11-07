@@ -1,0 +1,50 @@
+include:
+  # -- python
+  - component: git.ligo.org/computing/gitlab/components/python/sdist@1
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+  - component: git.ligo.org/computing/gitlab/components/python/code-quality@1
+    inputs:
+      analyzer: "ruff"
+      requirements: "-r requirements-lint.txt"
+  - component: git.ligo.org/computing/gitlab/components/python/dependency-scanning@1
+  - component: git.ligo.org/computing/gitlab/components/python/type-checking@1
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      install_extra: test
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+  # -- docs
+  - component: git.ligo.org/computing/gitlab/components/mkdocs/build@1
+    inputs:
+      requirements: "-r requirements-docs.txt"
+  - component: git.ligo.org/computing/gitlab/components/mkdocs/pages@1
+    inputs:
+      pages_when: "default"
+
+
+# -- customizations
+ruff:
+  needs:
+    - requirements
+
+mkdocs:
+  needs:
+    - requirements
+
+# -- requirements
+requirements:
+  stage: build
+  image: python:3.12
+  script:
+    - python -m pip install pipx
+    - pipx ensurepath
+    - source ~/.bashrc
+    - pipx install hatch
+    - hatch dep show requirements --feature docs > requirements-docs.txt
+    - hatch dep show requirements --feature lint > requirements-lint.txt
+  artifacts:
+    paths:
+      - requirements-*.txt

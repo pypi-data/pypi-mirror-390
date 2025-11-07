@@ -1,0 +1,56 @@
+site_name: 'arrakis-python'
+site_description: 'Arrakis Python client library'
+site_author: 'Patrick Godwin'
+site_url: 'https://ngdd.docs.ligo.org/arrakis-python'
+repo_url: 'https://git.ligo.org/ngdd/arrakis-python'
+repo_name: 'ngdd/arrakis-python'
+site_dir: "site"
+watch: [README.md, arrakis]
+
+nav:
+- Home:
+  - Overview: index.md
+  - Usage: usage.md
+# defer to gen-files + literate-nav
+- API Reference: reference/
+
+theme:
+  name: material_igwn
+  features:
+    - content.code.annotate
+
+markdown_extensions:
+- admonition
+- callouts:
+    strip_period: no
+- pymdownx.highlight
+- pymdownx.inlinehilite
+- pymdownx.magiclink
+- pymdownx.snippets:
+    check_paths: true
+- pymdownx.superfences
+
+plugins:
+- search
+- markdown-exec
+- gen-files:
+    scripts:
+    - docs/gen_ref_nav.py
+- literate-nav:
+    nav_file: SUMMARY.md
+- section-index
+- mkdocstrings:
+    handlers:
+      python:
+        import:
+        - https://docs.python.org/3/objects.inv
+        - https://mkdocstrings.github.io/objects.inv
+        - https://mkdocstrings.github.io/griffe/objects.inv
+        - https://numpy.org/doc/stable/objects.inv
+        options:
+          docstring_style: numpy
+          docstring_options:
+            ignore_init_summary: yes
+          merge_init_into_class: yes
+          separate_signature: yes
+          show_root_full_path: no
