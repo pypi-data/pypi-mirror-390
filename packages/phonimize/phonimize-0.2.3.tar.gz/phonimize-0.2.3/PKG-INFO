@@ -1,0 +1,184 @@
+Metadata-Version: 2.1
+Name: phonimize
+Version: 0.2.3
+Summary: Multilingual grapheme-to-phoneme (G2P) conversion using Transformer models.
+Author: Arcosoph
+Author-email: a5tkabid@gmail.com
+License: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Multimedia :: Sound/Audio :: Speech
+Description-Content-Type: text/markdown
+Provides-Extra: tests
+Provides-Extra: docs
+Provides-Extra: dev
+License-File: LICENSE
+
+# Phonimize
+[![Join the Discord](https://img.shields.io/badge/Join%20the%20Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/rYfShVvacB)
+[![PyPI](https://img.shields.io/pypi/v/phonemize.svg?color=6C63FF&logo=pypi&logoColor=white)](https://pypi.org/project/phonemize/)
+[![Python](https://img.shields.io/pypi/pyversions/phonemize.svg?color=3776AB&logo=python&logoColor=white)](https://pypi.org/project/phonemize/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/phonemize?period=total&units=INTERNATIONAL_SYSTEM&left_color=GRAY&right_color=BLACK&left_text=downloads)](https://pepy.tech/projects/phonemize)
+[![License](https://img.shields.io/pypi/l/phonemize?color=white&logo=apache&logoColor=black)](https://pypi.org/project/phonemize/)
+
+**Phonimize** is a multilingual **grapheme-to-phoneme (G2P)** conversion library built with Transformer models. It’s designed for **high accuracy**, **fast inference**, and **simple integration** into text-to-speech (TTS) or other speech-related systems.
+
+
+---
+
+## Key Features
+
+-   **Easy-to-use API**: A simple interface for both training and inference.
+-   **Multilingual Support**: Train a single model on multiple languages.
+-   **High Performance**: Fast and accurate predictions powered by Transformer models.
+-   **Custom Training**: Effortlessly train your own models in just a few lines of code.
+-   **Optimized for TTS**: Ideal for both real-time and offline text-to-speech pipelines.
+
+---
+
+## Installation
+
+To install Phonimize, use the following command:
+
+```bash
+pip install phonimize
+```
+
+## Quickstart
+
+Load a pre-trained model and perform phoneme prediction with this simple example:
+
+```python
+from phonimize import Phonemizer
+
+# Load the pre-trained model from a checkpoint
+phonemizer = Phonemizer.from_checkpoint("phonemize_m1.pt")
+
+# Phonemize an English text
+result = phonemizer("Phonemizing an English text is imposimpable!", lang="en_us")
+
+# Print the result
+print(result)
+```
+
+**Output:**
+
+```
+foʊnɪmaɪzɪŋ æn ɪŋglɪʃ tɛkst ɪz ɪmpəzɪmpəbəl!
+```
+
+## Training Your Own Model
+
+You can easily train your own forward or autoregressive Transformer model. All configuration parameters are defined in a simple YAML file (e.g., `configs/forward.yaml`).
+
+```python
+from phonimize.preprocess import preprocess
+from phonimize.train import train
+
+# Define your training data
+train_data = [
+    ("en_us", "young", "jʌŋ"),
+    ("de", "benützten", "bənʏt͡stn̩")
+] * 1000
+
+# Define your validation data
+val_data = [
+    ("en_us", "young", "jʌŋ"),
+    ("de", "benützten", "bənʏt͡stn̩")
+] * 100
+
+# Specify the configuration file
+config_file = "configs/forward.yaml"
+
+# Preprocess the data
+preprocess(
+    config_file=config_file,
+    train_data=train_data,
+    val_data=val_data,
+    deduplicate_train_data=False
+)
+
+# Train the model
+train(rank=0, num_gpus=1, config_file=config_file)
+```
+
+Checkpoints will be saved in the directory specified in your configuration file.
+
+## Inference Example
+
+To perform inference with your trained model:
+
+```python
+from phonimize import Phonemizer
+
+# Load your custom model from a checkpoint
+phonemizer = Phonemizer.from_checkpoint("checkpoints/best_model.pt")
+
+# Get the phonemes for a given text
+phonemes = phonemizer("Phonemizing text is simple!", lang="en_us")
+print(phonemes)
+```
+
+To inspect detailed predictions, including confidence scores:
+
+```python
+result = phonemizer.phonemise_list(["Phonemizing text is simple!"], lang="en_us")
+
+for word, pred in result.predictions.items():
+    print(f"Word: {word}, Phonemes: {pred.phonemes}, Confidence: {pred.confidence}")
+```
+
+## TorchScript Export
+
+For optimized performance, you can easily export your trained Transformer model to TorchScript:
+
+```python
+import torch
+from phonimize import Phonemizer
+
+# Load the model from a checkpoint
+phonemizer = Phonemizer.from_checkpoint("checkpoints/best_model.pt")
+
+# Convert the model to a TorchScript module
+scripted_model = torch.jit.script(phonemizer.predictor.model)
+phonemizer.predictor.model = scripted_model
+
+# Run inference with the TorchScript model
+phonemizer("Running the TorchScript model!")
+```
+
+## Pre-trained Models
+
+*This model has been modified for the `phonemize` library.*
+
+| Model | Language | Dataset | Repo Version
+|---|---|---|---|
+|[phonemize_m1](https://github.com/arcosoph/phonemize/releases/download/v0.2.0/phonemize_m1.pt) | en_us | [cmudict](https://github.com/microsoft/CNTK/tree/master/Examples/SequenceToSequence/CMUDict/Data) | 0.1.0 |
+
+
+## Acknowledgment
+
+Phonimize is inspired by [DeepPhonemizer](https://github.com/spring-media/DeepPhonemizer), and has been refactored and optimized for simplicity, speed, and modern Python environments.
+
+Phonimize is compatible with Python 3.8+ and distributed under the MIT license.
+Learn more at: https://github.com/arcosoph/phonemize
+
+## License
+
+This project is released under the MIT License.
