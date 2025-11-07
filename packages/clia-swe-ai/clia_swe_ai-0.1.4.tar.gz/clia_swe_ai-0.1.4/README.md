@@ -1,0 +1,145 @@
+# CLI SWE AI Assistant
+
+## Overview
+
+The CLI SWE AI Assistant is an innovative command-line interface (CLI) and web-based application designed to empower software engineers with an AI-powered assistant. This assistant, powered by Google's Gemini model, interacts directly with your local filesystem and command line through a suite of specialized tools. It aims to streamline software development tasks by providing an intelligent agent capable of understanding, modifying, and executing code within your project environment.
+
+The core idea is to provide a conversational interface where you can instruct the AI to perform various software engineering tasks, from code analysis and refactoring to bug fixing and feature implementation. The AI's "thinking process" is made transparent through streamed thought summaries, giving you insight into its decision-making and planning.
+
+## Features
+
+*   **AI-Powered Code Interaction:** Leverage the Gemini model to understand and manipulate your codebase.
+*   **Local Filesystem Access:** The AI can read, write, and delete files and directories.
+*   **Command Line Execution:** Execute shell commands for tasks like running tests, installing dependencies, or building projects.
+*   **Transparent Thinking Process:** Observe the AI's internal reasoning and planning through streamed thought summaries.
+*   **Modular Tooling:** Utilizes the Model Context Protocol (MCP) for a structured and extensible tool server.
+*   **Interactive CLI:** A rich and user-friendly command-line interface built with `rich`.
+*   **Web UI:** A web-based interface for interacting with the AI.
+
+## How It Works
+
+The application operates with a client-server architecture:
+
+1.  **GUI Client (`gui/main.py`):** This is the main application you interact with. It handles user input, displays AI responses, and manages the conversation history.
+2.  **Web UI (`web_ui/app.py`):** A FastAPI-based web application that provides a chat interface to the AI.
+3.  **MCP Tool Server (`swe_tools/run_server.py`):** This is a separate Python process that runs in the background. It exposes a set of software engineering tools (e.g., `view_directory_structure`, `read_file_content`, `run_shell_command`) to the AI.
+4.  **Gemini API Integration:** The GUI client and web UI communicate with the Google Gemini API, sending user prompts and conversation history. The Gemini model, configured with the available tools, generates responses that can include natural language answers or requests to call specific tools.
+5.  **Tool Execution:** When the Gemini model decides to use a tool, the GUI client or web UI intercepts this request and forwards it to the local MCP Tool Server. The server executes the requested tool, performs the action on your local filesystem or command line, and returns the result.
+6.  **Iterative Process:** The AI can engage in multi-turn conversations, using tool outputs to inform subsequent actions or refine its answers. The "thinking" mode allows the AI to generate internal thoughts and plans, which are streamed to the user for transparency.
+
+## Requirements
+
+*   Python 3.8+
+
+### Python Libraries
+
+The following Python libraries are required. They are listed in `requirements.txt`.
+
+## Installation
+
+You can install the CLI SWE AI Assistant in a few ways:
+
+1.  **Clone the repository and install locally (recommended for development):**
+    ```bash
+    git clone https://github.com/Past-da-king/clia.git
+    cd clia
+    ```
+    (Replace `<repository_url>` with the actual URL of your repository.)
+
+    **Create a virtual environment (recommended):**
+    ```bash
+    python -m venv venv
+    # On Windows:
+    venv\Scripts\activate
+    # On macOS/Linux:
+    source venv/bin/activate
+    ```
+
+    **Install the package and its dependencies:**
+    ```bash
+    pip install .
+    ```
+    This command will install the `clia-swe-ai` package and all its dependencies listed in `requirements.txt`.
+
+2.  **Install directly from a Git repository (for users):**
+    If you want to use the CLI SWE AI Assistant without cloning the repository first, you can install it directly from its Git URL:
+    ```bash
+    pip install git+https://github.com/Past-da-king/clia.git
+    ```
+    (Replace `https://github.com/yourusername/yourrepository.git` with the actual URL of the project's Git repository.)
+
+3.  **Set up Google Gemini API Key:**
+    *   Obtain a Google Gemini API key from the [Google AI Studio](https://aistudio.google.com/app/apikey).
+    *   Create a file named `.env` in the root directory of the project (`C:\Users\past9\OneDrive\Desktop\project\clia\`).
+    *   Add your API key to the `.env` file in the following format:
+        ```
+        GOOGLE_API_KEY="YOUR_API_KEY_HERE"
+        ```
+        Replace `"YOUR_API_KEY_HERE"` with your actual API key.
+
+## Usage
+
+The CLI SWE AI Assistant is designed to be an interactive and conversational partner for your software engineering tasks. You can interact with it through either a command-line interface (CLI) or a web-based user interface (Web UI).
+
+### Interacting with the AI
+
+Simply type your requests, questions, or instructions in natural language. The AI will process your input, analyze the project context (using its tools), and respond. It can perform a wide range of tasks, such as:
+
+*   **Code Analysis:** "Explain the `process_message` function in `core/ai_core.py`."
+*   **Bug Fixing:** "There's a `TypeError` in `gui/main.py` related to `chunk.candidates[0].content.parts`. Can you investigate and fix it?"
+*   **Feature Implementation:** "Add a new tool to list all Python files in the `swe_tools` directory."
+*   **Refactoring:** "Refactor the `is_ignored` function in `swe_tools/utils.py` to be more efficient."
+*   **General Queries:** "What are the main components of this project?"
+
+The AI's responses will often include:
+*   **Thoughts:** Insights into its reasoning and planning.
+*   **Tool Calls:** Notifications when it's using one of its internal tools (e.g., reading a file, running a shell command).
+*   **Tool Results:** The output from the tools it executes.
+*   **Bot Responses:** Natural language answers or explanations.
+
+### CLI
+
+To use the CLI SWE AI Assistant on a specific project, first navigate to that project's root directory in your terminal. Then, ensure your virtual environment is activated and run:
+
+```bash
+clia
+```
+Once started, you will see an interactive prompt where you can type your commands. The AI will operate within the context of the directory you launched it from.
+
+### Web UI
+
+To start the web UI, ensure your virtual environment is activated and run:
+
+```bash
+clia -web` or `clia --web
+```
+Then, open your web browser and navigate to `http://127.0.0.1:8000`. You will find a chat interface to interact with the AI.
+
+## Configuration
+
+*   **`gui/config.py`:** This file contains various configuration settings for the GUI client, including:
+    *   `MODEL_NAME`: The Gemini model to use (e.g., `gemini-1.5-flash`).
+    *   `SYSTEM_PROMPT`: The AI's core instructions (loaded from `gui/system_prompt.py`).
+    *   `MCP_SERVER_SCRIPT`: The entry point for the MCP tool server.
+    *   `MAX_TOOL_TURNS`: The maximum number of tool calls the AI can make in a single turn.
+    *   `THEME`: UI styling and icons.
+
+*   **`.env`:** As mentioned in the installation, this file is used to store your `GOOGLE_API_KEY`.
+
+## Available Tools
+
+The AI assistant leverages a suite of specialized tools to interact with your local environment. These tools are located in the `swe_tools/` directory and enable the AI to perform actions such as:
+
+*   `run_shell_command`: Execute shell commands (e.g., `pytest`, `npm install`).
+*   `read_file_content`: Read the content of any specified file.
+*   `write_files_from_snapshot`: Create new files or completely overwrite existing ones.
+*   `read_codebase_snapshot`: Generate a detailed snapshot of a directory's contents, including line-numbered code.
+*   `edit_file_lines`: Precisely modify specific lines within a file (insert, update, delete).
+*   `delete_files_and_folders`: Permanently remove files or directories.
+*   `view_directory_structure`: List files and directories in a tree-like or flat structure.
+*   `internet_search`: Performs a comprehensive internet search using Google to answer a query. It can also access and process content from a provided list of specific URLs. Returns a detailed answer with citations.
+*   `read_process_logs`: Monitor the output of background processes.
+*   `stop_process`: Terminate background processes.
+*   `list_background_processes`: View all active background processes.
+
+For detailed descriptions and usage of each tool, please refer to the respective Python files in the `swe_tools/` directory. Understanding these tools can help you better formulate requests to the AI.
