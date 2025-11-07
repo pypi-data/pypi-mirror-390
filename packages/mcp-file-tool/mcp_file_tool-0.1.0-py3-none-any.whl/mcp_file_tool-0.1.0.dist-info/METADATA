@@ -1,0 +1,150 @@
+Metadata-Version: 2.4
+Name: mcp-file-tool
+Version: 0.1.0
+Summary: MCP tools for large text files: chunked IO, search, and SQLite inverted index
+Author-email: Trae AI <opensource@trae.ai>
+License: MIT License
+        
+        Copyright (c) 2025 Trae AI
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+Project-URL: Homepage, https://example.com/mcp-file-tool
+Project-URL: Source, https://example.com/mcp-file-tool
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Text Processing
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: mcp>=1.20.0
+Dynamic: license-file
+
+# MCP File Tool
+
+面向大文本文件的 MCP 工具集与服务，使用 Python + 官方 MCP SDK（FastMCP）。支持分片读取/写入、搜索与精确定位，内置结构化日志与可配置参数，避免一次性读入超大文件导致上下文爆炸。可作为命令行服务或在 IDE（Trae/Claude Desktop）中作为工具调用。
+
+## 功能特性
+- 分片读取：按字节偏移读取；按行范围读取
+- 分片写入：覆盖写入、末尾追加、任意偏移插入（原子替换）
+- 高效搜索：流式正则与字面量搜索，返回命中偏移、近似行号、上下文片段
+- 行索引：可选构建每N行的偏移索引，加速行定位
+- 结构化日志：JSON日志输出到控制台与滚动文件
+- 可配置：通过环境变量调优缓冲区大小、最大读取字节数、日志等级等
+
+## 安装
+
+通过 PyPI（准备发布）：
+
+```bash
+pip install mcp-file-tool
+```
+
+从源码运行：
+
+```bash
+# 创建虚拟环境（可选）
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动 MCP 服务（STDIO 传输）
+mcp-file-tool
+```
+
+## 与 AI 客户端集成
+- Claude Desktop / Trae：在“工具”中添加本地 STDIO 服务，命令使用 `mcp-file-tool`。
+- 运行后，客户端将自动调用本 MCP 工具以读取/写入、搜索文件，实现“只读片段”的上下文管理。
+
+示例Claude Desktop手动配置（参考）：
+```json
+{
+  "mcpServers": {
+    "bigfile-mcp": {
+      "command": "python",
+      "args": ["/absolute/path/to/main.py"],
+      "env": {
+        "MCP_FILE_TOOL_LOG_LEVEL": "INFO",
+        "MCP_FILE_TOOL_MAX_READ_BYTES": "4194304",
+        "MCP_FILE_TOOL_STREAM_BUFFER": "65536"
+      }
+    }
+  }
+}
+```
+
+## 可用工具（Tools）
+- `tool_read_bytes(file_path, offset, length, encoding?)`
+- `tool_read_lines(file_path, start_line, num_lines, encoding?)`
+- `tool_write_overwrite(file_path, offset, data, encoding?)`
+- `tool_append(file_path, data, encoding?)`
+- `tool_insert(file_path, offset, data, encoding?, temp_dir?)`
+- `tool_file_info(file_path)`
+- `tool_build_line_index(file_path, step?)`
+- `tool_search_regex(file_path, pattern, encoding?, start_offset?, end_offset?, max_results?, context_chars?, flags?)`
+- `tool_search_literal(file_path, query, encoding?, start_offset?, end_offset?, max_results?, context_chars?, case_sensitive?)`
+ - 倒排索引（SQLite）：
+   - `tool_build_inverted_index(file_path, incremental?, token_pattern?, lower?)`
+   - `tool_search_index_term(file_path, term, prefix?, limit?, context_chars?)`
+
+### 倒排索引说明
+- 存储位置：`.mcp_index/<filename>.invidx.sqlite`
+- 支持增量索引（仅限末尾追加）：通过尾部快照比对避免因中间插入/覆盖导致偏移错误；如检测到非追加修改，会自动执行全量重建。
+- 分词规则：默认 `\w+`，可通过 `token_pattern` 自定义；可选择小写归一（`lower=True`）。
+- 查询：支持精确词项与前缀匹配；返回偏移与近似行号，以及片段上下文。
+
+## 环境变量
+- `MCP_FILE_TOOL_ENCODING`：默认 `utf-8`
+- `MCP_FILE_TOOL_MAX_READ_BYTES`：单次读取上限（默认4MiB）
+- `MCP_FILE_TOOL_STREAM_BUFFER`：流式缓冲大小（默认64KiB）
+- `MCP_FILE_TOOL_LOCK_TIMEOUT`：写入锁超时（预留，当前直接写入）
+- `MCP_FILE_TOOL_INDEX_DIR`：索引目录（默认 `.mcp_index`）
+- `MCP_FILE_TOOL_LOG_DIR`：日志目录（默认 `./logs`）
+- `MCP_FILE_TOOL_LOG_LEVEL`：日志等级（默认 `INFO`）
+- `MCP_FILE_TOOL_MAX_SEARCH_RESULTS`：搜索条数限制（默认200）
+- `MCP_FILE_TOOL_CONTEXT_CHARS`：搜索上下文字符数（默认96）
+
+## 架构设计摘要
+- 所有读取/搜索均采用流式处理与分块拼接，避免一次性加载超大文件
+- 插入写入通过临时文件 + 原子替换，保证安全性与一致性
+- 搜索支持跨块匹配，通过“携带余量”避免边界遗漏
+- 行号统计为近似值，若需更高精度可先构建行索引再结合偏移定位
+
+## 调试与日志
+- 控制台输出：JSON格式，便于在MCP客户端查看
+- 文件输出：`logs/mcp_file_tool.log`（10MB滚动，保留5份）
+- 调试建议：提高 `MCP_FILE_TOOL_LOG_LEVEL` 到 `DEBUG`，观察工具的入参与返回元信息
+
+## 许可证与贡献
+- 许可证：MIT（详见 `LICENSE`）
+- 贡献指南：见 `CONTRIBUTING.md` 与 `CODE_OF_CONDUCT.md`
+- 安全政策：见 `SECURITY.md`
+
+## 发布与版本
+- 当前版本：`0.1.0`（见 `CHANGELOG.md`）
+- 打包与发布：参考 `docs/development.md`
+```
