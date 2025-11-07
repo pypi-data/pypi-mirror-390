@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2025 Oliver Boehmer
+
+
+"""Tests for JMESPath Robot Framework library."""
