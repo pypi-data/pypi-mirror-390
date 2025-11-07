@@ -1,0 +1,156 @@
+Metadata-Version: 2.4
+Name: pyngb
+Version: 0.1.1
+Summary: Unofficial parser for NETZSCH STA (Simultaneous Thermal Analysis) NGB instrument binary files. Not affiliated with, endorsed by, or approved by NETZSCH-Gerätebau GmbH.
+Project-URL: Homepage, https://github.com/GraysonBellamy/pyngb
+Project-URL: Documentation, https://graysonbellamy.github.io/pyngb/
+Project-URL: Repository, https://github.com/GraysonBellamy/pyngb.git
+Project-URL: Issues, https://github.com/GraysonBellamy/pyngb/issues
+Project-URL: Changelog, https://github.com/GraysonBellamy/pyngb/blob/main/CHANGELOG.md
+Author-email: Grayson Bellamy <gbellamy@umd.edu>
+License: MIT License
+        
+        Copyright (c) 2025-present GraysonBellamy <gbellamy@umd.edu>
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+License-File: LICENSE.txt
+License-File: NOTICE
+Keywords: binary-parsing,netzsch,ngb,scientific-data,sta,thermal-analysis,unofficial
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: Chemistry
+Classifier: Topic :: Scientific/Engineering :: Physics
+Requires-Python: >=3.9
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: polars>=0.20.0
+Requires-Dist: pyarrow>=10.0.0
+Requires-Dist: scipy>=1.13.1
+Provides-Extra: build
+Requires-Dist: build>=1.0.0; extra == 'build'
+Requires-Dist: twine>=4.0.0; extra == 'build'
+Provides-Extra: dev
+Requires-Dist: bandit[toml]>=1.7.0; extra == 'dev'
+Requires-Dist: mypy>=1.5.0; extra == 'dev'
+Requires-Dist: pre-commit>=3.0.0; extra == 'dev'
+Requires-Dist: pytest-benchmark>=4.0.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest-mock>=3.10.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Requires-Dist: safety>=2.0.0; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: mkdocs-material>=9.0.0; extra == 'docs'
+Requires-Dist: mkdocs>=1.5.0; extra == 'docs'
+Requires-Dist: mkdocstrings[python]>=0.20.0; extra == 'docs'
+Provides-Extra: performance
+Requires-Dist: memory-profiler>=0.60.0; extra == 'performance'
+Requires-Dist: psutil>=5.9.0; extra == 'performance'
+Provides-Extra: test
+Requires-Dist: pytest-benchmark>=4.0.0; extra == 'test'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'test'
+Requires-Dist: pytest-mock>=3.10.0; extra == 'test'
+Requires-Dist: pytest>=7.0.0; extra == 'test'
+Provides-Extra: visualization
+Requires-Dist: matplotlib>=3.5.0; extra == 'visualization'
+Requires-Dist: seaborn>=0.11.0; extra == 'visualization'
+Description-Content-Type: text/markdown
+
+# pyNGB - NETZSCH STA File Parser
+
+[![PyPI version](https://badge.fury.io/py/pyngb.svg)](https://badge.fury.io/py/pyngb)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/GraysonBellamy/pyngb/workflows/Tests/badge.svg)](https://github.com/GraysonBellamy/pyngb/actions)
+
+A high-performance Python library for parsing NETZSCH STA (Simultaneous Thermal Analysis) NGB files with comprehensive metadata extraction and analysis tools.
+
+**⚠️ Disclaimer**: This package is not affiliated with NETZSCH-Gerätebau GmbH. NETZSCH is a trademark of NETZSCH-Gerätebau GmbH.
+
+## Features
+
+- **Fast Binary Parsing**: Optimized parsing with NumPy and PyArrow (0.1-1 sec/file)
+- **Complete Metadata**: Extract instrument settings, sample info, and experimental conditions
+- **Baseline Correction**: Automatic baseline subtraction with validation
+- **DTG Analysis**: Derivative thermogravimetry calculation with smoothing options
+- **Batch Processing**: Parallel processing of multiple files
+- **Data Export**: Convert to Parquet, CSV, and JSON formats
+- **CLI Support**: Command-line interface for automation
+
+## Installation
+
+```bash
+pip install pyngb
+```
+
+## Quick Example
+
+```python
+from pyngb import read_ngb
+import polars as pl
+import json
+
+# Load NGB file with embedded metadata
+table = read_ngb("experiment.ngb-ss3")
+df = pl.from_arrow(table)
+
+# Access data
+print(f"Loaded {df.height} data points")
+print(f"Temperature range: {df['sample_temperature'].min():.1f} to {df['sample_temperature'].max():.1f} °C")
+
+# Access metadata
+metadata = json.loads(table.schema.metadata[b'file_metadata'])
+print(f"Sample: {metadata.get('sample_name', 'Unknown')}")
+
+# Baseline correction
+corrected = read_ngb("sample.ngb-ss3", baseline_file="baseline.ngb-bs3")
+
+# DTG analysis
+from pyngb.api.analysis import add_dtg
+table_with_dtg = add_dtg(table, method="savgol", smooth="medium")
+```
+
+## Command Line Usage
+
+```bash
+# Convert single file
+python -m pyngb sample.ngb-ss3
+
+# Batch processing with baseline correction
+python -m pyngb *.ngb-ss3 -b baseline.ngb-bs3 -f parquet -o ./processed/
+
+# Get help
+python -m pyngb --help
+```
+
+## Documentation
+
+- **[Getting Started](docs/getting-started.md)** - Installation and first steps
+- **[User Guide](docs/user-guide.md)** - Core functionality and examples
+- **[API Reference](docs/api-reference.md)** - Complete function documentation
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+- **[Contributing](docs/contributing.md)** - Development guidelines
+
+## License
+
+MIT License. See [LICENSE.txt](LICENSE.txt) for details.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/GraysonBellamy/pyngb/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/GraysonBellamy/pyngb/discussions)
+
+---
+
+Made with ❤️ for the scientific community
