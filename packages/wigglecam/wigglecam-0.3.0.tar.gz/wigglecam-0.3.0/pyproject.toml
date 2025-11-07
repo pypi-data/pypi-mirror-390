@@ -1,0 +1,140 @@
+
+[project]
+name = "wigglecam"
+description = "Wigglecam package help you building an awesome camera."
+version = "0.3.0"
+authors = [{ name = "Michael G", email = "me@mgineer85.de" }]
+maintainers = [{ name = "Michael G", email = "me@mgineer85.de" }]
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Multimedia :: Graphics",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Multimedia :: Graphics :: Capture :: Digital Camera",
+]
+keywords = [
+  "wigglecam",
+  "wigglecamera",
+  "stereoscopic",
+  "picamera2",
+  "picamera",
+  "camera",
+  "python",
+  "synchronized camera",
+]
+
+# keep empty so we can use the "core" package without additional dependencies to import in the photobooth-app for ImageMessage, ...
+dependencies = []
+
+[project.optional-dependencies]
+node = [
+  "pydantic",
+  "pydantic-settings",
+  "opencv-contrib-python",
+  "pynng",                 # needs python3-dev package
+  "pillow>=10.0.0",
+]
+
+
+[project.urls]
+homepage = "https://photobooth-app.org/wigglegramcamera/"
+repository = "https://github.com/photobooth-app/wigglecam"
+documentation = "https://photobooth-app.org/wigglegramcamera/"
+
+[project.scripts]
+wigglecam-demohub = "examples.demohub:run_async"
+wigglecam-node = "wigglecam.__main__:main"
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "pytest",
+  "pytest-benchmark",
+  "pytest-benchmark[histogram]>=5.1.0",
+  "pytest-cov",
+  "pytest-asyncio",
+  "coverage[toml]",
+  "numpy",
+  "pyright",
+  "simplejpeg",
+  "poethepoet",
+  "pyturbojpeg>=1.8.0",                 # for benchmark only, actually use simplejpeg here
+  #"picamera2; sys_platform == 'linux'", # need to install apt libcap-dev
+]
+
+
+# uv does not yet support [tool.pdm.scripts], so we skip this for now... https://github.com/astral-sh/uv/issues/5903
+[tool.poe.tasks]
+lint = [
+  { cmd = "uv run pyright" },
+  { cmd = "uv run ruff check" },
+  { cmd = "uv run ruff format --check" },
+]
+format = [{ cmd = "uv run ruff check --fix" }, { cmd = "uv run ruff format" }]
+test = [
+  { cmd = "pytest --basetemp=./tests_tmp/ -v ./src/tests/tests --cov-report=term --cov-report=xml:coverage.xml --cov --durations=10" },
+]
+benchmark = [
+  { cmd = "pytest --benchmark-only --benchmark-autosave --basetemp=./tests_tmp/ -v ./src/tests/benchmarks" },
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+ignore = ["./experimental/", "./vendor/"]
+typeCheckingMode = "standard"
+
+
+[tool.ruff]
+line-length = 150
+extend-exclude = ["vendor"]
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle
+  "W",  # pycodestyle
+  "F",  # pyflakes
+  "B",  # bugbear
+  "UP", # pyupgrade
+  "I",  # isort
+  #"D",   # pydocstyle   # add later
+]
+ignore = [
+  "B008", #used for DI injection
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"src/wigglecam/config/*.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.coverage.run]
+# disable couldnt-parse: https://github.com/nedbat/coveragepy/issues/1392
+disable_warnings = ["couldnt-parse"]
+omit = ["test_*.py", "./tests/*"]
+parallel = true
+concurrency = ["thread", "multiprocessing"]
+
+
+[build-system]
+requires = ["uv_build>=0.8.3,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["wigglecam", "examples"]
