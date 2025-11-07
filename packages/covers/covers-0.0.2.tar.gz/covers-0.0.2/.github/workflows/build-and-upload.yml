@@ -1,0 +1,114 @@
+#
+# When executed manually, this will upload a ".devNNN" build to testpypi;
+# when executed upon a release, it will upload a regular build to pypi.
+#
+name: build & upload
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  pick-devN:
+    name: create .devN build date coordinated across all matrix jobs
+    runs-on: ubuntu-latest
+    steps:
+      - run: TZ='America/New_York' date '+%Y%m%d%H%M' > dev-build.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devN
+          path: dev-build.txt
+
+  build-wheel:
+    needs: pick-devN
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        # Build for Python 3.12+ with abi3 support
+        target: [x86_64, aarch64]
+        exclude:
+          # Windows doesn't support aarch64 building from x86_64
+          - os: windows-latest
+            target: aarch64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Maturin
+        run: python3 -m pip install maturin
+
+      - name: Get coordinated .devN
+        if: github.event_name != 'release'
+        uses: actions/download-artifact@v4
+        with:
+          name: devN
+
+      - name: Build wheels (x86_64)
+        if: matrix.target == 'x86_64'
+        run: maturin build --release --out dist
+
+      - name: Build wheels (aarch64 - Linux)
+        if: matrix.target == 'aarch64' && matrix.os == 'ubuntu-latest'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: aarch64
+          args: --release --out dist
+          manylinux: auto
+
+      - name: Build wheels (aarch64 - macOS)
+        if: matrix.target == 'aarch64' && matrix.os == 'macos-latest'
+        run: |
+          rustup target add aarch64-apple-darwin
+          maturin build --release --target aarch64-apple-darwin --out dist
+
+      - name: Build source dist
+        if: matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64'
+        run: maturin sdist --out dist
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.target }}
+          path: dist
+
+  publish:
+    name: Publish to PyPI
+    needs: build-wheel
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for trusted publishing (OIDC)
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to TestPyPI (dev builds)
+        if: github.event_name != 'release'
+        uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --skip-existing dist/*
+        env:
+          MATURIN_REPOSITORY: testpypi
+
+      - name: Publish to PyPI (releases)
+        if: github.event_name == 'release'
+        uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --skip-existing dist/*
