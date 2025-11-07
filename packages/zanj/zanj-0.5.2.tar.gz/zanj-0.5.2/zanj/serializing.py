@@ -1,0 +1,271 @@
+from __future__ import annotations
+
+import json
+import sys
+from dataclasses import dataclass
+from typing import IO, Any, Callable, Iterable, Sequence
+import warnings
+
+import numpy as np
+from muutils.json_serialize.array import arr_metadata
+from muutils.json_serialize.json_serialize import (  # JsonSerializer,
+    DEFAULT_HANDLERS,
+    ObjectPath,
+    SerializerHandler,
+)
+from muutils.json_serialize.util import (
+    JSONdict,
+    JSONitem,
+    MonoTuple,
+    _FORMAT_KEY,
+    _REF_KEY,
+)
+
+from zanj.externals import ExternalItem, ExternalItemType, _ZANJ_pre
+
+KW_ONLY_KWARGS: dict = dict()
+if sys.version_info >= (3, 10):
+    KW_ONLY_KWARGS["kw_only"] = True
+
+# pylint: disable=unused-argument, protected-access, unexpected-keyword-arg
+# for some reason pylint complains about kwargs to ZANJSerializerHandler
+
+
+def jsonl_metadata(data: list[JSONdict]) -> dict:
+    """metadata about a jsonl object"""
+    all_cols: set[str] = set([col for item in data for col in item.keys()])
+    return {
+        "data[0]": data[0],
+        "len(data)": len(data),
+        "columns": {
+            col: {
+                "types": list(
+                    set([type(item[col]).__name__ for item in data if col in item])
+                ),
+                "len": len([item[col] for item in data if col in item]),
+            }
+            for col in all_cols
+            if col != _FORMAT_KEY
+        },
+    }
+
+
+def store_npy(self: _ZANJ_pre, fp: IO[bytes], data: np.ndarray) -> None:
+    """store numpy array to given file as .npy"""
+    # TODO: Type `<module 'numpy.lib'>` has no attribute `format` --> zanj/serializing.py:54:5
+    # info: rule `unresolved-attribute` is enabled by default
+    np.lib.format.write_array(  # ty: ignore[unresolved-attribute]
+        fp=fp,
+        array=np.asanyarray(data),
+        allow_pickle=False,
+    )
+
+
+def store_jsonl(self: _ZANJ_pre, fp: IO[bytes], data: Sequence[JSONitem]) -> None:
+    """store sequence to given file as .jsonl"""
+
+    for item in data:
+        fp.write(json.dumps(item).encode("utf-8"))
+        fp.write("\n".encode("utf-8"))
+
+
+EXTERNAL_STORE_FUNCS: dict[
+    ExternalItemType, Callable[[_ZANJ_pre, IO[bytes], Any], None]
+] = {
+    "npy": store_npy,
+    "jsonl": store_jsonl,
+}
+
+
+@dataclass(**KW_ONLY_KWARGS)
+class ZANJSerializerHandler(SerializerHandler):
+    """a handler for ZANJ serialization"""
+
+    # unique identifier for the handler, saved in _FORMAT_KEY field
+    # uid: str
+    # source package of the handler -- note that this might be overridden by ZANJ
+    source_pckg: str
+    # (self_config, object) -> whether to use this handler
+    check: Callable[[_ZANJ_pre, Any, ObjectPath], bool]
+    # (self_config, object, path) -> serialized object
+    serialize_func: Callable[[_ZANJ_pre, Any, ObjectPath], JSONitem]
+    # optional description of how this serializer works
+    # desc: str = "(no description)"
+
+
+def zanj_external_serialize(
+    jser: _ZANJ_pre,
+    data: Any,
+    path: ObjectPath,
+    item_type: ExternalItemType,
+    _format: str,
+) -> JSONitem:
+    """stores a numpy array or jsonl externally in a ZANJ object
+
+    # Parameters:
+     - `jser: ZANJ`
+     - `data: Any`
+     - `path: ObjectPath`
+     - `item_type: ExternalItemType`
+
+    # Returns:
+     - `JSONitem`
+       json data with reference
+
+    # Modifies:
+     - modifies `jser._externals`
+    """
+    # get the path, make sure its unique
+    assert isinstance(path, tuple), (
+        f"path must be a tuple, got {type(path) = } {path = }"
+    )
+    joined_path: str = "/".join([str(p) for p in path])
+    archive_path: str = f"{joined_path}.{item_type}"
+
+    # TODO: somehow need to control whether a failure here causes a fallback to other handlers, or whether the except should propagate
+    # this will probably require changes to the upstream muutils.json_serialize code
+    if archive_path in jser._externals:
+        err_msg = f"external path {archive_path} already exists!"
+        warnings.warn(err_msg)
+        raise ValueError(err_msg)
+    # Check for true path prefix conflicts (not just string prefix)
+    # Only flag when one path is a directory ancestor of another (contains "/" separator)
+    for p in jser._externals.keys():
+        # Remove the file extension to get the joined_path
+        existing_joined_path = p.rsplit(".", 1)[0]
+        # Check if one is a true path prefix with "/" separator
+        if existing_joined_path.startswith(joined_path + "/") or joined_path.startswith(
+            existing_joined_path + "/"
+        ):
+            err_msg = (
+                f"external path {joined_path} is a prefix of another path {p}!\n"
+                + f"{jser._externals.keys() = }\n{joined_path = }\n{path = }\n{p = }\n{existing_joined_path = }\n{archive_path = }\n{_format = }"
+            )
+            warnings.warn(err_msg)
+            raise ValueError(err_msg)
+
+    # process the data if needed, assemble metadata
+    data_new: Any = data
+    output: dict = {
+        _FORMAT_KEY: _format,
+        _REF_KEY: archive_path,
+    }
+    if item_type == "npy":
+        # check type
+        data_type_str: str = str(type(data))
+        if data_type_str == "<class 'torch.Tensor'>":
+            # detach and convert
+            data_new = data.detach().cpu().numpy()
+        elif data_type_str == "<class 'numpy.ndarray'>":
+            pass
+        else:
+            # if not a numpy array, except
+            raise TypeError(f"expected numpy.ndarray, got {data_type_str}")
+        # get metadata
+        output.update(arr_metadata(data))
+    elif item_type.startswith("jsonl"):
+        # check via mro to avoid importing pandas
+        if any("pandas.core.frame.DataFrame" in str(t) for t in data.__class__.__mro__):
+            output["columns"] = data.columns.tolist()
+            data_new = data.to_dict(orient="records")
+        elif isinstance(data, (list, tuple, Iterable, Sequence)):
+            data_new = [
+                jser.json_serialize(item, tuple(path) + (i,))
+                for i, item in enumerate(data)
+            ]
+        else:
+            raise TypeError(
+                f"expected list or pandas.DataFrame for jsonl, got {type(data)}"
+            )
+
+        if all([isinstance(item, dict) for item in data_new]):
+            output.update(jsonl_metadata(data_new))
+
+    # store the item for external serialization
+    jser._externals[archive_path] = ExternalItem(
+        item_type=item_type,
+        data=data_new,
+        path=path,
+    )
+
+    return output
+
+
+DEFAULT_SERIALIZER_HANDLERS_ZANJ: MonoTuple[ZANJSerializerHandler] = tuple(
+    [
+        ZANJSerializerHandler(
+            check=lambda self, obj, path: (
+                isinstance(obj, np.ndarray)
+                and obj.size >= self.external_array_threshold
+            ),
+            serialize_func=lambda self, obj, path: zanj_external_serialize(
+                self, obj, path, item_type="npy", _format="numpy.ndarray:external"
+            ),
+            uid="numpy.ndarray:external",
+            source_pckg="zanj",
+            desc="external numpy array",
+        ),
+        ZANJSerializerHandler(
+            check=lambda self, obj, path: (
+                str(type(obj)) == "<class 'torch.Tensor'>"
+                and int(obj.nelement()) >= self.external_array_threshold
+            ),
+            serialize_func=lambda self, obj, path: zanj_external_serialize(
+                self, obj, path, item_type="npy", _format="torch.Tensor:external"
+            ),
+            uid="torch.Tensor:external",
+            source_pckg="zanj",
+            desc="external torch tensor",
+        ),
+        ZANJSerializerHandler(
+            check=lambda self, obj, path: isinstance(obj, list)
+            and len(obj) >= self.external_list_threshold,
+            serialize_func=lambda self, obj, path: zanj_external_serialize(
+                self, obj, path, item_type="jsonl", _format="list:external"
+            ),
+            uid="list:external",
+            source_pckg="zanj",
+            desc="external list",
+        ),
+        ZANJSerializerHandler(
+            check=lambda self, obj, path: isinstance(obj, tuple)
+            and len(obj) >= self.external_list_threshold,
+            serialize_func=lambda self, obj, path: zanj_external_serialize(
+                self, obj, path, item_type="jsonl", _format="tuple:external"
+            ),
+            uid="tuple:external",
+            source_pckg="zanj",
+            desc="external tuple",
+        ),
+        ZANJSerializerHandler(
+            check=lambda self, obj, path: (
+                any(
+                    "pandas.core.frame.DataFrame" in str(t)
+                    for t in obj.__class__.__mro__
+                )
+                and len(obj) >= self.external_list_threshold
+            ),
+            serialize_func=lambda self, obj, path: zanj_external_serialize(
+                self, obj, path, item_type="jsonl", _format="pandas.DataFrame:external"
+            ),
+            uid="pandas.DataFrame:external",
+            source_pckg="zanj",
+            desc="external pandas DataFrame",
+        ),
+        # ZANJSerializerHandler(
+        #     check=lambda self, obj, path: "<class 'torch.nn.modules.module.Module'>"
+        #     in [str(t) for t in obj.__class__.__mro__],
+        #     serialize_func=lambda self, obj, path: zanj_serialize_torchmodule(
+        #         self, obj, path,
+        #     ),
+        #     uid="torch.nn.Module",
+        #     source_pckg="zanj",
+        #     desc="fallback torch serialization",
+        # ),
+    ]
+) + tuple(
+    DEFAULT_HANDLERS  # type: ignore[arg-type]
+)
+
+# the complaint above is:
+# error: Argument 1 to "tuple" has incompatible type "Sequence[SerializerHandler]"; expected "Iterable[ZANJSerializerHandler]"  [arg-type]
