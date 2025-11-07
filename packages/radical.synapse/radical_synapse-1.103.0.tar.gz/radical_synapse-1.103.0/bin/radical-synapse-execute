@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+
+import sys
+import pprint
+import radical.synapse       as rs
+import radical.synapse.utils as rsu
+
+# FIXME: support tags as flags
+
+if len(sys.argv) < 2 :
+    print "\n\n\tusage: %s <command> ...\n\n" % sys.argv[0]
+    sys.exit (0)
+
+info, ret, out = rs.execute (' '.join (sys.argv[1:]))
+
+rsu.store_profile (info, mode='exe')
+
+pprint.pprint (info)
+
+sys.exit (ret)
+

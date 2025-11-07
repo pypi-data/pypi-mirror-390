@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import pprint
+import radical.synapse       as rs
+import radical.synapse.utils as rsu
+
+# FIXME: support tags as flags
+
+# ------------------------------------------------------------------------------
+#
+def emu_command (command):
+
+    if not command:
+        usage(msg="no command specified")
+
+    info, ret, out = rs.emulate (command=command)
+    pprint.pprint (info)
+
+    rsu.store_profile (info, mode='emu')
+
+
+# ------------------------------------------------------------------------------
+#
+def emu_source (src):
+
+    info, ret, out = rs.emulate (src=src)
+    pprint.pprint (info)
+
+    rsu.store_profile (info, mode='emu')
+
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False):
+
+    if  msg:
+        print("\n      Error: %s" % msg)
+
+    print("""
+      usage     : %s <command>
+                  %s -i <profile>
+      example   : %s sleep 10
+                  %s -i sleep_10.json
+
+""")
+
+    if  msg:
+        sys.exit (1)
+
+    if  not noexit:
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage('not enough arguments')
+
+    if sys.argv[1] == '-i':
+        emu_source(sys.argv[2])
+    else:
+        emu_command (' '.join(sys.argv[1:]))
+
+
+# ------------------------------------------------------------------------------
+
