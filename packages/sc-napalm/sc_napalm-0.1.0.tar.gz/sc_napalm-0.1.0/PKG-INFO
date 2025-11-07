@@ -1,0 +1,108 @@
+Metadata-Version: 2.4
+Name: sc-napalm
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.8
+Requires-Dist: gitpython>=3.1.45
+Requires-Dist: lxml>=6.0.2
+Requires-Dist: napalm-srl>=1.0.5
+Requires-Dist: napalm-sros>=1.0.2
+Requires-Dist: napalm>=5.1.0
+Requires-Dist: pynautobot>=2.1.1
+Requires-Dist: python-decouple>=3.8
+Description-Content-Type: text/markdown
+
+# sc-napalm
+
+This repo is for building custom [NAPALM](https://napalm.readthedocs.io/en/latest/) "getters" to pull operational data from network devices.
+At the moment only one custom getter is implemented: `get_inventory`, and it is only implemented for junos, iosxr, and nxos.
+
+What's cool about NAPALM is that if you nest your custom drivers under `custom_napalm` as is done in this project, when you call `get_network_driver`
+in a runtime environment that has your modules, these drivers will override the core NAPALM drivers. This allows us to leverage NAPALM in a pretty seamless way,
+in particular it allows us to use the [nornir-napalm](https://github.com/nornir-automation/nornir_napalm) connection plugins and tasks to point at our custom drivers.
+
+
+## Using sc-napalm
+For now the repo comes with two scripts:
+* `sc-napalm-get` will run a particular getter against a particular device and output the results to your terminal.
+* `sc-napalm-run` uses Nornir to run a set of getters against a set of devices in Nautobot and print out the results.
+
+Right now to use this code you must do the following things:
+1. [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
+2. Clone the repo onto your local machine, then do a local development install of the repo into a uv virtual environment.
+```
+git clone https://scinet.supercomputing.org:8443/automation/sc25/sc-napalm.git
+cd sc-napalm
+uv run pip install -e .
+```
+3. Copy `sample_env` file into `.env` and fill out `.env` with the credentials you need. Some notes about this.
+  - You only need the nautobot stuff for `sc-napalm-run`.
+  - You could also specify these values in your local environment as well, the scripts will check there if they're not set in `.env`
+
+4. Run the two scripts with `uv run [the script]`.
+```
+amylieb@m-n76107kqmh sc-napalm % uv run sc-napalm-get -h
+usage: sc-napalm-get [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL} | -L {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--logfile LOGFILE] [--username USERNAME]
+                     [--password PASSWORD]
+                     device {iosxr,nxos,junos,sros,srl,eos} {get_config,get_facts,get_lldp_neighbors,get_inventory}
+
+Run a specific sc_napalm "getter" against a device.
+
+positional arguments:
+  device                device hostname or IP address
+  {iosxr,nxos,junos,sros,srl,eos}
+                        The platform of this device
+  {get_config,get_facts,get_lldp_neighbors,get_inventory}
+                        The getter command to run against this device
+
+options:
+  -h, --help            show this help message and exit
+  -l, --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        Set log level for sc_napalm only
+  -L, --LOG-LEVEL {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        set global log level
+  --logfile LOGFILE     Save logging to a file (specified by name) instead of to stdout
+  --username USERNAME   Specify credentials
+  --password PASSWORD   Specify credentials
+amylieb@m-n76107kqmh sc-napalm % uv run sc-napalm-get dl-shallow-1 nxos get_inventory
+[{'name': 'Slot 1',
+  'part_number': 'N9K-C93180YC-FX',
+  'serial_number': 'FLM252403M9',
+  'type': 'linecard'},
+ {'name': 'Fan 1',
+  'part_number': 'NXA-FAN-30CFM-B',
+  'serial_number': 'N/A',
+  'type': 'fan'},
+  .....
+
+amylieb@m-n76107kqmh sc-napalm % uv run sc-napalm-run --device amytest --cmds get_facts
+Uninstalled 1 package in 8ms
+Installed 1 package in 3ms
+napalm_get**********************************************************************
+* amytest ** changed : False ***************************************************
+vvvv napalm_get ** changed : False vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv INFO
+{ 'get_facts': { 'fqdn': '',
+                 'hostname': 'dl-shallow-1',
+                 'interface_list': [ 'Management0',
+                                     'Ethernet1/1',
+                                     'Ethernet1/2',
+                                     'Ethernet1/3',
+                                     'Ethernet1/4',
+                                     'Ethernet1/5',
+```
+
+## Developing sc-napalm
+Currently, the getters that are exposed as options in the `get` and `run` scripts are defined in the [base class](https://scinet.supercomputing.org:8443/automation/sc25/sc-napalm/-/blob/main/src/custom_napalm/base.py?ref_type=heads) of the custom drivers.
+Note that because all the custom classes inherit the NAPALM getters, we could easily define all the other NAPALM getters there, but I've only included ones I think are obviously useful to us.
+
+My hope is that instead of just printing out results we can write code that saves data in Nautobot, or some other place. This could be done with custom Nornir tasks or with Processors.
+
+I have also noticed that Nautobot has a Nornir plugin - we could potentially leverage that as well.
+
+## To-dos
+* Decide where this code is run and how (periodically? Manually? From Nautobot? if so, how?)
+* Decide what output we want to capture (eg "show version"? "show lldp neighbor"?) and where it should go
+* Fuctions/tasks that transform output and save it appropriately
+* `get_inventory` methods for eos, srlinux, sros
+* Test/mock classes for custom getters
+
