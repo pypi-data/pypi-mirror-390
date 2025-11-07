@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  timedoctor-mcp:
+    build: .
+    image: timedoctor-scraper:latest
+    container_name: timedoctor-mcp
+    stdin_open: true
+    tty: true
+    environment:
+      - TD_EMAIL=${TD_EMAIL}
+      - TD_PASSWORD=${TD_PASSWORD}
+      - TD_BASE_URL=${TD_BASE_URL:-https://2.timedoctor.com}
+      - HEADLESS=${HEADLESS:-true}
+      - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-60000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Mount output directory for CSV files
+      - ./output:/app/output
+      # Mount logs
+      - ./logs:/app/logs
+    # Keep container running
+    command: tail -f /dev/null
+    restart: unless-stopped
