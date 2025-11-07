@@ -1,0 +1,173 @@
+Metadata-Version: 2.4
+Name: deep-person
+Version: 0.1.0
+Summary: Person re-identification component for Vbot framework
+Project-URL: Homepage, https://github.com/VitaDynamics/DeepPerson
+Project-URL: Repository, https://github.com/VitaDynamics/DeepPerson
+Project-URL: Issues, https://github.com/VitaDynamics/DeepPerson/issues
+Project-URL: Documentation, https://github.com/VitaDynamics/DeepPerson#readme
+Author-email: VitaDynamics <info@vitadynamics.org>
+License: MIT
+License-File: LICENSE
+Keywords: computer-vision,deep-learning,person-reid,resnet,yolo
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.11
+Requires-Dist: gdown>=5.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: pillow>=9.0.0
+Requires-Dist: scikit-learn>=1.2.0
+Requires-Dist: tf-keras>=2.18.0
+Requires-Dist: torch>=2.0.0
+Requires-Dist: torchvision>=0.15.0
+Requires-Dist: tqdm>=4.64.0
+Requires-Dist: ultralytics>=8.3.224
+Provides-Extra: all
+Requires-Dist: faiss-gpu-cu12>=1.12.0; extra == 'all'
+Requires-Dist: mypy>=1.0.0; extra == 'all'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'all'
+Requires-Dist: pytest>=7.0.0; extra == 'all'
+Requires-Dist: ruff>=0.8.0; extra == 'all'
+Requires-Dist: ultralytics>=8.3.224; extra == 'all'
+Provides-Extra: dev
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.8.0; extra == 'dev'
+Provides-Extra: faiss-cpu
+Requires-Dist: faiss-cpu>=1.12.0; extra == 'faiss-cpu'
+Provides-Extra: faiss-gpu
+Requires-Dist: faiss-gpu-cu12>=1.12.0; extra == 'faiss-gpu'
+Description-Content-Type: text/markdown
+
+# DeepPerson
+
+[![PyPI version](https://badge.fury.io/py/deep-person.svg)](https://badge.fury.io/py/deep-person)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A simple person re-identification system with automatic person detection and embedding generation.
+
+## Quick Start
+
+**Just 3 lines of code:**
+
+```python
+from deep_person import DeepPerson
+
+# Initialize (downloads models automatically)
+dp = DeepPerson()
+
+# Generate embeddings
+result = dp.represent("person.jpg")
+
+# Verify if two images show the same person
+is_same = dp.verify("person1.jpg", "person2.jpg")
+```
+
+## Installation
+
+**From PyPI (recommended):**
+
+```bash
+# Install with all features
+pip install deep-person[all]
+
+# Or with specific features
+pip install deep-person[faiss-gpu]  # GPU acceleration
+pip install deep-person[faiss-cpu]  # CPU-only
+pip install deep-person              # Core features only
+```
+
+**From source (development):**
+
+```bash
+git clone https://github.com/VitaDynamics/DeepPerson.git
+cd DeepPerson
+pip install -e .[all]
+```
+
+**Run the demo:**
+
+```bash
+# Place a test image named 'back.jpg' in the repository root
+python main.py
+```
+
+## Core API
+
+### Two Simple Methods
+
+#### 1. `represent()` - Generate embeddings from images
+
+```python
+# Single image
+result = dp.represent("person.jpg")
+for subject in result["subjects"]:
+    print(f"Embedding: {subject['embedding'].shape}")
+
+# Multiple images (batch processing)
+result = dp.represent(["img1.jpg", "img2.jpg", "img3.jpg"])
+```
+
+**Returns:**
+```python
+{
+    "subjects": [
+        {
+            "embedding": np.ndarray,  # 2048-dimensional embedding
+            "face_embedding": np.ndarray,  # Optional: 512-dim face embedding
+            "metadata": {
+                "confidence": 0.95,
+                "bbox": (x1, y1, x2, y2)
+            }
+        }
+    ]
+}
+```
+
+#### 2. `verify()` - Identity verification
+
+```python
+# Compare two images
+result = dp.verify("person1.jpg", "person2.jpg")
+print(f"Same person: {result['verified']} (distance: {result['distance']:.4f})")
+
+# With custom threshold
+result = dp.verify("person1.jpg", "person2.jpg", threshold=0.4)
+```
+
+**Returns:**
+```python
+{
+    "verified": True,
+    "distance": 0.25,
+    "threshold": 0.40,
+    "distance_metric": "cosine",
+    "body_distance": 0.30,
+    "face_distance": 0.20,
+    "fusion_score": 0.24
+}
+```
+
+## Key Features
+
+- ✓ **Automatic detection** - YOLO-based person detection
+- ✓ **Multi-modal** - Body + face embeddings with fusion scoring
+- ✓ **GPU acceleration** - Automatic CUDA detection
+- ✓ **Batch processing** - Handle multiple images efficiently
+- ✓ **Multiple metrics** - Cosine, Euclidean, L2 normalization
+- ✓ **Stateless API** - No complex gallery management required
+
+## Requirements
+
+- Python 3.11+
+- Automatic model downloads on first use
+- Optional: CUDA GPU for faster processing
