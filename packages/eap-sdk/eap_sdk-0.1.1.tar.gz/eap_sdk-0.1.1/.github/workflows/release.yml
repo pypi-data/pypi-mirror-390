@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+      id-token: write   # Required by reusable workflow for OIDC (fallback if no token)
+    uses: enterprise-assistant-platform/.github/.github/workflows/python-publish.yml@main
+    with:
+      python-version: '3.12'
+      uv-version: '0.8.0'
+      environment: 'pypi'       # or 'testpypi'
+      publish-target: 'pypi'     # 'pypi' | 'testpypi'
+      dist-dir: 'dist'
+      run-version-check: true
+      create-github-release: true
+      release-files-glob: 'dist/*'
+      pyproject-path: 'pyproject.toml'
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
