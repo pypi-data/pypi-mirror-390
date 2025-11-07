@@ -1,0 +1,128 @@
+Metadata-Version: 2.4
+Name: tomo-detect
+Version: 0.1.4
+Summary: A CLI tool for detecting motor coordinates in tomography data
+Home-page: https://github.com/brendanartley/BYU-competition
+Author: Rajath Kumar
+Author-email: rajathkumar120@gmail.com
+Keywords: tomography,motor detection,deep learning
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Image Recognition
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: torch>=2.0.0
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: tqdm>=4.62.0
+Requires-Dist: monai>=1.0.0
+Requires-Dist: mrcfile>=1.4.0
+Requires-Dist: psutil>=5.8.0
+Requires-Dist: rich>=10.0.0
+Requires-Dist: scipy>=1.9.0
+Requires-Dist: scikit-image>=0.19.0
+Requires-Dist: Pillow>=9.0.0
+Requires-Dist: matplotlib>=3.5.0
+Requires-Dist: seaborn>=0.12.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Tomo-Detect
+
+A command-line tool for detecting motor coordinates in tomography data using deep learning models.
+
+## Installation
+
+```bash
+pip install tomo-detect
+```
+
+## Usage
+
+Basic usage:
+
+```bash
+tomo-detect input_path
+```
+
+The input path can be either:
+
+- A .npy file containing tomography data
+- A zip file containing multiple tomography files
+- A directory containing .npy or .mrc files
+
+### Options
+
+```bash
+tomo-detect --help                     # Show help message and usage information
+tomo-detect input.npy --debug          # Enable debug logging
+tomo-detect input.zip --test           # Run test mode with additional validations
+tomo-detect input.npy --output path    # Specify custom output directory
+tomo-detect input.npy --batch-size 4   # Set custom batch size for inference
+tomo-detect input.npy --device cpu     # Force CPU inference
+```
+
+### Output Files
+
+The tool generates several output files:
+
+1. `motor_detections_submission.csv` - Contains motor coordinates (primary output)
+2. `motor_detections_detailed.csv` - Includes additional detection information
+3. `predictions.npy` - Raw probability maps
+4. `masks.npy` - Binary masks derived from predictions
+5. `summary.json` - Detection summary and statistics
+
+### Example
+
+```bash
+# Process a single .npy file
+tomo-detect sample.npy
+
+# Process multiple files in a zip
+tomo-detect samples.zip
+
+# Enable debug mode for detailed logging
+tomo-detect sample.npy --debug
+```
+
+## Tips and Tricks
+
+1. **Input Preparation**:
+
+   - Ensure input files are properly formatted numpy arrays
+   - For .mrc files, they will be automatically converted
+   - Zip files should contain only supported file types
+
+2. **Performance Optimization**:
+
+   - Use GPU acceleration when available
+   - Adjust batch size based on your memory capacity
+   - For large datasets, consider processing in chunks
+
+3. **Troubleshooting**:
+   - Enable --debug mode for detailed logging
+   - Check system requirements before running
+   - Verify input file formats and dimensions
+
+## System Requirements
+
+- Python 3.8 or higher
+- CUDA-capable GPU (optional but recommended)
+- Minimum 8GB RAM
+- 2GB disk space for models
+
+## License
+
+MIT License
