@@ -1,0 +1,243 @@
+Metadata-Version: 2.4
+Name: zgisdk
+Version: 1.0.0
+Summary: A lightweight utility library for modern Python development
+Author-email: stark <stark@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/stark/zgi
+Project-URL: Repository, https://github.com/stark/zgi
+Project-URL: Issues, https://github.com/stark/zgi/issues
+Keywords: zgi,utility,helper,toolkit,python,openai,ai,api
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.20.0
+Dynamic: license-file
+Dynamic: requires-python
+
+# ZGI SDK
+
+A lightweight Python SDK with OpenAI-compatible API interface.
+
+## Installation
+
+```bash
+pip install zgisdk
+```
+
+## Quick Start
+
+### OpenAI-Compatible API Client
+
+```python
+from zgi import ZGI
+
+# Initialize client
+client = ZGI(api_key="your-api-key")
+
+# Or use environment variable
+# export ZGI_API_KEY="your-api-key"
+client = ZGI()
+
+# Chat completions
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello!"}
+    ]
+)
+print(response['choices'][0]['message']['content'])
+
+# Upload a file
+with open("training_data.jsonl", "rb") as f:
+    file = client.files.create(
+        file=f,
+        purpose="fine-tune"
+    )
+print(f"Uploaded file: {file['id']}")
+
+# Create fine-tuning job
+job = client.fine_tuning.jobs.create(
+    training_file=file['id'],
+    model="gpt-3.5-turbo",
+    hyperparameters={
+        "n_epochs": 3
+    }
+)
+print(f"Fine-tuning job created: {job['id']}")
+
+# Check job status
+job_status = client.fine_tuning.jobs.retrieve(job['id'])
+print(f"Status: {job_status['status']}")
+
+# List models
+models = client.models.list()
+for model in models['data']:
+    print(model['id'])
+```
+
+### Utility Functions
+
+```python
+from zgi import is_empty, deep_clone, debounce, sleep, random_string, format_date
+
+# Check if a value is empty
+is_empty('')  # True
+is_empty([])  # True
+is_empty({})  # True
+
+# Deep clone an object
+original = {'a': 1, 'b': {'c': 2}}
+cloned = deep_clone(original)
+
+# Debounce a function
+@debounce(wait=0.3)
+def my_function():
+    print('Debounced!')
+
+# Sleep for a duration
+sleep(1)  # Sleep for 1 second
+
+# Generate a random string
+random_str = random_string(10)  # Random 10-character string
+
+# Format a date
+from datetime import datetime
+formatted = format_date(datetime.now())  # "2024-01-01"
+```
+
+## API Reference
+
+### ZGI Client
+
+#### `ZGI(api_key, base_url, organization, timeout)`
+
+Initialize the ZGI client.
+
+**Parameters:**
+- `api_key` (str): Your ZGI API key (or set `ZGI_API_KEY` env var)
+- `base_url` (str, optional): Base URL for API (default: `https://api.zgi.ai/v1`)
+- `organization` (str, optional): Organization ID
+- `timeout` (int, optional): Request timeout in seconds (default: 60)
+
+### Chat API
+
+#### `client.chat.completions.create(**kwargs)`
+
+Create a chat completion.
+
+**Parameters:**
+- `model` (str): Model ID (e.g., "gpt-4", "gpt-3.5-turbo")
+- `messages` (list): List of message dicts with 'role' and 'content'
+- `temperature` (float): Sampling temperature (0-2, default: 1.0)
+- `max_tokens` (int, optional): Maximum tokens to generate
+- `stream` (bool): Whether to stream responses (default: False)
+
+### Files API
+
+#### `client.files.create(file, purpose)`
+
+Upload a file.
+
+**Parameters:**
+- `file` (BinaryIO): File object to upload
+- `purpose` (str): Purpose ("fine-tune", "assistants", etc.)
+
+#### `client.files.list(purpose=None)`
+
+List all files.
+
+#### `client.files.retrieve(file_id)`
+
+Get file information.
+
+#### `client.files.delete(file_id)`
+
+Delete a file.
+
+### Fine-tuning API
+
+#### `client.fine_tuning.jobs.create(training_file, model, **kwargs)`
+
+Create a fine-tuning job.
+
+**Parameters:**
+- `training_file` (str): File ID of training data
+- `model` (str): Base model to fine-tune
+- `validation_file` (str, optional): File ID of validation data
+- `hyperparameters` (dict, optional): Training hyperparameters
+- `suffix` (str, optional): Custom model name suffix
+
+#### `client.fine_tuning.jobs.list(limit=20, after=None)`
+
+List fine-tuning jobs.
+
+#### `client.fine_tuning.jobs.retrieve(job_id)`
+
+Get job details.
+
+#### `client.fine_tuning.jobs.cancel(job_id)`
+
+Cancel a job.
+
+### Models API
+
+#### `client.models.list()`
+
+List all available models.
+
+#### `client.models.retrieve(model_id)`
+
+Get model information.
+
+### Utility Functions
+
+#### `is_empty(value: Any) -> bool`
+
+Check if a value is empty (None, empty string, empty list, or empty dict).
+
+#### `deep_clone(obj: T) -> T`
+
+Create a deep copy of an object.
+
+#### `debounce(wait: float = 0.3)`
+
+Decorator to debounce a function with an optional wait time (default: 0.3 seconds).
+
+#### `sleep(seconds: float) -> None`
+
+Sleep for a specified duration in seconds.
+
+#### `random_string(length: int = 10) -> str`
+
+Generate a random alphanumeric string with specified length (default: 10).
+
+#### `format_date(date: datetime = None, fmt: str = "%Y-%m-%d") -> str`
+
+Format a date to a string (default: current date, format: YYYY-MM-DD).
+
+## Environment Variables
+
+- `ZGI_API_KEY`: Your ZGI API key
+- `ZGI_BASE_URL`: Custom API base URL (optional)
+- `ZGI_ORGANIZATION`: Organization ID (optional)
+
+## Requirements
+
+- Python >= 3.7
+- requests >= 2.20.0
+
+## License
+
+MIT
