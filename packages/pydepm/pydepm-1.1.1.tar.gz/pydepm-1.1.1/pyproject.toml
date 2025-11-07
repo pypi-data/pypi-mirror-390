@@ -1,0 +1,44 @@
+[build-system]
+requires = [ "setuptools>=42", "wheel",]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydepm"
+version = "1.1.1"
+description = "PyDepM — Python Dependency Manager"
+dependencies = [ "typer>=0.12.3", "rich>=13.7.0", "packaging>=24.0", "build>=1.2.1", "twine>=5.0.0", "pip-audit>=2.9.0", "pyinstaller>=6.0.0", "pytest>=8.3.4", "toml>=0.10.2", "pip-api>=0.0.34",]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+[[project.authors]]
+name = "ZtaDev"
+
+[project.urls]
+Homepage = "https://github.com/ZtaMDev/PyDepM"
+Repository = "https://github.com/ZtaMDev/PyDepM.git"
+Issues = "https://github.com/ZtaMDev/PyDepM/issues"
+
+[project.scripts]
+pydep = "pydepm.cli:app"
+pydepx = "pydepm.pydepx:main"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = [ "tests",]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --strict-markers --strict-config"
+markers = [ "unit: unit tests", "integration: integration tests", "performance: performance tests", "slow: slow running tests",]
+
+[tool.coverage.run]
+source = [ "pydepm",]
+omit = [ "*/tests/*", "*/test_*", "*/setup.py",]
+
+[tool.coverage.report]
+exclude_lines = [ "pragma: no cover", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "class .*\\bProtocol\\b", "@(abc\\.)?abstractmethod",]
+
+[tool.setuptools.packages.find]
+where = [ "src",]
