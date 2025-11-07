@@ -1,0 +1,96 @@
+[project]
+name = "ruurd-photos-ml"
+version = "0.2.2"
+description = "Some image related machine learning methods, to be used by Ruurd Photos."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Ruurd Bijlsma", email = "ruurd@bijlsma.dev" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pillow>=11.3.0",
+    "torch>=2.8.0",
+    "transformers>=4.57.0",
+    "hf-xet>=1.1.10",
+    "insightface>=0.7.3",
+    "opencv-python>=4.12.0.88",
+    "pytesseract>=0.3.13",
+    "torchvision>=0.23.0",
+    "onnxruntime>=1.23.1",
+    "onnxruntime-gpu>=1.23.0",
+    "open-clip-torch>=3.2.0",
+    "accelerate>=1.11.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/RuurdBijlsma/ruurd-photos-ml"
+Repository = "https://github.com/RuurdBijlsma/ruurd-photos-ml"
+Documentation = "https://ruurdbijlsma.github.io/ruurd-photos-ml"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = ["tests", ".github", ".pre-commit-config.yaml", ".pylintrc", "pytest.ini"]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch_gpu", marker = "sys_platform != 'darwin'" },
+]
+
+
+[tool.ruff]
+line-length = 100
+exclude = ["scripts", "alembic", "__init__.py", "examples"]
+lint.ignore = [
+    'S101', 'INP001',
+    'T201', 'S311',
+    'TRY003', 'PT018',
+    'PLR0913', "B019",
+    "COM812", "D100",
+    "EM101", "EM102",
+    "FBT002", "FBT001",
+    "PLR0915", "C901"
+]
+lint.select = ["ALL"]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.coverage.report]
+exclude_also = [
+    # 1. Exclude an except clause of a specific form:
+    "except ValueError:\\n\\s*assume\\(False\\)",
+    # 2. Comments to turn coverage on and off:
+    "no cover: start(?s:.)*?no cover: stop",
+    # 3. A pragma comment that excludes an entire file:
+    "\\A(?s:.*# pragma: exclude file.*)\\Z",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[[tool.uv.index]]
+name = "pytorch_gpu"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pylint>=3.3.9",
+    "pytest>=8.4.2",
+    "ruff>=0.14.0",
+    "pdoc>=15.0.2",
+    "pytest-cov>=6.1.1",
+]
