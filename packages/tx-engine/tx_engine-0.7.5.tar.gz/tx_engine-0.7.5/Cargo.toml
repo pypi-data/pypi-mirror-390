@@ -1,0 +1,65 @@
+[package]
+name = "chain-gang"
+version = "0.7.5"
+description = "This is a library that enables monitoring of multiple blockchains (BTC, BCH, BSV)."
+# repository = "https://github.com/brentongunning/rust-sv"
+authors = ["Arthur Gordon <a.gordon@nchain.com>"]
+keywords = ["bitcoin", "sv", "cash", "crypto"]
+license = "MIT"
+edition = "2021"
+readme = "README.md"
+
+[dependencies]
+byteorder = "1.2"
+dns-lookup = "3.0.1"
+hex = "0.4.3"
+linked-hash-map = "0.5"
+log = { version = "0.4.28", features = ["max_level_trace", "release_max_level_warn"] }
+db-key = "0.0.5"  # this is a non-trival update
+thiserror = "2.0.17"
+url = "2.5.7"
+
+
+# Crypto
+murmur3 = "0.5.2"
+num-bigint = "0.4.6"
+num-traits = "0.2"
+rand = "0.8.5"  # Don't bump this unless k256 is updated 
+ripemd = "0.1.3"
+sha1 = "0.10.6"
+sha2 = "0.10.9"
+k256 = { version = "0.13.4", features = ["alloc", "arithmetic", "digest", "ecdsa", "once_cell", "pkcs8", "precomputed-tables", "schnorr",
+    "sha2", "sha256", "signature", "std"]}
+snowflake = "1.3"
+hmac = "0.12.1"
+base58 = "0.2.0"
+pbkdf2 = "0.12.2"
+
+# Used by the interface feature
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde_json = { version = "1.0.145", optional = true }
+reqwest = { version = "0.12.24", features = ["json"], optional = true }
+async-mutex = { version = "1.4.1", optional = true }
+async-trait = { version = "0.1.89", optional = true }
+
+# For python feature
+pyo3 = { version = "0.27.1", optional = true }
+regex = "^1.12.2"
+lazy_static = "1.5.0"
+rand_core = "0.9.3"
+typenum = "1.19.0"
+
+
+[lib]
+name = "chain_gang"
+crate-type = ["cdylib", "lib"]
+
+
+[profile.release]
+opt-level = "s"     # Optimize for size over speed
+lto = true          # Enable link-time optimizations to shrink binary
+
+["features"]
+default = ["dep:serde", "dep:serde_json"]
+interface = ["dep:serde", "dep:serde_json", "dep:reqwest", "dep:async-mutex", "dep:async-trait"]
+python = ["dep:serde", "dep:serde_json", "dep:pyo3"]
