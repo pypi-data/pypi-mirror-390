@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+  web:
+    image: nginx:latest
+    container_name: test_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+    networks:
+      - testnet
+
+  cache:
+    image: redis:latest
+    container_name: test_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - testnet
+
+networks:
+  testnet:
+    driver: bridge
