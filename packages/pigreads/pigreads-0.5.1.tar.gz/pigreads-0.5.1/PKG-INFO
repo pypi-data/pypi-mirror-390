@@ -1,0 +1,149 @@
+Metadata-Version: 2.4
+Name: pigreads
+Version: 0.5.1
+Summary: Python-integrated GPU-enabled reaction-diffusion solver
+Author-email: Desmond Kabus <desmond@kabus.eu>
+Project-URL: Homepage, https://gitlab.com/pigreads/pigreads
+Project-URL: Documentation, https://pigreads.readthedocs.io
+Project-URL: Bug Tracker, https://gitlab.com/pigreads/pigreads/-/issues
+Project-URL: Discussions, https://gitlab.com/pigreads/pigreads/-/issues
+Project-URL: Changelog, https://gitlab.com/pigreads/pigreads/-/releases
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: GPU
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: C
+Classifier: Programming Language :: C++
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=2.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: pydantic>=2.10
+Requires-Dist: pyopencl>=2025.2.6
+Requires-Dist: jinja2>=3.1.6
+Provides-Extra: plot
+Requires-Dist: matplotlib>=3.10; extra == "plot"
+Requires-Dist: tqdm>=4.67; extra == "plot"
+Provides-Extra: cli
+Requires-Dist: pigreads[plot]; extra == "cli"
+Requires-Dist: click>=8.1; extra == "cli"
+Provides-Extra: gui
+Requires-Dist: pigreads[cli]; extra == "gui"
+Requires-Dist: pygame>=2.6.1; extra == "gui"
+Provides-Extra: colormaps
+Requires-Dist: cmcrameri>=1.9; extra == "colormaps"
+Provides-Extra: all
+Requires-Dist: pigreads[colormaps]; extra == "all"
+Requires-Dist: pigreads[gui]; extra == "all"
+Provides-Extra: test
+Requires-Dist: pigreads[all]; extra == "test"
+Requires-Dist: pytest>=6; extra == "test"
+Requires-Dist: pytest-cov>=3; extra == "test"
+Provides-Extra: dev
+Requires-Dist: pigreads[test]; extra == "dev"
+Requires-Dist: jinja2>=3; extra == "dev"
+Requires-Dist: myokit>=1.37; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: pigreads[all]; extra == "docs"
+Requires-Dist: sphinx>=7.0; extra == "docs"
+Requires-Dist: myst_parser>=0.13; extra == "docs"
+Requires-Dist: sphinx_copybutton>=0.5.2; extra == "docs"
+Requires-Dist: sphinx_autodoc_typehints>=3.5; extra == "docs"
+Requires-Dist: autodoc_pydantic>=2.2; extra == "docs"
+Requires-Dist: sphinx-click>=6.0.0; extra == "docs"
+Requires-Dist: sphinx_lfs_content>=1.1; extra == "docs"
+Requires-Dist: furo>=2023.08.17; extra == "docs"
+Dynamic: license-file
+
+# Pigreads
+
+[![Pipeline Status][pipeline-badge]][pipeline-link]
+[![Coverage Report][coverage-badge]][coverage-link]
+[![Documentation Status][rtd-badge]][rtd-link]
+
+[![Latest Release][release-badge]][release-link]
+[![PyPI platforms][pypi-platforms]][pypi-link]
+[![PyPI version][pypi-version]][pypi-link]
+
+<!-- SPHINX-START -->
+
+Pigreads stands for **Python-integrated GPU-enabled reaction-diffusion solver**.
+
+## Getting started
+
+### Requirements
+
+Pigreads uses OpenCL for calculations on the graphics cards. OpenCL is usually
+included in the drivers for your graphics card.
+
+The following pages may help installing and accessing OpenCL:
+
+- [ArchWiki: OpenCL on Arch Linux][guide-arch]
+- [OpenCL-Guide: OpenCL on Ubuntu Linux][guide-ubuntu]
+- [OpenCL-Guide: OpenCL on Windows][guide-windows]
+- [Documentation of PyOpenCL][pyopencl].
+
+You can use [`clinfo`][clinfo] to verify you have an OpenCL platform installed.
+
+If instead of the GPU, you want to use CPUs, you can [install PoCL][pocl] as an
+OpenCL platform to compute on the main processors.
+
+### Installation
+
+Install this Python package in the standard way using `pip`, for instance from
+[PyPI][pypi-link] or from a local copy of this repository, see [the Python
+documentation for details][py-install]. To also install all optional
+dependencies, such as for the command line interface (CLI), run:
+
+```
+$ pip install pigreads[all] # from PyPI
+$ pip install .[all] # from source
+```
+
+Note: If installing from source, you need to run `python prepare.py` first to
+render the code templates for the models that are defined as YAML in the
+`models` folder, and other preparation.
+
+### Usage
+
+Simulations can be performed via calls to the Python module (API) or using the
+CLI. See the API and CLI sections in the [documentation for annotated
+examples][rtd-link], or the examples directory in the [Pigreads
+repository][repo].
+
+<!-- prettier-ignore-start -->
+[repo]:           https://gitlab.com/pigreads/pigreads
+[coverage-badge]: https://gitlab.com/pigreads/pigreads/badges/main/coverage.svg
+[coverage-link]:  https://gitlab.com/pigreads/pigreads/-/commits/main
+[pipeline-badge]: https://gitlab.com/pigreads/pigreads/badges/main/pipeline.svg
+[pipeline-link]:  https://gitlab.com/pigreads/pigreads/-/pipelines
+[pypi-link]:      https://pypi.org/project/pigreads/
+[pypi-platforms]: https://img.shields.io/pypi/pyversions/pigreads
+[pypi-version]:   https://img.shields.io/pypi/v/pigreads
+[release-badge]:  https://gitlab.com/pigreads/pigreads/-/badges/release.svg
+[release-link]:   https://gitlab.com/pigreads/pigreads/-/releases
+[rtd-badge]:      https://readthedocs.org/projects/pigreads/badge/?version=latest
+[rtd-link]:       https://pigreads.readthedocs.io/en/latest/?badge=latest
+[python]:         https://www.python.org/
+[py-install]:     https://packaging.python.org/en/latest/tutorials/installing-packages/
+[guide-arch]:     https://wiki.archlinux.org/title/OpenCL
+[guide-ubuntu]:   https://github.com/KhronosGroup/OpenCL-Guide/blob/main/chapters/getting_started_linux.md
+[guide-windows]:  https://github.com/KhronosGroup/OpenCL-Guide/blob/main/chapters/getting_started_windows.md
+[clinfo]:         https://github.com/Oblomov/clinfo
+[pocl]:           https://portablecl.org/docs/html/install.html
+[pyopencl]:       https://pypi.org/project/pyopencl/
+<!-- prettier-ignore-end -->

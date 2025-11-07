@@ -1,0 +1,4 @@
+Legacy
+------
+
+.. automodule:: pigreads.compat
