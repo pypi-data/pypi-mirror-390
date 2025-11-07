@@ -1,0 +1,40 @@
+language: python
+sudo: true
+dist: xenial
+
+python:
+  #- 3.2  # py.test fails at runtime
+  #- 3.3  # pkg_resources on travisci no longer supports 3.3
+  #- 3.4  # requests 2.22 dropped 3.4 support
+  - 3.5
+  - 3.6
+  - 3.7
+  - 3.8
+  - 3.9
+  #- nightly
+
+matrix:
+  fast_finish: true
+  allow_failures:
+  - python: nightly
+  - python: 3.8
+    arch: arm64  # unreliable in travis
+  - python: 3.8
+    arch: s390x  # unreliable in travis
+  include:
+  - python: 3.5
+    env: LOGLEVEL=DEBUG  # same time as normal
+  - python: 3.8
+    arch: arm64  # 50% extra runtime
+  - python: 3.8
+    arch: s390x  # roughly normal time
+
+git:
+  depth: 99999
+
+install: "pip install -r requirements.txt"
+
+script:
+  - make test_coverage
+after_success:
+  coveralls
