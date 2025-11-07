@@ -1,0 +1,62 @@
+#
+# Details about this package (analogous to setup.py)
+#
+[project]
+name = "netdot"
+dynamic = ["version", "readme"]
+description = "Python wrapper for Netdot Web API."
+authors = [{ name = "University of Oregon", email = "nsdevops@uoregon.edu" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.6",
+]
+dependencies = [
+  "configargparse",
+  "humanize",
+  "pathvalidate",
+  "dataclasses; python_version < '3.7'",
+  "requests >=2, <3",
+  "tabulate >=0.8",
+  "typing-inspect",
+  "uologging >=0.7.0",
+  "tqdm",
+]
+keywords = ["NTS", "UO", "netdot", "API", "REST", "IPAM", "VRA"]
+license = { file = "LICENSE" }
+
+[project.optional-dependencies]
+cicd = [
+  "build",
+  "pytest",
+  "pytest-cov",
+  "pytest-vcr",
+  "assertpy",
+]
+dev = [
+  "pytest",
+  "pytest-cov",
+  "pytest-vcr",
+  "assertpy",
+  "autopep8",
+  "isort",
+  "flake8",
+]
+
+[tool.ruff.format]
+quote-style = 'single'
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+
+
+#
+# (Meta) Build-system details, required by Setuptools
+#
+[tool.setuptools.dynamic]
+version = {attr = "netdot.version.__version__"}  # any module attribute compatible with ast.literal_eval
+# TODO How to include multiple files in readme?
+readme = {file = "dist-README.md", content-type = "text/markdown"}
