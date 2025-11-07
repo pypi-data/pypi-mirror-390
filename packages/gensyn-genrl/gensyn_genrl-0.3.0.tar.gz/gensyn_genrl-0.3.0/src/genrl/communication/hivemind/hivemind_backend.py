@@ -1,0 +1,198 @@
+import msgpack
+import os
+import pickle
+import time
+from typing import Any, Dict, List
+
+import torch.distributed as dist
+from hivemind import DHT, get_dht_time
+
+from genrl.communication.communication import Communication
+from genrl.serialization.msgpack_utils import _msgpack_encode, _msgpack_decode
+from genrl.logging_utils.global_defs import get_logger
+
+class HivemindRendezvouz:
+    _STORE = None
+    _IS_MASTER = False
+    _IS_LAMBDA = False
+
+    @classmethod
+    def init(cls, is_master: bool = False):
+        cls._IS_MASTER = is_master
+        cls._IS_LAMBDA = bool(os.environ.get("LAMBDA", False))
+        if cls._STORE is None and cls._IS_LAMBDA:
+            world_size = int(os.environ.get("HIVEMIND_WORLD_SIZE", 1))
+            if "MASTER_FILE" in os.environ:
+                cls._STORE = dist.FileStore(
+                    os.environ["MASTER_FILE"], 
+                    world_size=world_size
+                )
+            else:
+                cls._STORE = dist.TCPStore(
+                    host_name=os.environ["MASTER_ADDR"],
+                    port=int(os.environ["MASTER_PORT"]),
+                    is_master=is_master,
+                    world_size=world_size,
+                    wait_for_workers=True,
+                )
+
+    @classmethod
+    def is_bootstrap(cls) -> bool:
+        return cls._IS_MASTER
+
+    @classmethod
+    def set_initial_peers(cls, initial_peers):
+        if cls._STORE is None and cls._IS_LAMBDA:
+            cls.init()
+        if cls._IS_LAMBDA:
+            cls._STORE.set("initial_peers", pickle.dumps(initial_peers))
+
+    @classmethod
+    def get_initial_peers(cls):
+        if cls._STORE is None and cls._IS_LAMBDA:
+            cls.init()
+        cls._STORE.wait(["initial_peers"])
+        peer_bytes = cls._STORE.get("initial_peers")
+        initial_peers = pickle.loads(peer_bytes)
+        return initial_peers
+
+
+class HivemindBackend(Communication):
+    def __init__(
+        self,
+        initial_peers: List[str] | None = None,
+        timeout: int = 600,
+        disable_caching: bool = False,
+        beam_size: int = 1000,
+        get_retries: int | None = None,
+        max_buffer_size: int = 100 * 1024 * 1024,  # 100MB default
+        **kwargs,
+    ):
+        self.world_size = int(os.environ.get("HIVEMIND_WORLD_SIZE", 1))
+        self.timeout = timeout
+        self.bootstrap = HivemindRendezvouz.is_bootstrap()
+        self.beam_size = beam_size
+        self.dht = None
+
+        if disable_caching:
+            kwargs["cache_locally"] = False
+            kwargs["cache_on_store"] = False
+
+        if self.bootstrap:
+            self.dht = DHT(
+                start=True,
+                host_maddrs=[f"/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic"],
+                initial_peers=initial_peers,
+                **kwargs,
+            )
+            dht_maddrs = self.dht.get_visible_maddrs(latest=True)
+            HivemindRendezvouz.set_initial_peers(dht_maddrs)
+        else:
+            initial_peers = initial_peers or HivemindRendezvouz.get_initial_peers()
+            self.dht = DHT(
+                start=True,
+                host_maddrs=[f"/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic"],
+                initial_peers=initial_peers,
+                **kwargs,
+            )
+        self.step_ = 0
+        self.get_retries = get_retries
+        self.max_buffer_size = max_buffer_size
+        
+        # Initialize msgpack packer/unpacker
+        self.packer = msgpack.Packer(use_bin_type=True, default=_msgpack_encode)
+        self.unpacker_kwargs = {
+            "object_hook": _msgpack_decode,
+            "raw": False,
+            "max_buffer_size": max_buffer_size,
+        }
+
+    def all_gather_object(self, obj: Any) -> Dict[str | int, Any]:
+        key = str(self.step_)
+        self.step_ += 1
+
+        try:
+            _ = self.dht.get_visible_maddrs(latest=True)
+            obj_bytes = self.packer.pack(obj)
+            self.dht.store(
+                key,
+                subkey=str(self.dht.peer_id),
+                value=obj_bytes,
+                expiration_time=get_dht_time() + self.timeout,
+                beam_size=self.beam_size,  
+            )
+            
+            time.sleep(1)
+            t_ = time.monotonic()
+            while True:
+                output_, _ = self.dht.get(key, beam_size=self.beam_size, latest=True)
+                if len(output_) >= self.world_size:
+                    break
+                else:
+                    if time.monotonic() - t_ > self.timeout:
+                        raise RuntimeError(
+                            f"Failed to obtain {self.world_size} values for {key} within timeout."
+                        )
+        except (BlockingIOError, EOFError) as e:
+            return {str(self.dht.peer_id): obj}
+
+        tmp = []
+        for key, value in output_.items():
+            try:
+                unpacker = msgpack.Unpacker(**self.unpacker_kwargs)
+                unpacker.feed(value.value)
+                unpacked_obj = next(unpacker)
+                tmp.append((key, unpacked_obj))
+            except Exception as e:
+                get_logger().warning(f"SKIPPING: Failed to decode value")
+                continue
+        if len(tmp) == 0:
+            return {str(self.dht.peer_id): obj}
+        return {key: value for key, value in tmp}
+
+
+    def get_id(self):
+        return str(self.dht.peer_id)
+
+    def put(self, obj: Any, sub_key: bytes = b""):
+        obj_bytes = self.packer.pack(obj)
+        self.dht.store(
+            sub_key,
+            subkey=str(self.dht.peer_id),
+            value=obj_bytes,
+            expiration_time=get_dht_time() + self.timeout,
+            beam_size=self.beam_size,
+        )
+
+    def get(self, sub_key: bytes = b"") -> dict:
+        t_ = time.monotonic()
+        tries = 0
+        while True:
+            output_ = self.dht.get(sub_key, beam_size=self.beam_size, latest=True)
+            if output_ is not None:
+                output_, _ = output_
+                if len(output_) > 0:
+                    break
+            elif self.get_retries and tries >= self.get_retries:
+                return dict()
+            tries += 1
+
+            if time.monotonic() - t_ > self.timeout:
+                raise RuntimeError(
+                    f"Failed to get any values for {sub_key} within timeout."
+                )
+
+        tmp = []
+        for key, value in output_.items():
+            try:
+                unpacker = msgpack.Unpacker(**self.unpacker_kwargs)
+                unpacker.feed(value.value)
+                unpacked_obj = next(unpacker)
+                tmp.append((key, unpacked_obj))
+            except Exception as e:
+                get_logger().warning(f"SKIPPING: Failed to decode value for {key}: {e}")
+                continue
+        if len(tmp) == 0:
+            return {}
+
+        return {key: value for key, value in tmp}
