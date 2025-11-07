@@ -1,0 +1,376 @@
+# TogoMQ SDK for Python
+
+[![PyPI version](https://img.shields.io/pypi/v/togomq-sdk.svg)](https://pypi.org/project/togomq-sdk/)
+[![Python versions](https://img.shields.io/pypi/pyversions/togomq-sdk.svg)](https://pypi.org/project/togomq-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/TogoMQ/togomq-sdk-python/actions/workflows/ci.yml/badge.svg)](https://github.com/TogoMQ/togomq-sdk-python/actions/workflows/ci.yml)
+
+The official Python SDK for [TogoMQ](https://togomq.io/) - a modern, high-performance message queue service. This SDK provides a simple and intuitive API for publishing and subscribing to messages using gRPC streaming.
+
+## Features
+
+- 🚀 **High Performance**: Built on gRPC for efficient communication
+- 📡 **Streaming Support**: Native support for streaming pub/sub operations
+- 🔒 **Secure**: TLS encryption and token-based authentication
+- 🎯 **Simple API**: Easy-to-use client with fluent configuration
+- 📝 **Comprehensive Logging**: Configurable log levels for debugging
+- ⚡ **Thread-Safe**: Safe for concurrent use with threading
+- ✅ **Well Tested**: Comprehensive test coverage
+- 🐍 **Type Hints**: Full typing support for better IDE integration
+
+## Requirements
+
+- Python 3.9 or higher
+- Access to a TogoMQ server
+- Valid TogoMQ authentication token
+
+## Installation
+
+Install the SDK using pip:
+
+```bash
+pip install togomq-sdk
+```
+
+## Quick Start
+
+```python
+from togomq import Client, Config, Message
+
+# Create client with your token
+config = Config(token="your-token-here")
+client = Client(config)
+
+try:
+    # Publish a message
+    messages = [Message("orders", b"Hello TogoMQ!")]
+    response = client.pub_batch(messages)
+    print(f"Published {response.messages_received} messages")
+finally:
+    client.close()
+```
+
+## Configuration
+
+The SDK supports flexible configuration with sensible defaults:
+
+### Default Configuration
+
+```python
+from togomq import Config, Client
+
+# Create client with defaults (only token is required)
+config = Config(token="your-token-here")
+client = Client(config)
+```
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| host | q.togomq.io | TogoMQ server hostname |
+| port | 5123 | TogoMQ server port |
+| log_level | info | Logging level (debug, info, warn, error, none) |
+| token | (required) | Authentication token |
+| use_tls | True | Whether to use TLS encryption |
+
+### Custom Configuration
+
+```python
+config = Config(
+    token="your-token-here",
+    host="custom.togomq.io",
+    port=9000,
+    log_level="debug",
+    use_tls=True,
+)
+client = Client(config)
+```
+
+## Usage
+
+### Publishing Messages
+
+**Note**: Topic name is required for all published messages. Each message must specify a topic.
+
+#### Publishing a Batch of Messages
+
+```python
+from togomq import Client, Config, Message
+
+# Create client
+config = Config(token="your-token")
+client = Client(config)
+
+try:
+    # Create messages - topic is required for each message
+    messages = [
+        Message("orders", b"order-1"),
+        Message("orders", b"order-2").with_variables({
+            "priority": "high",
+            "customer": "12345",
+        }),
+        Message("orders", b"order-3")
+            .with_postpone(60)      # Delay 60 seconds
+            .with_retention(3600),  # Keep for 1 hour
+    ]
+    
+    # Publish
+    response = client.pub_batch(messages)
+    print(f"Published {response.messages_received} messages")
+finally:
+    client.close()
+```
+
+#### Publishing via Generator (Streaming)
+
+```python
+from typing import Generator
+
+def message_generator() -> Generator[Message, None, None]:
+    for i in range(100):
+        msg = Message("events", f"event-{i}".encode())
+        yield msg
+
+# Publish streaming
+with Client(config) as client:
+    response = client.pub(message_generator())
+    print(f"Published {response.messages_received} messages")
+```
+
+### Subscribing to Messages
+
+**Note**: Topic is required for subscriptions. Use wildcards like `"orders.*"` for pattern matching, or `"*"` to receive messages from all topics.
+
+#### Basic Subscription
+
+```python
+from togomq import Client, Config, SubscribeOptions
+
+# Create client
+config = Config(token="your-token")
+client = Client(config)
+
+try:
+    # Subscribe to specific topic
+    # Topic is required - use "*" to subscribe to all topics
+    options = SubscribeOptions("orders")
+    msg_gen, err_gen = client.sub(options)
+    
+    # Receive messages
+    for msg in msg_gen:
+        print(f"Received message from {msg.topic}: {msg.body.decode()}")
+        print(f"Message UUID: {msg.uuid}")
+        
+        # Access variables
+        if "priority" in msg.variables:
+            print(f"Priority: {msg.variables['priority']}")
+finally:
+    client.close()
+```
+
+#### Advanced Subscription with Options
+
+```python
+# Subscribe with batch size and rate limiting
+# Default values: Batch = 0 (server default 1000), SpeedPerSec = 0 (unlimited)
+options = (SubscribeOptions("orders.*")  # Wildcard topic
+    .with_batch(10)                      # Receive up to 10 messages at once
+    .with_speed_per_sec(100))            # Limit to 100 messages per second
+
+msg_gen, err_gen = client.sub(options)
+```
+
+**Subscription Options:**
+- **batch**: Maximum number of messages to receive at once (default: 0 = server default 1000)
+- **speed_per_sec**: Rate limit for message delivery per second (default: 0 = unlimited)
+
+#### Subscribe to All Topics (Wildcard)
+
+```python
+# Subscribe to all topics using "*" wildcard
+options = SubscribeOptions("*")  # "*" = all topics
+msg_gen, err_gen = client.sub(options)
+```
+
+#### Subscribe with Pattern Wildcards
+
+```python
+# Subscribe to all orders topics (orders.new, orders.updated, etc.)
+options = SubscribeOptions("orders.*")
+msg_gen, err_gen = client.sub(options)
+
+# Subscribe to all topics
+options = SubscribeOptions("*")
+msg_gen, err_gen = client.sub(options)
+```
+
+## Message Structure
+
+### Publishing Message
+
+**Important**: Topic is required when publishing messages.
+
+```python
+class Message:
+    topic: str              # Message topic (required)
+    body: bytes            # Message payload
+    variables: Dict[str, str]  # Custom key-value metadata
+    postpone: int          # Delay in seconds before message is available
+    retention: int         # How long to keep message (seconds)
+```
+
+### Received Message
+
+```python
+class Message:
+    topic: str              # Message topic
+    uuid: str              # Unique message identifier
+    body: bytes            # Message payload
+    variables: Dict[str, str]  # Custom key-value metadata
+```
+
+## Error Handling
+
+The SDK provides detailed error information:
+
+```python
+from togomq import TogoMQError, ErrorCode
+
+try:
+    response = client.pub_batch(messages)
+except TogoMQError as e:
+    # Check error type
+    if e.code == ErrorCode.AUTH:
+        print("Authentication failed")
+    elif e.code == ErrorCode.CONNECTION:
+        print("Connection error")
+    elif e.code == ErrorCode.VALIDATION:
+        print("Validation error")
+    else:
+        print(f"Error: {e}")
+```
+
+### Error Codes
+
+- `ErrorCode.CONNECTION` - Connection or network errors
+- `ErrorCode.AUTH` - Authentication failures
+- `ErrorCode.VALIDATION` - Invalid input or configuration
+- `ErrorCode.PUBLISH` - Publishing errors
+- `ErrorCode.SUBSCRIBE` - Subscription errors
+- `ErrorCode.STREAM` - General streaming errors
+- `ErrorCode.CONFIGURATION` - Configuration errors
+
+## Logging
+
+Control logging verbosity with the `log_level` configuration:
+
+```python
+config = Config(
+    token="your-token",
+    log_level="debug",  # debug, info, warn, error, none
+)
+```
+
+**Log levels:**
+- `debug` - All logs including debug information
+- `info` - Informational messages and above
+- `warn` - Warnings and errors only
+- `error` - Error messages only
+- `none` - Disable logging
+
+## Best Practices
+
+1. **Reuse Clients**: Create one client per application/thread and reuse it
+2. **Handle Errors**: Always check and handle errors appropriately
+3. **Close Connections**: Always close clients using `client.close()` or context manager
+4. **Use Context Manager**: Prefer `with` statement for automatic cleanup
+5. **Batch Messages**: Use `pub_batch()` for better performance when publishing multiple messages
+6. **Monitor Subscriptions**: Always handle both message and error generators in subscriptions
+
+```python
+# ✅ Good - Using context manager
+with Client(config) as client:
+    client.pub_batch(messages)
+
+# ✅ Good - Manual cleanup
+client = Client(config)
+try:
+    client.pub_batch(messages)
+finally:
+    client.close()
+```
+
+## Examples
+
+Check out the `examples/` directory for complete working examples:
+
+- `examples/publish.py` - Publishing examples
+- `examples/subscribe.py` - Subscription examples
+- `examples/complete_workflow.py` - Complete workflow with threading
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/TogoMQ/togomq-sdk-python.git
+cd togomq-sdk-python
+
+# Install dependencies
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=togomq --cov-report=html
+```
+
+### Code Quality
+
+```bash
+# Format code
+black togomq tests examples
+
+# Lint code
+ruff check togomq tests examples
+
+# Type checking
+mypy togomq
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: [https://togomq.io/docs](https://togomq.io/docs)
+- **Issues**: [https://github.com/TogoMQ/togomq-sdk-python/issues](https://github.com/TogoMQ/togomq-sdk-python/issues)
+- **TogoMQ Website**: [https://togomq.io](https://togomq.io/)
+
+## Related Projects
+
+- [togomq-grpc-python](https://github.com/TogoMQ/togomq-grpc-python) - Auto-generated gRPC protobuf definitions
+- [togomq-sdk-go](https://github.com/TogoMQ/togomq-sdk-go) - TogoMQ SDK for Go
+
+## Changelog
+
+See [Releases](https://github.com/TogoMQ/togomq-sdk-python/releases) for version history and changes.
+TogoMQ SDK library for Python
