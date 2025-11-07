@@ -1,0 +1,574 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #000;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Видео на весь экран */
+#videoControls {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#videoControls video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* Минималистичный VHS эффект */
+.no-video-signal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #888;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    z-index: 2; /* Поверх видео */
+}
+
+.no-video-signal.active {
+    display: flex;
+}
+
+.vhs-text {
+    font-size: 5em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    position: relative;
+}
+
+/* Горизонтальная рябь */
+.vhs-text::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(255, 255, 255, 0.03) 50%,
+        transparent 100%
+    );
+    animation: horizontal-ripple 0.8s linear infinite;
+}
+
+@keyframes horizontal-ripple {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.vhs-subtitle {
+    font-size: 0.9em;
+    margin-top: 8px;
+    opacity: 0.7;
+    position: relative;
+}
+
+/* Легкое мерцание текста */
+.vhs-text, .vhs-subtitle {
+    animation: subtle-flicker 4s infinite alternate;
+}
+
+@keyframes subtle-flicker {
+    0%, 100% {
+        opacity: 0.9;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+/* Панель управления поверх видео */
+.control-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Левая панель - карта и батарея */
+.left-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 250px;
+    pointer-events: auto;
+}
+
+/* Правая панель - телеметрия */
+.right-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 240px;
+    pointer-events: auto;
+}
+
+/* Карта */
+.map-container {
+    width: 250px;
+    height: 250px;
+    background: rgba(60, 70, 85, 0.65);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 126, 0, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Сетка в стиле AR */
+.grid-line {
+    position: absolute;
+    background: rgba(255, 126, 0, 0.1);
+}
+
+.grid-line.vertical {
+    width: 1px;
+    height: 100%;
+}
+
+.grid-line.horizontal {
+    height: 1px;
+    width: 100%;
+}
+
+/* Координаты в AR-стиле */
+.coordinates {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #ff7e00;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    font-weight: 600;
+    border: 1px solid rgba(255, 126, 0, 0.2);
+    backdrop-filter: blur(5px);
+    text-shadow: 0 0 6px rgba(255, 126, 0, 0.3);
+}
+
+/* Эффект свечения для карты */
+.map-container::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(255, 126, 0, 0.1), rgba(255, 126, 0, 0.05), rgba(255, 126, 0, 0.1));
+    border-radius: 12px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.map-container:hover::before {
+    opacity: 1;
+}
+.robot-sprite {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease;
+    filter: drop-shadow(0 0 8px rgba(255, 126, 0, 0.6));
+    z-index: 10;
+}
+
+.robot-sprite svg {
+    width: 75%;
+    height: 75%;
+    transition: transform 0.3s ease;
+}
+
+.robot-sprite.moving svg {
+    animation: moveAnimation 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes moveAnimation {
+    from { transform: translateY(0px); }
+    to { transform: translateY(-2px); }
+}
+
+.coordinates {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    color: white;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 3px 6px;
+    border-radius: 4px;
+    z-index: 10;
+}
+
+/* Батарея */
+.battery-container {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px 14px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 126, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.battery-icon {
+    width: 45px;
+    height: 22px;
+    border: 2px solid rgba(255, 126, 0, 0.4);
+    border-radius: 4px;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.battery-icon::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 7px;
+    width: 3px;
+    height: 8px;
+    background: rgba(255, 126, 0, 0.4);
+    border-radius: 0 2px 2px 0;
+}
+
+.battery-level {
+    height: 100%;
+    background: linear-gradient(90deg,
+        rgba(255, 71, 87, 0.8),
+        rgba(255, 165, 2, 0.8),
+        rgba(46, 213, 115, 0.8)
+    );
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(255, 126, 0, 0.3);
+}
+
+.battery-info {
+    flex: 1;
+}
+
+.battery-percentage {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #ff7e00;
+    text-shadow: 0 0 8px rgba(255, 126, 0, 0.4);
+    animation: value-pulse 2s infinite alternate;
+}
+
+.battery-status {
+    font-size: 0.75em;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Эффект свечения для всей панели батареи */
+.battery-container::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(255, 126, 0, 0.1), rgba(255, 126, 0, 0.05), rgba(255, 126, 0, 0.1));
+    border-radius: 10px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.battery-container:hover::before {
+    opacity: 1;
+}
+
+/* Анимация пульсации как у телеметрии */
+@keyframes value-pulse {
+    0% {
+        opacity: 0.8;
+        text-shadow: 0 0 6px rgba(255, 126, 0, 0.3);
+    }
+    100% {
+        opacity: 1;
+        text-shadow: 0 0 12px rgba(255, 126, 0, 0.6);
+    }
+}
+
+/* Телеметрия */
+.telemetry-panel {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid rgba(255, 126, 0, 0.2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.telemetry-title {
+    text-align: center;
+    color: #ff7e00;
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.9;
+}
+
+.telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.telemetry-item {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    border: 1px solid rgba(255, 126, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.telemetry-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 126, 0, 0.3);
+}
+
+.telemetry-name {
+    font-size: 0.75em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 3px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.telemetry-value {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #ff7e00;
+    text-shadow: 0 0 8px rgba(255, 126, 0, 0.4);
+}
+
+/* Анимация для живого интерфейса */
+.telemetry-value {
+    animation: value-pulse 2s infinite alternate;
+}
+
+@keyframes value-pulse {
+    0% {
+        opacity: 0.8;
+        text-shadow: 0 0 6px rgba(255, 126, 0, 0.3);
+    }
+    100% {
+        opacity: 1;
+        text-shadow: 0 0 12px rgba(255, 126, 0, 0.6);
+    }
+}
+
+/* Эффект свечения для всей панели */
+.telemetry-panel::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(255, 126, 0, 0.1), rgba(255, 126, 0, 0.05), rgba(255, 126, 0, 0.1));
+    border-radius: 12px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.telemetry-panel:hover::before {
+    opacity: 1;
+}
+
+/* Активные команды */
+.active-commands {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+    text-align: center;
+    border: 1px solid rgba(255, 126, 0, 0.2);
+    backdrop-filter: blur(10px);
+    color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.active-commands span {
+    display: inline-block;
+    background: rgba(255, 126, 0, 0.15);
+    color: #ff7e00;
+    padding: 4px 8px;
+    margin: 2px 4px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+    border: 1px solid rgba(255, 126, 0, 0.3);
+    text-shadow: 0 0 6px rgba(255, 126, 0, 0.4);
+    animation: command-pulse 1.5s infinite alternate;
+}
+
+@keyframes command-pulse {
+    0% {
+        background: rgba(255, 126, 0, 0.15);
+        box-shadow: 0 0 4px rgba(255, 126, 0, 0.2);
+    }
+    100% {
+        background: rgba(255, 126, 0, 0.25);
+        box-shadow: 0 0 8px rgba(255, 126, 0, 0.4);
+    }
+}
+
+/* Эффект свечения как у телеметрии */
+.active-commands::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(255, 126, 0, 0.1), rgba(255, 126, 0, 0.05), rgba(255, 126, 0, 0.1));
+    border-radius: 10px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.active-commands:hover::before {
+    opacity: 1;
+}
+
+/* Управление с клавиатуры */
+.keyboard-hints {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-align: center;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 126, 0, 0.5);
+}
+
+.rover-id {
+    position: absolute;
+    bottom: 20px;
+    right: 10px;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-align: center;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 126, 0, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.rover-id:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 126, 0, 0.8);
+    box-shadow: 0 0 10px rgba(255, 126, 0, 0.3);
+}
+
+.id-hint {
+    display: inline-block;
+    background: #ff7e00;
+    color: white;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    margin: 0 2px;
+    font-weight: 700;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.id-hint:hover {
+    background: #ff9a3c;
+    box-shadow: 0 0 8px rgba(255, 126, 0, 0.5);
+}
+
+.keyboard-hints p {
+    color: white;
+    font-size: 0.75em;
+    margin: 2px 0;
+}
+
+.key-hint {
+    display: inline-block;
+    background: #ff7e00;
+    color: white;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    margin: 0 2px;
+    font-weight: 700;
+    font-size: 1.2em;
+}
+
+/* Логотип */
+.logo {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.logo-text {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #ff7e00;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.logo-subtitle {
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}

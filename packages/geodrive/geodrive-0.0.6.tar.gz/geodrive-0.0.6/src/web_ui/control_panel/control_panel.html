@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rover Control Panel</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script type="module" src="/static/js/main.js"></script>
+</head>
+<body>
+    <!-- Основной контейнер -->
+    <div class="ar-container">
+        <!-- Левая панель - карта -->
+        <div class="map-section">
+            <div id="mapContextMenu" class="context-menu">
+                <div class="context-menu-item" id="sendToPoint">Отправить ровер в точку</div>
+                <div class="context-menu-item" id="addWaypoint">Установить точку маршрута</div>
+                <div class="context-menu-divider"></div>
+                <div class="context-menu-item" id="clearRoute">Очистить маршрут</div>
+                <div class="context-menu-item" id="startRoute">Запустить маршрут</div>
+
+            </div>
+            <div id="targetMarker" class="target-marker" style="display: none;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" fill="none" stroke="rgb(255, 109, 27)" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="3" fill="rgb(255, 109, 27)"/>
+                    <path d="M12 4V2M12 22V20M4 12H2M22 12H20" stroke="rgb(255, 109, 27)" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <div id="routeOverlay" class="route-overlay"></div>
+
+            <div class="map-container" id="mapContainer">
+                <div class="robot-sprite" id="robotSprite">
+                    <svg width="20" height="20" viewBox="0 0 130 136" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22.5 125.568V20.4615L54.4053 2.5H75.5947L107.5 20.4615V125.568H65L22.5 125.568Z" class="ch_f" fill="rgb(255, 109, 27)" stroke="#919191" stroke-width="5"/>
+                        <rect x="2.5" y="2.5" width="20" height="40" class="ch_f" fill="rgb(0, 0, 0)" fill-opacity="0.5" stroke="#919191" stroke-width="5"/>
+                        <rect x="107.5" y="2.5" width="20" height="40" class="ch_f" fill="rgb(0, 0, 0)" fill-opacity="0.5" stroke="#919191" stroke-width="5"/>
+                        <rect x="2.5" y="93.5" width="20" height="40" class="ch_f" fill="rgb(0, 0, 0)" fill-opacity="0.5" stroke="#919191" stroke-width="5"/>
+                        <rect x="107.5" y="93.5" width="20" height="40" class="ch_f" fill="rgb(0, 0, 0)" fill-opacity="0.5" stroke="#919191" stroke-width="5"/>
+                        <path d="M15.7851 118.138L65 19.7082L114.215 118.138L65.8598 103.673L65 103.416L64.1402 103.673L15.7851 118.138Z" fill="white" stroke="#333333" stroke-width="6"/>
+                    </svg>
+                </div>
+
+                <div class="battery-container">
+                    <div class="battery-icon">
+                        <div class="battery-level" id="batteryLevel"></div>
+                    </div>
+
+                </div>
+                <div class="coordinates" id="coordinates">X: 0.00 Y: 0.00 YAW: 0.00</div>
+                <div class="velocities" id="velocities">VX: 0.00 VY: 0.00</div>
+                <div class="map-overlay">
+                    <div class="map-title">ARENA MAP 11×11</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая панель - управление -->
+        <div class="control-section">
+
+            <!-- Заголовок и статус -->
+            <div class="header-panel">
+                <div class="logo">GEODRIVE</div>
+                <div class="subtitle">ROVER CONTROL SYSTEM</div>
+            </div>
+
+            <div class="config-console" id="configConsole">
+                <div class="console-header">ЛОГ СОБЫТИЙ</div>
+                <div class="console-content"></div>
+            </div>
+
+            <div class="tabs-container">
+                <div class="tabs-header">
+                    <button class="tab-btn active" data-tab="settings">Настройки</button>
+                    <button class="tab-btn" data-tab="route">Маршрут</button>
+                </div>
+
+                <!-- Вкладка настроек -->
+                <div class="tab-content active" id="settings-tab">
+                    <div class="config-panel">
+                        <div class="config-header">
+                            <span>КОНФИГУРАЦИЯ РОВЕРА</span>
+                            <div class="config-controls">
+                                <button class="config-btn" id="refreshConfig">🔄 обновить</button>
+                                <button class="config-btn" id="saveConfig">💾 сохранить</button>
+                                <button class="config-btn" id="applyConfig">⚡ применить</button>
+                                <button class="config-btn" id="loadConfig">📁 загрузить</button>
+                            </div>
+                        </div>
+
+                        <div class="config-status">
+                            <span class="api-endpoint" id="apiEndpoint">API: Загрузка...</span>
+                            <span class="config-version" id="configVersion">Версия: ?</span>
+                        </div>
+
+                        <!-- Автогенерируемые секции -->
+                        <div class="config-sections" id="configSections">
+                            <div class="loading-config">Загрузка конфигурации...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка маршрута -->
+                <div class="tab-content" id="route-tab">
+                    <div class="route-controls-panel">
+                        <div class="route-header">
+                            <span>УПРАВЛЕНИЕ МАРШРУТОМ</span>
+                            <div class="route-panel-controls">
+                                <button id="routeClear" class="route-btn">🗑</button>
+                            </div>
+                        </div>
+
+                        <div class="route-content">
+                            <div class="waypoints-section">
+                                <div class="section-title">Точки маршрута</div>
+                                <div id="waypointsList" class="waypoints-list"></div>
+                            </div>
+
+                            <div class="route-actions-grid">
+                                <button id="routeStart" class="route-action-btn start">▶ Старт</button>
+                                <button id="routeStop" class="route-action-btn stop">⏹ Стоп</button>
+                                <button id="routeSave" class="route-action-btn save">💾 Сохранить</button>
+                                <button id="routeLoad" class="route-action-btn load">📁 Загрузить</button>
+                            </div>
+
+                            <div class="route-info">
+                                <div class="route-stat">
+                                    <span class="stat-label">Точек:</span>
+                                    <span id="waypointsCount" class="stat-value">0</span>
+                                </div>
+                                <div class="route-stat">
+                                    <span class="stat-label">Длина:</span>
+                                    <span id="routeLength" class="stat-value">0.00 м</span>
+                                </div>
+                                <div class="route-stat">
+                                    <span class="stat-label">Статус:</span>
+                                    <span id="routeStatus" class="stat-value inactive">Неактивен</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Инструкции -->
+            <div class="instructions">
+                <p>Управление: <span class="key-hint">W</span> <span class="key-hint">A</span> <span class="key-hint">S</span> <span class="key-hint">D</span>
+                   | Звуки: <span class="key-hint">M</span> <span class="key-hint">B</span> | Стоп: <span class="key-hint">Space</span></p>
+            </div>
+
+        </div>
+
+    </div>
+</body>
+</html>
