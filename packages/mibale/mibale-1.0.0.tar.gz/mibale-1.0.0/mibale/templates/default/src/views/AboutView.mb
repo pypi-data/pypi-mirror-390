@@ -1,0 +1,407 @@
+<template>
+<View class="about-view">
+    <View class="header">
+        <Button class="back-btn" @click="goBack">
+            <Text class="back-icon">⬅️</Text>
+            <Text class="back-text">Retour</Text>
+        </Button>
+        <Text class="header-title">ℹ️ À propos</Text>
+    </View>
+    
+    <ScrollView class="content">
+        <View class="app-card">
+            <Text class="app-icon">🚀</Text>
+            <Text class="app-name">Mibale Framework</Text>
+            <Text class="app-version">Version 1.0.0</Text>
+        </View>
+        
+        <View class="info-section">
+            <Text class="section-title">📖 Description</Text>
+            <Text class="info-text">
+                Mibale est un framework mobile natif en Python inspiré de Vue.js.
+                Il permet de créer des applications Android et iOS avec une syntaxe
+                familière et des performances natives.
+            </Text>
+        </View>
+        
+        <View class="info-section">
+            <Text class="section-title">🛠️ Technologies</Text>
+            <View class="tech-list">
+                <View class="tech-item" v-for="tech in technologies" :key="tech.name">
+                    <Text class="tech-icon">{{ tech.icon }}</Text>
+                    <View class="tech-info">
+                        <Text class="tech-name">{{ tech.name }}</Text>
+                        <Text class="tech-desc">{{ tech.description }}</Text>
+                    </View>
+                </View>
+            </View>
+        </View>
+        
+        <View class="info-section">
+            <Text class="section-title">🎯 Fonctionnalités</Text>
+            <View class="features-list">
+                <View class="feature-item" v-for="feature in features" :key="feature">
+                    <Text class="feature-bullet">✅</Text>
+                    <Text class="feature-text">{{ feature }}</Text>
+                </View>
+            </View>
+        </View>
+        
+        <View class="links-section">
+            <Text class="section-title">🔗 Liens utiles</Text>
+            <View class="links-grid">
+                <Button class="link-btn" @click="openLink('docs')">
+                    <Text class="link-icon">📚</Text>
+                    <Text class="link-text">Documentation</Text>
+                </Button>
+                
+                <Button class="link-btn" @click="openLink('github')">
+                    <Text class="link-icon">🐙</Text>
+                    <Text class="link-text">GitHub</Text>
+                </Button>
+                
+                <Button class="link-btn" @click="openLink('examples')">
+                    <Text class="link-icon">💡</Text>
+                    <Text class="link-text">Exemples</Text>
+                </Button>
+                
+                <Button class="link-btn" @click="openLink('issues')">
+                    <Text class="link-icon">🐛</Text>
+                    <Text class="link-text">Bugs</Text>
+                </Button>
+            </View>
+        </View>
+        
+        <View class="developer-section">
+            <Text class="section-title">👨‍💻 Développeur</Text>
+            <View class="developer-card">
+                <Text class="dev-avatar">👤</Text>
+                <Text class="dev-name">Votre Nom</Text>
+                <Text class="dev-role">Développeur Mibale</Text>
+                <Text class="dev-contact">contact@example.com</Text>
+            </View>
+        </View>
+    </ScrollView>
+</View>
+</template>
+
+<script>
+from mibale import BaseComponent
+from mibale.router import useRouter
+
+class AboutView(BaseComponent):
+    def setup(self):
+        self.router = useRouter()
+        
+        # Données des technologies
+        self.technologies = [
+            {
+                'name': 'Python 3.8+',
+                'icon': '🐍',
+                'description': 'Langage principal'
+            },
+            {
+                'name': 'Kivy',
+                'icon': '🎨',
+                'description': 'UI multiplateforme'
+            },
+            {
+                'name': 'Pyjnius',
+                'icon': '🤖',
+                'description': 'Bridge Android'
+            },
+            {
+                'name': 'PyObjC',
+                'icon': '🍎',
+                'description': 'Bridge iOS'
+            },
+            {
+                'name': 'Vue.js-like',
+                'icon': '⚡',
+                'description': 'Syntaxe des composants'
+            },
+            {
+                'name': 'Hot Reload',
+                'icon': '🔥',
+                'description': 'Développement rapide'
+            }
+        ]
+        
+        # Liste des fonctionnalités
+        self.features = [
+            'Composants .mb (similaires à .vue)',
+            'Router avec navigation',
+            'Stores globaux (Pinia-like)',
+            'HTTP Client (Axios-like)',
+            'Rendu natif Android/iOS',
+            'Hot-reload en développement',
+            'Build APK/IPA automatique',
+            'Directives Vue-like',
+            'Système réactif',
+            'UI components natifs'
+        ]
+    
+    def goBack(self):
+        """Retour à la page précédente"""
+        self.router.back()
+        print("⬅️ Retour à l'accueil")
+    
+    def openLink(self, link_type):
+        """Ouvre un lien externe"""
+        links = {
+            'docs': 'https://mibale.dev/docs',
+            'github': 'https://github.com/mibale/mibale',
+            'examples': 'https://mibale.dev/examples',
+            'issues': 'https://github.com/mibale/mibale/issues'
+        }
+        
+        url = links.get(link_type, 'https://mibale.dev')
+        print(f"🔗 Ouverture: {url}")
+        
+        # Dans une vraie app, on ouvrirait le navigateur
+        # self.bridge.open_url(url)
+    
+    def on_mount(self):
+        print("📍 AboutView mounted")
+    
+    def on_destroy(self):
+        print("🗑️ AboutView destroyed")
+</script>
+
+<style scoped>
+.about-view {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header {
+    flex-direction: row;
+    align-items: center;
+    padding: 48px 16px 16px;
+    background: rgba(255,255,255,0.1);
+}
+
+.back-btn {
+    flex-direction: row;
+    align-items: center;
+    background: rgba(255,255,255,0.2);
+    padding: 8px 12px;
+    border-radius: 20px;
+    margin-right: 16px;
+}
+
+.back-icon {
+    font-size: 16px;
+    margin-right: 4px;
+}
+
+.back-text {
+    font-size: 14px;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.header-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    flex: 1;
+    text-align: center;
+}
+
+.content {
+    flex: 1;
+    background: transparent;
+    padding: 16px;
+}
+
+.app-card {
+    background: rgba(255,255,255,0.95);
+    padding: 32px 24px;
+    border-radius: 20px;
+    align-items: center;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.app-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+
+.app-name {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.app-version {
+    font-size: 16px;
+    color: #7f8c8d;
+    text-align: center;
+}
+
+.info-section {
+    background: rgba(255,255,255,0.95);
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.info-text {
+    font-size: 14px;
+    color: #5a6c7d;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.tech-list {
+    gap: 12px;
+}
+
+.tech-item {
+    flex-direction: row;
+    align-items: center;
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.tech-icon {
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.tech-info {
+    flex: 1;
+}
+
+.tech-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 2px;
+}
+
+.tech-desc {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.features-list {
+    gap: 8px;
+}
+
+.feature-item {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 8px 0;
+}
+
+.feature-bullet {
+    font-size: 14px;
+    margin-right: 8px;
+    margin-top: 1px;
+}
+
+.feature-text {
+    font-size: 14px;
+    color: #5a6c7d;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.links-section {
+    background: rgba(255,255,255,0.95);
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.links-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.link-btn {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    align-items: center;
+    width: 45%;
+    min-width: 120px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.link-btn:active {
+    background: #f8f9fa;
+    transform: scale(0.98);
+}
+
+.link-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+}
+
+.link-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+}
+
+.developer-section {
+    background: rgba(255,255,255,0.95);
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.developer-card {
+    background: #f8f9fa;
+    padding: 24px;
+    border-radius: 16px;
+    align-items: center;
+    border: 1px solid #e9ecef;
+}
+
+.dev-avatar {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.dev-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.dev-role {
+    font-size: 14px;
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.dev-contact {
+    font-size: 14px;
+    color: #7f8c8d;
+}
+</style>
