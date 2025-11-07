@@ -1,0 +1,340 @@
+<template>
+<View class="home-view">
+    <View class="header">
+        <Text class="header-title">🏠 Accueil</Text>
+        <Text class="header-subtitle">Page principale de l'application</Text>
+    </View>
+    
+    <ScrollView class="content">
+        <HelloWorld />
+        
+        <View class="features">
+            <Text class="section-title">✨ Fonctionnalités Mibale</Text>
+            
+            <View class="feature-grid">
+                <View class="feature-card" v-for="feature in features" :key="feature.id">
+                    <Text class="feature-icon">{{ feature.icon }}</Text>
+                    <Text class="feature-title">{{ feature.title }}</Text>
+                    <Text class="feature-description">{{ feature.description }}</Text>
+                </View>
+            </View>
+        </View>
+        
+        <View class="quick-actions">
+            <Text class="section-title">⚡ Actions Rapides</Text>
+            
+            <View class="actions-grid">
+                <Button class="action-btn" @click="navigateToAbout">
+                    <Text class="action-icon">📄</Text>
+                    <Text class="action-text">À propos</Text>
+                </Button>
+                
+                <Button class="action-btn" @click="showAlert">
+                    <Text class="action-icon">🔔</Text>
+                    <Text class="action-text">Notification</Text>
+                </Button>
+                
+                <Button class="action-btn" @click="toggleTheme">
+                    <Text class="action-icon">{{ themeIcon }}</Text>
+                    <Text class="action-text">Thème</Text>
+                </Button>
+                
+                <Button class="action-btn" @click="refreshData">
+                    <Text class="action-icon">🔄</Text>
+                    <Text class="action-text">Rafraîchir</Text>
+                </Button>
+            </View>
+        </View>
+        
+        <View class="stats">
+            <Text class="section-title">📊 Statistiques</Text>
+            
+            <View class="stats-grid">
+                <View class="stat-item">
+                    <Text class="stat-value">{{ stats.views }}</Text>
+                    <Text class="stat-label">Vues</Text>
+                </View>
+                
+                <View class="stat-item">
+                    <Text class="stat-value">{{ stats.users }}</Text>
+                    <Text class="stat-label">Utilisateurs</Text>
+                </View>
+                
+                <View class="stat-item">
+                    <Text class="stat-value">{{ stats.uptime }}s</Text>
+                    <Text class="stat-label">Uptime</Text>
+                </View>
+            </View>
+        </View>
+    </ScrollView>
+</View>
+</template>
+
+<script>
+from mibale import BaseComponent, ref, computed
+from mibale.router import useRouter
+import time
+
+class HomeView(BaseComponent):
+    def setup(self):
+        # Router pour la navigation
+        self.router = useRouter()
+        
+        # State
+        self.isDarkTheme = ref(False)
+        self.stats = ref({
+            'views': 142,
+            'users': 28,
+            'uptime': 0
+        })
+        
+        # Données des fonctionnalités
+        self.features = [
+            {
+                'id': 1,
+                'icon': '⚡',
+                'title': 'Hot Reload',
+                'description': 'Rechargement à chaud en temps réel'
+            },
+            {
+                'id': 2,
+                'icon': '📱',
+                'title': 'Multiplateforme',
+                'description': 'Android, iOS et Desktop'
+            },
+            {
+                'id': 3,
+                'icon': '🎨',
+                'title': 'Composants',
+                'description': 'Système de composants Vue-like'
+            },
+            {
+                'id': 4,
+                'icon': '🛣️',
+                'title': 'Router',
+                'description': 'Navigation entre les vues'
+            },
+            {
+                'id': 5,
+                'icon': '🏪',
+                'title': 'State Management',
+                'description': 'Stores globaux Pinia-like'
+            },
+            {
+                'id': 6,
+                'icon': '🌐',
+                'title': 'HTTP Client',
+                'description': 'Client Axios-like pour les APIs'
+            }
+        ]
+        
+        # Computed
+        self.themeIcon = computed(lambda: '🌙' if self.isDarkTheme.value else '☀️')
+    
+    def on_mount(self):
+        """Appelé quand la vue est montée"""
+        print("📍 HomeView mounted")
+        
+        # Met à jour l'uptime périodiquement
+        self.start_time = time.time()
+        self._update_uptime()
+    
+    def _update_uptime(self):
+        """Met à jour le temps de fonctionnement"""
+        import threading
+        
+        def update():
+            while True:
+                self.stats.value['uptime'] = int(time.time() - self.start_time)
+                time.sleep(1)
+        
+        thread = threading.Thread(target=update, daemon=True)
+        thread.start()
+    
+    def navigateToAbout(self):
+        """Navigation vers la page À propos"""
+        self.router.push('/about')
+        print("🛣️ Navigation vers About")
+    
+    def showAlert(self):
+        """Affiche une alerte/notification"""
+        print("🔔 Notification affichée")
+        # Dans une vraie app, on utiliserait un système de notifications natif
+    
+    def toggleTheme(self):
+        """Bascule entre les thèmes clair/sombre"""
+        self.isDarkTheme.value = not self.isDarkTheme.value
+        theme = "sombre" if self.isDarkTheme.value else "clair"
+        print(f"🎨 Thème changé: {theme}")
+    
+    def refreshData(self):
+        """Rafraîchit les données"""
+        print("🔄 Données rafraîchies")
+        # Simulation de rafraîchissement
+        self.stats.value['views'] += 1
+    
+    def on_destroy(self):
+        """Appelé quand la vue est détruite"""
+        print("🗑️ HomeView destroyed")
+</script>
+
+<style scoped>
+.home-view {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header {
+    padding: 48px 24px 24px;
+    align-items: center;
+    background: rgba(255,255,255,0.1);
+}
+
+.header-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.header-subtitle {
+    font-size: 16px;
+    color: rgba(255,255,255,0.8);
+    text-align: center;
+}
+
+.content {
+    flex: 1;
+    background: transparent;
+}
+
+.features {
+    padding: 24px;
+    background: rgba(255,255,255,0.95);
+    margin: 16px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.feature-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+}
+
+.feature-card {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    align-items: center;
+    width: 45%;
+    min-width: 140px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.feature-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.feature-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.feature-description {
+    font-size: 12px;
+    color: #6c757d;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.quick-actions {
+    padding: 24px;
+    background: rgba(255,255,255,0.95);
+    margin: 16px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.actions-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.action-btn {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    align-items: center;
+    width: 45%;
+    min-width: 120px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.action-btn:active {
+    background: #f8f9fa;
+    transform: scale(0.98);
+}
+
+.action-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.action-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+}
+
+.stats {
+    padding: 24px;
+    background: rgba(255,255,255,0.95);
+    margin: 16px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    margin-bottom: 32px;
+}
+
+.stats-grid {
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.stat-item {
+    align-items: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+</style>
