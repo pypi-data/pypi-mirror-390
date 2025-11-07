@@ -1,0 +1,17 @@
+services:
+  keycloak:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Variables de construcción, si no se pasan, toman el valor por defecto
+        MAIN_DATABASE_URL: ${MAIN_DATABASE_URL:-""}
+        MAIN_KEYCLOAK_URL: ${MAIN_KEYCLOAK_URL:-""}
+    container_name: keycloak
+    ports:
+      - "8090:80"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+volumes:
+  keycloak_data:
