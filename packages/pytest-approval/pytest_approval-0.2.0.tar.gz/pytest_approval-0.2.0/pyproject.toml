@@ -1,0 +1,82 @@
+[project]
+name = "pytest-approval"
+version = "0.2.0"
+authors = [{name="HeiGIT ohsome team", email="ohsome@heigit.org"}]
+description = "A simple approval test library utilizing external diff programs such as PyCharm and Visual Studio Code to compare approved and received output."
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+classifiers = [
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+]
+license = "LGPL-3.0-only"
+license-files = ["COPYING*"]
+dependencies = [
+    "pytest>=8.3.5",
+]
+
+[project.urls]
+Homepage = "https://ohsome.org/"
+# TODO: update once dedicated documentation is available
+Documentation = "https://github.com/GIScience/pytest-approval/blob/main/README.md"
+Repository = "https://github.com/GIScience/pytest-approval"
+Issues = "https://github.com/GISciene/pytest-approval/issues"
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-subprocess>=1.5.3",
+    "ruff==0.14.1", # in sync w/ pre-commit
+]
+
+[project.optional-dependencies]
+image = [
+    "numpy>=2.3.1",
+    "pillow>=11.3.0"
+]
+
+[project.entry-points.pytest11]
+pytest_approval = "pytest_approval.plugin"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle Error
+    "F",    # Pyflakes
+    "I",    # isort
+    "N",    # pep8-nameing
+    "Q",    # flake8-quotes
+    "W",    # pycodestyle Warning
+    "C90",  # mccabe
+    "TRY",  # tryceratops
+    "RUF",  # ruff-specific rules
+    "FURB", # refurb
+    "PERF", # perflint
+    "S",    # bandit
+    "B",    # bugbear
+    "SIM",  # simplify
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/*" = ["S101"]  # S101 usage of asserts
+
+[tool.pytest-approval]
+"approvals-dir"="tests/approvals"
