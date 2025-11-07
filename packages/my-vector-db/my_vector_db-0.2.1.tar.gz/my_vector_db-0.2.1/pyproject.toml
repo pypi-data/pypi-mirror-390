@@ -1,0 +1,88 @@
+[project]
+name = "my-vector-db"
+version = "0.2.1"
+description = "A lightweight vector database built with Python"
+readme = "README.md"
+authors = [
+    { name = "Adam Shedivy", email = "ajshedivyaj@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "agno>=2.2.1",
+    "anthropic>=0.71.0",
+    "cohere>=5.19.0",
+    "dotenv>=0.9.9",
+    "fastapi>=0.119.1",
+    "fastmcp>=2.13.0.2",
+    "mcp>=1.20.0",
+    "numpy>=2.3.4",
+    "openai>=2.6.1",
+    "pydantic>=2.12.3",
+    "sqlalchemy>=2.0.44",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[project.scripts]
+my-vector-db = "my_vector_db.cli:main"
+
+[project.optional-dependencies]
+cli = [
+    "prompt-toolkit>=3.0.0",
+    "rich>=13.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "bump-my-version>=1.2.4",
+    "httpx>=0.28.1",
+    "ipykernel>=7.1.0",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.1",
+]
+examples = [
+    "chonkie>=1.4.0",
+]
+cli = [
+    "prompt-toolkit>=3.0.0",
+    "rich>=13.0.0",
+]
+
+[tool.bumpversion]
+current_version = "0.2.1"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+commit = true
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+message = "chore: bump version {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "src/my_vector_db/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "## [Unreleased]"
+replace = "## [Unreleased]\n\n## [{new_version}] - {now:%Y-%m-%d}"
+
+[tool.mypy]
+mypy_path = "src"
+explicit_package_bases = true
+namespace_packages = true
