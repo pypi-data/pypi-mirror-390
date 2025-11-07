@@ -1,0 +1,14 @@
+name: 自巡检
+summary: 巡检当前 KetaOps 系统的运行状态（集群、节点、分片、写入耗时、写入流量）
+enabled: true
+triggers: [巡检, 自检, healthcheck, ketaops]
+permissions: [read_only]
+tools_whitelist: [list_assets, search_data, get_repo_fields]
+description: |
+  ## 巡检步骤
+    1. 通过工具`list_assets cluster`检查集群状态，确保所有节点都正常运行
+    2. 通过工具`list_assets node`检查节点状态，确保所有节点都正常运行
+    3. 通过工具`list_assets indices`检查索引状态，确保所有索引都正常运行
+    4. 通过工具`search2 repo='"_internal" AND origin="_collector"| timechart span="30s" avg(avgHandlingTimeInMilli) as \'response_time\'| sort by _time asc'`检查写入耗时，确保写入耗时在正常范围内
+    5. 通过工具`search_data spl='search2 repo="_internal" AND origin = "_collector"| eval kiloBytesPS=kiloBytes/30| timechart span="30s" sum(kiloBytesPS) as \'kiloBytesPS\'| sort by _time asc'`检查写入流量，确保写入流量在正常范围内
+    6. 总结巡检结果，输出巡检报告，报告包含集群状态、节点状态、分片状态、写入耗时、写入流量等信息，保证报告内容格式美观清晰。

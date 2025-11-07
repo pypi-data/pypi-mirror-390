@@ -1,0 +1,33 @@
+name: 模拟数据
+summary: 生成模拟日志或指标数据并插入到指定仓库，用于联调、演示与压测
+enabled: true
+triggers: [mock, 模拟数据, 生成日志, 生成指标, 造数, 测试数据]
+permissions: [write]
+tools_whitelist: [list_assets, mock_log, mock_metrics, search_data, get_docs, get_repo_fields]
+description: |
+  ## 使用场景
+    - 需要快速构造可用的数据集，用于UI演示、功能联调或性能压测。
+    - 支持生成两类数据：日志（nginx/java/linux）与指标（metrics）。
+
+  ## 操作步骤
+    1. 选择目标仓库：
+       - 列出已存在的仓库以避免误写：`list_assets asset_type="repo" prefix="" page_size=50 sort="docTotal" order="desc"`
+       - 指标仓库通常为 `metrics_keta`，可根据环境调整。
+
+
+    2. 生成日志数据（当仓库类型为event时）：
+       - `mock_log repo="<仓库名>" number=100 log_type="nginx" batch=2000`
+       - `log_type` 可选：`nginx`、`java`、`linux`；`number` 为写入条数。
+
+    3. 生成指标数据（当仓库类型为metric时）：
+       - `mock_metrics repo="metrics_keta" number=500 batch=2000`
+       - 指标将自动生成常见维度与数值，便于图表/统计类功能测试。
+
+    4. 验证数据：
+       - 日志示例查询：`search_data spl='search2 repo="<仓库名>" | stats count()'`
+       - 指标示例查询：`search_data spl='show metric names | where like(name, "%cpu%")'`
+
+  ## 注意事项
+    - 该技能会向后端写入数据，需在测试/演示环境使用；生产环境谨慎。
+    - 写入量较大时可适当调高 `batch`；并发 `workers` 默认1，必要时再调整。
+    - 生成后建议执行简单查询验证是否写入成功与数据分布是否符合预期。

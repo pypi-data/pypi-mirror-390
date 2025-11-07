@@ -1,0 +1,31 @@
+name: 资源创建
+summary: 使用资产API创建新的资源，支持指定类型、名称与数据
+enabled: true
+triggers: [资源创建, 创建资源, 新建资源, 资产创建, 创建资产, 新建资产, create asset, create resource]
+permissions: [write]
+tools_whitelist: [list_queryable, list_assets, get_asset_detail, create_asset]
+description: |
+  ## 资源创建步骤
+    1. 查看可查询的资产类型：执行工具 `list_queryable`，选择要创建的 `asset_type`（如 repo、metric、targets 等）。
+    2. 检查现有资产避免重名：执行工具 `list_assets asset_type="<类型>" prefix="<关键字>"` 列出现有资产并确认没有重名；必要时调整 `page_size|sort|order`。
+    3. 准备资产数据：确定 `asset_name` 与 `asset_data`（JSON 字符串），字段依据目标类型的要求进行填写。
+    4. 创建资产：执行工具 `create_asset asset_type="<类型>" asset_name="<名称>" asset_data='<JSON字符串>'`。
+    5. 验证创建结果：执行工具 `get_asset_detail asset_type="<类型>" asset_id="<名称或ID>"` 查看详情并确认。
+
+  ## 注意事项
+  - `list_assets` 需要传入 `asset_type` 与 `prefix` 参数；当需要全量查看时可将 `prefix` 设为通用关键字或简短前缀。
+  - `asset_data` 必须是合法的 JSON 字符串；不同 `asset_type` 的字段要求可能不同，请根据具体类型填写。
+  - 如果创建失败，请检查服务端返回的错误信息，并调整字段或名称后重试。
+
+  ## 示例
+  - 列出可查询资产类型：
+    `list_queryable`
+
+  - 搜索现有资产（避免重名）：
+    `list_assets asset_type="repo" prefix="demo" page_size=50 sort="updateTime" order="desc"`
+
+  - 创建资产（示例 JSON）：
+    `create_asset asset_type="repo" asset_name="demo-repo" asset_data='{"description":"演示仓库","owner":"team-a","labels":["demo","test"]}'`
+
+  - 验证创建：
+    `get_asset_detail asset_type="repo" asset_id="demo-repo"`

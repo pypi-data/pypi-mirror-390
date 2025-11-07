@@ -1,0 +1,15 @@
+name: 指标计算
+summary: 使用 mstats/rollup/rate/hperc/topseries 等语法进行指标统计与分析
+enabled: true
+triggers: [指标计算, 指标, 统计, 聚合, mstats, rate, sumRate, hperc, topseries]
+permissions: [read_only]
+tools_whitelist: [get_docs, search_data, display_chart_textual]
+description: |
+  ## 指标计算步骤
+    1. 【重要】查询指标搜索语法：通过工具 `get_docs metric_search_syntax` 查看指标计算的使用方法与注意事项，例如：`get_docs metric_search_syntax`
+    2. 先搜索可能匹配的指标名称，可通过工具 `search_data`搜索，例如：`search_data spl='show metric names |where like(name, "%cpu%")'`
+    3. 获取指标的tag信息，可通过工具 `search_data`搜索，例如：`search_data spl='show metric tags | where like(name, "%cpu%")'`
+    4. 根据用户需求选择合适的聚合函数与修饰符（如 `start|end|span|timeshift`），构建 `mstats` 查询；必要时结合 `rollup`、`rate`、`hperc`、`topseries` 等管道命令。
+    5. 使用工具 `search_data spl='<SPL查询>'` 执行查询，并根据结果调整过滤条件与时间窗口。
+    6. 对结果进行归纳，输出结论与下一步建议（如异常区间、Top序列、比例/速率变化等）。
+    7. 必要时，通过工具 `display_chart_textual` 可视化结果，例如：`display_chart_textual spl='<SPL查询>'`
