@@ -1,0 +1,359 @@
+Metadata-Version: 2.4
+Name: spiral-rl
+Version: 0.2.0
+Summary: SPIRAL: Self-Play Reinforcement Learning framework for training LLMs on competitive games
+Project-URL: Homepage, https://github.com/spiral-rl/spiral-on-tinker
+Project-URL: Documentation, https://github.com/spiral-rl/spiral-on-tinker#readme
+Project-URL: Issues, https://github.com/spiral-rl/spiral-on-tinker/issues
+Project-URL: Source, https://github.com/spiral-rl/spiral-on-tinker
+Project-URL: Repository, https://github.com/spiral-rl/spiral-on-tinker
+Author-email: Bo Liu <benjaminliu.eecs@gmail.com>, Zichen Liu <lkevinzc@gmail.com>, Simon Yu <simon011130@gmail.com>
+Maintainer-email: SPIRAL Team <benjaminliu.eecs@gmail.com>
+License: Apache-2.0
+License-File: LICENSE
+Keywords: game-playing,language-models,llm,multi-agent,reinforcement-learning,self-play
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Requires-Dist: antlr4-python3-runtime==4.13.2
+Requires-Dist: human-eval
+Requires-Dist: latex2sympy2
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: tabulate
+Requires-Dist: textarena==0.6.4
+Requires-Dist: textblob
+Requires-Dist: tqdm>=4.65.0
+Requires-Dist: weave
+Provides-Extra: all
+Requires-Dist: chz; extra == 'all'
+Requires-Dist: oat-llm==0.2.1; extra == 'all'
+Requires-Dist: tinker; extra == 'all'
+Requires-Dist: tinker-cookbook; extra == 'all'
+Requires-Dist: vllm==0.8.4; extra == 'all'
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: isort>=5.12.0; extra == 'dev'
+Requires-Dist: mypy>=1.0.0; extra == 'dev'
+Requires-Dist: pylint>=2.17.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Provides-Extra: full
+Requires-Dist: black>=23.0.0; extra == 'full'
+Requires-Dist: chz; extra == 'full'
+Requires-Dist: isort>=5.12.0; extra == 'full'
+Requires-Dist: mypy>=1.0.0; extra == 'full'
+Requires-Dist: oat-llm==0.2.1; extra == 'full'
+Requires-Dist: pylint>=2.17.0; extra == 'full'
+Requires-Dist: pytest>=7.0.0; extra == 'full'
+Requires-Dist: tinker; extra == 'full'
+Requires-Dist: tinker-cookbook; extra == 'full'
+Requires-Dist: vllm==0.8.4; extra == 'full'
+Requires-Dist: wandb>=0.15.0; extra == 'full'
+Provides-Extra: oat
+Requires-Dist: oat-llm==0.2.1; extra == 'oat'
+Requires-Dist: vllm==0.8.4; extra == 'oat'
+Provides-Extra: tinker
+Requires-Dist: chz; extra == 'tinker'
+Requires-Dist: tinker; extra == 'tinker'
+Requires-Dist: tinker-cookbook; extra == 'tinker'
+Description-Content-Type: text/markdown
+
+# SPIRAL-on-Tinker
+
+Self-play reinforcement learning framework for training language models on competitive games, powered by [Tinker](https://tinker-docs.thinkingmachines.ai/).
+
+## Overview
+
+SPIRAL-on-Tinker provides a scalable implementation of self-play RL training for LLMs using Tinker's distributed training infrastructure. The system trains models to play competitive two-player zero-sum games, developing reasoning and strategic capabilities through continuous self-improvement.
+
+### Key Features
+
+- **Actor-Learner Architecture**: Parallel actors sample trajectories while a centralized learner processes them
+- **Role-conditioned Advantage Estimation (RAE)**: Separate advantage calculation for each player role
+- **Population-based Self-Play (FSP)**: Train against historical checkpoints for robust policies
+- **Multi-environment Support**: TicTacToe, Kuhn Poker, Liars Dice, Simple Negotiation, etc.
+- **Async Training**: Optional actor-learner decoupling with replay buffer
+- **Tinker Integration**: Leverage Tinker's LoRA training, vLLM inference, and distributed infrastructure
+
+## Installation
+
+### From PyPI (Recommended)
+
+```bash
+# Create environment
+conda create -y -n spiral python=3.10
+conda activate spiral
+
+# Install with Tinker backend (lightweight, recommended)
+pip install spiral-rl[tinker]
+
+# Install with OAT backend (requires GPU)
+pip install spiral-rl[oat]
+
+# Install with both backends
+pip install spiral-rl[all]
+
+# Install with development tools
+pip install spiral-rl[full]
+```
+
+### From Source
+
+```bash
+# Clone repository
+git clone https://github.com/spiral-rl/spiral-on-tinker.git
+cd spiral-on-tinker
+
+# Create environment
+conda create -y -n spiral python=3.10
+conda activate spiral
+
+# Install in editable mode
+pip install -e .
+
+# Or install with extras
+pip install -e ".[tinker]"  # Tinker backend only
+pip install -e ".[full]"    # Everything including dev tools
+```
+
+## Quick Start
+
+### Basic Training
+
+```bash
+python train_spiral_tinker.py \
+    model_name="Qwen/Qwen3-8B-Base" \
+    renderer_name=qwen3 \
+    env_ids='TicTacToe-v0,KuhnPoker-v1' \
+    batch_size=128 \
+    learning_rate=4e-5 \
+    wandb_project=spiral
+```
+
+### Population-based Self-Play (FSP)
+
+```bash
+python train_spiral_tinker.py \
+    model_name="Qwen/Qwen3-8B-Base" \
+    env_ids='KuhnPoker-v1,LiarsDice-v1' \
+    fsp_enabled=True \
+    fsp_pool_size=25 \
+    fsp_update_interval=5 \
+    wandb_project=spiral
+```
+
+### Resume Training with FSP
+
+```bash
+python train_spiral_tinker.py \
+    model_name="Qwen/Qwen3-8B-Base" \
+    load_checkpoint_path="tinker://xxx/weights/000180" \
+    fsp_resume_checkpoint_base="tinker://xxx/sampler_weights/" \
+    fsp_enabled=True \
+    fsp_pool_size=25
+```
+
+See [RESUME_FSP.md](docs/RESUME_FSP.md) for detailed instructions on resuming FSP training.
+
+## Architecture
+
+### Package Structure
+
+The codebase uses a modular three-tier architecture:
+
+```
+spiral/
+├── core/           # Shared components (used by both backends)
+│   ├── envs/      # Custom TextArena game implementations
+│   ├── agents/    # Agent implementations (RandomAgent, utils)
+│   ├── template.py # Prompt templates for different model types
+│   └── utils.py   # Basic utilities (EMA, GameState, extract_boxed_answer)
+├── oat/           # OAT-specific implementation (vLLM-based)
+│   ├── components.py # SelfPlayCollector, MATHOracle
+│   └── metrics.py    # EvaluationMetrics
+└── tinker/        # Tinker-specific implementation (imports from spiral.core)
+    ├── dataset.py        # SpiralRLDatasetBuilder
+    ├── renderer.py       # Prompt rendering with template selection
+    ├── utils.py          # Tinker-specific utils (logging, metrics)
+    ├── training/         # Training loops and environment management
+    │   ├── env.py           # SpiralTwoPlayerEnv, TwoPlayerCoordinator
+    │   ├── rollouts.py      # Trajectory collection with draw retry
+    │   ├── train.py         # Main training loop factory
+    │   ├── train_step.py    # Single training step logic
+    │   ├── population.py    # PopulationManager for FSP
+    │   └── async_actor_learner/ # Async architecture with replay buffer
+    └── eval/          # Evaluation framework
+        ├── evaluator.py  # GameEvaluator for game-based evaluation
+        └── math_test.py  # Math benchmark evaluation
+```
+
+**Key Architecture Points**:
+- `spiral/core` contains **all shared components**: game environments, agents, templates, and basic utilities
+- `spiral/tinker` and `spiral/oat` import from `spiral.core` (no code duplication)
+- `spiral/tinker/utils.py` contains **Tinker-specific** utilities (logging, trajectory metrics, JSON serialization)
+
+### Two Training Backends
+
+- **`train_spiral.py`**: OAT backend with vLLM, multi-GPU support, original SPIRAL implementation
+- **`train_spiral_tinker.py`**: Tinker backend with distributed training, LoRA, FSP support
+
+### Training Pipeline (Tinker Backend)
+
+1. **Environment Setup**: `SpiralTwoPlayerEnv` wraps TextArena games with observation formatters
+2. **Self-Play Collection**: `do_group_rollout()` generates trajectories with both players using current policy
+3. **Dataset Building**: `SpiralRLDatasetBuilder` processes trajectories into training data
+4. **Advantage Estimation**: RAE computes separate advantages for each role using role-specific baselines
+5. **Policy Updates**: Tinker's PPO learner updates policy using collected trajectories
+6. **Evaluation**: `GameEvaluator` tracks win rates against opponents, optional math test evaluation
+
+## Configuration
+
+Key training parameters:
+
+```python
+# Model settings
+model_name: str = "Qwen/Qwen3-8B-Base"
+renderer_name: str = "qwen3"  # qwen3, llama3, deepseek, etc.
+lora_rank: int = 64
+
+# Training
+batch_size: int = 128
+learning_rate: fl = 4e-5
+max_tokens: int = 16384
+loss_fn: str = "importance_sampling"  # or "ppo"
+
+# SPIRAL-specific
+use_role_baseline: bool = True
+role_baseline_ema_gamma: float = 0.95
+filter_draw: bool = False
+max_draw_retries: int = 5
+
+# FSP (Population-based)
+fsp_enabled: bool = False
+fsp_pool_size: int = 25
+fsp_start_from: int = 0
+fsp_update_interval: int = 5
+
+# Async Actor-Learner
+use_async_actor_learner: bool = False
+replay_buffer_max_staleness: int = 5
+```
+
+See [train_spiral_tinker.py](train_spiral_tinker.py) for full configuration options.
+
+## Examples
+
+Training scripts for different model sizes are in `examples/`:
+
+```bash
+# Qwen3-4B training
+bash examples/qwen3_4b/train.sh
+
+# Qwen3-8B training
+bash examples/qwen3_8b/train.sh
+
+# Qwen3-8B with FSP (pool=25)
+bash examples/qwen3_8b/train_fsp_pool_25.sh
+
+# Qwen3-8B with async actor-learner
+bash examples/qwen3_8b/train_async_actor_learner.sh
+
+# Resume FSP training
+bash examples/qwen3_8b/resume_fsp.sh
+```
+
+## Supported Environments
+
+From [TextArena](https://github.com/LeonGuertler/TextArena):
+
+- **TicTacToe-v0**: Classic tic-tac-toe
+- **KuhnPoker-v1**: Simplified poker variant
+- **LiarsDice-v1**: Bluffing dice game
+- **SimpleNegotiation-v2**: Resource negotiation
+- **ConnectFour-v0**: Connect 4 game
+- And more...
+
+## Key Algorithms
+
+### Role-conditioned Advantage Estimation (RAE)
+
+In self-play, both players' trajectories come from the same policy, but with different roles. RAE computes separate advantages for each role:
+
+```python
+# Player 0 advantages
+adv_P0 = returns_P0 - baseline_P0
+
+# Player 1 advantages
+adv_P1 = returns_P1 - baseline_P1
+```
+
+This prevents conflating the two roles and improves training stability.
+
+### Population-based Self-Play (FSP)
+
+Instead of pure self-play, FSP trains against a pool of historical checkpoints:
+
+- Current policy plays against randomly sampled opponents from the pool
+- Pool is updated at regular intervals with new checkpoints
+- Provides more diverse training signal and robustness
+
+See [spiral_tinker/training/population.py](spiral_tinker/training/population.py) for implementation.
+
+## Development
+
+### Testing
+
+```bash
+# Run tests
+pytest tests/
+
+# Run specific test
+pytest tests/test_training.py -k test_population_manager
+```
+
+### Linting
+
+```bash
+# Format code
+black spiral_tinker/
+isort spiral_tinker/
+
+# Check
+flake8 spiral_tinker/
+```
+
+## Citation
+
+If you use this code in your research, please cite:
+
+```bibtex
+@software{spiral_tinker2025,
+  title={SPIRAL-on-Tinker: Self-play RL for LLMs},
+  author={SPIRAL Team},
+  year={2025},
+  url={https://github.com/spiral-rl/spiral-on-tinker}
+}
+```
+
+## License
+
+Apache 2.0 - See [LICENSE](LICENSE) for details.
+
+## Links
+
+- **Main SPIRAL Repository**: https://github.com/spiral-rl/spiral
+- **Tinker Platform**: https://tinker-docs.thinkingmachines.ai/
+- **TextArena**: https://github.com/LeonGuertler/TextArena
+- **Documentation**: [docs/](docs/)
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Support
+
+- **Issues**: https://github.com/spiral-rl/spiral-on-tinker/issues
+- **Discussions**: https://github.com/spiral-rl/spiral-on-tinker/discussions

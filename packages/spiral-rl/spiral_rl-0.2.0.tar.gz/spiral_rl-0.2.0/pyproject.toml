@@ -1,0 +1,120 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spiral-rl"
+version = "0.2.0"
+description = "SPIRAL: Self-Play Reinforcement Learning framework for training LLMs on competitive games"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+keywords = ["reinforcement-learning", "self-play", "language-models", "multi-agent", "llm", "game-playing"]
+authors = [
+  { name = "Bo Liu", email = "benjaminliu.eecs@gmail.com" },
+  { name = "Zichen Liu", email = "lkevinzc@gmail.com" },
+  { name = "Simon Yu", email = "simon011130@gmail.com" },
+]
+maintainers = [
+  { name = "SPIRAL Team", email = "benjaminliu.eecs@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core dependencies (framework-agnostic)
+dependencies = [
+  "textarena==0.6.4",
+  "numpy>=1.24.0",
+  "tqdm>=4.65.0",
+  "textblob",
+  "latex2sympy2",
+  "tabulate",
+  "human_eval",
+  "antlr4-python3-runtime==4.13.2",
+  "weave",
+]
+
+[project.optional-dependencies]
+# OAT backend dependencies
+oat = [
+  "oat-llm==0.2.1",
+  "vllm==0.8.4",
+]
+
+# Tinker backend dependencies
+tinker = [
+  "tinker",
+  "tinker-cookbook",
+  "chz",
+]
+
+# Development dependencies
+dev = [
+  "pytest>=7.0.0",
+  "black>=23.0.0",
+  "isort>=5.12.0",
+  "mypy>=1.0.0",
+  "pylint>=2.17.0",
+]
+
+# All dependencies
+all = [
+  "spiral-rl[oat,tinker]",
+]
+
+# Full development setup
+full = [
+  "spiral-rl[all,dev]",
+  "wandb>=0.15.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/spiral-rl/spiral-on-tinker"
+Documentation = "https://github.com/spiral-rl/spiral-on-tinker#readme"
+Issues = "https://github.com/spiral-rl/spiral-on-tinker/issues"
+Source = "https://github.com/spiral-rl/spiral-on-tinker"
+Repository = "https://github.com/spiral-rl/spiral-on-tinker"
+
+[project.scripts]
+spiral-tinker-train = "train_spiral_tinker:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["spiral"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.coverage.run]
+source_pkgs = ["spiral", "tests"]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
