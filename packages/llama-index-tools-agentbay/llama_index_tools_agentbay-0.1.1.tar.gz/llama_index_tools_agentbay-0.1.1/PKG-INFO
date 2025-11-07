@@ -1,0 +1,203 @@
+Metadata-Version: 2.4
+Name: llama-index-tools-agentbay
+Version: 0.1.1
+Summary: AgentBay tools integration for LlamaIndex - provides browser automation, file operations, and command execution capabilities
+License: MIT
+License-File: LICENSE
+Author: LlamaIndex Team
+Requires-Python: >=3.8.1,<4.0.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: llama-index-core (>=0.12.0,<0.13.0)
+Requires-Dist: wuying-agentbay-sdk (>=0.9.0,<0.10.0)
+Description-Content-Type: text/markdown
+
+# LlamaIndex Tools Integration: AgentBay
+
+This package provides AgentBay tools integration for LlamaIndex, enabling browser automation, file operations, and command execution capabilities in your LlamaIndex applications.
+
+## Installation
+
+```bash
+pip install llama-index-tools-agentbay
+```
+
+## Requirements
+
+- Python >= 3.8
+- llama-index-core >= 0.12.0
+- wuying-agentbay-sdk >= 0.9.0
+- AgentBay API key (get it from [AgentBay Console](https://agentbay.console.aliyun.com/service-management))
+
+## Quick Start
+
+```python
+import os
+from llama_index.llms.dashscope import DashScope
+from llama_index.core.agent import ReActAgent
+from llama_index.tools.agentbay import create_browser_agent_tools
+
+# Create AgentBay browser tools (automatically handles all setup)
+browser_tools = create_browser_agent_tools()
+
+# Create LLM
+llm = DashScope(
+    model_name="qwen-plus",
+    api_key=os.getenv("DASHSCOPE_API_KEY")
+)
+
+# Create Agent with AgentBay tools
+agent = ReActAgent.from_tools(browser_tools, llm=llm, verbose=True)
+
+# Use the agent
+response = agent.chat("Please take a screenshot of https://www.example.com")
+print(response)
+```
+
+## Features
+
+### Two Simple Tool Sets
+
+**For Browser Automation:**
+- `create_browser_agent_tools()` - Complete browser automation toolkit
+  - Screenshot capture
+  - Browser endpoint access (for Playwright)
+  - File operations
+  - Command execution
+
+**For Code Execution:**
+- `create_code_agent_tools()` - Complete code execution toolkit
+  - Python code execution
+  - JavaScript code execution
+  - File operations (read, write, list, download)
+  - Command execution
+
+## Usage Examples
+
+### Browser Automation
+
+```python
+from llama_index.tools.agentbay import create_browser_agent_tools
+from llama_index.core.agent import ReActAgent
+
+# Create browser tools (screenshot, file ops, commands)
+tools = create_browser_agent_tools()
+
+# Create agent
+agent = ReActAgent.from_tools(tools, llm=llm)
+
+# Use the agent
+response = agent.chat("Take a screenshot of https://github.com")
+```
+
+### Code Execution
+
+```python
+from llama_index.tools.agentbay import create_code_agent_tools
+from llama_index.core.agent import ReActAgent
+
+# Create code execution tools (Python, JavaScript, file ops, commands)
+tools = create_code_agent_tools()
+
+# Create agent
+agent = ReActAgent.from_tools(tools, llm=llm)
+
+# Use the agent to run code
+response = agent.chat("""
+Create a CSV file with sample data and analyze it with pandas:
+1. Create a CSV with sales data (product, quantity, price)
+2. Read it with pandas
+3. Calculate total revenue
+4. Show the results
+""")
+```
+
+**Benefits:**
+- Direct code execution (no file upload needed)
+- Supports Python and JavaScript
+- Includes file operations for saving results
+- Faster and more reliable
+
+### Choosing the Right Tool Set
+
+**Simple decision:**
+- Need browser automation? → `create_browser_agent_tools()`
+- Need to run code (Python/JS)? → `create_code_agent_tools()`
+
+Both tool sets include file operations and command execution, so you get everything you need in one function call.
+
+## Environment Variables
+
+Set your API keys as environment variables:
+
+```bash
+export AGENTBAY_API_KEY="your-agentbay-api-key"
+export DASHSCOPE_API_KEY="your-dashscope-api-key"  # For DashScope LLM
+```
+
+## Advanced Features
+
+### RAG Integration for Insights
+
+Automatically extract and index insights from code execution results:
+
+```python
+from llama_index.tools.agentbay import create_code_agent_tools, create_rag_manager
+
+# Create tools and RAG manager
+tools = create_code_agent_tools()
+rag_manager = create_rag_manager()
+
+# Use with your agent to execute code and store results
+# The RAG manager can index execution results for later querying
+
+# Query the RAG index
+answer = rag_manager.query("What insights did we discover?")
+print(answer)
+```
+
+**Complete 4-Stage Demo**: See `/examples/` for full workflow examples.
+
+## API Reference
+
+### Main Functions
+
+**`create_browser_agent_tools()`**
+- Returns: List of tools for browser automation
+- Includes: screenshot, browser info, file operations, commands
+- Use when: You need to automate browser tasks
+
+**`create_code_agent_tools()`**
+- Returns: List of tools for code execution
+- Includes: Python/JS execution, file operations, commands
+- Use when: You need to run code or process data
+
+Both functions automatically handle session management and cleanup.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License
+
+## Links
+
+- [AgentBay Console](https://agentbay.console.aliyun.com/)
+- [AgentBay SDK Documentation](https://github.com/aliyun/wuying-agentbay-sdk)
+- [LlamaIndex Documentation](https://docs.llamaindex.ai/)
+
+## Support
+
+For issues and questions:
+- AgentBay SDK: [GitHub Issues](https://github.com/aliyun/wuying-agentbay-sdk/issues)
+- LlamaIndex: [GitHub Issues](https://github.com/run-llama/llama_index/issues)
+
+
