@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Панель управления - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Панель управления</h1>
+            
+            <div class="row">
+                {% for model_key, model_info in models_info.items %}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-{{ model_info.color }} shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-{{ model_info.color }} text-uppercase mb-1">
+                                        {{ model_info.name }}
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        {{ model_info.count }}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="bi {{ model_info.icon }} fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                            <a href="{% url 'custom_admin_model' model_key %}" class="stretched-link"></a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ topic.title }} - Форум - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'forum_list' %}">Форум</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ topic.title }}</li>
+    </ol>
+</nav>
+
+<!-- Тема форума -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h4 mb-0">{{ topic.title }}</h1>
+        </div>
+        <div class="d-flex align-items-center">
+            {% if request.user.is_authenticated and request.user == topic.author or request.user.is_staff %}
+            <a href="{% url 'edit_forum_topic' topic.id %}" class="btn btn-sm btn-outline-primary me-2">Редактировать</a>
+            {% endif %}
+            <small class="text-muted">{{ topic.created_at|date:"d.m.Y H:i" }}</small>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="d-flex">
+            <div class="flex-shrink-0 me-3">
+                {% if topic.author and topic.author.avatar %}
+                <img src="{{ topic.author.avatar.url }}" alt="{{ topic.author.username }}" class="rounded-circle" width="60" height="60">
+                {% else %}
+                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                    <span class="fs-4">
+                        {% if topic.author %}
+                            {{ topic.author.username|slice:":1"|upper }}
+                        {% else %}
+                            ?
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="text-center mt-1">
+                    <small>
+                        {% if topic.author %}
+                            {{ topic.author.get_full_name|default:topic.author.username }}
+                        {% else %}
+                            Удаленный пользователь
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+            <div class="flex-grow-1">
+                <div class="topic-content">
+                    {{ topic.content|linebreaks }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Комментарии -->
+<h3 class="mb-3">Комментарии ({{ comments|length }})</h3>
+
+{% if comments %}
+<div class="comments mb-4">
+    {% for comment in comments %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <strong>
+                    {% if comment.author %}
+                        {{ comment.author.get_full_name|default:comment.author.username }}
+                    {% else %}
+                        Удаленный пользователь
+                    {% endif %}
+                </strong>
+            </div>
+            <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+        </div>
+        <div class="card-body">
+            <div class="d-flex">
+                <div class="flex-shrink-0 me-3">
+                    {% if comment.author and comment.author.avatar %}
+                    <img src="{{ comment.author.avatar.url }}" alt="{{ comment.author.username }}" class="rounded-circle" width="40" height="40">
+                    {% else %}
+                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <span>
+                            {% if comment.author %}
+                                {{ comment.author.username|slice:":1"|upper }}
+                            {% else %}
+                                ?
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                    <p class="mb-0">{{ comment.content|linebreaks }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info mb-4">
+    <p class="mb-0">Пока нет комментариев. Будьте первым, кто оставит комментарий!</p>
+</div>
+{% endif %}
+
+<!-- Форма добавления комментария -->
+{% if request.user.is_authenticated %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Добавить комментарий</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="id_content" class="form-label">Комментарий</label>
+                <textarea class="form-control" id="id_content" name="content" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Отправить</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <p class="mb-0"><a href="{% url 'login' %}">Войдите</a> или <a href="{% url 'register' %}">зарегистрируйтесь</a>, чтобы оставить комментарий.</p>
+</div>
+{% endif %}
+{% endblock %}

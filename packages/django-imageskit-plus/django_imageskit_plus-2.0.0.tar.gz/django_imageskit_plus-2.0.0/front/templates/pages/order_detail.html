@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Заказ #{{ order.id }} - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'orders' %}">Мои заказы</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Заказ #{{ order.id }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Товары в заказе</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" style="width: 100px;">Фото</th>
+                                <th scope="col">Товар</th>
+                                <th scope="col" style="width: 100px;">Цена</th>
+                                <th scope="col" style="width: 100px;">Кол-во</th>
+                                <th scope="col" style="width: 100px;">Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order_items %}
+                            <tr>
+                                <td>
+                                    {% if item.product.image %}
+                                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
+                                    {% else %}
+                                    <div class="bg-light text-center" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                                        <span class="text-muted small">Нет фото</span>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'product_detail' item.product.id %}" class="text-decoration-none">
+                                        <h6 class="mb-1">{{ item.product.name }}</h6>
+                                    </a>
+                                    {% if item.product.category %}
+                                    <span class="text-muted small">{{ item.product.category.name }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.price }} ₽</td>
+                                <td>{{ item.quantity }}</td>
+                                <td class="fw-bold">{{ item.get_total }} ₽</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="4" class="text-end fw-bold">Итого:</td>
+                                <td class="fw-bold">{{ order.total_amount }} ₽</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Информация о заказе</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Номер заказа:</span>
+                        <span class="fw-bold">{{ order.id }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Дата:</span>
+                        <span>{{ order.created_at|date:"d.m.Y H:i" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Статус:</span>
+                        <span>
+                            {% if order.status == 'pending' %}
+                            <span class="badge bg-warning">Ожидает обработки</span>
+                            {% elif order.status == 'processing' %}
+                            <span class="badge bg-info">В обработке</span>
+                            {% elif order.status == 'shipped' %}
+                            <span class="badge bg-primary">Отправлен</span>
+                            {% elif order.status == 'delivered' %}
+                            <span class="badge bg-success">Доставлен</span>
+                            {% elif order.status == 'cancelled' %}
+                            <span class="badge bg-danger">Отменен</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                            {% endif %}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Данные доставки</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <h6 class="mb-1">Адрес доставки:</h6>
+                        <p class="mb-0">{{ order.shipping_address }}</p>
+                    </li>
+                    <li class="list-group-item">
+                        <h6 class="mb-1">Телефон:</h6>
+                        <p class="mb-0">{{ order.phone }}</p>
+                    </li>
+                    <li class="list-group-item">
+                        <h6 class="mb-1">Email:</h6>
+                        <p class="mb-0">{{ order.email }}</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

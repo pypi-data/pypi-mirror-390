@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 col-md-6 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">{{ page_title }}</h5>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-exclamation-triangle display-1 text-warning"></i>
+                    <h4 class="mt-3">Вы уверены?</h4>
+                    <p class="text-muted">
+                        Вы собираетесь удалить {{ model_name_ru.lower }}: 
+                        <strong>{{ object }}</strong>
+                    </p>
+                    <p class="text-danger">Это действие нельзя отменить!</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{% url 'custom_admin_model' model_name %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

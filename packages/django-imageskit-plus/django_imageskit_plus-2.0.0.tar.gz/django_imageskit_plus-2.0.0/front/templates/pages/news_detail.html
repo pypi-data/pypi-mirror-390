@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ news.title }} - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'news_list' %}">Новости</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ news.title }}</li>
+    </ol>
+</nav>
+
+<article>
+    <header class="mb-4">
+        <h1 class="mb-1">{{ news.title }}</h1>
+        <div class="text-muted">
+            {{ news.created_at|date:"d.m.Y H:i" }}
+            {% if news.author %}
+            <span class="ms-2">Автор: {{ news.author.get_full_name|default:news.author.username }}</span>
+            {% endif %}
+        </div>
+    </header>
+    
+    {% if news.image %}
+    <div class="mb-4">
+        <img src="{{ news.image.url }}" class="img-fluid rounded" alt="{{ news.title }}">
+    </div>
+    {% endif %}
+    
+    <div class="news-content">
+        {{ news.content|linebreaks }}
+    </div>
+</article>
+
+<div class="mt-4">
+    <a href="{% url 'news_list' %}" class="btn btn-outline-primary">&larr; К списку новостей</a>
+</div>
+{% endblock %} 

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Форум - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Форум</h1>
+    {% if request.user.is_authenticated %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTopicModal">Создать новую тему</button>
+    {% endif %}
+</div>
+
+{% if topics %}
+<div class="list-group mb-4">
+    {% for topic in topics %}
+    <a href="{% url 'forum_topic' topic.id %}" class="list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-between">
+            <h5 class="mb-1">{{ topic.title }}</h5>
+            <small class="text-muted">{{ topic.created_at|date:"d.m.Y H:i" }}</small>
+        </div>
+        <p class="mb-1">{{ topic.content|truncatewords:20 }}</p>
+        <small class="text-muted">
+            Автор: 
+            {% if topic.author %}
+                {{ topic.author.get_full_name|default:topic.author.username }}
+            {% else %}
+                Удаленный пользователь
+            {% endif %}
+        </small>
+        <span class="badge bg-primary rounded-pill float-end">
+            {{ topic.comment_count }} комментариев
+        </span>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <p class="mb-0">На форуме пока нет тем. {% if request.user.is_authenticated %}Вы можете создать первую тему.{% else %}Авторизуйтесь, чтобы создать тему.{% endif %}</p>
+</div>
+{% endif %}
+
+{% if not request.user.is_authenticated %}
+<div class="alert alert-warning">
+    <p class="mb-0"><a href="{% url 'login' %}">Войдите</a> или <a href="{% url 'register' %}">зарегистрируйтесь</a>, чтобы создавать темы и участвовать в обсуждениях.</p>
+</div>
+{% endif %}
+
+<!-- Модальное окно создания новой темы -->
+{% if request.user.is_authenticated %}
+<div class="modal fade" id="newTopicModal" tabindex="-1" aria-labelledby="newTopicModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newTopicModalLabel">Создать новую тему</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Заголовок</label>
+                        <input type="text" class="form-control" id="id_title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_content" class="form-label">Содержание</label>
+                        <textarea class="form-control" id="id_content" name="content" rows="5" required></textarea>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Создать тему</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

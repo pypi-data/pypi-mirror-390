@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Отмена бронирования - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Отмена бронирования</h5>
+                </div>
+                <div class="card-body">
+                    <h4 class="mb-3">Вы действительно хотите отменить это бронирование?</h4>
+                    
+                    <div class="mb-4">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Детали бронирования:</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <strong>Номер бронирования:</strong> #{{ reservation.id }}
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Стол:</strong> Стол #{{ reservation.table.number }} ({{ reservation.table.get_location_display }})
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Дата:</strong> {{ reservation.start_time|date:"d.m.Y" }}
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Время:</strong> {{ reservation.start_time|date:"H:i" }} - {{ reservation.end_time|date:"H:i" }}
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Количество гостей:</strong> {{ reservation.guests_count }}
+                                    </li>
+                                    {% if reservation.notes %}
+                                    <li class="list-group-item">
+                                        <strong>Примечания:</strong> {{ reservation.notes }}
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i> Обратите внимание, что отмена бронирования является необратимой операцией.
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Да, отменить бронирование</button>
+                        </form>
+                        <a href="{% url 'user_reservations' %}" class="btn btn-outline-secondary">Нет, вернуться назад</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Личный кабинет - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Меню</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="#profile-data" class="list-group-item list-group-item-action" data-bs-toggle="tab">Мои данные</a>
+                    <a href="#orders" class="list-group-item list-group-item-action" data-bs-toggle="tab">Мои заказы</a>
+                    <a href="{% url 'favorites' %}" class="list-group-item list-group-item-action">Избранное</a>
+                    <a href="{% url 'cart' %}" class="list-group-item list-group-item-action">Корзина</a>
+                    <a href="{% url 'user_applications' %}" class="list-group-item list-group-item-action">Мои заявки</a>
+                    <a href="{% url 'user_reservations' %}" class="list-group-item list-group-item-action">Мои бронирования</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="tab-content">
+                <!-- Профиль пользователя -->
+                <div class="tab-pane fade show active" id="profile-data">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Мои данные</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-3 text-center mb-3">
+                                        {% if user.avatar %}
+                                        <img src="{{ user.avatar.url }}" alt="{{ user.username }}" class="img-fluid rounded-circle mb-2" style="max-width: 150px; max-height: 150px;">
+                                        {% else %}
+                                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 150px; height: 150px;">
+                                            <span class="display-4">{{ user.username|slice:":1"|upper }}</span>
+                                        </div>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <label for="avatar" class="form-label">Изменить фото</label>
+                                            <input type="file" class="form-control form-control-sm" id="avatar" name="avatar">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-9">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="username" class="form-label">Имя пользователя</label>
+                                                <input type="text" class="form-control" id="username" value="{{ user.username }}" readonly>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label for="email" class="form-label">Электронная почта</label>
+                                                <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label for="first_name" class="form-label">Имя</label>
+                                                <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label for="last_name" class="form-label">Фамилия</label>
+                                                <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label for="phone" class="form-label">Телефон</label>
+                                                <input type="tel" class="form-control" id="phone" name="phone" value="{{ user.phone }}" 
+                                                       pattern="^\+7\d{10}$" title="Формат: +7XXXXXXXXXX">
+                                                <div class="form-text">Формат: +7XXXXXXXXXX</div>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label for="country" class="form-label">Страна</label>
+                                                <input type="text" class="form-control" id="country" name="country" value="{{ user.country }}">
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <label for="city" class="form-label">Город</label>
+                                                <input type="text" class="form-control" id="city" name="city" value="{{ user.city }}">
+                                            </div>
+                                            
+                                            <div class="col-12">
+                                                <label for="address" class="form-label">Адрес</label>
+                                                <textarea class="form-control" id="address" name="address" rows="3">{{ user.address }}</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Заказы пользователя -->
+                <div class="tab-pane fade" id="orders">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Мои заказы</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if orders %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">№ заказа</th>
+                                            <th scope="col">Дата</th>
+                                            <th scope="col">Статус</th>
+                                            <th scope="col">Сумма</th>
+                                            <th scope="col">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for order in orders %}
+                                        <tr>
+                                            <td>#{{ order.id }}</td>
+                                            <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
+                                            <td>
+                                                {% if order.status == 'pending' %}
+                                                <span class="badge bg-warning">Ожидает обработки</span>
+                                                {% elif order.status == 'processing' %}
+                                                <span class="badge bg-primary">В обработке</span>
+                                                {% elif order.status == 'shipped' %}
+                                                <span class="badge bg-info">Отправлен</span>
+                                                {% elif order.status == 'delivered' %}
+                                                <span class="badge bg-success">Доставлен</span>
+                                                {% elif order.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Отменен</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">{{ order.status }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ order.total_amount }} ₽</td>
+                                            <td>
+                                                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-outline-primary">Подробнее</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <p class="mb-0">У вас пока нет заказов.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Активация табов через URL-хэш
+    document.addEventListener('DOMContentLoaded', function() {
+        const hash = window.location.hash || '#profile-data';
+        const tabElement = document.querySelector(`a[href="${hash}"]`);
+        if (tabElement) {
+            const tab = new bootstrap.Tab(tabElement);
+            tab.show();
+        }
+    });
+    
+    // Валидация номера телефона
+    document.addEventListener('DOMContentLoaded', function() {
+        const phoneInput = document.getElementById('phone');
+        if (phoneInput) {
+            phoneInput.addEventListener('input', function() {
+                let value = this.value;
+                // Убираем все нецифровые символы, кроме плюса в начале
+                if (value.startsWith('+')) {
+                    value = '+' + value.substring(1).replace(/\D/g, '');
+                } else {
+                    // Если нет плюса в начале, добавляем его
+                    value = '+' + value.replace(/\D/g, '');
+                }
+                
+                // Обеспечиваем формат +7
+                if (value.length >= 1 && !value.startsWith('+7')) {
+                    if (value.startsWith('+')) {
+                        value = '+7' + value.substring(1);
+                    } else {
+                        value = '+7';
+                    }
+                }
+                
+                // Ограничение длины (не больше 12 символов: +7 и 10 цифр)
+                if (value.length > 12) {
+                    value = value.substring(0, 12);
+                }
+                
+                this.value = value;
+            });
+        }
+    });
+</script>
+{% endblock %} 

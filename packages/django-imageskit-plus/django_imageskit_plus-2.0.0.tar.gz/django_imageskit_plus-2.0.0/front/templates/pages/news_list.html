@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Новости - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Новости</h1>
+
+{% if news_list %}
+<div class="row">
+    {% for news in news_list %}
+    <div class="col-md-6">
+        <div class="card mb-4">
+            {% if news.image %}
+            <img src="{{ news.image.url }}" class="card-img-top" alt="{{ news.title }}" style="height: 250px; object-fit: cover;">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ news.title }}</h5>
+                <p class="card-text text-muted mb-2">
+                    {{ news.created_at|date:"d.m.Y" }}
+                    {% if news.author %}
+                    <span class="ms-2">Автор: {{ news.author.get_full_name|default:news.author.username }}</span>
+                    {% endif %}
+                </p>
+                <p class="card-text">{{ news.content|truncatewords:30 }}</p>
+                <a href="{% url 'news_detail' news.id %}" class="btn btn-primary">Читать далее</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <p class="mb-0">Пока нет новостей.</p>
+</div>
+{% endif %}
+{% endblock %} 

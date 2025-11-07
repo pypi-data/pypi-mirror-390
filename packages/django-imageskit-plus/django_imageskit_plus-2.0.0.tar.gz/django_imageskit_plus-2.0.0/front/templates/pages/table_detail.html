@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Стол #{{ table.number }} - Бронирование - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="mb-3">
+        <a href="{% url 'tables_catalog' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад к списку столов
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Информация о столе -->
+        <div class="col-md-5">
+            <div class="card mb-4">
+                {% if table.image %}
+                <img src="{{ table.image.url }}" class="card-img-top" alt="Стол #{{ table.number }}" style="max-height: 300px; object-fit: cover;">
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
+                    <i class="bi bi-table display-1 text-muted"></i>
+                </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <h3 class="card-title d-flex justify-content-between align-items-center">
+                        Стол #{{ table.number }}
+                        <span class="badge {% if table.status == 'available' %}bg-success{% elif table.status == 'reserved' %}bg-warning{% elif table.status == 'occupied' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ table.get_status_display }}
+                        </span>
+                    </h3>
+                    
+                    <div class="mt-4">
+                        <h5>Характеристики:</h5>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <i class="bi bi-geo-alt"></i> <strong>Расположение:</strong> {{ table.get_location_display }}
+                            </li>
+                            <li class="list-group-item">
+                                <i class="bi bi-people"></i> <strong>Количество мест:</strong> {{ table.seats }}
+                            </li>
+                            <li class="list-group-item">
+                                <i class="bi bi-currency-ruble"></i> <strong>Цена за час:</strong> {{ table.price_per_hour }} ₽
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    {% if table.description %}
+                    <div class="mt-4">
+                        <h5>Описание:</h5>
+                        <p>{{ table.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Существующие бронирования -->
+            {% if existing_reservations %}
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Занятое время</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">Этот стол уже забронирован на следующее время:</p>
+                    <ul class="list-group list-group-flush">
+                        {% for reservation in existing_reservations %}
+                        <li class="list-group-item">
+                            <i class="bi bi-clock"></i> 
+                            {{ reservation.start_time|date:"d.m.Y" }} с {{ reservation.start_time|date:"H:i" }} до {{ reservation.end_time|date:"H:i" }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Форма бронирования -->
+        <div class="col-md-7">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Форма бронирования</h5>
+                </div>
+                <div class="card-body">
+                    {% if not request.user.is_authenticated %}
+                    <div class="alert alert-warning">
+                        <p>Для бронирования стола необходимо <a href="{% url 'login' %}">войти</a> в систему.</p>
+                    </div>
+                    {% elif not table.is_available %}
+                    <div class="alert alert-warning">
+                        <p>В данный момент этот стол недоступен для бронирования.</p>
+                    </div>
+                    {% else %}
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            <p class="mb-0">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.start_time.id_for_label }}" class="form-label">{{ form.start_time.label }}</label>
+                                {{ form.start_time }}
+                                {% if form.start_time.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.start_time.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.end_time.id_for_label }}" class="form-label">{{ form.end_time.label }}</label>
+                                {{ form.end_time }}
+                                {% if form.end_time.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.end_time.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.guests_count.id_for_label }}" class="form-label">Количество гостей</label>
+                            {{ form.guests_count }}
+                            {% if form.guests_count.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.guests_count.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Максимальное количество мест за столом: {{ table.seats }}</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Примечания к бронированию</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.notes.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6 class="mb-2">Расчет стоимости:</h6>
+                            <div>
+                                <span id="hours-count">2</span> ч × {{ table.price_per_hour }} ₽ = <strong id="total-price">{{ table.price_per_hour|floatformat:2 }}</strong> ₽
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Забронировать стол</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startTimeInput = document.getElementById('{{ form.start_time.id_for_label }}');
+        const endTimeInput = document.getElementById('{{ form.end_time.id_for_label }}');
+        const hoursCountElem = document.getElementById('hours-count');
+        const totalPriceElem = document.getElementById('total-price');
+        const pricePerHour = {{ table.price_per_hour }};
+        
+        // Функция для расчета разницы в часах между двумя датами
+        function getHoursDiff(start, end) {
+            const startDate = new Date(start);
+            const endDate = new Date(end);
+            
+            // Разница в миллисекундах
+            const diffMs = endDate - startDate;
+            
+            // Преобразование в часы и округление до 0.5 часа
+            const diffHours = Math.ceil(diffMs / (1000 * 60 * 30)) / 2;
+            
+            return diffHours > 0 ? diffHours : 0;
+        }
+        
+        // Функция обновления расчета стоимости
+        function updatePrice() {
+            if (startTimeInput.value && endTimeInput.value) {
+                const hours = getHoursDiff(startTimeInput.value, endTimeInput.value);
+                const totalPrice = hours * pricePerHour;
+                
+                hoursCountElem.textContent = hours;
+                totalPriceElem.textContent = totalPrice.toFixed(2);
+            }
+        }
+        
+        // Слушатели событий для обновления расчета
+        if (startTimeInput && endTimeInput) {
+            startTimeInput.addEventListener('change', updatePrice);
+            endTimeInput.addEventListener('change', updatePrice);
+            
+            // Инициализация при загрузке
+            updatePrice();
+        }
+    });
+</script>
+{% endblock %} 

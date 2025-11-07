@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Избранное - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Избранные товары</h1>
+
+{% if favorites %}
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for favorite in favorites %}
+    <div class="col">
+        <div class="card h-100">
+            {% if favorite.product.image %}
+            <img src="{{ favorite.product.image.url }}" class="card-img-top" alt="{{ favorite.product.name }}" style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="bg-light text-center py-5">
+                <span class="text-muted">Нет изображения</span>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ favorite.product.name }}</h5>
+                <p class="card-text text-truncate">{{ favorite.product.description }}</p>
+                <p class="card-text"><strong>Цена: {{ favorite.product.price }} ₽</strong></p>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'product_detail' favorite.product.id %}" class="btn btn-primary">Подробнее</a>
+                    <a href="{% url 'add_to_cart' favorite.product.id %}" class="btn btn-success">В корзину</a>
+                </div>
+                <div class="text-center mt-2">
+                    <a href="{% url 'remove_from_favorites' favorite.id %}" class="btn btn-outline-danger btn-sm w-100">Удалить из избранного</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <p class="mb-0">У вас пока нет избранных товаров. <a href="{% url 'catalog' %}" class="alert-link">Перейти в каталог</a>.</p>
+</div>
+{% endif %}
+{% endblock %} 
