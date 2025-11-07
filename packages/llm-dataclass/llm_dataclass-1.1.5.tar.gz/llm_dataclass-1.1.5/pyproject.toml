@@ -1,0 +1,138 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-dataclass"
+dynamic = ["version"]
+description = 'A dataclass interface for llms'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Janna Hopp" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "lxml",
+  "xmltodict",
+]
+
+[project.urls]
+Issues = "https://github.com/bytehexe/llm-dataclass/issues"
+Source = "https://github.com/bytehexe/llm-dataclass"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.vcs]
+fallback-version = "0.0.0"
+
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/llm_dataclass/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+  "pytest",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/llm_dataclass tests}"
+
+[tool.hatch.envs.default]
+extra-dependencies = [
+  "ruff>=0.1.0",
+  "ollama",
+]
+
+[tool.hatch.envs.default.scripts]
+lint = "ruff check {args:src/llm_dataclass tests}"
+format = "ruff format {args:src/llm_dataclass tests}"
+format-check = "ruff format --check {args:src/llm_dataclass tests}"
+lint-fix = "ruff check --fix {args:src/llm_dataclass tests}"
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+  "pytest",
+  "pytest-cov",
+]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+[tool.mypy]
+check_untyped_defs = true
+
+
+[[tool.mypy.overrides]]
+module = ["foobar.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source_pkgs = ["llm_dataclass", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/llm_dataclass/__about__.py",
+]
+
+[tool.coverage.paths]
+llm_dataclass = ["src/llm_dataclass", "*/llm-dataclass/src/llm_dataclass"]
+tests = ["tests", "*/llm-dataclass/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ANN", # annotations
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "ANN401", # Any is fine
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["llm_dataclass"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
