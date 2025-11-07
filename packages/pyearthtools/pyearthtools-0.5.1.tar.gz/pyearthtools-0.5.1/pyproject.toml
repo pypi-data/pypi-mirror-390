@@ -1,0 +1,125 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyearthtools"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["pyearthtools"]
+maintainers = [
+    { name = "Tennessee Leeuwenburg", email = "tennessee.leeuwenburg@bom.gov.au" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+description = """\
+PyEarthTools: Machine learning for Earth system science.
+"""
+
+version = "0.5.1"
+
+dependencies = [
+"pyearthtools-utils>=0.5.1",
+"pyearthtools-data[all]>=0.5.1",
+"pyearthtools-pipeline[all]>=0.5.1",
+"pyearthtools-training[all]>=0.5.1",
+"pyearthtools-zoo>=0.5.1",
+]
+
+# FIXME replace with minimum versions once PyEarthTools is on PyPI
+# FIXME remove redundant dependencies once PyEarthTools is on PyPI
+[project.optional-dependencies]
+utils = [
+    "pyearthtools-utils>=0.5.1",
+]
+data = [
+    "pyearthtools-data>=0.5.1",
+]
+pipeline = [
+    "pyearthtools-utils>=0.5.1",
+    "pyearthtools-data>=0.5.1",
+    "pyearthtools-pipeline>=0.5.1",
+]
+training = [
+    "pyearthtools-utils>=0.5.1",
+    "pyearthtools-data>=0.5.1",
+    "pyearthtools-pipeline>=0.5.1",
+    "pyearthtools-training>=0.5.1",
+]
+zoo = [
+    "pyearthtools-utils>=0.5.1",
+    "pyearthtools-data>=0.5.1",
+    "pyearthtools-pipeline>=0.5.1",
+    "pyearthtools-training>=0.5.1",
+    "pyearthtools-zoo>=0.5.1",
+]
+all = [
+    "pyearthtools-utils>=0.5.1",
+    "pyearthtools-data[all]>=0.5.1",
+    "pyearthtools-pipeline[all]>=0.5.1",
+    "pyearthtools-training[all]>=0.5.1",
+    "pyearthtools-zoo>=0.5.1",
+]
+test = ["pytest", "pytest-cov", "pytest-xdist", "pudb"]
+dev = ["pre-commit", "black==25.1.0", "interrogate", "ruff"]
+docs = [
+    "sphinx",
+    "myst-parser",
+    "sphinx-book-theme",
+    "scores",
+    "xarray",
+    "pandas",
+    "scipy",
+    "bottleneck",
+    "nbsphinx",
+    "sphinx_gallery",
+    "sphinx-design",
+    "sphinx-togglebutton",
+    "sphinxcontrib-mermaid"
+]
+
+[project.urls]
+homepage = "https://pyearthtools.readthedocs.io/"
+documentation = "https://pyearthtools.readthedocs.io/"
+repository = "https://github.com/ACCESS-Community-Hub/PyEarthTools"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true
+
+# FIXME remove once PyEarthTools is published on PyPI
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+exclude = ["packages/bundled_models", "notebooks", "packages/met_office_site_archive"]
+
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+
+[tool.hatch.build.targets.sdist]
+only-include = ["pyproject.toml", "README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+addopts = [
+    '--cov-fail-under=40',
+    '--cov-branch',
+    '--cov-report=html',
+    '--junitxml=report.xml',
+    '-n 4',
+]
+markers = [
+    "noci: marks tests to exclude from CI/CD (deselect with '-m \"not noci\"')",
+    "slow: mark test as slow (deselect with '-m \"not slow\"')",
+]
