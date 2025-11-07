@@ -1,0 +1,134 @@
+/*
+ * The internal definitions
+ *
+ * Copyright (C) 2010-2025, Joachim Metz <joachim.metz@gmail.com>
+ *
+ * Refer to AUTHORS for acknowledgements.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#if !defined( _LIBFSEXT_INTERNAL_DEFINITIONS_H )
+#define _LIBFSEXT_INTERNAL_DEFINITIONS_H
+
+#include <common.h>
+#include <byte_stream.h>
+
+#define LIBFSEXT_ENDIAN_BIG						_BYTE_STREAM_ENDIAN_BIG
+#define LIBFSEXT_ENDIAN_LITTLE						_BYTE_STREAM_ENDIAN_LITTLE
+
+/* Define HAVE_LOCAL_LIBFSEXT for local use of libfsext
+ */
+#if !defined( HAVE_LOCAL_LIBFSEXT )
+#include <libfsext/definitions.h>
+
+/* The definitions in <libfsext/definitions.h> are copied here
+ * for local use of libfsext
+ */
+#else
+#define LIBFSEXT_VERSION						20251107
+
+/* The version string
+ */
+#define LIBFSEXT_VERSION_STRING						"20251107"
+
+/* The file access
+ * bit 1        set to 1 for read access
+ * bit 2        set to 1 for write access
+ * bit 3-8      not used
+ */
+enum LIBFSEXT_ACCESS_FLAGS
+{
+	LIBFSEXT_ACCESS_FLAG_READ					= 0x01,
+/* Reserved: not supported yet */
+	LIBFSEXT_ACCESS_FLAG_WRITE					= 0x02
+};
+
+/* The file access macros
+ */
+#define LIBFSEXT_OPEN_READ						( LIBFSEXT_ACCESS_FLAG_READ )
+/* Reserved: not supported yet */
+#define LIBFSEXT_OPEN_WRITE						( LIBFSEXT_ACCESS_FLAG_WRITE )
+/* Reserved: not supported yet */
+#define LIBFSEXT_OPEN_READ_WRITE					( LIBFSEXT_ACCESS_FLAG_READ | LIBFSEXT_ACCESS_FLAG_WRITE )
+
+/* The path segment separator
+ */
+#define LIBFSEXT_SEPARATOR						'/'
+
+/* The file types
+ */
+enum LIBFSEXT_FILE_TYPES
+{
+	LIBFSEXT_FILE_TYPE_FIFO						= 0x1000,
+	LIBFSEXT_FILE_TYPE_CHARACTER_DEVICE				= 0x2000,
+	LIBFSEXT_FILE_TYPE_DIRECTORY					= 0x4000,
+	LIBFSEXT_FILE_TYPE_BLOCK_DEVICE					= 0x6000,
+	LIBFSEXT_FILE_TYPE_REGULAR_FILE					= 0x8000,
+	LIBFSEXT_FILE_TYPE_SYMBOLIC_LINK				= 0xa000,
+	LIBFSEXT_FILE_TYPE_SOCKET					= 0xc000
+};
+
+/* The extent flag definitions
+ */
+enum LIBFSEXT_EXTENT_FLAGS
+{
+	/* The extent is sparse
+	 */
+	LIBFSEXT_EXTENT_FLAG_IS_SPARSE					= 0x00000001UL
+};
+
+#endif /* !defined( HAVE_LOCAL_LIBFSEXT ) */
+
+/* The read-only compatible features flags
+ */
+enum LIBFSEXT_READ_ONLY_COMPATIBLE_FEATURES_FLAGS
+{
+	LIBFSEXT_READ_ONLY_COMPATIBLE_FEATURES_FLAG_SPARSE_SUPERBLOCK	= 0x00000001UL,
+
+	LIBFSEXT_READ_ONLY_COMPATIBLE_FEATURES_FLAG_METADATA_CHECKSUM	= 0x00000400UL,
+};
+
+/* The incompatible features flags
+ */
+enum LIBFSEXT_INCOMPATIBLE_FEATURES_FLAGS
+{
+	LIBFSEXT_INCOMPATIBLE_FEATURES_FLAG_HAS_META_BLOCK_GROUPS	= 0x00000010UL,
+
+	LIBFSEXT_INCOMPATIBLE_FEATURES_FLAG_64BIT_SUPPORT		= 0x00000080UL,
+
+	LIBFSEXT_INCOMPATIBLE_FEATURES_FLAG_HAS_FLEX_BLOCK_GROUPS	= 0x00000200UL,
+
+	LIBFSEXT_INCOMPATIBLE_FEATURES_FLAG_HAS_METADATA_CHECKSUM_SEED	= 0x00002000UL,
+};
+
+/* The inode flags types
+ */
+enum LIBFSEXT_INODE_FLAGS
+{
+	LIBFSEXT_INODE_FLAG_COMPRESSED_DATA				= 0x00000200UL,
+
+	LIBFSEXT_INODE_FLAG_HAS_EXTENTS					= 0x00080000UL,
+
+	LIBFSEXT_INODE_FLAG_INLINE_DATA					= 0x10000000UL,
+};
+
+#define LIBFSEXT_INODE_NUMBER_ROOT_DIRECTORY				2
+
+#define LIBFSEXT_DIRECTORY_ENTRIES_TREE_MAXIMUM_NUMBER_OF_SUB_NODES	257
+#define LIBFSEXT_MAXIMUM_CACHE_ENTRIES_BLOCKS				8
+#define LIBFSEXT_MAXIMUM_CACHE_ENTRIES_INODES				32
+
+#endif /* !defined( _LIBFSEXT_INTERNAL_DEFINITIONS_H ) */
+
