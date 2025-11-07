@@ -1,0 +1,69 @@
+name: Build and publish quartodoc site
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "dev-*"]
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+   build-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+      - uses: quarto-dev/quarto-actions/setup@v2
+      - name: Install dependencies
+        run: |
+          # install quartodoc and other things we may need?
+          python -m pip install quartodoc
+          python -m pip install shiny shinylive
+          python -m pip install --no-deps dascore==0.0.8
+
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+      - name: Build docs
+        run: |
+
+          # Set git credentials for later on
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git config --global user.name "${GITHUB_ACTOR}"
+
+          
+          # copy the readme file into the docs folder
+          # switch out batchfile code highlight for dosbat
+          # add a title to the qmd file
+          # and overwrite index.md 
+          
+          chmod +x ./.github/scripts/convert_readme_qmd.py
+          python ./.github/scripts/convert_readme_qmd.py
+
+          
+          # move into the src folder 
+          # so we don't have to build the package for this to work
+          cd src
+
+          # build the docs
+          quartodoc build --config ../docs/_quarto.yml
+
+          # move back to original directory
+          cd ..
+
+          # add js script to change title to index references/index
+          chmod +x ./.github/scripts/convert_ref_index_qmd.py
+          python ./.github/scripts/convert_ref_index_qmd.py
+
+
+          # publish the webpage to github pages
+          quarto publish gh-pages ./docs --no-browser --no-prompt
+ 
+   
+
