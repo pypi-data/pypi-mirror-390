@@ -1,0 +1,553 @@
+Metadata-Version: 2.4
+Name: cachedx
+Version: 0.2.2
+Summary: Unified httpx cache (TTL/ETag) + DuckDB mirror (raw+normalized) with SQL/LLM helpers
+Project-URL: Homepage, https://github.com/yourusername/cachedx
+Project-URL: Documentation, https://cachedx.readthedocs.io
+Project-URL: Repository, https://github.com/yourusername/cachedx
+Project-URL: Issues, https://github.com/yourusername/cachedx/issues
+Author-email: alywonder <al@yiwonder.com>
+License: MIT
+License-File: LICENSE
+Keywords: api,cache,duckdb,httpx,json,llm,sql
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Database
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.12
+Requires-Dist: duckdb>=1.0.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: orjson>=3.10.0
+Requires-Dist: pydantic-settings>=2.3.0
+Requires-Dist: pydantic>=2.8.0
+Requires-Dist: typing-extensions>=4.9.0
+Provides-Extra: dev
+Requires-Dist: ipython>=8.24.0; extra == 'dev'
+Requires-Dist: mypy>=1.10.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.23.0; extra == 'dev'
+Requires-Dist: pytest-cov>=5.0.0; extra == 'dev'
+Requires-Dist: pytest>=8.2.0; extra == 'dev'
+Requires-Dist: respx>=0.21.0; extra == 'dev'
+Requires-Dist: ruff>=0.13.2; extra == 'dev'
+Requires-Dist: twine>=6.0.0; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: mkdocs-material>=9.5.0; extra == 'docs'
+Requires-Dist: mkdocs-mermaid2-plugin>=1.1.0; extra == 'docs'
+Requires-Dist: mkdocs>=1.6.0; extra == 'docs'
+Requires-Dist: mkdocstrings[python]>=0.25.0; extra == 'docs'
+Provides-Extra: pandas
+Requires-Dist: pandas>=2.2.0; extra == 'pandas'
+Description-Content-Type: text/markdown
+
+<div style="display: flex; flex-direction: column;">
+    <table align="center">
+        <tr>
+            <td>
+                <img src="./public/assets/logos/awhere.svg" alt="⧊where Logo" width="100"/>
+            </td>
+            <td>
+                <h1>⧊where (awhere)<sup>*</sup>: cachedx</h1>
+                <p><em>Unified HTTP caching with DuckDB mirroring and LLM helpers.</em></p>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <sub>* ⧊where (awhere) is pronounced <i>aware</i> (uh-wehr).</sub>
+            </td>
+        </tr>
+    </table>
+</div>
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/awhereai/cachedx/workflows/CI/badge.svg)](https://github.com/awhereai/cachedx/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/awhereai/cachedx/branch/main/graph/badge.svg)](https://codecov.io/gh/awhereai/cachedx)
+
+# cachedx 🚀
+
+**Unified HTTP caching with DuckDB mirroring and LLM helpers**
+
+cachedx provides intelligent HTTP caching with automatic database mirroring, making it easy to cache API responses and query them with SQL.
+
+## Why cachedx?
+
+Most apps repeatedly hit REST APIs and lose visibility into response data:
+
+```python
+# Traditional approach ❌
+response = await client.get("/api/users")
+users = response.json()  # Data lost after processing
+
+# With cachedx ✅
+response = await cached_client.get("/api/users")  # Automatically cached
+users_df = client.query("SELECT * FROM users WHERE active = true")  # Query with SQL!
+```
+
+## Key Features
+
+- 🚄 **Zero-config caching** - Works out of the box with sensible defaults
+- 🔄 **Dual storage** - HTTP cache + normalized tables for fast queries
+- 🧠 **Auto-inference** - Automatically creates schemas from JSON responses
+- 🛡️ **LLM-safe** - Built-in SQL safety for LLM-generated queries
+- ⚡ **High performance** - Cache hits < 1ms, powered by DuckDB
+- 🏗️ **Production ready** - Comprehensive Pydantic validation throughout
+
+## Installation
+
+```bash
+# With pip
+pip install cachedx
+
+# With uv (recommended)
+uv add cachedx
+
+# With optional dependencies
+pip install 'cachedx[pandas]'  # For DataFrame support
+pip install 'cachedx[dev]'     # For development
+```
+
+**Requires:** Python 3.12+, DuckDB 1.0+, httpx 0.27+
+
+## Quick Start
+
+### Basic HTTP Caching
+
+```python
+from cachedx.httpcache import CachedClient
+
+async with CachedClient(base_url="https://api.github.com") as client:
+    # First call hits API and caches response
+    response = await client.get("/users/octocat")
+
+    # Second call returns cached data (< 1ms)
+    response = await client.get("/users/octocat")
+
+    # Query cached data with SQL!
+    users = client.query("SELECT * FROM users_octocat LIMIT 10")
+    print(users)
+```
+
+### Advanced Configuration
+
+```python
+from datetime import timedelta
+from cachedx.httpcache import CachedClient, CacheConfig, CacheStrategy, EndpointConfig
+
+config = CacheConfig(
+    default_ttl=timedelta(minutes=5),
+    enable_logging=True,
+    endpoints={
+        "/api/users": EndpointConfig(
+            strategy=CacheStrategy.CACHED,
+            ttl=timedelta(minutes=10),
+            table_name="users"
+        ),
+        "/api/metadata": EndpointConfig(
+            strategy=CacheStrategy.STATIC  # Cache forever
+        ),
+        "/api/realtime/*": EndpointConfig(
+            strategy=CacheStrategy.REALTIME  # Always fetch, but store
+        ),
+    }
+)
+
+async with CachedClient(base_url="https://api.example.com", cache_config=config) as client:
+    response = await client.get("/api/users")  # Cached for 10 minutes
+    df = client.query("SELECT name, email FROM users WHERE active = true")
+```
+
+### Resource Mirroring with Auto-Inference
+
+```python
+from cachedx.mirror import hybrid_cache, register, Mapping
+
+# Option 1: Let cachedx infer the schema automatically
+@hybrid_cache(resource="users", auto_register=True)
+async def get_users(client):
+    return await client.get("/api/users")
+
+# Option 2: Define explicit schema mapping
+register("forecasts", Mapping(
+    table="forecasts",
+    columns={
+        "id": "$.id",
+        "sku": "$.sku",
+        "method": "$.method",
+        "status": "$.status",
+        "updated_at": "CAST(j->>'updated_at' AS TIMESTAMP)",
+    },
+    ddl="""
+    CREATE TABLE forecasts (
+        id TEXT PRIMARY KEY,
+        sku TEXT NOT NULL,
+        method TEXT,
+        status TEXT,
+        updated_at TIMESTAMP
+    )
+    """
+))
+
+@hybrid_cache(resource="forecasts")
+async def get_forecasts(client):
+    return await client.get("/api/forecasts")
+
+# Use the decorated functions
+await get_users(client)      # Data automatically mirrored
+await get_forecasts(client)  # Uses explicit schema
+
+# Query the mirrored data
+from cachedx import safe_select
+results = safe_select("""
+    SELECT sku, status, updated_at
+    FROM forecasts
+    WHERE status = 'failed'
+      AND updated_at > now() - INTERVAL 1 DAY
+    ORDER BY updated_at DESC
+""")
+```
+
+### LLM Integration
+
+```python
+from cachedx import build_llm_context, safe_llm_query
+
+# Build context for LLM
+context = build_llm_context(include_samples=True)
+print(context)
+# Output:
+# # Database Schema and Context
+# You have access to a DuckDB database with cached API responses.
+# ## Available Tables (3 tables)
+# ### Table: `users`
+# **Columns:**
+# - `id` (BIGINT, NOT NULL)
+# - `name` (TEXT, NULL)
+# - `email` (TEXT, NULL)
+# **Sample data:**
+# | id | name     | email           |
+# |----|----------|-----------------|
+# | 1  | Alice    | alice@example.com |
+
+# Use with your favorite LLM
+prompt = f"""
+Generate a SQL query to find the top 10 most active users.
+
+{context}
+"""
+
+# Execute LLM-generated queries safely
+llm_sql = "SELECT name, COUNT(*) as activity FROM users GROUP BY name ORDER BY activity DESC LIMIT 10"
+result = safe_llm_query(llm_sql)
+
+if result["success"]:
+    print(f"Found {result['row_count']} users")
+    print(result["data"])  # pandas DataFrame or list of dicts
+else:
+    print(f"Query failed: {result['error']}")
+```
+
+## Architecture
+
+cachedx uses a **dual storage architecture**:
+
+```mermaid
+graph LR
+    API[REST API] -->|JSON| CLIENT[CachedClient]
+
+    CLIENT -->|Store| CACHE[(HTTP Cache<br/>TTL + ETag)]
+    CLIENT -->|Mirror| TABLES[(Normalized Tables<br/>users, forecasts)]
+
+    APP[Your App] -->|SQL| QUERY[Query Engine]
+    QUERY --> CACHE
+    QUERY --> TABLES
+
+    LLM[LLM] -->|Safe SQL| QUERY
+```
+
+**Benefits:**
+
+- **HTTP Cache**: Fast response serving with TTL/ETag support
+- **Normalized Tables**: Structured data for complex queries and analytics
+- **LLM Safety**: Prevents dangerous operations, adds automatic LIMIT
+- **Auto-Inference**: Zero-config schema creation from JSON responses
+
+## Cache Strategies
+
+| Strategy   | Behavior                                   | Use Case                   |
+| ---------- | ------------------------------------------ | -------------------------- |
+| `CACHED`   | Cache with TTL, supports ETag revalidation | Most API endpoints         |
+| `STATIC`   | Cache forever, never expires               | Metadata, configuration    |
+| `REALTIME` | Always fetch, but store for querying       | Live data, real-time feeds |
+| `DISABLED` | No caching                                 | Debug, testing             |
+
+## Performance
+
+| Operation           | Latency       | Notes                   |
+| ------------------- | ------------- | ----------------------- |
+| Cache Hit           | < 1ms         | Served from DuckDB      |
+| Cache Miss          | Network + 2ms | Store + mirror overhead |
+| SQL Query (1K rows) | 5-10ms        | DuckDB performance      |
+| Auto-inference      | 2-5ms         | Schema creation         |
+
+## Examples
+
+The [`examples/`](examples/) directory contains comprehensive demonstrations of cachedx functionality:
+
+### Running Examples
+
+```bash
+# Clone the repository
+git clone https://github.com/awhereai/cachedx
+cd cachedx
+
+# Install dependencies
+uv sync  # or pip install -e '.[dev]'
+
+# Run individual examples
+uv run python -m examples.simple_cache
+uv run python -m examples.quickstart
+uv run python -m examples.advanced_mirroring
+uv run python -m examples.llm_safety_demo
+uv run python -m examples.basic_demo
+```
+
+### Example Descriptions
+
+#### 🚀 [`basic_demo.py`](examples/basic_demo.py) - Core Features Walkthrough
+
+**What it does:** Demonstrates all core cachedx features in one comprehensive example
+**Features shown:**
+
+- Automatic HTTP caching with GitHub API
+- View generation from cached JSON responses
+- SQL querying of cached data
+- LLM context generation for query assistance
+- Cache statistics and monitoring
+
+**Key takeaways:** Perfect introduction to cachedx - shows HTTP caching, SQL queries, and LLM integration working together seamlessly.
+
+---
+
+#### ⚡ [`simple_cache.py`](examples/simple_cache.py) - Basic HTTP Caching
+
+**What it does:** Minimal example showing basic HTTP caching functionality
+**Features shown:**
+
+- Drop-in replacement for httpx.AsyncClient
+- Automatic response caching and cache hits
+- SQL querying of cached data
+- Cache statistics
+
+**Key takeaways:** Start here if you just need HTTP caching. Shows how cachedx works as a simple httpx wrapper.
+
+---
+
+#### 📚 [`quickstart.py`](examples/quickstart.py) - Three-Part Comprehensive Demo
+
+**What it does:** Structured walkthrough of HTTP caching, resource mirroring, and LLM helpers
+**Features shown:**
+
+- **Part 1 - HTTP Cache:** Basic caching with custom configurations
+- **Part 2 - Mirror Demo:** Automatic schema inference and data mirroring
+- **Part 3 - LLM Helper:** Safe query execution and context generation
+
+**Key takeaways:** Best overview of all three layers working together. Great for understanding the full cachedx workflow.
+
+---
+
+#### 🔧 [`advanced_mirroring.py`](examples/advanced_mirroring.py) - Schema Inference & Complex Mapping
+
+**What it does:** Advanced resource mirroring with custom schemas and auto-inference
+**Features shown:**
+
+- Custom schema registration for GitHub repositories
+- Automatic mirroring with `@hybrid_cache` decorator
+- Auto-inference handling complex JSON with nested arrays
+- Advanced SQL queries on mirrored data
+- LLM context generation from multiple data sources
+
+**Key takeaways:** For production usage with complex APIs. Shows both manual schema definition and auto-inference working with challenging data structures.
+
+---
+
+#### 🛡️ [`llm_safety_demo.py`](examples/llm_safety_demo.py) - LLM Security Features
+
+**What it does:** Comprehensive demonstration of SQL safety features for LLM integration
+**Features shown:**
+
+- Safe query execution (SELECT-only enforcement)
+- Dangerous keyword blocking (prevents DROP, DELETE, etc.)
+- Query validation and error handling
+- Automatic LIMIT injection for unbounded queries
+- Execution timing and metadata collection
+
+**Key takeaways:** Essential for LLM applications. Shows how cachedx prevents SQL injection and dangerous operations while enabling powerful query capabilities.
+
+## Real-World Use Cases
+
+We've created two complete, runnable example applications that demonstrate cachedx in production-ready scenarios. Each app includes both backend (FastAPI + cachedx) and frontend (React) with full setup instructions.
+
+### 🌐 Use Case 1: Data Dashboard UI App
+
+**Complete Example App:** [`examples/dashboard-ui/`](examples/dashboard-ui/)
+
+**Scenario:** Building a React dashboard that displays user analytics from your company's REST API with intelligent caching, offline capability, and custom SQL query capabilities.
+
+**Key Features Demonstrated:**
+
+- ⚡ 50x faster loading (100ms vs 5+ seconds)
+- 🔄 Offline capability with cached data
+- 📊 Custom SQL queries from the frontend
+- 🛡️ SQL injection protection with safety layers
+- 🚀 Real-time updates with intelligent caching
+
+**Quick Start:**
+
+```bash
+# Backend
+cd examples/dashboard-ui/backend
+uv sync
+uv run python main.py
+
+# Frontend (new terminal)
+cd examples/dashboard-ui/frontend
+npm install && npm start
+```
+
+**Architecture Highlights:**
+
+- Different caching strategies for different data types (30min for users, 10min for analytics, realtime for live metrics)
+- FastAPI endpoints with cachedx integration
+- React dashboard with SQL query builder
+- Automatic schema inference and data mirroring
+
+---
+
+### 🤖 Use Case 2: PydanticAI Support Agent
+
+**Complete Example App:** [`examples/support-agent/`](examples/support-agent/)
+
+**Scenario:** Intelligent customer support agent using PydanticAI that accesses live company data through cachedx for accurate, context-aware responses.
+
+**Key Features Demonstrated:**
+
+- 🧠 AI agent with real-time data access
+- ⚡ Sub-second responses with cached data
+- 🛡️ Safe operations (query-only, no data modification)
+- 📊 Rich context from multiple data sources
+- 🔄 Critical data updates every 30 seconds
+- 📈 Scales to thousands of concurrent users
+
+**Quick Start:**
+
+```bash
+# Backend
+cd examples/support-agent/backend
+uv sync
+export OPENAI_API_KEY="your-api-key"
+uv run python main.py
+
+# Frontend (new terminal)
+cd examples/support-agent/frontend
+npm install && npm start
+```
+
+**Architecture Highlights:**
+
+- PydanticAI agent with cachedx data access tools
+- Multi-API integration with smart caching (15min users, 2min orders, 30sec inventory)
+- Chat interface with confidence scoring and suggested actions
+- Automatic data mirroring and SQL context generation
+
+**Example Agent Conversations:**
+
+- _"What's the status of my recent orders?"_ → Agent queries orders table with user context
+- _"Is the iPhone 15 Pro in stock?"_ → Agent checks real-time inventory with 30-second cache
+- _"Show me my account information"_ → Agent retrieves user data with appropriate caching
+
+## Development
+
+```bash
+# Clone repository
+git clone https://github.com/yourusername/cachedx
+cd cachedx
+
+# Install with uv (recommended)
+uv sync
+uv run python examples/quickstart.py
+
+# Or with pip
+pip install -e '.[dev]'
+python examples/quickstart.py
+
+# Run tests
+uv run pytest
+# or
+pytest
+
+# Type checking
+uv run mypy cachedx
+# or
+mypy cachedx
+
+# Linting
+uv run ruff check cachedx
+# or
+ruff check cachedx
+```
+
+## API Reference
+
+### Core Functions
+
+- `safe_select(sql, params, limit)` - Execute SELECT-only queries safely
+- `build_llm_context()` - Generate LLM context from available data
+- `safe_llm_query(sql)` - Execute LLM queries with validation and formatting
+
+### HTTP Cache Layer
+
+- `CachedClient` - Drop-in replacement for httpx.AsyncClient with caching
+- `CacheConfig` - Global cache configuration
+- `EndpointConfig` - Per-endpoint cache settings
+- `CacheStrategy` - Caching strategies (CACHED, STATIC, REALTIME, DISABLED)
+
+### Mirror Layer
+
+- `@hybrid_cache(resource)` - Decorator for automatic response mirroring
+- `register(name, mapping)` - Register explicit resource mapping
+- `Mapping` - Schema definition for JSON -> SQL transformation
+- `infer_from_response(data, table)` - Auto-infer mapping from JSON data
+
+## FAQ
+
+**Q: Why Python 3.12+?**
+A: Modern type hints, better performance, and improved error messages.
+
+**Q: Do I need to define schemas?**
+A: No! Auto-inference works great for most cases. Use explicit schemas for fine control.
+
+**Q: How does this compare to Redis?**
+A: cachedx stores structured, queryable data. Redis is for key-value. Different use cases.
+
+**Q: Is it production ready?**
+A: Yes! Comprehensive validation, type safety, and battle-tested architecture.
+
+**Q: Can I use it with my existing httpx code?**
+A: Yes! `CachedClient` is a drop-in replacement for `httpx.AsyncClient`.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file.
+
+## Contributing
+
+Contributions welcome! Please read our contributing guidelines and submit pull requests.
+
+---
+
+<span style="font-size:4pt; color: #666;">Copyright &copy; 2025 Weavers @ Eternal Loom. All rights reserved.</span>
