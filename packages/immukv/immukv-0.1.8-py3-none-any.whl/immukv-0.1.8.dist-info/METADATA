@@ -1,0 +1,66 @@
+Metadata-Version: 2.4
+Name: immukv
+Version: 0.1.8
+Summary: Lightweight immutable key-value store using S3 versioning
+Author: ImmuKV Contributors
+License: MIT
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: boto3>=1.28.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: moto[s3]>=4.2.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Requires-Dist: boto3-stubs[s3]>=1.28.0; extra == "dev"
+Requires-Dist: black>=23.7.0; extra == "dev"
+Requires-Dist: ruff>=0.0.286; extra == "dev"
+
+# ImmuKV - Python Client
+
+Lightweight immutable key-value store using S3 versioning.
+
+## Installation
+
+```bash
+pip install immukv
+```
+
+## Quick Start
+
+```python
+from immukv import ImmuKVClient, Config
+
+config = Config(
+    s3_bucket="your-bucket",
+    s3_region="us-east-1",
+    s3_prefix=""
+)
+
+with ImmuKVClient(config) as client:
+    # Write
+    entry = client.set("key1", {"value": "data"})
+    print(f"Committed: {entry.version_id}")
+
+    # Read
+    latest = client.get("key1")
+    print(f"Latest: {latest.value}")
+```
+
+## Features
+
+- **Immutable log** - All writes append to global log
+- **Fast reads** - Single S3 request for latest value
+- **Hash chain** - Cryptographic integrity verification
+- **No database** - Uses S3 versioning only
+- **Auto-repair** - Orphaned entries repaired automatically
+
+See the [full documentation](../../README.md) for more details.
