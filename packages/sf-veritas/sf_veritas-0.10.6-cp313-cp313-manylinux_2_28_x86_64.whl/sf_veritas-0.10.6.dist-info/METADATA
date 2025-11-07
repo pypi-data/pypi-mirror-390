@@ -1,0 +1,97 @@
+Metadata-Version: 2.1
+Name: sf-veritas
+Version: 0.10.6
+Summary: Middleware for Django, Flask, and FastAPI to intercept requests, logs, and exceptions.
+Author-email: Eric Meadows <em@sailfishqa.com>
+License: Proprietary
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: deepmerge>=1.1.1
+Requires-Dist: fire>=0.7.0
+Requires-Dist: ntplib>=0.4.0
+Requires-Dist: pydantic>=2.9.2
+Requires-Dist: tldextract>=5.1.2
+Requires-Dist: python-dateutil>=2.9.0.post0
+Requires-Dist: orjson>=3.11.3
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: tomli>=2.0.0; python_version < "3.11"
+Requires-Dist: wrapt>=1.17.0
+Provides-Extra: django
+Requires-Dist: django; extra == "django"
+Provides-Extra: flask
+Requires-Dist: flask; extra == "flask"
+Provides-Extra: fastapi
+Requires-Dist: fastapi; extra == "fastapi"
+Provides-Extra: requests
+Requires-Dist: requests>=2.25.1; extra == "requests"
+Provides-Extra: httpcore
+Requires-Dist: httpcore[asyncio,http2,socks,trio]>=1.0.9; extra == "httpcore"
+Provides-Extra: httpx
+Requires-Dist: httpx[http2]>=0.28.1; extra == "httpx"
+Provides-Extra: niquests
+Requires-Dist: niquests>=3.15.2; extra == "niquests"
+Provides-Extra: pycurl
+Requires-Dist: pycurl>=7.45.7; extra == "pycurl"
+Provides-Extra: all-network
+Requires-Dist: requests>=2.25.1; extra == "all-network"
+Requires-Dist: httpcore[asyncio,http2,socks,trio]>=1.0.9; extra == "all-network"
+Requires-Dist: httpx[http2]>=0.28.1; extra == "all-network"
+Requires-Dist: niquests>=3.15.2; extra == "all-network"
+Requires-Dist: pycurl>=7.45.7; extra == "all-network"
+
+# SF3 Middleware - Currently transmissions are diabled
+
+<!-- TODO - turn on thread transmissions -->
+
+Middleware for Python (Django, Flask, and FastAPI) to intercept requests, print statements, logs, and exceptions while persisting tracing.
+
+## Installation
+
+Use Poetry to install:
+
+```bash
+poetry add sf-veritas
+```
+
+## Usage
+
+### Django, etc
+
+**Switch the following:**
+
+```sh
+python manage.py runserver 0.0.0.0:8000
+```
+
+**To:**
+
+```sh
+sf-veritas API-KEY python manage.py runserver 0.0.0.0:8000
+```
+
+## TODO - Rename all Sailfish artifacts to Sailfish.ai
+
+## Network Hop Calculation Time
+
+To evaluate the performance impact of this package, we benchmarked 1000 HTTP requests with and without the package enabled.
+
+| Configuration     | Mean (ms) | Median (ms) | Std Dev (ms) |
+|-------------------|-----------|-------------|--------------|
+| ✅ With Package    | 79.12     | 54.00       | 111.18      |
+| ❌ Without Package | 69.70     | 52.00       | 73.78       |
+
+> ⚠️ Note: The package introduces a slight increase in mean response time and variance. This trade-off may be acceptable depending on the value the package provides (e.g., additional logging, monitoring, or security features).
+
+---
+
+## Optimized Entrypoint Capture (Post-Refactor)
+
+After optimizing how the user-code entrypoint is captured (via faster stack inspection), we observed improved stability and performance across 1015 analyzed requests:
+
+| Configuration     | Mean (ms) | Median (ms) | Std Dev (ms) |
+|-------------------|-----------|-------------|--------------|
+| ✅ With Package    | 142.45   | 138.50      | 80.78        |
+| ❌ Without Package | 131.07   | 127.00      | 35.75        |
+
+> ⚠️ The optimized implementation added a slight increase in mean latency (~8.7%), but this tradeoff is offset by improved accuracy of entrypoint capture.
+---
