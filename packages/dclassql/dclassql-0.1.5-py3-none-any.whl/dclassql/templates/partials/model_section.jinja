@@ -1,0 +1,118 @@
+{%- set name = model.name -%}
+{%- set info = model.model_info -%}
+{%- set insert_class = name ~ 'Insert' -%}
+{%- set insert_dict_class = name ~ 'InsertDict' -%}
+{%- set where_dict_class = name ~ 'WhereDict' -%}
+{%- set include_dict_class = name ~ 'IncludeDict' -%}
+{%- set order_by_dict_class = name ~ 'OrderByDict' -%}
+{%- set table_class = name ~ 'Table' -%}
+{%- set include_alias = 'T' ~ name ~ 'IncludeCol' -%}
+{%- set sortable_alias = 'T' ~ name ~ 'SortableCol' -%}
+{%- set include_relations = info.relations | sort(attribute='name', case_sensitive=True) -%}
+{%- set sortable_columns = info.columns -%}
+
+{% set backend_signature = 'BackendProtocol' %}
+
+{% if include_relations %}
+{{ include_alias }} = Literal[{% for relation in include_relations %}'{{ relation.name }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+{% else %}
+{{ include_alias }} = Literal[()]
+{% endif %}
+{% if sortable_columns %}
+{{ sortable_alias }} = Literal[{% for column in sortable_columns %}'{{ column.name }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+{% else %}
+{{ sortable_alias }} = Literal[()]
+{% endif %}
+
+@dataclass(slots=True, kw_only=True)
+class {{ insert_class }}:
+{{ macros.dataclass_fields(model.insert_fields)|indent(4, True) }}
+
+class {{ insert_dict_class }}(TypedDict, closed=True):
+{{ macros.typed_dict_fields(model.typed_dict_fields)|indent(4, True) }}
+
+{% for relation_filter in model.relation_filters %}
+class {{ relation_filter.name }}(TypedDict, total=False, closed=True):
+{{ macros.typed_dict_fields(relation_filter.fields)|indent(4, True) }}
+
+{% endfor %}
+
+class {{ where_dict_class }}(TypedDict, total=False, closed=True):
+{{ macros.where_fields(model.where_fields)|indent(4, True) }}
+
+class {{ include_dict_class }}(TypedDict, total=False, closed=True):
+{% if include_relations %}
+{% for relation in include_relations %}    {{ relation.name }}: bool
+{% endfor %}{% else %}
+    pass
+{% endif %}
+
+class {{ order_by_dict_class }}(TypedDict, total=False, closed=True):
+{% if sortable_columns %}
+{% for column in sortable_columns %}    {{ column.name }}: Literal['asc', 'desc']
+{% endfor %}{% else %}
+    pass
+{% endif %}
+
+class {{ table_class }}(TableProtocol):
+    model = {{ name }}
+    insert_model = {{ insert_class }}
+    table_name: str = {{ model.table_name_literal }}
+    datasource = {{ model.datasource_expr }}
+{{ macros.column_specs(model.column_specs)|indent(4, True) }}
+    column_specs_by_name: Mapping[str, ColumnSpec] = MappingProxyType({spec.name: spec for spec in column_specs})
+    primary_key: tuple[str, ...] = {{ model.primary_key_literal }}
+    indexes: tuple[tuple[str, ...], ...] = {{ model.indexes_literal }}
+    unique_indexes: tuple[tuple[str, ...], ...] = {{ model.unique_indexes_literal }}
+{{ macros.foreign_keys(model.foreign_keys)|indent(4, True) }}
+{{ macros.relations(model.relation_entries)|indent(4, True) }}
+{% if model.default_factories %}
+{% for factory in model.default_factories %}    {{ factory.var_name }} = {{ factory.expression }}
+{% endfor %}{% endif %}
+
+    @classmethod
+    def serialize_insert(cls, data: {{ insert_class }} | Mapping[str, object]) -> dict[str, object]:
+        if isinstance(data, Mapping):
+            result: dict[str, object] = {}
+{% for column in model.column_specs %}
+            if {{ column.name_repr }} in data:
+                result[{{ column.name_repr }}] = {{ column.mapping_value_expr }}{{ '  # type: ignore[attr-defined]' if column.is_enum else '' }}
+{% endfor %}
+            return result
+        if isinstance(data, {{ insert_class }}):
+            return {
+{% for column in model.column_specs %}                {{ column.name_repr }}: {{ column.insert_value_expr }},{{ '  # type: ignore[attr-defined]' if column.is_enum else '' }}
+{% endfor %}            }
+        raise TypeError("Unsupported insert payload type for {{ name }}")
+
+    @classmethod
+    def deserialize_row(cls, row: Mapping[str, object]) -> {{ name }}:
+        instance = {{ name }}.__new__({{ name }})  # type: ignore[call-arg]
+{% for assignment in model.row_assignments %}        instance.{{ assignment.field_name }} = {{ assignment.value_expr }} # type: ignore[attr-defined]
+{% endfor %}        return instance
+
+    def __init__(self, backend: {{ backend_signature }}) -> None:
+        self._backend = backend
+
+    def __str__(self) -> str:
+        return self._backend.escape_identifier(self.table_name)
+
+    def insert(self, data: {{ insert_class }} | {{ insert_dict_class }}) -> {{ name }}:
+        return self._backend.insert(self, data)
+
+    def insert_many(self, data: Sequence[{{ insert_class }} | {{ insert_dict_class }}], *, batch_size: int | None = None) -> list[{{ name }}]:
+        return self._backend.insert_many(self, data, batch_size=batch_size)
+
+    def find_many(self, *, where: {{ where_dict_class }} | None = None, include: {{ include_dict_class }} | None = None, order_by: {{ order_by_dict_class }} | None = None, take: int | None = None, skip: int | None = None) -> list[{{ name }}]:
+        return self._backend.find_many(
+            self, 
+            where=where, include=include, order_by=order_by, 
+            take=take, skip=skip
+        )
+
+    def find_first(self, *, where: {{ where_dict_class }} | None = None, include: {{ include_dict_class }} | None = None, order_by: {{ order_by_dict_class }} | None = None, skip: int | None = None) -> {{ name }} | None:
+        return self._backend.find_first(
+            self, 
+            where=where, include=include, order_by=order_by, 
+            skip=skip
+        )
