@@ -1,0 +1,186 @@
+{
+  "companyAnnouncements": [
+    "Start with a plan: Write down what you want to build first to avoid confusion (/alfred:1-plan)",
+    "✅ 5 promises: Test-first + Easy-to-read code + Clean organization + Secure + Trackable",
+    "Task list: Continuous progress tracking ensures nothing gets missed",
+    "Language separation: We communicate in your language, computers understand in English",
+    "Everything connected: Plan→Test→Code→Docs are all linked together",
+    "⚡ Parallel processing: Independent tasks can be handled simultaneously",
+    "Tools first: Find the right tools before starting any work",
+    "Step by step: What you want→Plan→Execute→Report results",
+    "Auto-generated lists: Planning automatically creates task lists",
+    "❓ Ask when confused: If something isn't clear, just ask right away",
+    "🧪 Automatic quality checks: Code automatically verified against 5 core principles",
+    "Multi-language support: Automatic validation for Python, JavaScript, and more",
+    "⚡ Never stops: Can continue even when tools are unavailable",
+    "Flexible approach: Choose between team collaboration or individual work as needed",
+    "🧹 Auto cleanup: Automatically removes unnecessary items when work is complete",
+    "⚡ Quick updates: New versions detected in 3 seconds, only fetch what's needed",
+    "On-demand loading: Only loads current tools to save memory",
+    "Complete history: All steps from planning to code are recorded for easy reference",
+    "Bug reporting: File bug reports to GitHub in 30 seconds",
+    "🩺 Health check: Use 'moai-adk doctor' to instantly check current status",
+    "Safe updates: Use 'moai-adk update' to safely add new features",
+    "🧹 When work is done: Use '/clear' to clean up conversation for the next task"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/session_start__show_project_info.py",
+            "type": "command",
+            "description": "Display project info and language configuration at session start"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
+            "type": "command",
+            "description": "Create automatic checkpoint before file modifications"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
+            "type": "command",
+            "description": "Load documentation on-demand based on user intent"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/session_end__cleanup.py",
+            "type": "command",
+            "description": "Clean up session state and temporary files"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "uv run {{HOOK_PROJECT_DIR}}/.claude/hooks/alfred/post_tool__log_changes.py",
+            "type": "command",
+            "description": "Log file changes for audit and tracking"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ]
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Task",
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "NotebookEdit",
+      "Grep",
+      "Glob",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "BashOutput",
+      "KillShell",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git remote:*)",
+      "Bash(git tag:*)",
+      "Bash(git config:*)",
+      "Bash(rg:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(which:*)",
+      "Bash(make:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(uv:*)",
+      "Bash(pytest:*)",
+      "Bash(mypy:*)",
+      "Bash(ruff:*)",
+      "Bash(black:*)",
+      "Bash(coverage:*)",
+      "Bash(moai-adk:*)",
+      "Bash(alfred:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh issue:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(tree:*)",
+      "Bash(diff:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)"
+    ],
+    "ask": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git stash:*)",
+      "Bash(git revert:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(uv add:*)",
+      "Bash(uv remove:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf C\\:/:*)",
+      "Bash(rm -rf C\\:/*:*)",
+      "Bash(del /S /Q C\\:/:*)",
+      "Bash(rmdir /S /Q C\\:/:*)",
+      "Bash(format:*)",
+      "Bash(chmod -R 777:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)",
+      "Bash(reboot:*)",
+      "Bash(shutdown:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase -i:*)"
+    ]
+  },
+  "spinnerTipsEnabled": true,
+  "outputStyle": "streaming"
+}
