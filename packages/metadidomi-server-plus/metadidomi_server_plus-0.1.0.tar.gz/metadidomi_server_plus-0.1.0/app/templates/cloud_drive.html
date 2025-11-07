@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stockage Cloud</title>
+  <link rel="stylesheet" href="/static/cloud_drive.css">
+</head>
+<body>
+  <!-- Section d'authentification -->
+  <div id="auth-section" class="auth-container card">
+    <div id="login-form">
+      <h2>Connexion au Cloud</h2>
+      <div id="login-alert" class="alert alert-danger hidden"></div>
+      <form id="loginForm">
+        <input type="email" id="login-email" placeholder="Email" required>
+        <input type="password" id="login-password" placeholder="Mot de passe" required>
+        <button type="submit" class="btn-primary" style="width:100%;justify-content:center;">
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M12,17C10.89,17 10,16.1 10,15C10,13.89 10.89,13 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17M18,20V10H6V20H18M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10C4,8.89 4.89,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/>
+          </svg>
+          Se connecter
+        </button>
+      </form>
+      <p style="margin-top:1rem;text-align:center;">
+        Pas de compte? <a href="#" id="show-register">Créer un compte</a>
+      </p>
+    </div>
+
+    <div id="register-form" class="hidden">
+      <h2>Créer un compte</h2>
+      <div id="register-alert" class="alert alert-danger hidden"></div>
+      <form id="registerForm">
+        <input type="text" id="register-name" placeholder="Nom complet" required>
+        <input type="email" id="register-email" placeholder="Email" required>
+        <input type="password" id="register-password" placeholder="Mot de passe" required>
+        <input type="password" id="register-confirm-password" placeholder="Confirmer le mot de passe" required>
+        <button type="submit" class="btn-primary" style="width:100%;justify-content:center;">
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+          </svg>
+          Créer le compte
+        </button>
+      </form>
+      <p style="margin-top:1rem;text-align:center;">
+        Déjà un compte? <a href="#" id="show-login">Se connecter</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Section principale (visible seulement si connecté) -->
+  <div id="main-section" class="hidden">
+    <header>
+      <div class="header-content">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <select class="theme-selector" id="theme-selector">
+            <option value="light">Thème clair</option>
+            <option value="dark">Thème sombre</option>
+          </select>
+          <h1>Cloud UI</h1>
+          <span id="backend-status">
+            <span class="status-indicator status-offline"></span>
+            <span>Hors ligne</span>
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span id="user-greeting">Bonjour, </span>
+          <button onclick="logout()" class="btn-danger">
+            Déconnexion
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="header-bar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="breadcrumb" id="breadcrumb">
+          <a onclick="navigateToFolder('')">Root</a>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn-primary" onclick="document.getElementById('file_input').click()">
+          Importer un fichier
+        </button>
+        <span id="upload_spinner" style="display:none;margin-left:8px;">⏳</span>
+        <button class="btn-success" onclick="createFolder()">
+          Créer un dossier
+        </button>
+        <button class="btn-info" onclick="saveToCloud()">
+          💾 Pousser vers le cloud
+        </button>
+        <button class="btn-info" onclick="loadFromCloud()">
+          🔄 Charger depuis cloud
+        </button>
+        <button class="btn-info" onclick="testBackend()">
+          🔌 Tester backend
+        </button>
+      </div>
+      <input type="file" id="file_input" style="display:none" onchange="uploadFile()" multiple>
+    </div>
+
+    <div class="main-content">
+      <table id="files_table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="select_all" onclick="toggleSelectAll(this)"></th>
+            <th>Nom</th>
+            <th>Taille</th>
+            <th>Type</th>
+            <th>Dernière modification</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="files_list">
+          <!-- Les fichiers et dossiers seront ajoutés ici dynamiquement -->
+        </tbody>
+      </table>
+
+      <div class="account-card">
+        <div id="account_info"></div>
+        <button onclick="deleteAccount()" class="btn-danger">
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+          </svg>
+          Supprimer mon compte
+        </button>
+        <div id="delete_msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de prévisualisation -->
+  <div id="preview-modal" class="preview-modal">
+    <div class="preview-content">
+      <div class="preview-header">
+        <h3 id="preview-title">Prévisualisation</h3>
+        <button class="close-preview" onclick="closePreview()">×</button>
+      </div>
+      <div class="preview-body" id="preview-body">
+        <!-- Le contenu de prévisualisation sera inséré ici -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Snackbar stylisé -->
+  <div id="snackbar">
+    <div class="snackbar-content">
+      <span id="snackbar-icon"></span>
+      <span id="snackbar-message"></span>
+    </div>
+    <button class="snackbar-close" onclick="hideSnackbar()">×</button>
+  </div>
+
+  <script src="/static/cloud_drive.js"></script>
+</body>
+</html>

@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Utilisateurs</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4cb5ae;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: var(--primary-color);
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-warning {
+            background: var(--warning-color);
+        }
+        
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        
+        .btn-sm {
+            padding: 0.3rem 0.7rem;
+            font-size: 0.8rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--light-color);
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: var(--light-color);
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .status-active {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        
+        .status-inactive {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+        
+        .actions {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-btn {
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.3rem 0.7rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 4px;
+            right: 0;
+        }
+        
+        .dropdown-content a {
+            color: var(--dark-color);
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            display: block;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        
+        .show {
+            display: block;
+        }
+        
+        .tab-container {
+            margin-top: 1rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            background: #f1f1f1;
+            margin-right: 0.25rem;
+        }
+        
+        .tab.active {
+            background: white;
+            border-color: #ddd;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .user-details {
+            background: var(--light-color);
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .user-details div {
+            margin-bottom: 0.5rem;
+        }
+        
+        .password-field {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            border: 1px dashed #ccc;
+        }
+        
+        .copy-btn {
+            margin-left: 0.5rem;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 0.1rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Utilisateurs</h1>
+            <div id="auth-buttons">
+                <button id="login-btn" class="btn">Se connecter</button>
+                <button id="register-btn" class="btn">Créer un compte</button>
+                <button id="logout-btn" class="btn btn-danger hidden">Déconnexion</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Section d'authentification -->
+        <div id="auth-section" class="card">
+            <!-- Formulaire de connexion -->
+            <div id="login-form" class="hidden">
+                <h2>Connexion</h2>
+                <div id="login-alert" class="alert alert-danger hidden"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Mot de passe:</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn">Se connecter</button>
+                </form>
+                <p>Pas de compte? <a href="#" id="show-register">Créer un compte</a></p>
+            </div>
+
+            <!-- Formulaire d'inscription -->
+            <div id="register-form" class="hidden">
+                <h2>Créer un compte</h2>
+                <div id="register-alert" class="alert alert-danger hidden"></div>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="register-name">Nom:</label>
+                        <input type="text" id="register-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email:</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Mot de passe:</label>
+                        <input type="password" id="register-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirmer le mot de passe:</label>
+                        <input type="password" id="register-confirm-password" required>
+                    </div>
+                    <button type="submit" class="btn">Créer le compte</button>
+                </form>
+                <p>Déjà un compte? <a href="#" id="show-login">Se connecter</a></p>
+            </div>
+        </div>
+
+        <!-- Section utilisateur connecté -->
+        <div id="user-section" class="hidden">
+            <div class="user-info">
+                <div>
+                    <h2>Bienvenue, <span id="user-name"></span>!</h2>
+                    <p>Email: <span id="user-email"></span></p>
+                </div>
+                <div>
+                    <button id="logout-btn-2" class="btn btn-danger">Déconnexion</button>
+                </div>
+            </div>
+
+            <div class="user-details">
+                <div><strong>Nombre de connexions:</strong> <span id="user-login-count"></span></div>
+                <div><strong>Statut:</strong> <span id="user-status" class="status-active">Actif</span></div>
+            </div>
+
+            <div class="tab-container">
+                <div class="tabs">
+                    <div class="tab active" data-tab="profile">Profil</div>
+                    <div class="tab" data-tab="users">Gestion des utilisateurs</div>
+                </div>
+
+                <div class="tab-content active" id="profile-tab">
+                    <h3>Modifier le profil</h3>
+                    <div id="profile-alert" class="alert alert-danger hidden"></div>
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label for="profile-name">Nom:</label>
+                            <input type="text" id="profile-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-email">Email:</label>
+                            <input type="email" id="profile-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-password">Nouveau mot de passe (laisser vide pour ne pas changer):</label>
+                            <input type="password" id="profile-password">
+                        </div>
+                        <button type="submit" class="btn">Mettre à jour</button>
+                    </form>
+                    <div style="margin-top: 2rem;">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="users-tab">
+                    <h3>Liste des utilisateurs</h3>
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Date création</th>
+                                <th>Dernière connexion</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-list">
+                            <!-- Les utilisateurs seront ajoutés ici dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration de l'API - URLs relatives
+        const API_BASE = '/api';
+        
+        // Éléments DOM
+        const authSection = document.getElementById('auth-section');
+        const userSection = document.getElementById('user-section');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const logoutBtn2 = document.getElementById('logout-btn-2');
+        const showRegisterLink = document.getElementById('show-register');
+        const showLoginLink = document.getElementById('show-login');
+        const loginAlert = document.getElementById('login-alert');
+        const registerAlert = document.getElementById('register-alert');
+        const profileAlert = document.getElementById('profile-alert');
+        const userNameSpan = document.getElementById('user-name');
+        const userEmailSpan = document.getElementById('user-email');
+        const userLoginCountSpan = document.getElementById('user-login-count');
+        const userStatusSpan = document.getElementById('user-status');
+        const usersList = document.getElementById('users-list');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const deactivateAccountBtn = document.getElementById('deactivate-account');
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            setupEventListeners();
+        });
+
+        // Vérifier le statut d'authentification
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/me`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    showUserSection(user);
+                } else {
+                    showAuthSection();
+                }
+            } catch (error) {
+                console.error('Erreur de vérification d\'authentification:', error);
+                showAuthSection();
+            }
+        }
+
+        // Afficher la section d'authentification
+        function showAuthSection() {
+            authSection.classList.remove('hidden');
+            userSection.classList.add('hidden');
+            showLoginForm();
+        }
+
+        // Afficher la section utilisateur
+        function showUserSection(user) {
+            authSection.classList.add('hidden');
+            userSection.classList.remove('hidden');
+            
+            // Mettre à jour les informations utilisateur
+            userNameSpan.textContent = user.name;
+            userEmailSpan.textContent = user.email;
+            userLoginCountSpan.textContent = user.login_count || 0;
+            
+            // Statut
+            if (user.is_active) {
+                userStatusSpan.textContent = 'Actif';
+                userStatusSpan.className = 'status-active';
+            } else {
+                userStatusSpan.textContent = 'Désactivé';
+                userStatusSpan.className = 'status-inactive';
+            }
+            
+            // Remplir le formulaire de profil
+            document.getElementById('profile-name').value = user.name;
+            document.getElementById('profile-email').value = user.email;
+            
+            // Charger la liste des utilisateurs
+            loadUsersList();
+        }
+
+        // Afficher le formulaire de connexion
+        function showLoginForm() {
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            clearAlerts();
+        }
+
+        // Afficher le formulaire d'inscription
+        function showRegisterForm() {
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+            clearAlerts();
+        }
+
+        // Configurer les écouteurs d'événements
+        function setupEventListeners() {
+            // Boutons d'authentification
+            if (loginBtn) loginBtn.addEventListener('click', showLoginForm);
+            if (registerBtn) registerBtn.addEventListener('click', showRegisterForm);
+            if (logoutBtn) logoutBtn.addEventListener('click', logout);
+            if (logoutBtn2) logoutBtn2.addEventListener('click', logout);
+            
+            // Liens de navigation entre formulaires
+            if (showRegisterLink) {
+                showRegisterLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showRegisterForm();
+                });
+            }
+            if (showLoginLink) {
+                showLoginLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showLoginForm();
+                });
+            }
+            
+            // Formulaire de connexion
+            const loginFormEl = document.getElementById('loginForm');
+            if (loginFormEl) loginFormEl.addEventListener('submit', handleLogin);
+            
+            // Formulaire d'inscription
+            const registerFormEl = document.getElementById('registerForm');
+            if (registerFormEl) registerFormEl.addEventListener('submit', handleRegister);
+            
+            // Formulaire de profil
+            const profileFormEl = document.getElementById('profileForm');
+            if (profileFormEl) profileFormEl.addEventListener('submit', handleProfileUpdate);
+            
+            // Bouton de désactivation de compte
+            if (typeof deactivateAccountBtn !== 'undefined' && deactivateAccountBtn) {
+                deactivateAccountBtn.addEventListener('click', handleDeactivateAccount);
+            }
+            
+            // Onglets
+            if (tabs && tabs.length) {
+                tabs.forEach(tab => {
+                    if (tab) {
+                        tab.addEventListener('click', function() {
+                            const tabId = this.getAttribute('data-tab');
+                            switchTab(tabId);
+                        });
+                    }
+                });
+            }
+        }
+
+        // Changer d'onglet
+        function switchTab(tabId) {
+            // Désactiver tous les onglets
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Activer l'onglet sélectionné
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            
+            // Recharger la liste des utilisateurs si on passe à l'onglet utilisateurs
+            if (tabId === 'users') {
+                loadUsersList();
+            }
+        }
+
+        // Gérer la connexion
+        async function handleLogin(e) {
+            e.preventDefault();
+            clearAlerts();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
+                });
+                
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    // Si ce n'est pas du JSON, afficher une erreur générique
+                    showAlert(loginAlert, 'Réponse serveur invalide ou erreur réseau.');
+                    return;
+                }
+                
+                if (response.ok) {
+                    showUserSection(data.user);
+                } else {
+                    showAlert(loginAlert, data.error || 'Erreur de connexion');
+                }
+            } catch (error) {
+                console.error('Erreur de connexion:', error);
+                showAlert(loginAlert, 'Erreur de connexion au serveur');
+            }
+        }
+
+        // Gérer l'inscription
+        async function handleRegister(e) {
+            e.preventDefault();
+            clearAlerts();
+            
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            
+            // Validation
+            if (password !== confirmPassword) {
+                showAlert(registerAlert, 'Les mots de passe ne correspondent pas.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, password }),
+                    credentials: 'include'
+                });
+                
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    showAlert(registerAlert, 'Réponse serveur invalide ou erreur réseau.');
+                    return;
+                }
+                
+                if (response.ok) {
+                    // Se connecter automatiquement après l'inscription
+                    const loginResponse = await fetch(`${API_BASE}/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email, password }),
+                        credentials: 'include'
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        showUserSection(loginData.user);
+                    } else {
+                        showLoginForm();
+                        showAlert(loginAlert, 'Compte créé, veuillez vous connecter');
+                    }
+                } else {
+                    showAlert(registerAlert, data.error);
+                }
+            } catch (error) {
+                console.error('Erreur d\'inscription:', error);
+                showAlert(registerAlert, 'Erreur de connexion au serveur');
+            }
+        }
+
+        // Gérer la mise à jour du profil
+        async function handleProfileUpdate(e) {
+            e.preventDefault();
+            clearAlerts();
+            
+            const name = document.getElementById('profile-name').value;
+            const email = document.getElementById('profile-email').value;
+            const password = document.getElementById('profile-password').value;
+            
+            const updateData = { name, email };
+            if (password) {
+                updateData.password = password;
+            }
+            
+            try {
+                // Récupérer l'ID de l'utilisateur courant
+                const meResponse = await fetch(`${API_BASE}/me`, {
+                    credentials: 'include'
+                });
+                
+                if (!meResponse.ok) {
+                    showAlert(profileAlert, 'Erreur de récupération des informations utilisateur');
+                    return;
+                }
+                
+                const currentUser = await meResponse.json();
+                
+                const response = await fetch(`${API_BASE}/users/${currentUser.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData),
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Recharger les informations utilisateur
+                    checkAuthStatus();
+                    showAlert(profileAlert, 'Profil mis à jour avec succès!', 'success');
+                } else {
+                    showAlert(profileAlert, data.error);
+                }
+            } catch (error) {
+                console.error('Erreur de mise à jour du profil:', error);
+                showAlert(profileAlert, 'Erreur de connexion au serveur');
+            }
+        }
+
+        // Gérer la désactivation du compte
+        async function handleDeactivateAccount() {
+            if (!confirm('Êtes-vous sûr de vouloir désactiver votre compte? Vous ne pourrez plus vous connecter.')) {
+                return;
+            }
+            
+            try {
+                // Récupérer l'ID de l'utilisateur courant
+                const meResponse = await fetch(`${API_BASE}/me`, {
+                    credentials: 'include'
+                });
+                
+                if (!meResponse.ok) {
+                    alert('Erreur de récupération des informations utilisateur');
+                    return;
+                }
+                
+                const currentUser = await meResponse.json();
+                
+                const response = await fetch(`${API_BASE}/users/${currentUser.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ is_active: false }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    alert('Votre compte a été désactivé. Vous allez être déconnecté.');
+                    logout();
+                } else {
+                    const data = await response.json();
+                    alert('Erreur: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erreur de désactivation du compte:', error);
+                alert('Erreur de connexion au serveur');
+            }
+        }
+
+        // Déconnexion
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Erreur de déconnexion:', error);
+            }
+            
+            showAuthSection();
+        }
+
+        // Charger la liste des utilisateurs
+        async function loadUsersList() {
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    console.error('Erreur de chargement des utilisateurs');
+                    return;
+                }
+                
+                const users = await response.json();
+                const currentUserResponse = await fetch(`${API_BASE}/me`, {
+                    credentials: 'include'
+                });
+                
+                if (!currentUserResponse.ok) {
+                    return;
+                }
+                
+                const currentUser = await currentUserResponse.json();
+                
+                usersList.innerHTML = '';
+                
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    
+                    // Formater les dates
+                    const createdDate = formatDate(user.created_at);
+                    const lastLoginDate = user.last_login ? formatDate(user.last_login) : 'Jamais';
+                    
+                    row.innerHTML = `
+                        <td>${user.name}</td>
+                        <td>${user.email}</td>
+                        <td>${createdDate}</td>
+                        <td>${lastLoginDate}</td>
+                        <td>
+                            <span class="${user.is_active ? 'status-active' : 'status-inactive'}">
+                                ${user.is_active ? 'Actif' : 'Désactivé'}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <div class="dropdown">
+                                    <button class="dropdown-btn btn-sm">Actions ▼</button>
+                                    <div class="dropdown-content">
+                                        <a onclick="toggleUserStatus('${user.id}', ${!user.is_active})">
+                                            ${user.is_active ? 'Désactiver' : 'Activer'}
+                                        </a>
+                                        <a onclick="editUserName('${user.id}', '${user.name}')">Modifier le nom</a>
+                                        <a onclick="copyUserId('${user.id}')">Copier l'ID</a>
+                                        <a onclick="deleteUser('${user.id}', '${user.name}')" style="color: var(--danger-color);">Supprimer</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                    
+                    usersList.appendChild(row);
+                });
+                
+                // Ajouter les gestionnaires d'événements pour les menus déroulants
+                setupDropdownMenus();
+            } catch (error) {
+                console.error('Erreur de chargement des utilisateurs:', error);
+            }
+        }
+
+        // Configurer les menus déroulants
+        function setupDropdownMenus() {
+            const dropdowns = document.querySelectorAll('.dropdown');
+            
+            dropdowns.forEach(dropdown => {
+                const button = dropdown.querySelector('.dropdown-btn');
+                const content = dropdown.querySelector('.dropdown-content');
+                
+                button.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Fermer tous les autres menus
+                    document.querySelectorAll('.dropdown-content').forEach(menu => {
+                        if (menu !== content) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                    content.classList.toggle('show');
+                });
+            });
+            
+            // Fermer les menus en cliquant ailleurs
+            document.addEventListener('click', function() {
+                document.querySelectorAll('.dropdown-content').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            });
+        }
+
+        // Activer/Désactiver un utilisateur
+        async function toggleUserStatus(userId, newStatus) {
+            const action = newStatus ? 'activer' : 'désactiver';
+            if (!confirm(`Êtes-vous sûr de vouloir ${action} cet utilisateur?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ is_active: newStatus }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    loadUsersList();
+                    
+                    // Si c'est l'utilisateur courant qui est désactivé, déconnecter
+                    const meResponse = await fetch(`${API_BASE}/me`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (meResponse.ok) {
+                        const currentUser = await meResponse.json();
+                        if (currentUser.id === userId && !newStatus) {
+                            alert('Votre compte a été désactivé. Vous allez être déconnecté.');
+                            logout();
+                        }
+                    }
+                } else {
+                    const data = await response.json();
+                    alert('Erreur: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erreur de modification du statut:', error);
+                alert('Erreur de connexion au serveur');
+            }
+        }
+
+        // Modifier le nom d'un utilisateur
+        async function editUserName(userId, currentName) {
+            const newName = prompt('Nouveau nom:', currentName);
+            if (newName !== null && newName.trim() !== '') {
+                try {
+                    const response = await fetch(`${API_BASE}/users/${userId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name: newName.trim() }),
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        loadUsersList();
+                    } else {
+                        const data = await response.json();
+                        alert('Erreur: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Erreur de modification du nom:', error);
+                    alert('Erreur de connexion au serveur');
+                }
+            }
+        }
+
+        // Supprimer un utilisateur
+        async function deleteUser(userId, userName) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName}"? Cette action est irréversible.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    loadUsersList();
+                    
+                    // Si c'est l'utilisateur courant qui est supprimé, déconnecter
+                    const meResponse = await fetch(`${API_BASE}/me`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (!meResponse.ok) {
+                        // L'utilisateur courant a été supprimé
+                        alert('Votre compte a été supprimé. Vous allez être déconnecté.');
+                        logout();
+                    }
+                } else {
+                    const data = await response.json();
+                    alert('Erreur: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erreur de suppression:', error);
+                alert('Erreur de connexion au serveur');
+            }
+        }
+
+        // Copier l'ID utilisateur
+        function copyUserId(userId) {
+            copyToClipboardText(userId);
+            alert('ID utilisateur copié: ' + userId);
+        }
+
+        // Copier le texte dans le presse-papier
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            copyToClipboardText(element.textContent);
+            alert('Texte copié: ' + element.textContent);
+        }
+
+        function copyToClipboardText(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+
+        // Formater une date
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR');
+        }
+
+        // Afficher une alerte
+        function showAlert(alertElement, message, type = 'danger') {
+            alertElement.textContent = message;
+            alertElement.classList.remove('hidden');
+            alertElement.className = `alert alert-${type}`;
+            
+            // Cacher l'alerte après 5 secondes
+            setTimeout(() => {
+                alertElement.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Effacer les alertes
+        function clearAlerts() {
+            loginAlert.classList.add('hidden');
+            registerAlert.classList.add('hidden');
+            profileAlert.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

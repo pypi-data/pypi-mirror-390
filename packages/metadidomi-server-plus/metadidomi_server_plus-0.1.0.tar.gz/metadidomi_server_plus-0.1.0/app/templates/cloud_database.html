@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Metadidomi Cloud Database</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/cloud_database_style.css">
+</head>
+<body>
+<header>
+  
+  <div style="display:flex;align-items:center;gap:12px;justify-content:center;">
+        <h1 style="color:#fff;display:flex;align-items:center;gap:14px;">
+          Metadidomi Cloud Database
+          <span id="user-display" style="font-size:0.7em;font-weight:400;color:#b3e5fc;background:#2226;padding:4px 12px;border-radius:8px;display:none;"></span>
+        </h1>
+    <select class="theme-selector" style="margin-right:12px;"></select>
+  </div>
+</header>
+
+<div id="sync-status"></div>
+<div id="toolbar">
+  <button onclick="save()" style="font-weight:bold; color:#fff;">Sauvegarder</button>
+  <span id="toolbar-info"></span>
+  <div id="menu-bar">
+    <button id="btn-db" class="menu-btn active">Base de données</button>
+    <button id="btn-rules" class="menu-btn">Règles</button>
+    <button id="btn-users" class="menu-btn" onclick="window.open('/users_list', '_blank')">Utilisateurs</button>
+    <button id="btn-cloud" class="menu-btn" onclick="window.location.href='http://'+window.location.hostname+':5000/cloud_drive'">Cloud Drive</button>
+  </div>
+</div>
+<div id="main-content" style="display:flex;flex-direction:row;align-items:flex-start;gap:18px;">
+  <div id="db-section" style="display:flex;flex-direction:row;align-items:flex-start;gap:18px;width:100%;">
+    <div id="collections" class="panel" style="flex:1;min-width:220px;max-width:260px;">
+      <h2>Collections</h2>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="newCollectionName" placeholder="Nom collection" style="flex:1;">
+        <button onclick="addCollection()">Ajouter</button>
+        <button id="deleteBtn" onclick="deleteSelected()" style="display:none;background:#e74c3c;">Supprimer</button>
+      </div>
+      <ul id="collectionList"></ul>
+    </div>
+    <div id="documents" class="panel" style="flex:1;min-width:220px;max-width:260px;">
+      <h2>Documents</h2>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="newDocumentId" placeholder="ID document (auto si vide)" style="flex:1;">
+        <button onclick="addDocument()">Ajouter</button>
+        <button id="deleteDocBtn" onclick="deleteSelected()" style="display:none;background:#e74c3c;">Supprimer</button>
+      </div>
+      <ul id="documentList"></ul>
+    </div>
+    <div id="fields" class="panel" style="flex:2;min-width:260px;max-width:600px;">
+      <h2>Champs du document</h2>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <button onclick="goBack()">⬅️ Retour</button>
+        <button onclick="goNext()">➡️ Suivant</button>
+      </div>
+      <div id="breadcrumb"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <button onclick="addField()">Ajouter champ</button>
+        <button onclick="addSubCollection()">Ajouter sous-collection</button>
+      </div>
+      <div id="fieldsContainer"></div>
+      <div id="subCollections"></div>
+    </div>
+  </div>
+  <div id="rules-section" style="display:none;width:100%;">
+    <div class="panel" style="margin:32px 0 48px 0;padding:24px 18px;background:var(--bg-panel);border-radius:12px;box-shadow:0 2px 8px #0001;max-width:900px;margin-left:auto;margin-right:auto;">
+      <h2 style="font-size:1.5em;font-weight:bold;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;">
+        <span>Gestion des règles</span>
+        <button onclick="confirmDeployRules()" style="padding:8px 22px;background:var(--primary);color:var(--menu-btn-active-color);border-radius:8px;font-weight:bold;margin-left:18px;">Déployer</button>
+      </h2>
+      <!-- Tableau des règles -->
+      <div style="background:var(--bg-panel);border-radius:12px;box-shadow:0 2px 8px var(--shadow);padding:18px 12px;margin-bottom:24px;overflow-x:auto;">
+        <table style="width:100%;min-width:900px;border-collapse:collapse;table-layout:auto;background:var(--bg-panel);color:var(--text-main);">
+          <thead>
+            <tr style="background:var(--bg-main);text-align:left;">
+              <th style="padding:8px;">Collection</th>
+              <th style="padding:8px;">Créer</th>
+              <th style="padding:8px;">Lire</th>
+              <th style="padding:8px;">Écrire</th>
+              <th style="padding:8px;">Supprimer</th>
+              <th style="padding:8px;text-align:center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rules-table"></tbody>
+        </table>
+      </div>
+      <!-- Simulateur -->
+      <div style="background:var(--bg-panel);border-radius:12px;box-shadow:0 2px 8px var(--shadow);padding:18px 12px;">
+        <h3 style="font-size:1.15em;font-weight:600;margin-bottom:12px;color:var(--text-main);">Simulateur de règle</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:14px;">
+          <div>
+            <label style="display:block;font-size:0.98em;font-weight:500;margin-bottom:4px;color:var(--text-main);">Collection</label>
+            <select id="sim-collection" style="width:100%;border-radius:8px;padding:7px 10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-text);"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.98em;font-weight:500;margin-bottom:4px;color:var(--text-main);">Action</label>
+            <select id="sim-action" style="width:100%;border-radius:8px;padding:7px 10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-text);">
+              <option value="read">read</option>
+              <option value="write">write</option>
+              <option value="create">create</option>
+              <option value="update">update</option>
+              <option value="delete">delete</option>
+            </select>
+          </div>
+        </div>
+        <div id="sim-auth-container">
+          <label style="display:block;font-size:0.98em;font-weight:500;margin-bottom:4px;color:var(--text-main);">Utilisateur (auth.uid)</label>
+          <input id="sim-auth" style="width:100%;border-radius:8px;padding:7px 10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-text);" placeholder="user123" />
+        </div>
+        <button onclick="simulateRule()" style="margin-top:16px;padding:8px 18px;background:var(--success);color:var(--text-inverse);border-radius:8px;font-weight:bold;">▶️ Simuler</button>
+        <div id="sim-result" style="margin-top:16px;font-weight:bold;color:var(--text-main);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/static/cloud_database.js"></script>
+<div id="snackbar"></div>
+</body>
+</html>
+

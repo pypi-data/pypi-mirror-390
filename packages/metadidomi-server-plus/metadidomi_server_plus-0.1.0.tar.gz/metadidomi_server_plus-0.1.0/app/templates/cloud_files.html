@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>StreamTime</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/cloud_files.css">
+</head>
+<body>
+  <header>
+    <h1>🎬 StreamTime</h1>
+    <input type="text" placeholder="Rechercher..." oninput="filterFiles(this.value)">
+  </header>
+
+  <nav>
+    <button onclick="switchCategory('all')" class="active">Tous</button>
+    <button onclick="switchCategory('video')">Films & Séries</button>
+    <button onclick="switchCategory('audio')">Musique</button>
+    <button onclick="switchCategory('doc')">Documents</button>
+    <button onclick="switchCategory('other')">Autres</button>
+  </nav>
+
+  <div class="container">
+    <form id="uploadForm" method="post" enctype="multipart/form-data" style="margin-bottom:20px;">
+      <input type="file" name="file" id="fileInput" required>
+      <button type="submit" class="upload" id="uploadBtn"><i class="fa fa-upload"></i> Uploader</button>
+      <progress id="uploadProgress" value="0" max="100" style="width:200px; display:none; vertical-align:middle;"></progress>
+      <span id="uploadStatus" style="margin-left:10px;"></span>
+    </form>
+
+    <div class="grid" id="fileGrid"></div>
+  </div>
+
+  <!-- Modale lecteur -->
+  <div id="mediaModal">
+    <div id="mediaModalContent">
+      <button class="close" onclick="closeMediaModal()">&times;</button>
+      <div id="mediaPlayerContainer"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/static/cloud_files.js"></script>
+</body>
+</html>
