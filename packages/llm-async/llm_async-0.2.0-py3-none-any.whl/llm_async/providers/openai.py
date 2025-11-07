@@ -1,0 +1,133 @@
+from typing import Any, Callable, Optional, Union
+
+from llm_async.utils.http import post_json
+from llm_async.utils.retry import RetryConfig  # type: ignore
+
+from ..models import Response, Tool
+from ..models.response import MainResponse, ToolCall
+from .base import BaseProvider
+
+
+class OpenAIProvider(BaseProvider):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.openai.com/v1",
+        retry_config: Optional[RetryConfig] = None,
+    ):
+        super().__init__(api_key, base_url, retry_config)
+
+    def _format_tools(self, tools: list[Tool]) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters,
+                },
+            }
+            for tool in tools
+        ]
+
+    def _parse_response(self, original: dict[str, Any]) -> MainResponse:
+        choice = original["choices"][0]
+        message = choice["message"]
+        tool_calls_data = message.get("tool_calls")
+        tool_calls = None
+        if tool_calls_data:
+            tool_calls = [
+                ToolCall(id=tc["id"], type=tc["type"], function=tc.get("function"))
+                for tc in tool_calls_data
+            ]
+        return MainResponse(
+            content=message.get("content"), tool_calls=tool_calls, original_data=message
+        )
+
+    async def execute_tool(
+        self, tool_call: ToolCall, tools_map: dict[str, Callable[..., Any]]
+    ) -> dict[str, Any]:
+        if tool_call.type == "function" and tool_call.function:
+            func_name = tool_call.function.get("name")
+            args = tool_call.function.get("arguments")
+            if isinstance(args, str):
+                import json
+
+                args = json.loads(args)
+            elif not isinstance(args, dict):
+                args = {}
+            tool_call_id = tool_call.id
+        elif tool_call.type == "tool_use" and tool_call.name:
+            func_name = tool_call.name
+            args = tool_call.input
+            tool_call_id = tool_call.id
+        else:
+            raise Exception("no tool defined")
+
+        if not func_name:
+            raise Exception("no tool defined")
+
+        if func_name not in tools_map:
+            error_msg = f"Tool {func_name} not found in tools_map"
+            raise ValueError(error_msg)
+
+        if isinstance(args, dict):
+            result = tools_map[func_name](**args)
+        else:
+            result = tools_map[func_name](args)
+
+        return {"role": "tool", "tool_call_id": tool_call_id, "content": str(result)}
+
+    async def _single_complete(
+        self,
+        model: str,
+        messages: list[dict[str, Any]],
+        stream: bool = False,
+        tools: Union[list[Tool], None] = None,
+        tool_choice: Union[str, dict[str, Any], None] = None,
+        **kwargs: Any,
+    ) -> Response:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": stream,
+            **kwargs,
+        }
+
+        # Handle structured outputs
+        if "response_schema" in payload:
+            schema = payload.pop("response_schema")
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "response", "schema": schema, "strict": True},
+            }
+
+        if tools:
+            payload["tools"] = self._format_tools(tools)
+        if tool_choice:
+            payload["tool_choice"] = tool_choice
+
+        if stream:
+            return self._stream_response(
+                f"{self.base_url}/chat/completions",
+                payload,
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                "openai",
+            )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        response = await post_json(
+            self.client,
+            f"{self.base_url}/chat/completions",
+            payload,
+            headers,
+            retry_config=self.retry_config,
+        )
+        main_response = self._parse_response(response)
+        return Response(response, self.__class__.name(), main_response)
