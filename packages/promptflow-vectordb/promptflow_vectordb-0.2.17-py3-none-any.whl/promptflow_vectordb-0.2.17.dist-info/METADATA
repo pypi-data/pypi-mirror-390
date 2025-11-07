@@ -1,0 +1,121 @@
+Metadata-Version: 2.4
+Name: promptflow_vectordb
+Version: 0.2.17
+Summary: Prompt flow tools for accessing popular vector databases
+Author: Microsoft Corporation
+Author-email: aethercn@microsoft.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: Other/Proprietary License
+Description-Content-Type: text/markdown
+Requires-Dist: azure-ai-ml>=1.5.0
+Requires-Dist: azure-identity>=1.12.0
+Requires-Dist: azureml-rag>=0.2.37.2
+Requires-Dist: langchain<0.4.0,>=0.3.0
+Requires-Dist: langchain-community<0.4.0,>=0.3.0
+Requires-Dist: azure-search-documents>=11.4.0
+Requires-Dist: azure-cosmos>=4.7.0
+Requires-Dist: pymongo
+Requires-Dist: elasticsearch<9.0,>=8.12.0
+Requires-Dist: faiss-cpu~=1.7.3
+Requires-Dist: pinecone-client<6.0.0,>=5.0.0
+Requires-Dist: langchain-pinecone<0.3.0,>=0.1.1
+Requires-Dist: qdrant-client<2.0.0,>=1.8.0
+Requires-Dist: langchain-qdrant
+Requires-Dist: weaviate-client>=4.0.0
+Requires-Dist: pymongo_schema
+Requires-Dist: numpy<2.0,>=1.24.1
+Requires-Dist: requests>=2.28.1
+Requires-Dist: requests-cache~=1.1.1
+Requires-Dist: ruamel-yaml<1.0.0,>=0.17.10
+Requires-Dist: rank-bm25<0.3,>=0.2.2
+Requires-Dist: psycopg2-binary<3.0.0,>=2.9.9
+Requires-Dist: pgvector<0.3.0,>=0.2.5
+Provides-Extra: azure
+Provides-Extra: telemetry
+Requires-Dist: azureml-telemetry>=1.56.0; extra == "telemetry"
+Provides-Extra: hugging-face
+Requires-Dist: scikit-learn; extra == "hugging-face"
+Requires-Dist: sentence-transformers; extra == "hugging-face"
+Requires-Dist: huggingface-hub>=0.25.1; extra == "hugging-face"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: summary
+
+# Introduction
+
+To store and search over unstructured data, a widely adopted approach is embedding data into vectors, stored and indexed in vector databases. The promptflow-vectordb SDK is designed for PromptFlow, provides essential tools for vector similarity search within popular vector databases, including  FAISS, Qdrant, Azure Congnitive Search, and more.
+
+## 0.2.17
+- Get the resource management URL from environment variable `AZURE_RESOURCE_MANAGER`.
+
+## 0.2.16
+- Un-pin azureml-rag to support langchain 0.3.x
+
+## 0.2.15
+- Pin azureml-rag to 0.2.36
+- Install azureml-rag extras explicitly
+
+## 0.2.14
+- Upgrade azureml-rag to 0.2.37
+- Move langchain dependency to azureml-rag
+
+## 0.2.13
+- Introduced new tool - `Rerank`, to serve as a single tool to perfom semantic ranking on given documents and query
+- Marked `Rerank` as preview.
+
+## 0.2.12
+- Add azureml-telemetry as extra install option enabling further logging. Added fields to custom environment to get logged.
+
+## 0.2.11
+- Exlude azureml-rag 0.2.31 from vectordb package
+- Add support for bring-your-own `Azure CosmosDB for PostgreSQL` index.
+
+## 0.2.10
+- Add support for bring-your-own `Elasticsearch` index.
+- Serverless Deployments can now be used directly for embedding, without requiring the creation of a Serverless Connection.
+- Rename `Serverless Endpoints` to `Serverless Deployments`.
+- Remove preview tag from `Index Lookup`.
+
+## 0.2.9
+- Fix compatibility issue with langchain 0.1 that broke Azure AI Search semantic searches.
+- Refactor metadata retrieval in `Index Lookup`. Metadata fields that are specifically requested are now present in the `metadata` property of a retrieval result, and all other retrieved fields have been moved to `additional_fields`, instead of being discarded.
+- Add support for bring-your-own `Azure CosmosDB for MongoDB vCore` index.
+
+## 0.2.8
+- Add support for langchain 0.1
+- Replace `FAISS Index Lookup`, `Vector Index Lookup` and `Vector DB Lookup` internals with `Index Lookup` internals.
+- Use azureml.rag logger and promptflow.tool logger in `Index Lookup`.
+
+## 0.2.7
+- Add support for Serverless Deployment connections for embeddings in `Index Lookup`.
+- Add support for multiple instances of `Index Lookup` running in the same process without conflicts.
+- Auto-detect embedding vector length for supported embedding models.
+
+## 0.2.6
+- Emit granular trace information from `Index Lookup` for use by Action Analyzer.
+
+## 0.2.5
+- Introduce improved error messaging when input queries are of an unexpected type.
+- Mark `FAISS Index Lookup`, `Vector Index Lookup` and `Vector DB Lookup` as archived.
+- Add support for `text-embedding-3-small` and `text-embedding-3-large` embedding models.
+
+## 0.2.4
+- Mark `FAISS Index Lookup`, `Vector Index Lookup` and `Vector DB Lookup` as deprecated.
+- Introduced a `self` section in the mlindex_content YAML, to carry information about the asset ID and path from which the MLIndex was retrieved.
+- Index Lookup now caches vectorstore build steps for better runtime performance.
+- Use `functools.lru_cache` instead of `functools.cache` for compatibility with python < 3.9
+- Use `ruamel.yaml` instead of `pyyaml`, so that yaml 1.2 is supported.
+
+## 0.2.3
+- Implement HTTP caching to improve callback performance.
+- Not specifying a value for `embedding_type` produces the same behavior as selecting `None`.
+- Index Lookup honors log levels set via the `PF_LOGGING_LEVEL` environment variable.
+
+## 0.2.2
+- Introduced new tool - `Index Lookup`, to serve as a single tool to perform lookups against supported index types.
+- Marked `Index Lookup` as preview.

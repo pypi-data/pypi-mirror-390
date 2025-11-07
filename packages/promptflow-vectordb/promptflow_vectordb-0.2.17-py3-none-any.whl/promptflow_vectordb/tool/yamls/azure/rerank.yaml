@@ -1,0 +1,68 @@
+promptflow_vectordb.tool.rerank.rerank:
+  name: Rerank
+  tool_state: preview
+  description: Aggregate and rerank one or more groups of retrieval results.
+  type: python
+  module: promptflow_vectordb.tool.rerank
+  function: rerank
+  inputs:
+    ranker_parameters:
+      type:
+      - string
+      generated_by:
+        func_path: promptflow_vectordb.tool.rerank_utils.callbacks.generate_ranker_parameters
+        func_kwargs:
+        - name: ranker_type
+          type:
+          - string
+          reference: ${inputs.ranker_type}
+        - name: serverless_deployment
+          type:
+          - string
+          optional: true
+          reference: ${inputs.serverless_deployment}
+        - name: ssf_rank_constant
+          type:
+          - int
+          optional: true
+          reference: ${inputs.ssf_rank_constant}
+        reverse_func_path: promptflow_vectordb.tool.rerank_utils.callbacks.reverse_ranker_parameters
+      allow_manual_entry: false
+      is_multi_select: false
+    query:
+      type:
+      - string
+    result_groups:
+      type:
+      - object
+    ranker_type:
+      input_type: uionly_hidden
+      type:
+      - string
+      dynamic_list:
+        func_path: promptflow_vectordb.tool.rerank_utils.callbacks.list_available_ranker_types
+      allow_manual_entry: false
+      is_multi_select: false
+    serverless_deployment:
+      input_type: uionly_hidden
+      type:
+      - string
+      enabled_by: ranker_type
+      enabled_by_value:
+      - Serverless Deployment
+      dynamic_list:
+        func_path: promptflow_vectordb.tool.rerank_utils.callbacks.list_serverless_ranker_connections
+      allow_manual_entry: false
+      is_multi_select: false
+    ssf_rank_constant:
+      input_type: uionly_hidden
+      default: 60
+      type:
+      - int
+      enabled_by: ranker_type
+      enabled_by_value:
+      - Scaled Score Fusion
+    top_k:
+      default: 3
+      type:
+      - int
