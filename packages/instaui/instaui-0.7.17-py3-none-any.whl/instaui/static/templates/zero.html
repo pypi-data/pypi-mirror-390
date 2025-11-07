@@ -1,0 +1,82 @@
+{% import 'zero-loadding.html' as zero_loadding -%}
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="{{ model.favicon_url }}" rel="shortcut icon" />
+  <title>{{ model.title }}</title>
+
+  {%- for link in model.css_links %}
+  <link rel="stylesheet" href="{{ model.prefix | safe }}{{link}}" />
+  {% endfor -%}
+
+  {%- for style_tag in model.style_tags %}
+  <style{{ style_tag.gen_group_id_attr() }}>{{ style_tag.content }}</style>
+  {% endfor -%}
+
+
+</head>
+
+<body>
+
+  {{ zero_loadding.html() }}
+  {{ zero_loadding.define_script() }}
+
+  <div id="app">
+    <insta-ui :config="config" :meta="meta"></insta-ui>
+  </div>
+
+  <script type="importmap">
+  {
+  "imports":{{model.import_maps_string | safe}}
+  }
+  </script>
+
+  {%- for info in model.js_links -%}
+  <script src="{{ model.prefix | safe }}{{info.link}}"></script>
+  {%- endfor -%}
+
+  {%- for content in model.script_tags -%}
+  <script>{{ content }}</script>
+  {%- endfor -%}
+
+
+  <script type="module">
+    import { createApp, onMounted } from 'vue'
+    import { install as installInsta } from 'instaui'
+    const True = true;
+    const False = false;
+    const None = undefined;
+
+    const appConfig = {{ model.config_dict | safe}};
+    const meta = { mode: 'zero', version: '{{model.version | safe}}', debug: true }
+
+    const app = createApp({
+      setup() {
+        {{ zero_loadding.vue_mounted() }}
+
+        return {
+          config: appConfig,
+          meta,
+        }
+      }
+    })
+
+    installInsta(app, appConfig)
+    {% for info in model.vue_app_component -%}
+    app.component('{{info.name | safe}}', (await import('{{info.url | safe }}')).default)
+    {% endfor -%}
+    {% for plugin_url in model.vue_app_use -%}
+    app.use(await import('{{plugin_url | safe }}'))
+    {% endfor -%}
+    app.mount('#app')
+  </script>
+
+  <!-- icons svg sprite -->
+  {{model.icons_svg_code | safe if model.icons_svg_code }}
+</body>
+
+</html>
