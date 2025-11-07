@@ -1,0 +1,59 @@
+[project]
+name = "changeloggh"
+version = "1.2.1"
+description = "changeloggh is a command line tool that generates changelog files for github"
+authors = [{ name = "Saúl Piña", email = "sauljabin@gmail.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["changelog", "changeloggh"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Operating System :: MacOS",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "cloup>=3",
+    "rich>=14",
+    "textual>=6",
+    "jinja2>=3",
+    "semver>=3",
+]
+
+[project.urls]
+homepage = "https://github.com/sauljabin/changeloggh"
+repository = "https://github.com/sauljabin/changeloggh"
+
+[project.scripts]
+changeloggh = "changeloggh.cli:main"
+clgh = "changeloggh.cli:main"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+black = "*"
+coverage = { extras = ["toml"], version = "*" }
+pre-commit = "*"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.coverage.run]
+source = ["changeloggh"]
+branch = true
+omit = ["*tests/*", "*scripts/*", "*__init__.py", "changeloggh/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = ['if __name__ == "__main__":']
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
