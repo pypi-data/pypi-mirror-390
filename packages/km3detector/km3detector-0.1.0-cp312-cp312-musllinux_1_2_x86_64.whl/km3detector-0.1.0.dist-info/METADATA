@@ -1,0 +1,94 @@
+Metadata-Version: 2.1
+Name: km3detector
+Version: 0.1.0
+Summary: KM3NeT detector I/O library with nanobind Python bindings
+Author-Email: Laurent Aphecetche <laurent.aphecetche@gmail.com>
+License: BSD-3
+Project-URL: Homepage, https://git.km3net.de/laphecetche/detector
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# detector
+
+KM3NeT Detector Description Input Output Library (DETX/DATX/JSON).
+
+Currently supports V1,V2,V3,V4 and V5 of the [DETX specification](https://docs.google.com/document/d/1tQvYWnfGDgpmEMR94NMzuc2NFRyD2gMJ) and V5 of the yet-to-be-documented DATX format.
+
+## Project overview
+
+### Motivation
+
+The detector description, giving information about detector position (including all individual PMTs) and timing calibration, is required in many places (e.g. calibration, reconstruction) in the KM3NeT processing pipelines.
+
+There are two data formats of that detector description:
+
+- an ASCII character based text format, called DETX, that is [formally described](
+https://docs.google.com/document/d/1tQvYWnfGDgpmEMR94NMzuc2NFRyD2gMJ)
+- a binary format, called DATX, that is being documented.
+
+There are a few software implementations of reader/writer of those formats, in different languages, with various levels of completeness, that were developped in the past.
+
+The purpose of this project is to provide a unified replacement for all previous implementations, centered exclusively on reading and writing detector description formats.
+
+In particular, auxiliary manipulations of the detector geometry (such as rotating DOMs or stretching DUs) are not included in this library, in order to keep it lightweight and focused.
+
+Since our core T0/T1 software is written in C++, this library is also implemented in C++. However, it also aims to provide idiomatic language bindings for Python and Julia.
+
+### Project structure
+
+The C++ library interface is split in a couple of include files under [km3net/detector](include/km3net/detector) :
+
+- [detector.h](include/km3net/detector/detector.h) describes the main object of this library, representing the geometry of a KM3NeT @link km3net::detector::Detector Detector @endlink
+- [module.h](include/km3net/detector/module.h) describes a single @link km3net::detector::Module Module @endlink (either base or optical)
+- [detx.h](include/km3net/detector/detx.h) offers read/write functions of detector from/to DETX files / streams
+- [datx.h](include/km3net/detector/datx.h) offers read/write functions of detector from/to DATX files / streams
+- [json.h](include/km3net/detector/json.h) offers only write function of detector to JSON format.
+
+The C++ implementation is under [src/c++](src/c++).
+
+The Python bindings, created using the [nanobind](https://nanobind.readthedocs.io/en/latest/) library, are in [src/python](src/python).
+
+While primarily intended as a library, a small helper executable is provided, which can convert to and from DETX/DATX, as well as to JSON. This executable also serves as an example of how to use the library. See `km3net-detector --help`.
+
+```shell
+km3net-detector --input v5.detx --output v5.json
+```
+
+## Getting Started
+
+### Prerequisites
+
+To build the C++ core library, you will need `CMake`. Other dependencies will be built if not already present on the system, see [dependencies.cmake](dependencies.cmake).
+
+For the Python part, `Python`, `pytest` and `cibuildwheel` are required.
+
+### Build from repository
+
+1. Clone the repository (see [GitLab docs](https://docs.gitlab.com/topics/git/clone/) for details).
+
+```shell
+git clone git@git.km3net.de:laphecetche/detector.git
+```
+
+2. Build with CMake
+
+```shell
+cmake --workflow --preset release
+```
+
+Will generate a release version under `install-release`.
+There's also a `dev` preset available.
+
+### Python wheels
+
+The [CI/CD](.gitlab-ci.yml) is configured to generate Python wheels for Linux (macOS is planned) and upload them to PyPI (only for tagged versions).
+
+## Contributing
+
+Please first read the [Contributing Guidelines](CONTRIBUTING.md). For any requests and discussion points, you are invited to start an [issues](https://git.km3net.de/laphecetche/detector/-/issues).
+
+## Contact
+
+For collaboration-related questions, please use the **issues** or contact the maintainers as listed in the [codemeta](codementa.json).
+
+
