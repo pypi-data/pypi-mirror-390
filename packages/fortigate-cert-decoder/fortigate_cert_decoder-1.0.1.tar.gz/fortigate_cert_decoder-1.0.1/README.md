@@ -1,0 +1,396 @@
+# FortiGate Certificate Decoder
+
+A command-line tool for retrieving and decoding X.509 certificates from FortiGate devices via their JSON-RPC API.
+
+## Overview
+
+This tool connects to a FortiGate firewall using the JSON-RPC interface, authenticates with the device, retrieves a specified certificate (either CA or local), and displays detailed information about the certificate including:
+
+- Subject and Issuer information
+- Serial number
+- Validity period (Not Valid Before/After dates)
+- Signature algorithm
+- Subject Alternative Names (SANs)
+- Key usage extensions
+- Certificate validity status
+
+## Features
+
+- 🔐 Secure authentication to FortiGate devices
+- 📜 Support for both CA and local certificates
+- 🎨 Rich, colored terminal output for easy reading
+- ✅ Certificate validity checking
+- 🔍 Detailed certificate information extraction
+- 🚫 SSL warning suppression for self-signed certificates
+
+## Requirements
+
+### Python Version
+- Python 3.7 or higher
+
+### Dependencies
+
+```bash
+pip install requests cryptography rich urllib3
+```
+
+Or install from requirements file:
+
+```bash
+pip install -r requirements.txt
+```
+
+**requirements.txt:**
+```
+requests>=2.28.0
+cryptography>=41.0.0
+rich>=13.0.0
+urllib3>=1.26.0
+```
+
+## Installation
+
+1. Clone or download this repository
+2. Navigate to the certificate directory
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Pypi
+
+```bash
+pip install fortigate-cert-decoder
+```
+
+## Usage
+
+### Basic Syntax
+
+```bash
+fgt-cert-decode <host> <cert_name> -p <password> [OPTIONS]
+```
+
+### Required Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `host` | FortiGate device IP address or hostname |
+| `cert_name` | Name of the certificate to decode |
+| `-p, --password` | Password for authentication |
+
+### Optional Arguments
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `-u, --username` | Username for authentication | `jsonadmin` |
+| `-t, --type` | Certificate type: `ca` or `local` | `ca` |
+
+### Examples
+
+#### Example 1: Retrieve a CA Certificate (Default)
+
+```bash
+fgt-cert-decode 213.200.98.165 Fortinet_SUBCA -p "myPassword123"
+```
+
+This will:
+- Connect to FortiGate at IP `213.200.98.165`
+- Login with username `jsonadmin` (default) and password `myPassword123`
+- Retrieve the CA certificate named `Fortinet_SUBCA`
+- Display detailed certificate information
+
+#### Example 2: Retrieve a CA Certificate with Custom Username
+
+```bash
+fgt-cert-decode 192.168.1.99 RootCA -u admin -p "SecurePass!23"
+```
+
+This will:
+- Connect to FortiGate at IP `192.168.1.99`
+- Login with username `admin` and password `SecurePass!23`
+- Retrieve the CA certificate named `RootCA`
+
+#### Example 3: Retrieve a Local Certificate
+
+```bash
+fgt-cert-decode 10.0.0.1 WebServerCert -t local -p "myPassword"
+```
+
+This will:
+- Connect to FortiGate at IP `10.0.0.1`
+- Login with default username `jsonadmin` and password `myPassword`
+- Retrieve the **local** certificate named `WebServerCert`
+- Display detailed certificate information
+
+#### Example 4: Using Hostname Instead of IP
+
+```bash
+fgt-cert-decode firewall.company.com SSLInspectionCA -p "pass123" -t ca
+```
+
+This will:
+- Connect to FortiGate at hostname `firewall.company.com`
+- Retrieve the CA certificate named `SSLInspectionCA`
+
+## Output Format
+
+The tool provides a rich, colored output with the following information:
+
+```
+✓ Logged in successfully
+
+Certificate Details (CA):
+Subject: 1.2.840.113549.1.9.1=support@fortinet.com,CN=fortinet-subca2001,OU=Certificate Authority,O=Fortinet,L=Sunnyvale,ST=California,C=US
+Issuer: 1.2.840.113549.1.9.1=support@fortinet.com,CN=fortinet-ca2,OU=Certificate Authority,O=Fortinet,L=Sunnyvale,ST=California,C=US
+Serial Number: 8193
+Not Valid Before: 2016-06-06 20:48:33+00:00
+Not Valid After: 2056-05-27 20:48:33+00:00
+Signature Algorithm: sha256WithRSAEncryption
+Status: Valid ✓
+
+Subject Alternative Names:
+  None
+
+Key Usage:
+  <KeyUsage(digital_signature=False, content_commitment=False, key_encipherment=False, data_encipherment=False, key_agreement=False, key_cert_sign=True, crl_sign=True, encipher_only=False, decipher_only=False)>
+```
+
+### Output Sections
+
+1. **Login Status**: Confirms successful authentication
+2. **Certificate Type**: Shows whether it's a CA or LOCAL certificate
+3. **Subject**: The entity the certificate was issued to
+4. **Issuer**: The entity that issued the certificate
+5. **Serial Number**: Unique identifier for the certificate
+6. **Validity Period**: Start and end dates for certificate validity
+7. **Signature Algorithm**: Cryptographic algorithm used
+8. **Status**: Whether the certificate is currently valid
+9. **Subject Alternative Names**: Additional DNS names/IPs the cert is valid for
+10. **Key Usage**: What the certificate can be used for
+
+## Certificate Types
+
+### CA Certificates (`-t ca`)
+- Certificate Authority certificates
+- Used for signing other certificates
+- Accessed via: `/cli/global/system/certificate/ca/{cert_name}`
+- Default type if not specified
+
+### Local Certificates (`-t local`)
+- Server/device certificates
+- Used for SSL/TLS connections
+- Accessed via: `/cli/global/system/certificate/local/{cert_name}`
+- Include private key on the FortiGate
+
+## How It Works
+
+1. **Authentication**: The tool connects to the FortiGate's JSON-RPC API endpoint (`https://<host>/jsonrpc`) and authenticates using the provided credentials
+2. **Session Management**: Upon successful login, receives a session ID
+3. **Certificate Retrieval**: Uses the session ID to request the specified certificate via the CLI API path
+4. **Decoding**: Parses the PEM-encoded certificate using the `cryptography` library
+5. **Display**: Formats and displays the certificate information with rich formatting
+
+## API Endpoints Used
+
+### Login
+```json
+POST https://<host>/jsonrpc
+{
+  "id": 1,
+  "method": "exec",
+  "params": [{
+    "data": [{"passwd": "<password>", "user": "<username>"}],
+    "url": "sys/login/user"
+  }],
+  "session": null
+}
+```
+
+### Get CA Certificate
+```json
+POST https://<host>/jsonrpc
+{
+  "method": "get",
+  "params": [{
+    "url": "/cli/global/system/certificate/ca/<cert_name>"
+  }],
+  "session": "<session_id>",
+  "id": 1
+}
+```
+
+### Get Local Certificate
+```json
+POST https://<host>/jsonrpc
+{
+  "method": "get",
+  "params": [{
+    "url": "/cli/global/system/certificate/local/<cert_name>"
+  }],
+  "session": "<session_id>",
+  "id": 1
+}
+```
+
+## Troubleshooting
+
+### Login Failed
+```
+Login failed. Please check credentials.
+```
+**Solutions:**
+- Verify username and password are correct
+- Ensure the user has API access permissions on the FortiGate
+- Check if JSON-RPC API is enabled on the FortiGate
+- Verify network connectivity to the FortiGate
+
+### Certificate Not Found
+```
+Certificate 'CertName' not found.
+```
+**Solutions:**
+- Verify the certificate name is spelled correctly (case-sensitive)
+- Check if you're using the correct type (`-t ca` or `-t local`)
+- List certificates on FortiGate CLI: `show system certificate ca` or `show system certificate local`
+
+### SSL Warnings
+The tool automatically disables SSL warnings for unverified HTTPS connections. This is normal when connecting to FortiGate devices with self-signed certificates.
+
+### Connection Errors
+**Problem:** Cannot connect to the FortiGate
+**Solutions:**
+- Verify the IP address or hostname is correct
+- Ensure HTTPS admin access is allowed from your IP
+- Check firewall rules and network connectivity
+- Verify the FortiGate's admin interface is accessible
+
+## Security Considerations
+
+⚠️ **Important Security Notes:**
+
+1. **Credentials**: Never hardcode passwords in scripts. Use environment variables or secure credential management
+2. **SSL Verification**: The tool disables SSL verification (`verify=False`) to work with self-signed certificates. In production, consider implementing proper certificate validation
+3. **Network Security**: Use this tool only on trusted networks or over VPN
+4. **API Access**: Limit JSON-RPC API access to specific admin accounts with appropriate permissions
+5. **Logging**: Be aware that credentials may appear in command history. Consider using a wrapper script or credential file
+
+## Advanced Usage
+
+### Using with Environment Variables
+
+```bash
+export FGT_PASSWORD="mySecurePassword"
+python cert_decode.py 192.168.1.1 MyCert -p "$FGT_PASSWORD"
+```
+
+### Creating a Wrapper Script
+
+Create `check_cert.sh`:
+```bash
+#!/bin/bash
+HOST=${1:-192.168.1.1}
+CERT=${2:-Fortinet_CA2}
+read -sp "Password: " PASSWORD
+echo
+fgt-cert-decode "$HOST" "$CERT" -p "$PASSWORD"
+```
+
+Usage:
+```bash
+chmod +x check_cert.sh
+./check_cert.sh 10.0.0.1 MyCA
+```
+
+### Batch Certificate Checking
+
+Check multiple certificates:
+```bash
+#!/bin/bash
+HOST="192.168.1.1"
+PASSWORD="myPassword"
+
+for CERT in Fortinet_CA Fortinet_SUBCA CustomCA; do
+    echo "Checking $CERT..."
+    fgt-cert-decode "$HOST" "$CERT" -p "$PASSWORD" -t ca
+    echo "---"
+done
+```
+
+## FortiGate Configuration
+
+### Enable JSON-RPC API
+
+On the FortiGate, ensure JSON-RPC is enabled:
+
+```
+config system api-user
+    edit "jsonadmin"
+        set api-key <your-api-key>
+        set accprofile "super_admin"
+        config trusthost
+            edit 1
+                set ipv4-trusthost <your-ip>/32
+            next
+        end
+    next
+end
+```
+
+Or use admin account authentication as shown in the examples.
+
+### Finding Certificate Names
+
+To list available certificates on FortiGate:
+
+**CA Certificates:**
+```
+diagnose vpn ssl list-ca
+# or
+show system certificate ca
+```
+
+**Local Certificates:**
+```
+show system certificate local
+```
+
+## Exit Codes
+
+- `0`: Success
+- `1`: Login failure or certificate not found
+- Other: Python exceptions
+
+## Compatibility
+
+- **FortiGate OS**: 6.0 and higher (JSON-RPC API support required)
+- **Operating Systems**: Linux, macOS, Windows
+- **Python**: 3.7, 3.8, 3.9, 3.10, 3.11+
+
+## License
+
+This tool is provided as-is for network administration purposes.
+
+## Contributing
+
+Feel free to submit issues, fork the repository, and create pull requests for any improvements.
+
+## Support
+
+For issues related to:
+- **FortiGate API**: Consult Fortinet documentation
+- **This tool**: Create an issue in the repository
+- **Certificate errors**: Check FortiGate certificate configuration
+
+## Changelog
+
+### Version 1.0.0
+- Initial release
+- Support for CA and local certificates
+- Rich terminal output
+- Certificate validity checking
+- Comprehensive certificate information display
+
+---
+
+**Note**: This tool requires network access to FortiGate devices and appropriate authentication credentials. Always follow your organization's security policies when using administrative tools.
