@@ -1,0 +1,35 @@
+version: 2
+
+build:
+  os: ubuntu-20.04
+  tools:
+    python: mambaforge-4.10
+  jobs:
+    # Content here largely copied from Iris
+    #  see : https://github.com/SciTools/iris/pull/4855
+    post_checkout:
+      # In case the repository is shallow, complete with a full history in order
+      # to allow setuptools-scm to correctly auto-discover the version.
+      - git fetch --unshallow
+      - git fetch --all
+    # Need to stash the local changes that Read the Docs makes so that
+    #  setuptools_scm can generate the correct Iris version.
+    pre_install:
+      - git stash
+    post_install:
+      - git stash pop
+    pre_build:
+      - cd docs; make allapi
+      - cd docs; make towncrier
+
+conda:
+  environment: requirements/readthedocs.yml
+
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: false
+
+python:
+  install:
+    - method: pip
+      path: .
