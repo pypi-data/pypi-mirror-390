@@ -1,0 +1,34 @@
+import ctypes
+
+class {{ struct_name }}(ctypes.Structure):
+    _pack_ = {{ pack }}
+    _fields_ = (
+{% for field_info in field_infos %}
+{% if field_info['length'] %}
+        ( "{{ field_info['name'] }}", {{ field_info['ctypes'] }} * {{ field_info['length'] }} ),
+{% else %}
+        ( "{{ field_info['name'] }}", {{ field_info['ctypes'] }} ),
+{% endif %}
+{% endfor %}
+    )
+
+    @staticmethod
+    def field_names():
+        return [{% for field_info in field_infos %}"{{field_info['name']}}",{% endfor %}]
+
+    def field_vals(self):
+        return [{% for field_info in field_infos %}self.{{field_info['name']}}, {% endfor %}]
+
+    def get_bytes(self):
+        return ctypes.string_at(ctypes.addressof(self), ctypes.sizeof(self))
+
+    def __repr__(self):
+        def _repr_cvalue(v):
+            if hasattr(v, "_length_"):
+                return list(map(_repr_cvalue, v))
+            return v
+        kvs = [f"{k}={_repr_cvalue(getattr(self, k))}" for k, _ in self._fields_]
+        return f"{self.__class__.__name__}({', '.join(kvs)})"
+
+if __name__ == '__main__':
+    print(ctypes.sizeof({{ struct_name }}))
