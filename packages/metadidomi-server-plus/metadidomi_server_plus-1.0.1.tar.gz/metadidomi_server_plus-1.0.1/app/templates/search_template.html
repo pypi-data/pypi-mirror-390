@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>AZ Search</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <style>
+    body { font-family: system-ui, Arial; margin: 30px; }
+    input[type=text]{ width:60%; padding:8px; }
+    .result{ margin-bottom:18px; padding-bottom:8px; border-bottom:1px solid #eee;}
+    .path{ color: #555; font-size:0.9em }
+    .score{ color:#999; font-size:0.9em; }
+    pre { white-space: pre-wrap; font-family: inherit; }
+    mark { background: yellow; }
+    .wiki-block { background: #f8f8ff; border: 1px solid #e0e0e0; padding: 12px; margin-bottom: 20px; }
+    .wiki-title { font-weight: bold; color: #1a237e; }
+    .wiki-summary { color: #333; }
+    .section-title { font-size: 1.2em; margin-top: 30px; margin-bottom: 10px; color: #222; }
+  </style>
+</head>
+<body>
+  <h2>Moteur de recherche AZ</h2>
+  <form method="get" action="/">
+    <input name="q" type="text" value="{{q|e}}" placeholder="Tape ta recherche..." />
+    <div class="search-buttons">
+      <button type="submit" class="search-button">Recherche AZ</button>
+      <a href="/" class="search-button">Nouvelle recherche</a>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <label>Type:
+        <select name="ext" style="margin-left:4px;" onchange="this.form.submit()">
+          <option value="">Tous</option>
+          <option value=".pdf" {% if request.args.get('ext')=='.pdf' %}selected{% endif %}>PDF</option>
+          <option value=".docx" {% if request.args.get('ext')=='.docx' %}selected{% endif %}>DOCX</option>
+          <option value=".txt" {% if request.args.get('ext')=='.txt' %}selected{% endif %}>TXT</option>
+        </select>
+      </label>
+      <label>Avant:
+        <input type="date" name="before" value="{{request.args.get('before','')}}" style="margin-left:4px;" onchange="this.form.submit()" />
+      </label>
+      <label>Après:
+        <input type="date" name="after" value="{{request.args.get('after','')}}" style="margin-left:4px;" onchange="this.form.submit()" />
+      </label>
+    </div>
+  </form>
+  <hr/>
+
+  {% if q %}
+    <div class="section-title">Résultats Possible</div>
+    {% if wiki_results %}
+      {% for w in wiki_results %}
+        <div class="wiki-block" style="display:flex;align-items:flex-start;gap:12px;">
+          <img src="https://www.wikipedia.org/static/favicon/wikipedia.ico" alt="Wikipedia" style="width:28px;height:28px;margin-top:2px;flex-shrink:0;" />
+          <div style="flex:1;">
+            <div class="wiki-title">
+              <a href="https://fr.wikipedia.org/wiki/{{w.title|replace(' ', '_')}}" target="_blank" style="color:#1a237e;text-decoration:underline;">{{w.title}}</a>
+            </div>
+            <div class="wiki-summary">{{w.summary}}</div>
+            <div class="result-actions">
+              <a href="https://fr.wikipedia.org/wiki/{{w.title|replace(' ', '_')}}" download class="result-action">⬇ Télécharger</a>
+              <a href="https://fr.wikipedia.org/wiki/{{w.title|replace(' ', '_')}}" target="_blank" class="result-action" style="color:#1976d2;" onclick="copyShareLink(event, this)">🔗 Partager</a>
+              <span class="copy-feedback" style="display:none;color:#1976d2;margin-left:8px;">Lien copié !</span>
+              <span style="margin-left:10px;color:#888;font-size:12px;">(Voir <b>Wikipedia</b> ci-dessus)</span>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div>Aucun résultat Possible.</div>
+    {% endif %}
+
+    <div class="section-title">Autres résultats ({{total}})</div>
+    {% if results %}
+      {% for r in results %}
+        {% set skip = false %}
+        {% for bad in ['.venv', 'site-packages', '__pycache__', '.git', '.mypy_cache', '.idea', '.vscode', 'env', 'venv', 'build', 'dist', '.eggs'] %}
+          {% if bad in r.path %}
+            {% set skip = true %}
+          {% endif %}
+        {% endfor %}
+        {% if not skip %}
+        <div class="result">
+          {% if r.ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'] and r.path and (r.path[0] == '/' or r.path[1:3] == ':\\') %}
+            <div style="margin-bottom:8px;">
+              <img src="/download?doc_id={{r.doc_id}}" alt="miniature" style="max-width:120px; max-height:90px; border:1px solid #ccc; border-radius:4px; object-fit:cover; background:#fafaff;" loading="lazy" />
+            </div>
+          {% endif %}
+          <a href="/view?doc_id={{r.doc_id}}" class="result-title">
+          {% if r.path[:7] == 'http://' or r.path[:8] == 'https://' %}
+            <span style="font-size:18px;font-weight:400;">
+              <a href="{{r.path}}" target="_blank" style="color:var(--primary-color);text-decoration:underline;">{{r.title or r.path}}</a>
+            </span>
+          {% else %}
+            {{r.title or r.path}}
+          {% endif %}
+          </a>
+          <span class="result-url">{{r.path}}</span>
+          <div class="result-snippet">{{r.snippet|safe}}</div>
+          <div class="result-meta" style="font-size:13px;color:#666;margin-bottom:6px;">
+            {% if r.meta %}
+              <b>Méta :</b>
+              {% for k, v in r.meta.items() %}
+                <span style="margin-right:10px;">{{k}}: {{v}}</span>
+              {% endfor %}
+            {% endif %}
+            <span>Date modif: {{r.mtime}}</span>
+            <span style="margin-left:10px;">Taille: {{r.size}} o</span>
+            <span style="margin-left:10px;">Type: {{r.ext}}</span>
+            {% if r.author %}<span style="margin-left:10px;">Auteur: {{r.author}}</span>{% endif %}
+          </div>
+          <div class="result-actions">
+            <a href="/view?doc_id={{r.doc_id}}" target="_blank" class="result-action">📄 Voir</a>
+            <a href="/download?doc_id={{r.doc_id}}" class="result-action">⬇ Télécharger</a>
+            <a href="{{ request.url_root }}view?doc_id={{r.doc_id}}" target="_blank" class="result-action" style="color:#1976d2;" onclick="copyShareLink(event, this)">🔗 Partager</a>
+            <span class="copy-feedback" style="display:none;color:#1976d2;margin-left:8px;">Lien copié !</span>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <div>Aucun résultat local.</div>
+      {% if suggestions %}
+        <div style="margin-top:18px; color:#b00;">
+          Suggestions :
+          <b>{{ suggestions|join(', ') }}</b>
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div>
+      {% if page > 1 %}
+        <a href="/?q={{q}}&page={{page-1}}">⬅ Précédent</a>
+      {% endif %}
+      {% if page*per_page < total %}
+        <a href="/?q={{q}}&page={{page+1}}">Suivant ➡</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <hr/>
+  <h3>📊 Tableau de bord</h3>
+  <p>
+    Documents indexés : {{ indexer.doc_count }} <br/>
+    Mots uniques : {{ indexer.stats.unique_terms }} <br/>
+    Taille totale : {{ indexer.stats.total_size }} octets
+  </p>
+
+  <script>
+    function copyShareLink(e, el) {
+      e.preventDefault();
+      const url = el.href;
+      navigator.clipboard.writeText(url).then(function() {
+        const feedback = el.parentElement.querySelector('.copy-feedback');
+        if(feedback) {
+          feedback.style.display = 'inline';
+          setTimeout(() => { feedback.style.display = 'none'; }, 1500);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

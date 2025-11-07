@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Metadidomi Server Plus Admin</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/alert.css">
+  <link rel="stylesheet" href="/static/alert-popup.css">
+  <link rel="stylesheet" href="/static/cloud_database_style.css">
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:18px auto;padding:0 12px}
+    body{max-width:900px;}
+    .card{border:1px solid var(--border, #ddd);border-radius:12px;padding:16px;margin:12px 0;background:var(--card-bg, #fff);box-shadow:0 2px 8px rgba(0,0,0,0.04);}
+    input,textarea,select{width:100%;padding:10px;margin:6px 0 12px;border:1px solid var(--input-border, #ccc);border-radius:8px;background:var(--input-bg, #f9f9f9);color:var(--input-text, #222);}
+    button{padding:10px 16px;border-radius:8px;background:var(--btn-bg, #222);color:var(--btn-text, #fff);border:none;transition:background 0.2s;}
+    button:hover{background:var(--btn-bg-hover, #444);}
+    table{width:100%;border-collapse:collapse;background:var(--table-bg, #fff);display:table;}
+    th,td{border-bottom:1px solid var(--table-border, #eee);padding:8px;color:var(--text, #222);}
+  </style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:12px;justify-content:center;">
+    <h1 style="color:var(--text, #222);">Administration Metadidomi Server+</h1>
+  </div>
+</header>
+<div class="container">
+  <button onclick="toggleTheme()" style="float:right">Changer de thème</button>
+  <p><a href="/admin/apis">Gérer les APIs</a></p>
+  <div class="card">
+    <h2>Importer une API</h2>
+    <input type="file" id="importApiFile" accept=".json,.txt,.api,.conf,.js">
+    <button id="importApiBtn">Importer</button>
+  </div>
+  <div class="card">
+    <h2>Créer une API</h2>
+    <form id="apiForm">
+      <input id="name" placeholder="Nom ex: hello" required>
+      <input id="path" placeholder="/hello" required>
+      <select id="method"><option>GET</option><option>POST</option></select>
+      <textarea id="response_json" rows="4">{ "message": "Bonjour 👋" }</textarea>
+      <input id="status_code" type="number" value="200">
+      <select id="enabled"><option value="true">true</option><option value="false">false</option></select>
+      <input id="delay_ms" type="number" placeholder="Délai (ms)">
+      <input id="api_key" placeholder="API Key">
+      <input id="base_url" placeholder="Base URL">
+      <input id="quota" type="number" min="0" placeholder="Quota de requêtes">
+      <select id="quota_period">
+        <option value="hour">par heure</option>
+        <option value="day">par jour</option>
+        <option value="month">par mois</option>
+      </select>
+      <button type="submit">Créer l'API</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Liste des APIs</h2>
+    <div class="scroll-list-main">
+      <table id="apisTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nom</th>
+            <th>Chemin</th>
+            <th>Méthode</th>
+            <th>Réponse</th>
+            <th>Status</th>
+            <th>Activée</th>
+            <th>Délai (ms)</th>
+            <th>API Key</th>
+            <th>Base URL</th>
+            <th>Quota</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Créer un projet</h2>
+    <form id="projectForm">
+      <input id="projectName" placeholder="Nom du projet" required>
+      <textarea id="projectDesc" placeholder="Description"></textarea>
+      <button type="submit">Créer le projet</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Liste des projets</h2>
+    <div id="projectsList"></div>
+  </div>
+  <div class="card"><h2>Actions</h2><button id="reloadBtn">Recharger les routes</button></div>
+</div>
+<script src="/static/admin.js"></script>
+<script src="/static/cloud_database.js"></script>
+<script>if(window.initThemeSelectors)initThemeSelectors();</script>
+</body>
+</html>

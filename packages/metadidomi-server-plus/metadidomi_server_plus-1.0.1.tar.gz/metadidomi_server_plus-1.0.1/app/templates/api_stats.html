@@ -1,0 +1,67 @@
+<html>
+<head>
+  <title>Statistiques API {{ api.name if api else '' }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/cloud_database_style.css">
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:12px;justify-content:center;">
+    <select class="theme-selector" style="margin-right:12px;"></select>
+    <h1 style="color:var(--text, #222);">API Stats</h1>
+  </div>
+</header>
+<button onclick="toggleTheme()" style="float:right">Changer de thème</button>
+{% if not api %}
+  <h2>Aucune API trouvée pour l'ID {{ api_id }}</h2>
+  <p>L'API demandée n'existe pas ou a été supprimée.</p>
+{% else %}
+  <h1>Statistiques pour l'API : {{ api.name }}</h1>
+  <p><b>ID :</b> {{ api.id }}</p>
+  <p><b>Chemin :</b> {{ api.path }}</p>
+  <p><b>Méthode :</b> {{ api.method }}</p>
+  <p><b>Nombre d'appels :</b> {{ total }}</p>
+  <p><b>Appels réussis :</b> {{ success }}</p>
+  <p><b>Appels échoués :</b> {{ failed }}</p>
+  <p><b>Latence moyenne :</b> {{ avg_latency }} ms</p>
+  <p><label><input type='checkbox' id='enabledBox' {% if api.enabled %}checked{% endif %}> Activer l'API</label></p>
+  <h2>Derniers appels</h2>
+  <table border='1'><tr><th>Date</th><th>Status</th><th>IP</th><th>Latence</th></tr>
+    {% for log in logs %}
+      <tr>
+        <td>{{ log.timestamp }}</td>
+        <td>{{ log.status_code }}</td>
+        <td>{{ log.ip }}</td>
+        <td>{{ "%.1f"|format(log.latency_ms) }} ms</td>
+      </tr>
+    {% endfor %}
+  </table>
+  <script>
+    document.getElementById('enabledBox').onchange = async function() {
+      const checked = this.checked;
+      if (!confirm(checked ? 'Activer cette API ?' : 'Désactiver cette API ?')) {
+        this.checked = !checked;
+        return;
+      }
+      const res = await fetch('/admin/apis/{{ api.id }}/enabled', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({enabled: checked})
+      });
+      if (res.ok) {
+        alert('État mis à jour');
+      } else {
+        alert('Erreur lors de la mise à jour');
+        this.checked = !checked;
+      }
+    };
+  </script>
+  <script src="/static/admin.js"></script>
+  <script src="/static/cloud_database.js"></script>
+  <script>if(window.initThemeSelectors)initThemeSelectors();</script>
+{% endif %}
+</div>
+</body>
+</html>

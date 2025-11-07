@@ -1,0 +1,1 @@
+Assets (icons, themes) are optional. qtawesome is used at runtime.
