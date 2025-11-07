@@ -1,0 +1,34 @@
+name: napari-synaptogram
+display_name: Synaptogram
+# use 'hidden' to remove plugin from napari hub search results
+visibility: public
+# see https://napari.org/stable/plugins/technical_references/manifest.html#fields for valid categories
+# categories: []
+contributions:
+  commands:
+    - id: napari-synaptogram.get_reader
+      python_name: napari_synaptogram._reader:napari_get_reader
+      title: Open data with Synaptogram
+    - id: napari-synaptogram.write_multiple
+      python_name: napari_synaptogram._writer:write_multiple
+      title: Save multi-layer data with Synaptogram
+    - id: napari-synaptogram.make_container_widget
+      python_name: napari_synaptogram:CtBP2Detection
+      title: Detect CtBP2 puncta
+    - id: napari-synaptogram.save_synaptogram
+      python_name: napari_synaptogram._writer:save_synaptogram
+      title: Save Synaptogram
+  readers:
+    - command: napari-synaptogram.get_reader
+      accepts_directories: false
+      filename_patterns: ['*.ims','*.syn']
+  writers:
+    - command: napari-synaptogram.write_multiple
+      layer_types: ['image*','labels*','points*','shapes*']
+      filename_extensions: ['*.syn']
+  widgets:
+    - command: napari-synaptogram.make_container_widget
+      display_name: CtBP2 detection
+  menus:
+    napari/file/io_utilities:
+      - command: napari-synaptogram.save_synaptogram
