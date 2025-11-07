@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multi-puzzle-solver"
+dynamic = ["version"]
+description = "Efficient solvers for countless (60+) types of puzzles (like Sudoku, Minesweeper, etc.) with a simple python API."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+authors = [{name = "Ar-Kareem"}]
+keywords = [
+    "puzzle", "solver", "sat", "cp-sat", "google-or-tools", "efficient", "logic", "puzzle-solver", "puzzle-solver-python",
+    "sudoku", "nonograms", "minesweeper", "dominosa", "lightup", "map", "inertia", "tents", "towers", "tracks", "undead", "unruly", "bridges", "pearl", "range", "signpost", "singles", "magnets"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "numpy",
+    "ortools",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-xdist"]
+
+[project.urls]
+Homepage = "https://github.com/Ar-Kareem/puzzle_solver"
+Repository = "https://github.com/Ar-Kareem/puzzle_solver"
+Issues = "https://github.com/Ar-Kareem/puzzle_solver/issues"
+
+
+[tool.setuptools.dynamic]
+version = {attr = "puzzle_solver.__version__"}
+
+[tool.ruff]
+line-length = 999
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "W"]              # PEP 8 (pycodestyle) errors/warnings only
+extend-select = ["F", "B"] # pyflakes, import order, bugbear
+
+
+# build and pypi push (bash)               rm dist/* && python -m build --sdist --wheel && python -m twine upload --repository pypi dist/*
+# build and pypi push (powershell)         rm dist/*; if ($?) { python -m build --sdist --wheel; if ($?) { python -m twine upload --repository pypi dist/* } }
