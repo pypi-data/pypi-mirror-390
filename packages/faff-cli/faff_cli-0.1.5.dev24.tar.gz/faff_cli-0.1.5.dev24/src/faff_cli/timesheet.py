@@ -1,0 +1,102 @@
+import typer
+
+from faff_core import Workspace
+
+
+app = typer.Typer(help="Do Timesheet stuffs.")
+
+@app.command()
+def audiences(ctx: typer.Context):
+    """
+    List the configured audiences.
+    """
+    ws: Workspace = ctx.obj
+
+    audiences = ws.timesheets.audiences()
+    typer.echo(f"Found {len(audiences)} configured audience(s):")
+    for audience in audiences:
+        typer.echo(f"- {audience.id} {audience.__class__.__name__}")
+    
+@app.command()
+def compile(ctx: typer.Context, date: str = typer.Argument(None)):
+    """
+    Compile the timesheet for a given date, defaulting to today.
+    """
+    ws: Workspace = ctx.obj
+    resolved_date = ws.parse_natural_date(date)
+    
+    log = ws.logs.get_log_or_create(resolved_date)
+
+    audiences = ws.timesheets.audiences()
+    for audience in audiences:
+        compiled_timesheet = ws.timesheets.compile(log, audience)
+
+        # Sign the timesheet if signing_ids are configured
+        signing_ids = audience.config.get('signing_ids', [])
+        is_empty = len(compiled_timesheet.timeline) == 0
+
+        if signing_ids:
+            try:
+                signed_timesheet = ws.timesheets.sign_timesheet(compiled_timesheet, signing_ids)
+                ws.timesheets.write_timesheet(signed_timesheet)
+                if is_empty:
+                    typer.echo(f"Compiled and signed empty timesheet for {resolved_date} using {audience.id} (no relevant sessions).")
+                else:
+                    typer.echo(f"Compiled and signed timesheet for {resolved_date} using {audience.id}.")
+            except Exception as e:
+                # Signing failed - write unsigned and warn
+                ws.timesheets.write_timesheet(compiled_timesheet)
+                if is_empty:
+                    typer.echo(f"Warning: Compiled unsigned empty timesheet for {resolved_date} using {audience.id} (signing failed: {e})", err=True)
+                else:
+                    typer.echo(f"Warning: Compiled unsigned timesheet for {resolved_date} using {audience.id} (signing failed: {e})", err=True)
+        else:
+            ws.timesheets.write_timesheet(compiled_timesheet)
+            if is_empty:
+                typer.echo(f"Warning: Compiled unsigned empty timesheet for {resolved_date} using {audience.id} (no signing_ids configured)", err=True)
+            else:
+                typer.echo(f"Warning: Compiled unsigned timesheet for {resolved_date} using {audience.id} (no signing_ids configured)", err=True)
+
+@app.command(name="list") # To avoid conflict with list type
+def list_timesheets(ctx: typer.Context):
+    ws: Workspace = ctx.obj
+
+    typer.echo("Timesheets generated:")
+    for timesheet in ws.timesheets.list_timesheets():
+        line = f"- {timesheet.meta.audience_id} {timesheet.date} (generated at {timesheet.compiled}"
+        if timesheet.meta.submitted_at:
+            line += f"; submitted at {timesheet.meta.submitted_at}"
+        else:
+            line += "; not submitted"
+        line += ")"
+        typer.echo(line)
+
+@app.command()
+def show(ctx: typer.Context, audience_id: str, date: str = typer.Argument(None), pretty: bool = typer.Option(
+        False,
+        "--pretty",
+        help="Pretty-print the output instead of canonical JSON (without whitespace)",
+    )):
+    ws: Workspace = ctx.obj
+    resolved_date = ws.parse_natural_date(date)
+
+    timesheet = ws.timesheets.get_timesheet(audience_id, resolved_date)
+    import json
+    if timesheet:
+        data = json.loads(timesheet.submittable_timesheet().canonical_form().decode("utf-8"))
+        if pretty:
+            typer.echo(json.dumps(data, indent=2))
+        else:
+            typer.echo(data)
+
+@app.command()
+def submit(ctx: typer.Context, audience_id: str, date: str = typer.Argument(None)):
+    """
+    Push the timesheet for a given date, defaulting to today.
+    """
+    ws: Workspace = ctx.obj
+    resolved_date = ws.parse_natural_date(date)
+
+    timesheet = ws.timesheets.get_timesheet(audience_id, resolved_date)
+    if timesheet:
+        ws.timesheets.submit(timesheet)
