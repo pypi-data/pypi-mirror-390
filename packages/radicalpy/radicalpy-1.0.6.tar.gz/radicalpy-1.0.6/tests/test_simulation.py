@@ -1,0 +1,879 @@
+#! /usr/bin/env python
+
+import doctest
+import os
+import time
+import unittest
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import radicalpy as rp
+from radicalpy import estimations, kinetics, relaxation
+from radicalpy.experiments import mary
+from radicalpy.simulation import Basis
+
+# quick test:
+# comment the next line out, and run in repo root:
+# set PYTHONPATH=.
+# python tests/test_simulation.py TripletTests.test_time_evolution
+from . import radpy
+
+# np.seterr(divide="raise", invalid="raise")
+
+RUN_SLOW_TESTS = "INSIDE_EMACS" not in os.environ  # or True
+MEASURE_TIME = False
+
+
+PARAMS = dict(
+    B=np.random.uniform(size=20),
+    J=np.random.uniform(),
+    D=-abs(np.random.uniform()),
+)
+
+RADICAL_PAIR = [
+    rp.simulation.Molecule.fromdb("flavin_anion", ["H29"]),
+    rp.simulation.Molecule.fromdb("adenine_cation"),
+    # rp.simulation.Molecule("adenine_cation", ["C8-H"]),
+]
+
+RADICAL_PAIR_RAW = [
+    rp.simulation.Molecule(
+        "",
+        nuclei=[
+            rp.data.Nucleus(rp.data.Isotope("E").gamma_mT, 2, 0.0),
+            rp.data.Nucleus(rp.data.Isotope("E").gamma_mT, 2, 0.0),
+        ],
+    ),
+    rp.simulation.Molecule(
+        "",
+        nuclei=[
+            rp.data.Nucleus(rp.data.Isotope("E").gamma_mT, 2, 0.0),
+        ],
+    ),
+]
+
+
+def load_tests(loader, tests, ignore):
+    tests.addTests(doctest.DocTestSuite(rp.simulation))
+    tests.addTests(doctest.DocTestSuite(kinetics))
+    return tests
+
+
+def state2radpy(state: rp.simulation.State) -> str:
+    return (
+        str(state.value)
+        .replace("+", "p")
+        .replace("-", "m")
+        .replace("/", "")
+        .replace("_", "")
+        .replace("\\", "")
+    )
+
+
+class MoleculeTests(unittest.TestCase):
+    def test_effective_hyperfine(self):
+        flavin = rp.simulation.Molecule.fromdb("flavin_anion", ["N5"])
+        self.assertAlmostEqual(flavin.effective_hyperfine, 1.4239723207027404)
+
+    def test_manual_effective_hyperfine(self):
+        isotopes = ["14N"] * 4 + ["1H"] * 12
+        hfcs = [
+            0.5233,
+            0.1887,
+            -0.0035,
+            -0.0383,
+            0.0565,
+            -0.1416,
+            -0.1416,
+            -0.1416,
+            -0.3872,
+            0.4399,
+            0.4399,
+            0.4399,
+            0.0099,
+            0.407,
+            0.407,
+            -0.0189,
+        ]
+
+        flavin = rp.simulation.Molecule.fromisotopes(isotopes, hfcs)
+        self.assertAlmostEqual(flavin.effective_hyperfine, 1.3981069)
+
+
+class HilbertTests(unittest.TestCase):
+    def setUp(self):
+        if MEASURE_TIME:
+            self.start_time = time.time()
+        self.data = rp.data.Molecule.load_molecule_json("adenine_cation")["data"]
+        self.sim = rp.simulation.HilbertSimulation(RADICAL_PAIR, basis=Basis.ZEEMAN)
+        self.gamma_mT = rp.data.Isotope("E").gamma_mT
+        self.dt = 0.01
+        self.t_max = 1.0
+        self.time = np.arange(0, self.t_max, self.dt)
+        self.skip_states = [
+            rp.simulation.State.TP_SINGLET,
+            rp.simulation.State.TP_TRIPLET,
+            rp.simulation.State.TP_TRIPLET_ZERO,
+            rp.simulation.State.TP_TRIPLET_PLUS,
+            rp.simulation.State.TP_TRIPLET_MINUS,
+            rp.simulation.State.TP_QUINTET,
+            rp.simulation.State.TP_QUINTET_ZERO,
+            rp.simulation.State.TP_QUINTET_PLUS_TWO,
+            rp.simulation.State.TP_QUINTET_PLUS_ONE,
+            rp.simulation.State.TP_QUINTET_MINUS_TWO,
+            rp.simulation.State.TP_QUINTET_MINUS_ONE,
+            rp.simulation.State.EPR,
+            rp.simulation.State.CISS,
+            rp.simulation.State.TRIPLET_X,
+            rp.simulation.State.TRIPLET_Y,
+            rp.simulation.State.TRIPLET_Z,
+            rp.simulation.State.SECOND_ORDER_POLARISATION,
+        ]
+
+    def tearDown(self):
+        if MEASURE_TIME:
+            print(f"Time: {time.time() - self.start_time}")
+
+    def test_molecule_raw(self):
+        hfcs = [0.1, 0.2]
+        multiplicities = [2, 3]
+        gammas_mT = [3.14, 2.71]
+
+        nuclei = [
+            rp.data.Nucleus(gammas_mT[0], multiplicities[0], rp.data.Hfc(hfcs[0])),
+            rp.data.Nucleus(gammas_mT[1], multiplicities[1], rp.data.Hfc(hfcs[1])),
+        ]
+        molecule = rp.simulation.Molecule(nuclei=nuclei)
+        for i, n in enumerate(molecule.nuclei):
+            self.assertEqual(hfcs[i], n.hfc.isotropic)
+            self.assertEqual(multiplicities[i], n.multiplicity)
+            self.assertEqual(gammas_mT[i], n.gamma_mT)
+
+    def test_molecule_empty(self):
+        """Test empty molecule.
+
+        A silly test which verifies that the "empty" molecule has:
+        - shape = (4, 4)
+        - exactly two non-zero entries, and
+        - those entries have opposite signs.
+        """
+        mol = rp.simulation.Molecule()
+        sim = rp.simulation.HilbertSimulation([mol, mol])
+        HZ = sim.zeeman_hamiltonian(0.5)
+        nz = HZ != 0
+        assert HZ.shape == (4, 4)
+        assert len(HZ[nz]) == 2
+        assert np.sum(HZ) == 0
+
+    def test_HZ_raw(self):
+        ################
+        # RadicalPy code
+        sim = rp.simulation.HilbertSimulation(RADICAL_PAIR_RAW)
+        HZ = sim.zeeman_hamiltonian(PARAMS["B"][0])
+
+        #########################
+        # Assume this is correct!
+        omega_e = PARAMS["B"][0] * self.gamma_mT
+        electrons = sum(
+            [radpy.np_spinop(radpy.np_Sz, i, len(sim.particles)) for i in range(2)]
+        )
+        omega_n = PARAMS["B"][0] * rp.data.Isotope("E").gamma_mT
+        nuclei = sum(
+            [
+                radpy.np_spinop(radpy.np_Sz, i, len(sim.particles))
+                for i in range(2, len(sim.particles))
+            ]
+        )
+        HZ_true = -omega_e * electrons - omega_n * nuclei
+        assert np.all(
+            np.isclose(HZ, HZ_true)
+        ), "Zeeman Hamiltonian not calculated properly."
+
+    def test_HZ(self):
+        HZ = self.sim.zeeman_hamiltonian(PARAMS["B"][0])
+
+        #########################
+        # Assume this is correct!
+        omega_e = PARAMS["B"][0] * self.gamma_mT
+        electrons = sum(
+            [radpy.np_spinop(radpy.np_Sz, i, len(self.sim.particles)) for i in range(2)]
+        )
+        omega_n = PARAMS["B"][0] * rp.data.Isotope("1H").gamma_mT
+        nuclei = sum(
+            [
+                radpy.np_spinop(radpy.np_Sz, i, len(self.sim.particles))
+                for i in range(2, len(self.sim.particles))
+            ]
+        )
+        HZ_true = -omega_e * electrons - omega_n * nuclei
+
+        assert np.all(
+            np.isclose(HZ, HZ_true)
+        ), "Zeeman Hamiltonian not calculated properly."
+
+    def test_HH(self):
+        couplings = self.sim.coupling
+        hfcs = [n.hfc for n in self.sim.nuclei]
+        HH_true = sum(
+            [
+                radpy.HamiltonianHyperfine(
+                    len(self.sim.particles),
+                    ei,
+                    2 + ni,
+                    hfcs[ni].isotropic,
+                    self.gamma_mT,
+                )
+                for ni, ei in enumerate(couplings)
+            ]
+        )
+        np.testing.assert_almost_equal(HH_true, self.sim.hyperfine_hamiltonian())
+
+    def test_HE(self):
+        HE_true = radpy.HamiltonianExchange(
+            len(self.sim.particles), PARAMS["J"], gamma=self.gamma_mT
+        )
+        HE = self.sim.exchange_hamiltonian(PARAMS["J"])
+        np.testing.assert_almost_equal(HE, HE_true)
+
+    def test_HD(self):
+        HD_true = radpy.HamiltonianDipolar(
+            len(self.sim.particles), PARAMS["D"], abs(self.gamma_mT)
+        )
+        HD = self.sim.dipolar_hamiltonian(PARAMS["D"])
+        np.testing.assert_almost_equal(HD, HD_true)
+
+    @unittest.skip("This needs to be figured out")
+    def test_HH_3D(self):
+        # from SingletYield.ipynb do
+        ### anisotropic
+        # hfcs = [N5, N10, H5, H4]
+        # yields = singletYieldsAvgAniso(nucDims, indE, hfcs, b0*mT2angfreq, k0, kS)
+        #
+        # paper: "Radical triads, not pairs,
+        # may explain effects of hypomagnetic fields on neurogenesis"
+        mT2angfreq = (
+            9.274009994e-24 / 1.0545718e-34 * 2.00231930436256 / 1e9
+        )  # Mrad/s/mT; ~28 MHz/mT
+        MHz2mT = 1 / (mT2angfreq) * 2 * np.pi * 1e6
+        N5 = (
+            np.array(
+                [
+                    [-2.41368, -0.0662465, -0.971492],
+                    [-0.0662465, -2.44657, 0.0485258],
+                    [-0.971492, 0.0485258, 43.5125],
+                ]
+            )
+        ) * MHz2mT
+        N10 = (
+            np.array(
+                [
+                    [0.442319, 0.06085, 1.8016],
+                    [0.06085, -0.0133137, -0.338064],
+                    [1.8016, -0.338064, 23.1529],
+                ]
+            )
+        ) * MHz2mT
+        H5 = (
+            np.array(
+                [
+                    [-2.38856, 1.8683, 0.514044],
+                    [1.8683, -40.6401, 0.0339364],
+                    [0.514044, 0.0339364, -27.8618],
+                ]
+            )
+        ) * MHz2mT
+
+        flavin = rp.simulation.Molecule(
+            hfcs=[N5, N10, H5],
+            multiplicities=[3, 3, 2],
+            gammas_mT=[
+                rp.simulation.gamma_mT("14N"),
+                rp.simulation.gamma_mT("14N"),
+                rp.simulation.gamma_mT("1H"),
+            ],
+        )
+
+        H4 = 0.176 * np.eye(3)
+        ascorbic_acid = rp.simulation.Molecule(
+            hfcs=[H4],
+            multiplicities=[2],
+            gammas_mT=[rp.simulation.gamma_mT("1H")],
+        )
+
+        sim = rp.simulation.HilbertSimulation([flavin, ascorbic_acid])
+        H = sim.hyperfine_hamiltonian()
+        # print(H.shape)
+        # print(H)
+        Htrue = np.load("/tmp/save.npy") * MHz2mT * 1e6
+        print(Htrue[:5, :5])
+        print(H[:5, :5])
+        print(f"\nError: {np.linalg.norm(Htrue - H)}")
+        # plt.imshow(np.real(H))
+        # plt.show()
+
+    def test_dipolar_interaction_1d(self):
+        approx = estimations.dipolar_interaction_isotropic(1)
+        gold = approx
+        self.assertEqual(gold, approx)
+
+    def test_initial_density_matrix(self):
+        H = self.sim.total_hamiltonian(PARAMS["B"][0], PARAMS["J"], PARAMS["D"])
+        for state in rp.simulation.State:
+            if state in self.skip_states:
+                continue
+            rho0 = self.sim.initial_density_matrix(state, H)
+            rpstate = state2radpy(state)
+            rho0_true = radpy.Hilbert_initial(rpstate, len(self.sim.particles), H)
+            np.testing.assert_almost_equal(rho0, rho0_true)
+
+    def test_unitary_propagator(self):
+        dt = np.random.uniform(1e-6)
+        H = self.sim.total_hamiltonian(PARAMS["B"][0], PARAMS["J"], PARAMS["D"])
+        unitary_true = radpy.UnitaryPropagator(H, dt, "Hilbert")
+        unitary = self.sim.unitary_propagator(H, dt)
+        np.testing.assert_almost_equal(unitary_true, unitary)
+
+    def test_time_evolution(self):
+        k = np.random.uniform()
+        H = self.sim.total_hamiltonian(PARAMS["B"][0], PARAMS["J"], PARAMS["D"])
+        Kexp = kinetics.Exponential(k)
+        for init_state in rp.simulation.State:
+            if init_state in self.skip_states:
+                continue
+            for obs_state in rp.simulation.State:
+                if obs_state in self.skip_states:
+                    continue
+                if obs_state == rp.simulation.State.EQUILIBRIUM:
+                    continue
+                evol_true = radpy.TimeEvolution(
+                    len(self.sim.particles),
+                    state2radpy(init_state),
+                    state2radpy(obs_state),
+                    self.t_max,
+                    self.dt,
+                    k,
+                    0,
+                    H,
+                    "Hilbert",
+                )
+                rhos = self.sim.time_evolution(init_state, self.time, H)
+                pprob = self.sim.product_probability(obs_state, rhos)
+                pprob = pprob[1:]
+                Kexp.adjust_product_probabilities(pprob, self.time[:-1])
+                pyield, pyield_sum = self.sim.product_yield(pprob, self.time[:-1], k)
+                assert np.all(  # close (not equal)
+                    np.isclose(rhos[1:], evol_true[-1][:-1])
+                ), "Time evolution (rho) failed."
+                assert np.all(  # close (not equal)
+                    np.isclose(pprob, evol_true[1][:-1])
+                ), "Time evolution (probability or kinetics) failed."
+                assert np.all(  # close (not equal)
+                    np.isclose(pyield, evol_true[2][:-1])
+                ), "Time evolution (product yield) failed."
+
+    # @unittest.skip("Not ready yet")
+    def test_mary(self):
+        k = np.random.uniform()
+        for init_state in rp.simulation.State:
+            for obs_state in rp.simulation.State:
+                if obs_state == rp.simulation.State.EQUILIBRIUM:
+                    continue
+                rslt = mary(
+                    self.sim,
+                    init_state,
+                    obs_state,
+                    self.time,
+                    B=PARAMS["B"],
+                    D=PARAMS["D"],
+                    J=PARAMS["J"],
+                    kinetics=[kinetics.Exponential(k)],
+                )
+                # time, MFE, HFE, LFE, MARY, _, _, rho = radpy.MARY(
+                #     self.sim.num_particles,
+                #     init_state,
+                #     obs_state,
+                #     self.t_max,
+                #     self.dt,
+                #     k,
+                #     PARAMS["B"],
+                #     H,
+                # )
+
+    @unittest.skip("Numerical difference")
+    def test_ST_vs_Zeeman_basis(self):
+        k = np.random.uniform()
+        st_sim = rp.simulation.HilbertSimulation(RADICAL_PAIR, basis=Basis.ST)
+        ts = np.arange(0, 5e-6, 5e-9)
+        for i, init_state in enumerate(rp.simulation.State):
+            for j, obs_state in enumerate(rp.simulation.State):
+                if obs_state == rp.simulation.State.EQUILIBRIUM:
+                    continue
+                kwargs = dict(
+                    init_state=init_state,
+                    obs_state=obs_state,
+                    time=ts,
+                    B=PARAMS["B"],
+                    D=PARAMS["D"],
+                    J=PARAMS["J"],
+                    kinetics=[kinetics.Exponential(k)],
+                )
+                rslt = mary(self.sim, **kwargs)
+                strs = mary(st_sim, **kwargs)
+
+                key = "time_evolutions"
+                Bi = 1
+                # print(results.keys())
+                # print(results["product_yields"])
+                B = PARAMS["B"]
+                n = len(rp.simulation.State)
+                idx = i * n + j + 1
+                plt.subplot(n, n, idx)
+
+                title = f"{init_state.value}, {obs_state.value}"
+                suptitle = f"{key}: B={B[Bi]}"
+                plt.title(title)
+                plt.suptitle(suptitle)
+                plt.plot(rslt["time"], rslt[key][Bi])
+                plt.plot(strs["time"], strs[key][Bi])
+        # np.testing.assert_almost_equal(rslt[key], strs[key])
+        plt.show()
+
+    def test_hyperfine_3d(self):
+        results = mary(
+            self.sim,
+            rp.simulation.State.SINGLET,
+            rp.simulation.State.TRIPLET,
+            self.time,
+            PARAMS["B"],
+            PARAMS["D"],
+            PARAMS["J"],
+            theta=np.pi / 2,
+            phi=0,
+            hfc_anisotropy=True,
+        )
+        self.assertEqual(results["time_evolutions"][0][0], 0)
+        # print(results.keys())
+        # print(results["product_yields"])
+        # plt.plot(results["time"], results["time_evolutions"][1])
+        # plt.show()
+
+        N5 = np.array(
+            [
+                [-2.41368, -0.0662465, -0.971492],
+                [-0.0662465, -2.44657, 0.0485258],
+                [-0.971492, 0.0485258, 43.5125],
+            ]
+        )
+        N5 /= 28.025
+        dipolar_tensor = np.array(
+            [
+                [5680970.81962565, -65574461.04030437, 34606093.12997659],
+                [-65574461.04030436, -34583196.80020875, 47131454.19638795],
+                [34606093.12997659, 47131454.19638795, 28902225.98058307],
+            ]
+        )
+
+        molecules = [
+            rp.simulation.Molecule.fromisotopes(["14N"], [N5], "flavin3d"),
+            rp.simulation.Molecule(),
+        ]
+        B0 = 0.05
+        B = np.arange(-10e-3, 10e-3, 1e-3)
+        sim = rp.simulation.HilbertSimulation(molecules)
+        HZ = sim.zeeman_hamiltonian_3d(B0=B0, theta=0, phi=0)
+        HZt = sim.zeeman_hamiltonian_3d(B0=B0, theta=np.pi / 2, phi=0)
+        HZtp = sim.zeeman_hamiltonian_3d(B0=B0, theta=np.pi / 2, phi=np.pi)
+        HZp = sim.zeeman_hamiltonian_3d(B0=B0, theta=np.pi, phi=0)
+        HH = sim.hyperfine_hamiltonian()
+        HD = sim.dipolar_hamiltonian_3d(dipolar_tensor)
+        H = HZt + HH + HD
+        time = np.arange(0, 15e-6, 5e-9)
+        # rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, H)
+        # pp = sim.product_probability(rp.simulation.State.TRIPLET, rhos)
+        # print(sim)
+        # print(f"{HZ.shape=}")
+        # print(f"{HH.shape=}")
+        # print(f"{HD.shape=}")
+        # print(f"{rhos.shape=}")
+        # plt.plot(time, pp)
+        # plt.show()
+        # print(HZ)
+        # results = sim.MARY(
+        #     rp.simulation.State.SINGLET,
+        #     rp.simulation.State.TRIPLET,
+        #     time,
+        #     B,
+        #     dipolar_tensor,
+        #     0,
+        #     kinetics=[kinetics.Exponential(3e6)],
+        #     theta=np.pi / 2,
+        #     phi=0,
+        # )
+        # idx = 0
+        # plt.plot(results["B"], results["MARY"])
+        # plt.title(f"B={results['B'][idx]}")
+        # plt.show()
+        # print("DONE")
+
+    def test_symmetry_reduction(self):
+        """
+        Confirm identical spins can be fused into a single spin
+
+        Case 1:
+        H_A = A1 S1 ⋅ (I1 + I2 + I3) + A2 S2 ⋅ I4
+        for 5 spins with |S1> ⊗ |I1> ⊗ |I2> ⊗ |I3> ⊗ |I4>, in which I1, I2, I3 are identical
+
+        This is equivalent to:
+        H_A = A1 S1 ⋅ K + A2 S2 ⋅ I4
+        for 3 spins with |S1> ⊗ |K> ⊗ |I4>, in which |K> = |J=1/2> ⊕ |J=3/2>.
+
+
+        Case 2:
+        H_A = A1 S1 ⋅ (I1 + I2 + I3 + I4 + I5 + I6)
+        for 6 spins with |S1> ⊗ |I1> ⊗ |I2> ⊗ |I3> ⊗ |I4> ⊗ |I5> ⊗ |I6>, in which I1, I2, I3, I4, I5, I6 are identical
+
+        This is equivalent to:
+        H_A = A1 S1 ⋅ K
+        for 2 spin with |S1> ⊗ |K>, in which |K> = |J=0> ⊕ |J=1> ⊕ |J=2> ⊕ |J=3>.
+
+        """
+        from radicalpy.data import FuseNucleus
+
+        B0 = PARAMS["B"][0]
+        J = PARAMS["J"]
+        D = PARAMS["D"]
+
+        # Case 1: 3 identical nuclei + 1 nucleus
+        methyl = rp.data.Molecule.fromisotopes(
+            name="methyl",
+            isotopes=["1H", "1H", "1H", "13C"],
+            hfcs=[1.5, 1.5, 1.5, 0.1],
+        )
+        Z = rp.data.Molecule.fromisotopes(name="zorro", isotopes=[], hfcs=[])
+        sim = rp.simulation.HilbertSimulation([methyl, Z])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        assert ham.shape == (2**6, 2**6)
+        time = np.arange(0, 2e-08, 1e-9)  # only 20 steps to save time
+        rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+        time_evol_true = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+
+        # Case 1: 1 fused nucleus + 1 nucleus
+        fused_hydrogen = FuseNucleus.from_nuclei(methyl.nuclei[:3])
+        fused_methyl = rp.data.Molecule(
+            name="methyl", nuclei=[fused_hydrogen, methyl.nuclei[3]]
+        )
+        sim = rp.simulation.HilbertSimulation([fused_methyl, Z])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        assert ham.shape == (
+            2**3 * (2 + 4),
+            2**3 * (2 + 4),
+        ), f"{ham.shape=}"  # smaller than the original hamiltonian
+        Ps = np.diag([0, 0, 1, 0])
+        rho0 = np.kron(
+            Ps, np.kron(fused_hydrogen.initial_density_matrix, np.eye(2) / 2.0)
+        )
+        dt = time[1] - time[0]
+        propagator = sim.unitary_propagator(ham, dt)
+        rhos = np.zeros([len(time), *rho0.shape], dtype=complex)
+        rhos[0] = rho0
+        for t in range(1, len(time)):
+            rhos[t] = sim.propagate(propagator, rhos[t - 1])
+        time_evol = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+        np.testing.assert_almost_equal(time_evol, time_evol_true)
+
+        # Can be also simulated by each direct sum nucleus
+        time_evol_true_list = []
+        for weight, nucleus in fused_hydrogen:
+            nuclei = (
+                [nucleus, methyl.nuclei[3]]
+                if nucleus.multiplicity > 1
+                else [methyl.nuclei[3]]
+            )
+            methyl_direct_sum = rp.data.Molecule(name="methyl", nuclei=nuclei)
+            sim = rp.simulation.HilbertSimulation([methyl_direct_sum, Z])
+            ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+            rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+            time_evol_true_list.append(
+                weight * sim.product_probability(rp.simulation.State.SINGLET, rhos)
+            )
+
+        np.testing.assert_almost_equal(sum(time_evol_true_list), time_evol_true)
+
+        # Case 2: 6 identical nuclei
+        benzene = rp.data.Molecule.fromisotopes(
+            name="benzene",
+            isotopes=["1H", "1H", "1H", "1H", "1H", "1H"],
+            hfcs=[1.5, 1.5, 1.5, 1.5, 1.5, 1.5],
+        )
+        sim = rp.simulation.HilbertSimulation([benzene, Z])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        assert ham.shape == (2**8, 2**8)
+        time = np.arange(0, 1e-08, 1e-9)  # only 10 steps to save time
+        rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+        time_evol_true = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+
+        # Case 2: 1 fused nucleus
+        fused_hydrogen = FuseNucleus.from_nuclei(benzene.nuclei[:6])
+        benzene = rp.data.Molecule(name="benzene", nuclei=[fused_hydrogen])
+        sim = rp.simulation.HilbertSimulation([benzene, Z])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        assert ham.shape == (
+            2**2 * (1 + 3 + 5 + 7),
+            2**2 * (1 + 3 + 5 + 7),
+        ), f"{ham.shape=}"  # smaller than the original hamiltonian
+        Ps = np.diag([0, 0, 1, 0])
+        rho0 = np.kron(Ps, fused_hydrogen.initial_density_matrix)
+        dt = time[1] - time[0]
+        propagator = sim.unitary_propagator(ham, dt)
+        rhos = np.zeros([len(time), *rho0.shape], dtype=complex)
+        rhos[0] = rho0
+        for t in range(1, len(time)):
+            rhos[t] = sim.propagate(propagator, rhos[t - 1])
+        time_evol = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+        np.testing.assert_almost_equal(time_evol, time_evol_true)
+
+        # Can be also simulated by each direct sum nucleus
+        time_evol_true_list = []
+        for weight, nucleus in fused_hydrogen:
+            # if multiplicity is 1, the nucleus is not included in the simulation
+            nuclei = [nucleus] if nucleus.multiplicity > 1 else []
+            benzene_direct_sum = rp.data.Molecule(name="benzene", nuclei=nuclei)
+            sim = rp.simulation.SparseCholeskyHilbertSimulation([benzene_direct_sum, Z])
+            ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+            rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+            time_evol_true_list.append(
+                weight * sim.product_probability(rp.simulation.State.SINGLET, rhos)
+            )
+
+        np.testing.assert_almost_equal(sum(time_evol_true_list), time_evol_true)
+
+        # Case 3: 2 S=1 identical nuclei
+        nitrogens = rp.data.Molecule.fromisotopes(
+            name="nitrogens",
+            isotopes=["14N", "14N", "14N"],
+            hfcs=[0.5, 0.5, 0.5],
+        )
+        sim = rp.simulation.HilbertSimulation([nitrogens, Z])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        assert ham.shape == (2**2 * 3**3, 2**2 * 3**3), f"{ham.shape=}"
+        time = np.arange(0, 1e-08, 1e-9)  # only 10 steps to save time
+        rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+        time_evol_true = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+
+        # Case 3: 1 fused nucleus
+        fused_nitrogen = FuseNucleus.from_nuclei(nitrogens.nuclei[:3])
+        nitrogens = rp.data.Molecule(name="nitrogens", nuclei=[fused_nitrogen])
+        sim = rp.simulation.HilbertSimulation([nitrogens, Z])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        assert ham.shape == (
+            2**2 * (1 + 3 + 5 + 7),
+            2**2 * (1 + 3 + 5 + 7),
+        ), f"{ham.shape=}"
+        rho0 = np.kron(Ps, fused_nitrogen.initial_density_matrix)
+        dt = time[1] - time[0]
+        propagator = sim.unitary_propagator(ham, dt)
+        rhos = np.zeros([len(time), *rho0.shape], dtype=complex)
+        rhos[0] = rho0
+        for t in range(1, len(time)):
+            rhos[t] = sim.propagate(propagator, rhos[t - 1])
+        time_evol = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+        np.testing.assert_almost_equal(time_evol, time_evol_true)
+
+        # Can be also simulated by each direct sum nucleus contribution
+        time_evol_true_list = []
+        for weight, nucleus in fused_nitrogen:
+            nuclei = [nucleus] if nucleus.multiplicity > 1 else []
+            nitrogens_direct_sum = rp.data.Molecule(name="nitrogens", nuclei=nuclei)
+            sim = rp.simulation.SparseCholeskyHilbertSimulation(
+                [nitrogens_direct_sum, Z]
+            )
+            ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+            rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+            time_evol_true_list.append(
+                weight * sim.product_probability(rp.simulation.State.SINGLET, rhos)
+            )
+        np.testing.assert_almost_equal(sum(time_evol_true_list), time_evol_true)
+
+        # Case 4: two methyl groups
+        h3_left = rp.data.Molecule.fromisotopes(
+            name="h3_left",
+            isotopes=["1H", "1H", "1H"],
+            hfcs=[1.5, 1.5, 1.5],
+        )
+        h3_right = rp.data.Molecule.fromisotopes(
+            name="h3_right",
+            isotopes=["1H", "1H", "1H"],
+            hfcs=[0.5, 0.5, 0.5],
+        )
+        sim = rp.simulation.HilbertSimulation([h3_left, h3_right])
+        ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+        # assert ham.shape == (2**8, 2**8)
+        time = np.arange(0, 1e-08, 1e-9)  # only 10 steps to save time
+        rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+        time_evol_true = sim.product_probability(rp.simulation.State.SINGLET, rhos)
+
+        fused_h3_left = FuseNucleus.from_nuclei(h3_left.nuclei)
+        fused_h3_right = FuseNucleus.from_nuclei(h3_right.nuclei)
+        time_evol_true_list = []
+        for w1, h1 in fused_h3_left:
+            if h1.multiplicity == 1:
+                mol1 = rp.data.Molecule(name="mol1", nuclei=[])
+            else:
+                mol1 = rp.data.Molecule(name="mol1", nuclei=[h1])
+            for w2, h2 in fused_h3_right:
+                if h2.multiplicity == 1:
+                    mol2 = rp.data.Molecule(name="mol2", nuclei=[])
+                else:
+                    mol2 = rp.data.Molecule(name="mol2", nuclei=[h2])
+                sim = rp.simulation.SparseCholeskyHilbertSimulation([mol1, mol2])
+                ham = sim.total_hamiltonian(B0=B0, J=J, D=D)
+                rhos = sim.time_evolution(rp.simulation.State.SINGLET, time, ham)
+                time_evol_true_list.append(
+                    w1 * w2 * sim.product_probability(rp.simulation.State.SINGLET, rhos)
+                )
+        np.testing.assert_almost_equal(sum(time_evol_true_list), time_evol_true)
+
+
+class LiouvilleTests(unittest.TestCase):
+    def setUp(self):
+        self.sim = rp.simulation.LiouvilleSimulation(RADICAL_PAIR, basis=Basis.ZEEMAN)
+        self.dt = 0.01
+        self.t_max = 1.0
+        self.time = np.arange(0, self.t_max, self.dt)
+        self.skip_states = [
+            rp.simulation.State.TP_SINGLET,
+            rp.simulation.State.TP_TRIPLET,
+            rp.simulation.State.TP_TRIPLET_ZERO,
+            rp.simulation.State.TP_TRIPLET_PLUS,
+            rp.simulation.State.TP_TRIPLET_MINUS,
+            rp.simulation.State.TP_QUINTET,
+            rp.simulation.State.TP_QUINTET_ZERO,
+            rp.simulation.State.TP_QUINTET_PLUS_TWO,
+            rp.simulation.State.TP_QUINTET_PLUS_ONE,
+            rp.simulation.State.TP_QUINTET_MINUS_TWO,
+            rp.simulation.State.TP_QUINTET_MINUS_ONE,
+            rp.simulation.State.EPR,
+            rp.simulation.State.CISS,
+            rp.simulation.State.TRIPLET_X,
+            rp.simulation.State.TRIPLET_Y,
+            rp.simulation.State.TRIPLET_Z,
+            rp.simulation.State.SECOND_ORDER_POLARISATION,
+        ]
+
+    def test_initial_density_matrix(self):
+        H = self.sim.total_hamiltonian(PARAMS["B"][0], PARAMS["J"], PARAMS["D"])
+        for state in rp.simulation.State:
+            if state in self.skip_states:
+                continue
+            rho0 = self.sim.initial_density_matrix(state, H)
+            rpstate = state2radpy(state)
+            rho0_true = radpy.Liouville_initial(rpstate, len(self.sim.particles), H)
+            np.testing.assert_almost_equal(rho0, rho0_true)
+
+    def test_unitary_propagator(self):
+        dt = np.random.uniform(0, 1e-6)
+        H = self.sim.total_hamiltonian(PARAMS["B"][0], PARAMS["J"], PARAMS["D"])
+        unitary_true = radpy.UnitaryPropagator(H, dt, "Liouville")
+        unitary = self.sim.unitary_propagator(H, dt)
+        np.testing.assert_almost_equal(unitary, unitary_true)
+
+    @unittest.skipUnless(RUN_SLOW_TESTS, "slow")
+    def test_kinetics(self):
+        kwargs = dict(
+            init_state=rp.simulation.State.SINGLET,
+            obs_state=rp.simulation.State.TRIPLET,
+            time=np.arange(0, 15e-6, 5e-9),
+            B=np.arange(0, 20, 1),
+            D=0,
+            J=0,
+        )
+        k = 1e6
+        results_haberkorn = mary(
+            self.sim,
+            kinetics=[
+                kinetics.Haberkorn(k, rp.simulation.State.TRIPLET),
+                kinetics.Haberkorn(k, rp.simulation.State.SINGLET),
+                kinetics.Exponential(k),
+            ],
+            **kwargs,
+        )
+        results_jones_hore = mary(
+            self.sim,
+            kinetics=[
+                kinetics.JonesHore(k, k),
+                kinetics.Exponential(k),
+            ],
+            **kwargs,
+        )
+
+        # idx = 0
+        # plt.plot(results_haberkorn["time"], results_haberkorn["time_evolutions"][idx])
+        # plt.plot(results_jones_hore["time"], results_jones_hore["time_evolutions"][idx])
+        # plt.title(f"B={results_haberkorn['B'][idx]}")
+        # plt.show()
+        # print("DONE")
+
+    def test_relaxation(self):
+        kwargs = dict(
+            init_state=rp.simulation.State.TRIPLET,
+            obs_state=rp.simulation.State.TRIPLET,
+            time=np.arange(0, 5e-6, 1e-9),
+            B=np.arange(0, 4, 1),
+            D=0,
+            J=0,
+        )
+        k = 1e6
+        results = mary(
+            self.sim,
+            kinetics=[],
+            relaxations=[
+                # relaxation.SingletTripletDephasing( k),
+                # relaxation.TripleTripletDephasing( k),
+                relaxation.RandomFields(k),
+                # relaxation.DipolarModulation( k),
+                # relaxation.TripletTripletRelaxation( k),
+            ],
+            **kwargs,
+        )
+
+        # idx = 0
+        # plt.plot(results["time"], results["time_evolutions"][idx])
+        # plt.title(f"B={results['B'][idx]}")
+        # plt.show()
+        # print("DONE")
+
+
+class TripletTests(unittest.TestCase):
+    def setUp(self):
+        dummy_hfc = rp.data.Hfc(0.0)
+        gamma = -176085963.0230
+        radical = rp.data.Nucleus(gamma, 3, dummy_hfc)
+        z1 = rp.data.Molecule("Z", [], radical=radical)
+        z2 = rp.data.Molecule(name="Z", nuclei=[], radical=radical)
+        basis = rp.simulation.Basis.ZEEMAN
+        self.sim = rp.simulation.HilbertSimulation([z1, z2], basis=basis)
+        self.dt = 0.01
+        self.t_max = 1.0
+        self.time = np.arange(0, self.t_max, self.dt)
+
+    def test_time_evolution(self):
+        init_state = rp.simulation.State.TRIPLET
+        H = self.sim.total_hamiltonian(B0=0, J=0, D=100)
+        rhos = self.sim.time_evolution(init_state, self.time, H)
+        obs = rp.simulation.State.SINGLET
+        k = 0
+        prod_prob = self.sim.product_probability(obs, rhos)
+        result, _ = self.sim.product_yield(prod_prob, self.time, k)
+
+        # fig, axs = plt.subplots(2)
+        # plt.sca(axs[0])
+        # plt.plot(self.time, result)
+
+        # plt.sca(axs[1])
+        # plt.spy(H)
+        # plt.show()
+
+
+if __name__ == "__main__":
+    unittest.main()
