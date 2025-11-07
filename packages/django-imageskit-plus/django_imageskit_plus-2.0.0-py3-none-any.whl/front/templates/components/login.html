@@ -1,0 +1,120 @@
+{% include 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0 text-center">Вход в систему</h2>
+                </div>
+                <div class="card-body p-4">
+                    <ul class="nav nav-tabs nav-justified mb-4" id="authTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if active_tab == 'phone' %}active{% endif %}" 
+                               href="?tab=phone" id="phone-tab">
+                                <i class="bi bi-phone me-2"></i>По телефону
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if active_tab == 'email' %}active{% endif %}" 
+                               href="?tab=email" id="email-tab">
+                                <i class="bi bi-envelope me-2"></i>По email
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {% if active_tab == 'username' %}active{% endif %}" 
+                               href="?tab=username" id="login-tab">
+                                <i class="bi bi-person me-2"></i>По логину
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Вход по телефону -->
+                        <div class="tab-pane fade {% if active_tab == 'phone' %}show active{% endif %}" id="phone">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="auth_type" value="phone">
+                                
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Номер телефона</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" 
+                                           value="{{ form.phone.value|default_if_none:'' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Пароль</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Вход по email -->
+                        <div class="tab-pane fade {% if active_tab == 'email' %}show active{% endif %}" id="email">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="auth_type" value="email">
+                                
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ form.email.value|default_if_none:'' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Пароль</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Вход по логину -->
+                        <div class="tab-pane fade {% if active_tab == 'username' %}show active{% endif %}" id="login">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="auth_type" value="username">
+                                
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Логин</label>
+                                    <input type="text" class="form-control" id="username" name="username" 
+                                           value="{{ form.username.value|default_if_none:'' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Пароль</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <a href="#" class="text-decoration-none">Забыли пароль?</a>
+                        <span class="mx-2">|</span>
+                        <a href="{% url 'register' %}" class="text-decoration-none">Регистрация</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

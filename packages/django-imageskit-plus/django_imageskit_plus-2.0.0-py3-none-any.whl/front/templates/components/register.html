@@ -1,0 +1,360 @@
+{% include "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h2 class="mb-0 text-center">Регистрация</h2>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <strong>Ошибка!</strong> Пожалуйста, исправьте следующие ошибки:
+                                <ul>
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Личная информация -->
+                        <div class="mb-4">
+                            <h5 class="text-primary mb-3"><i class="bi bi-person-vcard me-2"></i>Личная информация</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_first_name" class="form-label">Имя*</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" 
+                                           id="id_first_name" 
+                                           name="first_name" 
+                                           value="{{ form.first_name.value|default_if_none:'' }}"
+                                           required>
+                                    {% if form.first_name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.first_name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_last_name" class="form-label">Фамилия*</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" 
+                                           id="id_last_name" 
+                                           name="last_name"
+                                           value="{{ form.last_name.value|default_if_none:'' }}"
+                                           required>
+                                    {% if form.last_name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.last_name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_username" class="form-label">Логин*</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                                           id="id_username" 
+                                           name="username"
+                                           value="{{ form.username.value|default_if_none:'' }}"
+                                           required>
+                                    {% if form.username.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.username.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_email" class="form-label">Email*</label>
+                                    <input type="email" 
+                                           class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                                           id="id_email" 
+                                           name="email"
+                                           value="{{ form.email.value|default_if_none:'' }}"
+                                           required>
+                                    {% if form.email.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.email.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Контактные данные -->
+                        <div class="mb-4">
+                            <h5 class="text-primary mb-3"><i class="bi bi-telephone me-2"></i>Контактные данные</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_phone" class="form-label">Телефон</label>
+                                    <input type="tel" 
+                                           class="form-control {% if form.phone.errors %}is-invalid{% endif %}" 
+                                           id="id_phone" 
+                                           name="phone"
+                                           value="{{ form.phone.value|default_if_none:'' }}"
+                                           placeholder="+79991234567">
+                                    {% if form.phone.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.phone.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_birth_date" class="form-label">Дата рождения</label>
+                                    <input type="date" 
+                                           class="form-control {% if form.birth_date.errors %}is-invalid{% endif %}" 
+                                           id="id_birth_date" 
+                                           name="birth_date"
+                                           value="{{ form.birth_date.value|default_if_none:''|date:'Y-m-d' }}">
+                                    {% if form.birth_date.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.birth_date.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_gender" class="form-label">Пол</label>
+                                    <select class="form-select {% if form.gender.errors %}is-invalid{% endif %}" 
+                                            id="id_gender" 
+                                            name="gender">
+                                        <option value="" selected>Не указан</option>
+                                        <option value="male" {% if form.gender.value == 'male' %}selected{% endif %}>Мужской</option>
+                                        <option value="female" {% if form.gender.value == 'female' %}selected{% endif %}>Женский</option>
+                                        <option value="other" {% if form.gender.value == 'other' %}selected{% endif %}>Другое</option>
+                                    </select>
+                                    {% if form.gender.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.gender.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_age" class="form-label">Возраст</label>
+                                    <input type="number" 
+                                           class="form-control {% if form.age.errors %}is-invalid{% endif %}" 
+                                           id="id_age" 
+                                           name="age"
+                                           value="{{ form.age.value|default_if_none:'' }}"
+                                           min="0" max="120">
+                                    {% if form.age.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.age.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Адрес -->
+                        <div class="mb-4">
+                            <h5 class="text-primary mb-3"><i class="bi bi-geo-alt me-2"></i>Адрес</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_country" class="form-label">Страна</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.country.errors %}is-invalid{% endif %}" 
+                                           id="id_country" 
+                                           name="country"
+                                           value="{{ form.country.value|default_if_none:'' }}">
+                                    {% if form.country.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.country.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_city" class="form-label">Город</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.city.errors %}is-invalid{% endif %}" 
+                                           id="id_city" 
+                                           name="city"
+                                           value="{{ form.city.value|default_if_none:'' }}">
+                                    {% if form.city.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.city.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12">
+                                    <label for="id_address" class="form-label">Адрес</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.address.errors %}is-invalid{% endif %}" 
+                                           id="id_address" 
+                                           name="address"
+                                           value="{{ form.address.value|default_if_none:'' }}">
+                                    {% if form.address.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.address.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Профессиональная информация -->
+                        <div class="mb-4">
+                            <h5 class="text-primary mb-3"><i class="bi bi-briefcase me-2"></i>Профессиональная информация</h5>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="id_occupation" class="form-label">Профессия</label>
+                                    <input type="text" 
+                                           class="form-control {% if form.occupation.errors %}is-invalid{% endif %}" 
+                                           id="id_occupation" 
+                                           name="occupation"
+                                           value="{{ form.occupation.value|default_if_none:'' }}">
+                                    {% if form.occupation.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.occupation.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Аватар и пароль -->
+                        <div class="mb-4">
+                            <h5 class="text-primary mb-3"><i class="bi bi-shield-lock me-2"></i>Безопасность</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_avatar" class="form-label">Аватар</label>
+                                        <input type="file" class="form-control" id="id_avatar" name="avatar" accept="image/*">
+                                        <div class="form-text">{{ form.avatar.help_text }}</div>
+                                        {% if form.avatar.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.avatar.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    <div class="form-text">JPG, PNG или GIF (макс. 5MB)</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_password1" class="form-label">Пароль*</label>
+                                    <input type="password" 
+                                           class="form-control {% if form.password1.errors %}is-invalid{% endif %}" 
+                                           id="id_password1" 
+                                           name="password1"
+                                           required>
+                                    {% if form.password1.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.password1.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_password2" class="form-label">Подтверждение пароля*</label>
+                                    <input type="password" 
+                                           class="form-control {% if form.password2.errors %}is-invalid{% endif %}" 
+                                           id="id_password2" 
+                                           name="password2"
+                                           required>
+                                    {% if form.password2.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.password2.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Кнопка отправки -->
+                        <div class="d-grid mt-4">
+                            <button class="btn btn-primary btn-lg py-3" type="submit">
+                                <i class="bi bi-person-plus me-2"></i>Зарегистрироваться
+                            </button>
+                        </div>
+
+                        <div class="mt-4 text-center">
+                            <p class="mb-0">Уже есть аккаунт? <a href="{% url 'login' %}" class="text-decoration-none">Войти</a></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Валидация паролей
+    const password1 = document.getElementById('id_password1');
+    const password2 = document.getElementById('id_password2');
+    
+    if (password1 && password2) {
+        password1.addEventListener('input', function() {
+            if (password1.value.length < 8) {
+                password1.setCustomValidity('Пароль должен содержать минимум 8 символов');
+            } else {
+                password1.setCustomValidity('');
+            }
+        });
+        
+        password2.addEventListener('input', function() {
+            if (password1.value !== password2.value) {
+                password2.setCustomValidity('Пароли не совпадают');
+            } else {
+                password2.setCustomValidity('');
+            }
+        });
+    }
+
+    // Маска для телефона
+    const phoneInput = document.getElementById('id_phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '').slice(0, 11);
+            if (!this.value.startsWith('+7') && this.value.length > 0) {
+                this.value = '+7' + this.value;
+            }
+        });
+    }
+
+    // Валидация формы при отправке
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %}

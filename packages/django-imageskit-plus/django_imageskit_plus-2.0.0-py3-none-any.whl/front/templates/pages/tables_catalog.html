@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Бронирование столов - МОЙ НЕ САМ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Бронирование столов</h1>
+    
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Фильтры</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="{{ filter_form.location.id_for_label }}" class="form-label">Расположение</label>
+                    {{ filter_form.location }}
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ filter_form.min_seats.id_for_label }}" class="form-label">Минимум мест</label>
+                    {{ filter_form.min_seats }}
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ filter_form.max_price.id_for_label }}" class="form-label">Максимальная цена/час</label>
+                    {{ filter_form.max_price }}
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ filter_form.date.id_for_label }}" class="form-label">Дата бронирования</label>
+                    {{ filter_form.date }}
+                </div>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-primary">Применить фильтры</button>
+                    <a href="{% url 'tables_catalog' %}" class="btn btn-outline-secondary">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Столы -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for table in tables %}
+        <div class="col">
+            <div class="card h-100">
+                {% if table.image %}
+                <img src="{{ table.image.url }}" class="card-img-top" alt="Стол #{{ table.number }}" style="height: 200px; object-fit: cover;">
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <i class="bi bi-table display-1 text-muted"></i>
+                </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <h5 class="card-title d-flex justify-content-between align-items-center">
+                        Стол #{{ table.number }}
+                        <span class="badge {% if table.status == 'available' %}bg-success{% elif table.status == 'reserved' %}bg-warning{% elif table.status == 'occupied' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ table.get_status_display }}
+                        </span>
+                    </h5>
+                    <p class="card-text">
+                        <i class="bi bi-geo-alt"></i> {{ table.get_location_display }}<br>
+                        <i class="bi bi-people"></i> {{ table.seats }} мест<br>
+                        <i class="bi bi-currency-ruble"></i> {{ table.price_per_hour }} ₽/час
+                    </p>
+                    {% if table.description %}
+                    <p class="card-text">{{ table.description|truncatechars:100 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-transparent border-top-0">
+                    <a href="{% url 'table_detail' table.id %}" class="btn btn-primary w-100">
+                        {% if table.is_available %}
+                        Забронировать
+                        {% else %}
+                        Подробнее
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <p class="mb-0">По вашему запросу не найдено доступных столов.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

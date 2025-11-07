@@ -1,0 +1,193 @@
+<button type="button" class="btn btn-primary btn-lg mx-2" data-bs-toggle="modal" data-bs-target="#authModal">
+    <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+</button>
+
+<div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Вход в систему</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalFormErrors" class="alert alert-danger d-none">
+                    <strong>Ошибка!</strong> Пожалуйста, исправьте следующие ошибки:
+                    <ul id="modalErrorList"></ul>
+                </div>
+                
+                <ul class="nav nav-tabs mb-4" id="authTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#phone" id="phone-tab">По телефону</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#email" id="email-tab">По email</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#login" id="login-tab">По логину</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="authTabContent">
+                    <!-- Вход по телефону -->
+                    <div class="tab-pane fade show active" id="phone" role="tabpanel" aria-labelledby="phone-tab">
+                        <form id="phoneAuthForm" method="post" action="{% url 'modal_login' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="auth_type" value="phone">
+                            
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Номер телефона</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Пароль</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Вход по email -->
+                    <div class="tab-pane fade" id="email" role="tabpanel" aria-labelledby="email-tab">
+                        <form id="emailAuthForm" method="post" action="{% url 'modal_login' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="auth_type" value="email">
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Пароль</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Вход по логину -->
+                    <div class="tab-pane fade" id="login" role="tabpanel" aria-labelledby="login-tab">
+                        <form id="usernameAuthForm" method="post" action="{% url 'modal_login' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="auth_type" value="username">
+                            
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Логин</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Пароль</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Войти
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="mt-3 text-center">
+                    <a href="#" class="text-muted">Забыли пароль?</a>
+                    <span class="mx-2">|</span>
+                    <a href="{% url 'register' %}" class="text-muted">Регистрация</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('#authModal form');
+        const formErrors = document.getElementById('modalFormErrors');
+        const errorList = document.getElementById('modalErrorList');
+        
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Сбрасываем ошибки
+                formErrors.classList.add('d-none');
+                errorList.innerHTML = '';
+                form.querySelectorAll('.is-invalid').forEach(input => {
+                    input.classList.remove('is-invalid');
+                });
+                
+                const formData = new FormData(form);
+                
+                fetch("{% url 'modal_login' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect;
+                    } else {
+                        formErrors.classList.remove('d-none');
+                        
+                        // Обработка общих ошибок
+                        if (data.errors.__all__) {
+                            const errorMsg = document.createElement('li');
+                            errorMsg.textContent = data.errors.__all__.join(' ');
+                            errorList.appendChild(errorMsg);
+                        }
+                        
+                        // Обработка ошибок для конкретных полей
+                        for (const field in data.errors) {
+                            if (field === '__all__') continue; // Пропускаем общие ошибки, т.к. уже обработали
+                            
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                input.classList.add('is-invalid');
+                                const feedback = input.nextElementSibling;
+                                if (feedback && feedback.classList.contains('invalid-feedback')) {
+                                    feedback.textContent = data.errors[field].join(' ');
+                                }
+                                
+                                // Добавляем ошибку поля в общий список только если нет общих ошибок формы
+                                if (!data.errors.__all__) {
+                                    const errorMsg = document.createElement('li');
+                                    errorMsg.textContent = data.errors[field].join(' ');
+                                    errorList.appendChild(errorMsg);
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    formErrors.classList.remove('d-none');
+                    const errorMsg = document.createElement('li');
+                    errorMsg.textContent = 'Произошла ошибка. Пожалуйста, попробуйте позже.';
+                    errorList.appendChild(errorMsg);
+                });
+            });
+        });
+    });
+</script>
