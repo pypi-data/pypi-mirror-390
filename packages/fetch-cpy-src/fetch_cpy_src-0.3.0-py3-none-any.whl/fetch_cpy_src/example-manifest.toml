@@ -1,0 +1,42 @@
+# git repo tag
+tag = "3.12"
+
+
+# Specify items of source to fetch.
+
+# This is a demo item specification for fetch single file of source repo.
+#
+# There are two REQUIRED fields:
+# `path`: path of the file to be fetched;
+# `type`: set to "file" for fetching single file.
+[[items]]
+path = 'Parser/asdl_c.py'
+type = 'file'
+
+# `rename` is OPTIONAL. Specifying this field can rename fetched file or move to 
+# another directory.
+rename = 'asdl_c.py'
+
+# The `xxx_adapters` are OPTIONAL fields. Adapters will make pre-defined modification
+# to fetched source files. 
+#
+#  + `file_adapters` will apply modification to fetch file (if type = 'file') or 
+#    any files within fetched directory (if type = 'dir').
+#  + `dir_adapters` will apply modification to the directory of the fetched file 
+#    (if type = 'file') or the fetched directory (if type = 'dir').
+# 
+# In this example, 
+#  + `TopLevelScriptImportAdapter` will refactor the fetched python script file to 
+#    importable submodules.
+#  + `AddDunderInitAdapter` will put an empty `__init__.py` at fetched directory, 
+#    and thus make it a package.
+file_adapters = ['TopLevelScriptImportAdapter']
+dir_adapters = ['AddDunderInitAdapter']
+
+
+# This is a demo item specification for fetch sub-directory of source repo.
+# `path`: path of the directory to be fetched;
+# `type`: set to "dir" for fetching entire sub-directory.
+[[items]]
+path = 'Grammar/'
+type = 'dir'
