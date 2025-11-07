@@ -1,0 +1,73 @@
+[build-system]
+requires = ["flit_core >=3.11,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "aioitertools"
+readme = "README.md"
+authors = [{ name = "Amethyst Reese", email = "amethyst@n7.gg" }]
+license = "MIT"
+license-files = ["LICENSE"]
+dynamic = ["version", "description"]
+classifiers = [
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.9"
+dependencies = ["typing_extensions>=4.0; python_version < '3.10'"]
+
+[dependency-groups]
+dev = [
+    "attribution==1.8.0",
+    "black==25.9.0",
+    "coverage==7.10.7",
+    "flit==3.12.0",
+    "mypy==1.18.2",
+    "usort==1.0.8.post1",
+    "ufmt==2.8.0",
+    "ruff>=0.14.3",
+]
+docs = [
+    "sphinx==8.0.2",
+    "sphinx-mdinclude==0.6.2",
+]
+
+[project.urls]
+Documentation = "https://aioitertools.omnilib.dev"
+Changelog = "https://aioitertools.omnilib.dev/en/latest/changelog.html"
+Github = "https://github.com/omnilib/aioitertools"
+
+[tool.flit.sdist]
+exclude = [".github/"]
+
+[tool.attribution]
+name = "aioitertools"
+package = "aioitertools"
+version_file = true
+ignored_authors = ["dependabot[bot]"]
+
+[tool.coverage.run]
+branch = true
+include = ["aioitertools/*"]
+omit = ["aioitertools/tests/*"]
+
+[tool.coverage.report]
+fail_under = 97
+precision = 1
+show_missing = true
+skip_covered = true
+
+[tool.mypy]
+# strict = true
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+extend-select = ["UP", "RUF"]
+ignore = ["UP029"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.uv.dependency-groups]
+docs = {requires-python=">=3.10"}
