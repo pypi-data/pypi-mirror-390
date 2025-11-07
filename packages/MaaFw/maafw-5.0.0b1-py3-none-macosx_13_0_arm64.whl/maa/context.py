@@ -1,0 +1,337 @@
+import ctypes
+import json
+from typing import Any, Dict, Optional, Tuple, Union
+
+import numpy
+
+from .event_sink import EventSink, NotificationType
+from .buffer import ImageBuffer, RectBuffer, StringBuffer, StringListBuffer
+from .define import *
+from .library import Library
+from .tasker import Tasker
+from .pipeline import JPipelineData, JPipelineParser
+from .job import JobWithResult
+
+
+class Context:
+    _handle: MaaContextHandle
+    _tasker: Tasker
+
+    ### public ###
+
+    def __init__(self, handle: MaaContextHandle):
+        self._set_api_properties()
+
+        self._handle = handle
+        if not self._handle:
+            raise ValueError("handle is None")
+
+        self._init_tasker()
+
+    def __del__(self):
+        pass
+
+    def run_task(
+        self, entry: str, pipeline_override: Dict = {}
+    ) -> Optional[TaskDetail]:
+        task_id = int(
+            Library.framework().MaaContextRunTask(
+                self._handle, *Context._gen_post_param(entry, pipeline_override)
+            )
+        )
+        if not task_id:
+            return None
+
+        return self.tasker.get_task_detail(task_id)
+
+    def run_recognition(
+        self,
+        entry: str,
+        image: numpy.ndarray,
+        pipeline_override: Dict = {},
+    ) -> Optional[RecognitionDetail]:
+        image_buffer = ImageBuffer()
+        image_buffer.set(image)
+        reco_id = int(
+            Library.framework().MaaContextRunRecognition(
+                self._handle,
+                *Context._gen_post_param(entry, pipeline_override),
+                image_buffer._handle
+            )
+        )
+        if not reco_id:
+            return None
+
+        return self.tasker.get_recognition_detail(reco_id)
+
+    def run_action(
+        self,
+        entry: str,
+        box: RectType = (0, 0, 0, 0),
+        reco_detail: str = "",
+        pipeline_override: Dict = {},
+    ) -> Optional[NodeDetail]:
+        rect = RectBuffer()
+        rect.set(box)
+
+        node_id = int(
+            Library.framework().MaaContextRunAction(
+                self._handle,
+                *Context._gen_post_param(entry, pipeline_override),
+                rect._handle,
+                reco_detail.encode()
+            )
+        )
+
+        if not node_id:
+            return None
+
+        return self.tasker.get_node_detail(node_id)
+
+    def override_pipeline(self, pipeline_override: Dict) -> bool:
+        pipeline_json = json.dumps(pipeline_override, ensure_ascii=False)
+
+        return bool(
+            Library.framework().MaaContextOverridePipeline(
+                self._handle,
+                pipeline_json.encode(),
+            )
+        )
+
+    def override_next(self, name: str, next_list: List[str]) -> bool:
+        list_buffer = StringListBuffer()
+        list_buffer.set(next_list)
+
+        return bool(
+            Library.framework().MaaContextOverrideNext(
+                self._handle, name.encode(), list_buffer._handle
+            )
+        )
+
+    def override_image(self, image_name: str, image: numpy.ndarray) -> bool:
+        image_buffer = ImageBuffer()
+        image_buffer.set(image)
+
+        return bool(
+            Library.framework().MaaContextOverrideImage(
+                self._handle, image_name.encode(), image_buffer._handle
+            )
+        )
+
+    def get_node_data(self, name: str) -> Optional[Dict]:
+        string_buffer = StringBuffer()
+        if not Library.framework().MaaContextGetNodeData(
+            self._handle, name.encode(), string_buffer._handle
+        ):
+            return None
+
+        data = string_buffer.get()
+        if not data:
+            return None
+
+        try:
+            return json.loads(data)
+        except json.JSONDecodeError:
+            return None
+
+    def get_node_object(self, name: str) -> Optional[JPipelineData]:
+        node_data = self.get_node_data(name)
+
+        if not node_data:
+            return None
+
+        return JPipelineParser.parse_pipeline_data(node_data)
+
+    @property
+    def tasker(self) -> Tasker:
+        return self._tasker
+
+    def get_task_job(self) -> JobWithResult:
+        task_id = Library.framework().MaaContextGetTaskId(self._handle)
+        if not task_id:
+            raise ValueError("task_id is None")
+
+        return self.tasker._gen_task_job(task_id)
+
+    def clone(self) -> "Context":
+        cloned_handle = Library.framework().MaaContextClone(self._handle)
+        if not cloned_handle:
+            raise ValueError("cloned_handle is None")
+
+        return Context(cloned_handle)
+
+    ### private ###
+
+    def _init_tasker(self):
+        tasker_handle = Library.framework().MaaContextGetTasker(self._handle)
+        if not tasker_handle:
+            raise ValueError("tasker_handle is None")
+        self._tasker = Tasker(handle=tasker_handle)
+
+    @staticmethod
+    def _gen_post_param(entry: str, pipeline_override: Dict) -> Tuple[bytes, bytes]:
+        pipeline_json = json.dumps(pipeline_override, ensure_ascii=False)
+
+        return (
+            entry.encode(),
+            pipeline_json.encode(),
+        )
+
+    _api_properties_initialized: bool = False
+
+    @staticmethod
+    def _set_api_properties():
+        if Context._api_properties_initialized:
+            return
+
+        Context._api_properties_initialized = True
+
+        Library.framework().MaaContextRunTask.restype = MaaTaskId
+        Library.framework().MaaContextRunTask.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+        ]
+
+        Library.framework().MaaContextRunRecognition.restype = MaaRecoId
+        Library.framework().MaaContextRunRecognition.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            MaaImageBufferHandle,
+        ]
+
+        Library.framework().MaaContextRunAction.restype = MaaNodeId
+        Library.framework().MaaContextRunAction.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            MaaRectHandle,
+            MaaStringBufferHandle,
+        ]
+
+        Library.framework().MaaContextOverridePipeline.restype = MaaBool
+        Library.framework().MaaContextOverridePipeline.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+        ]
+
+        Library.framework().MaaContextOverrideNext.restype = MaaBool
+        Library.framework().MaaContextOverrideNext.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+            MaaStringListBufferHandle,
+        ]
+
+        Library.framework().MaaContextOverrideImage.restype = MaaBool
+        Library.framework().MaaContextOverrideImage.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+            MaaImageBufferHandle,
+        ]
+
+        Library.framework().MaaContextGetNodeData.restype = MaaBool
+        Library.framework().MaaContextGetNodeData.argtypes = [
+            MaaContextHandle,
+            ctypes.c_char_p,
+            MaaStringBufferHandle,
+        ]
+
+        Library.framework().MaaContextGetTaskId.restype = MaaTaskId
+        Library.framework().MaaContextGetTaskId.argtypes = [
+            MaaContextHandle,
+        ]
+
+        Library.framework().MaaContextGetTasker.restype = MaaTaskerHandle
+        Library.framework().MaaContextGetTasker.argtypes = [
+            MaaContextHandle,
+        ]
+
+        Library.framework().MaaContextClone.restype = MaaContextHandle
+        Library.framework().MaaContextClone.argtypes = [
+            MaaContextHandle,
+        ]
+
+
+class ContextEventSink(EventSink):
+
+    @dataclass
+    class NodeNextListDetail:
+        task_id: int
+        name: str
+        next_list: list[str]
+        focus: Any
+
+    def on_node_next_list(
+        self,
+        context: Context,
+        noti_type: NotificationType,
+        detail: NodeNextListDetail,
+    ):
+        pass
+
+    @dataclass
+    class NodeRecognitionDetail:
+        task_id: int
+        reco_id: int
+        name: str
+        focus: Any
+
+    def on_node_recognition(
+        self,
+        context: Context,
+        noti_type: NotificationType,
+        detail: NodeRecognitionDetail,
+    ):
+        pass
+
+    @dataclass
+    class NodeActionDetail:
+        task_id: int
+        node_id: int
+        name: str
+        focus: Any
+
+    def on_node_action(
+        self, context: Context, noti_type: NotificationType, detail: NodeActionDetail
+    ):
+        pass
+
+    def on_raw_notification(self, context: Context, msg: str, details: dict):
+        pass
+
+    def _on_raw_notification(self, handle: ctypes.c_void_p, msg: str, details: dict):
+
+        context = Context(handle=handle)
+        self.on_raw_notification(context, msg, details)
+
+        noti_type = EventSink._notification_type(msg)
+        if msg.startswith("Node.NextList"):
+            detail = self.NodeNextListDetail(
+                task_id=details["task_id"],
+                name=details["name"],
+                next_list=details["list"],
+                focus=details["focus"],
+            )
+            self.on_node_next_list(context, noti_type, detail)
+
+        elif msg.startswith("Node.Recognition"):
+            detail = self.NodeRecognitionDetail(
+                task_id=details["task_id"],
+                reco_id=details["reco_id"],
+                name=details["name"],
+                focus=details["focus"],
+            )
+            self.on_node_recognition(context, noti_type, detail)
+
+        elif msg.startswith("Node.Action"):
+            detail = self.NodeActionDetail(
+                task_id=details["task_id"],
+                node_id=details["node_id"],
+                name=details["name"],
+                focus=details["focus"],
+            )
+            self.on_node_action(context, noti_type, detail)
+
+        else:
+            self.on_unknown_notification(context, msg, details)
