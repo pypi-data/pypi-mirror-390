@@ -1,0 +1,63 @@
+# Pre-commit configuration for stocktrim-openapi-client
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.3
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+      # Run the formatter
+      - id: ruff-format
+
+  # General pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents, --unsafe]
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Markdown formatting
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.22
+    hooks:
+      - id: mdformat
+        args: [--wrap=88]
+        exclude: '(CHANGELOG\.md|docs/CHANGELOG\.md)'
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-tables
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args: [-c=.yamllint.yml]
+
+  # Run linting (includes type checking)
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        entry: bash -c 'uv run poe lint'
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: pytest
+        name: pytest
+        entry: bash -c 'uv run poe test'
+        language: system
+        pass_filenames: false
+        always_run: true
