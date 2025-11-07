@@ -1,0 +1,88 @@
+#ifndef __AIDGE_TENSORRT_{{ name_plugin|upper }}_PLUGIN_HPP__
+#define __AIDGE_TENSORRT_{{ name_plugin|upper }}_PLUGIN_HPP__
+
+#include <string>
+#include <vector>
+#include <NvInferPlugin.h>
+
+namespace nvinfer1
+{
+
+class {{ name_plugin }}Plugin: public IPluginV2IOExt
+{
+private:
+    const std::string _name;
+    std::string       _namespace;
+    struct
+    {
+        // TODO
+        // Add all attributes of your plugin
+        // Example:
+        // float           alpha;
+        // unsigned int    range;
+        // int             nbElement;
+    } _attributes;
+
+public:
+    // Method of the class
+    {{ name_plugin }}Plugin() = delete;
+    // TODO
+    // Complete the constructor with your attributes
+    // Ex: {{ name_plugin }}Plugin(const std::string &name, const float alpha, const unsigned int range);
+    {{ name_plugin }}Plugin(const std::string &name, /*To complete*/);
+    {{ name_plugin }}Plugin(const std::string &name, const void *buffer, size_t length);
+    ~{{ name_plugin }}Plugin();
+
+    // Method inherited from IPluginV2
+    const char *getPluginType() const noexcept override;
+    const char *getPluginVersion() const noexcept override;
+    int32_t     getNbOutputs() const noexcept override;
+    Dims        getOutputDimensions(int32_t index, Dims const *inputs, int32_t nbInputDims) noexcept override;
+    int32_t     initialize() noexcept override;
+    void        terminate() noexcept override;
+    size_t      getWorkspaceSize(int32_t maxBatchSize) const noexcept override;
+    int32_t     enqueue(int32_t batchSize, void const *const *inputs, void *const *outputs, void *workspace, cudaStream_t stream) noexcept override;
+    size_t      getSerializationSize() const noexcept override;
+    void        serialize(void *buffer) const noexcept override;
+    void        destroy() noexcept override;
+    void        setPluginNamespace(const char *pluginNamespace) noexcept override;
+    const char *getPluginNamespace() const noexcept override;
+
+    // Method inherited from IPluginV2Ext
+    DataType        getOutputDataType(int32_t index, nvinfer1::DataType const *inputTypes, int32_t nbInputs) const noexcept override;
+    bool            isOutputBroadcastAcrossBatch(int32_t outputIndex, bool const *inputIsBroadcasted, int32_t nbInputs) const noexcept override;
+    bool            canBroadcastInputAcrossBatch(int32_t inputIndex) const noexcept override;
+    void            attachToContext(cudnnContext *contextCudnn, cublasContext *contextCublas, IGpuAllocator *gpuAllocator) noexcept override;
+    void            detachFromContext() noexcept override;
+    IPluginV2IOExt *clone() const noexcept override;
+
+    /** Method inherited from IPluginV2IOExt
+    * This function is called by the builder prior to initialize().
+    * It provides an opportunity for the layer to make algorithm choices on the basis of the provided I/O PluginTensorDesc.
+    */
+    void configurePlugin(PluginTensorDesc const *in, int32_t nbInput, PluginTensorDesc const *out, int32_t nbOutput) noexcept override;
+    bool supportsFormatCombination(int32_t pos, PluginTensorDesc const *inOut, int32_t nbInputs, int32_t nbOutputs) const noexcept override;
+};
+
+class {{ name_plugin }}PluginCreator : public IPluginCreator
+{
+private:
+    PluginFieldCollection    _fc;
+    std::vector<PluginField> _attr;
+    std::string              _namespace;
+
+public:
+    {{ name_plugin }}PluginCreator();
+    ~{{ name_plugin }}PluginCreator();
+    const char                  *getPluginName() const noexcept override;
+    const char                  *getPluginVersion() const noexcept override;
+    const PluginFieldCollection *getFieldNames() noexcept override;
+    IPluginV2IOExt              *createPlugin(const char *name, const PluginFieldCollection *fc) noexcept override;
+    IPluginV2IOExt              *deserializePlugin(const char *name, const void *serialData, size_t serialLength) noexcept override;
+    void                         setPluginNamespace(const char *pluginNamespace) noexcept override;
+    const char                  *getPluginNamespace() const noexcept override;
+};
+
+} // nvinfer1
+
+#endif  // __AIDGE_TENSORRT_{{ name_plugin|upper }}_PLUGIN_HPP__

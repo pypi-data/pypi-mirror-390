@@ -1,0 +1,277 @@
+#include "{{ name_plugin|lower }}/{{ name_plugin|lower }}_plugin.hpp"
+#include "utils.hpp"
+#include <cuda_fp16.h>
+#include <cuda_runtime_api.h>
+#include <cmath>
+
+// kernel for GPU
+__global__ void {{ name_plugin|lower }}_propagate_kernel(const float* inputs,
+                                           float* outputs,
+                                           /*To complete*/)
+{
+    // Implement here your cuda kernel
+}
+
+namespace
+{
+static const char *PLUGIN_NAME {"{{ name_plugin }}"};
+static const char *PLUGIN_VERSION {"1"};
+}
+
+namespace nvinfer1
+{
+
+// -----------------
+// class {{ name_plugin }}Plugin
+// -----------------
+
+{{ name_plugin }}Plugin::{{ name_plugin }}Plugin(const std::string &name, /*To complete*/):
+    _name(name)
+{
+    // TODO
+    // Ex:
+    // _attributes.alpha = alpha;
+    // _attributes.range = range;
+}
+
+{{ name_plugin }}Plugin::{{ name_plugin }}Plugin(const std::string &name, const void *buffer, size_t length):
+    _name(name)
+{
+    // To change if needed
+    memcpy(&_attributes, buffer, sizeof(_attributes));
+}
+
+{{ name_plugin }}Plugin::~{{ name_plugin }}Plugin()
+{
+    // To change if needed
+    return;
+}
+
+IPluginV2IOExt *{{ name_plugin }}Plugin::clone() const noexcept
+{
+    // To change if needed
+    auto p = new {{ name_plugin }}Plugin(_name, &_attributes, sizeof(_attributes));
+    p->setPluginNamespace(_namespace.c_str());
+    return p;
+}
+
+int32_t {{ name_plugin }}Plugin::getNbOutputs() const noexcept
+{
+    // To change if needed
+    return 1;
+}
+
+DataType {{ name_plugin }}Plugin::getOutputDataType(int32_t index, DataType const *inputTypes, int32_t nbInputs) const noexcept
+{
+    // To change if needed
+    return inputTypes[0];
+}
+
+Dims {{ name_plugin }}Plugin::getOutputDimensions(int32_t index, Dims const *inputs, int32_t nbInputDims) noexcept
+{
+    // To change if needed
+    return inputs[0];
+}
+
+bool {{ name_plugin }}Plugin::supportsFormatCombination(int32_t pos, const PluginTensorDesc *inOut, int32_t nbInputs, int32_t nbOutputs) const noexcept
+{
+    // To change if needed
+    switch (pos) {
+    case 0:
+        return inOut[0].type == DataType::kFLOAT && inOut[0].format == TensorFormat::kLINEAR;
+    case 1:
+        return inOut[1].type == inOut[0].type && inOut[1].format == inOut[0].format;
+    default: // should NOT be here!
+        return false;
+    }
+    return false;
+}
+
+void {{ name_plugin }}Plugin::configurePlugin(PluginTensorDesc const *in, int32_t nbInput, PluginTensorDesc const *out, int32_t nbOutput) noexcept
+{
+    // TODO
+}
+
+size_t {{ name_plugin }}Plugin::getWorkspaceSize(int32_t maxBatchSize) const noexcept
+{
+    // To change if needed
+    return 0;
+}
+
+int32_t {{ name_plugin }}Plugin::enqueue(int32_t batchSize, void const *const *inputs, void *const *outputs, void *workspace, cudaStream_t stream) noexcept
+{
+    // TODO
+    // Ex:
+    // dim3 grid(CEIL_DIV(nbElement, 256), 1, 1), block(256, 1, 1);
+    // {{ name_plugin|lower }}_propagate_kernel<<<grid, block, 0, stream>>>(reinterpret_cast<const float *>(inputs[0]), reinterpret_cast<float *>(outputs[0]), _attributes.alpha, _attributes.range, nbElement);
+
+    return 0;
+}
+
+void {{ name_plugin }}Plugin::destroy() noexcept
+{
+    // To change if needed
+    delete this;
+    return;
+}
+
+int32_t {{ name_plugin }}Plugin::initialize() noexcept
+{
+    // To change if needed
+    return 0;
+}
+
+void {{ name_plugin }}Plugin::terminate() noexcept
+{
+    // To change if needed
+    return;
+}
+
+size_t {{ name_plugin }}Plugin::getSerializationSize() const noexcept
+{
+    // To change if needed
+    return sizeof(_attributes);
+}
+
+void {{ name_plugin }}Plugin::serialize(void *buffer) const noexcept
+{
+    // To change if needed
+    memcpy(buffer, &_attributes, sizeof(_attributes));
+    return;
+}
+
+void {{ name_plugin }}Plugin::setPluginNamespace(const char *pluginNamespace) noexcept
+{
+    // To change if needed
+    _namespace = pluginNamespace;
+    return;
+}
+
+const char *{{ name_plugin }}Plugin::getPluginNamespace() const noexcept
+{
+    // To change if needed
+    return _namespace.c_str();
+}
+
+const char *{{ name_plugin }}Plugin::getPluginType() const noexcept
+{
+    // To change if needed
+    return PLUGIN_NAME;
+}
+
+const char *{{ name_plugin }}Plugin::getPluginVersion() const noexcept
+{
+    // To change if needed
+    return PLUGIN_VERSION;
+}
+
+bool {{ name_plugin }}Plugin::isOutputBroadcastAcrossBatch(int32_t outputIndex, bool const *inputIsBroadcasted, int32_t nbInputs) const noexcept
+{
+    // To change if needed
+    return false;
+}
+
+bool {{ name_plugin }}Plugin::canBroadcastInputAcrossBatch(int32_t inputIndex) const noexcept
+{
+    // To change if needed
+    return false;
+}
+
+void {{ name_plugin }}Plugin::attachToContext(cudnnContext *contextCudnn, cublasContext *contextCublas, IGpuAllocator *gpuAllocator) noexcept
+{
+    // To change if needed
+    return;
+}
+
+void {{ name_plugin }}Plugin::detachFromContext() noexcept
+{
+    // To change if needed
+    return;
+}
+
+// -----------------
+// class {{ name_plugin }}PluginCreator
+// -----------------
+
+{{ name_plugin }}PluginCreator::{{ name_plugin }}PluginCreator()
+{
+    // TODO
+    // Ex:
+    // _attr.emplace_back(PluginField("alpha", nullptr, PluginFieldType::kFLOAT32, 0.0));
+    // _attr.emplace_back(PluginField("range", nullptr, PluginFieldType::kINT32, 1));
+
+    _fc.nbFields = _attr.size();
+    _fc.fields   = _attr.data();
+}
+
+{{ name_plugin }}PluginCreator::~{{ name_plugin }}PluginCreator()
+{
+    // To change if needed
+    return;
+}
+
+IPluginV2IOExt *{{ name_plugin }}PluginCreator::createPlugin(const char *name, const PluginFieldCollection *fc) noexcept
+{
+    // TODO
+    // Ex:
+    // float alpha = 0.0;
+    // unsigned int range = 1;
+    // for (int i = 0; i < fc->nbFields; ++i) {
+    //     const char* attrName = fc->fields[i].name;
+    //     if (!strcmp(attrName, "alpha"))
+    //     {
+    //         alpha = *(static_cast<const float*>(fc->fields[i].data));
+    //     }
+    //     if (!strcmp(attrName, "range"))
+    //     {
+    //         range = *(static_cast<const unsigned int*>(fc->fields[i].data));
+    //     }
+    // }
+
+    {{ name_plugin }}Plugin *pObj = new {{ name_plugin }}Plugin(name, /*To complete*/);
+    pObj->setPluginNamespace(_namespace.c_str());
+    return pObj;
+}
+
+IPluginV2IOExt *{{ name_plugin }}PluginCreator::deserializePlugin(const char *name, const void *serialData, size_t serialLength) noexcept
+{
+    // To change if needed
+    {{ name_plugin }}Plugin *pObj = new {{ name_plugin }}Plugin(name, serialData, serialLength);
+    pObj->setPluginNamespace(_namespace.c_str());
+    return pObj;
+}
+
+void {{ name_plugin }}PluginCreator::setPluginNamespace(const char *pluginNamespace) noexcept
+{
+    // To change if needed
+    _namespace = pluginNamespace;
+    return;
+}
+
+const char *{{ name_plugin }}PluginCreator::getPluginNamespace() const noexcept
+{
+    // To change if needed
+    return _namespace.c_str();
+}
+
+const char *{{ name_plugin }}PluginCreator::getPluginName() const noexcept
+{
+    // To change if needed
+    return PLUGIN_NAME;
+}
+
+const char *{{ name_plugin }}PluginCreator::getPluginVersion() const noexcept
+{
+    // To change if needed
+    return PLUGIN_VERSION;
+}
+
+const PluginFieldCollection *{{ name_plugin }}PluginCreator::getFieldNames() noexcept
+{
+    // To change if needed
+    return &_fc;
+}
+
+REGISTER_TENSORRT_PLUGIN({{ name_plugin }}PluginCreator);
+
+} // namespace nvinfer1
