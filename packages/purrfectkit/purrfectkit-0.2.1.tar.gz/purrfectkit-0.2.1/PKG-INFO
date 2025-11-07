@@ -1,0 +1,102 @@
+Metadata-Version: 2.4
+Name: purrfectkit
+Version: 0.2.1
+Summary: **PurrfectKit** is a Python library for effortless Retrieval-Augmented Generation (RAG) workflows.
+Keywords: rag,nlp,llms,python,ai,ocr,document-processing,multilingual,text-extraction
+Author: SUWALUTIONS
+Author-email: SUWALUTIONS <suwa@suwalutions.com>
+License-Expression: MIT
+License-File: LICENSE
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Text Processing :: Linguistic
+Classifier: Topic :: Text Processing :: General
+Classifier: Natural Language :: English
+Classifier: Natural Language :: Thai
+Requires-Dist: python-magic<=0.4.27
+Requires-Dist: sentence-transformers<=5.1.0
+Requires-Dist: transformers<=4.52.1
+Requires-Dist: docling<=2.31.1
+Requires-Dist: markitdown<=0.1.1
+Requires-Dist: pymupdf4llm<=0.0.27
+Requires-Dist: pdf2image<=1.17.0
+Requires-Dist: pytesseract<=0.3.13
+Requires-Dist: easyocr<=1.7.2
+Requires-Dist: surya-ocr<=0.14.0
+Requires-Dist: python-doctr<=1.0.0
+Requires-Dist: pandas<=2.3.2
+Requires-Dist: langchain-text-splitters<=1.0.0
+Requires-Dist: tiktoken<=0.12.0
+Requires-Dist: sphinx<=8.2.3 ; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme<=3.0.2 ; extra == 'docs'
+Requires-Dist: pytest<=8.4.2 ; extra == 'test'
+Requires-Dist: pytest-mock<=3.15.1 ; extra == 'test'
+Maintainer: KHARAPSY
+Maintainer-email: KHARAPSY <kharapsy@suwalutions.com>
+Requires-Python: >=3.10
+Project-URL: Documentation, https://suwalutions.github.io/PurrfectKit
+Project-URL: Issues, https://github.com/SUWALUTIONS/PurrfectKit/issues
+Project-URL: Repository, https://github.com/SUWALUTIONS/PurrfectKit
+Provides-Extra: dev
+Provides-Extra: docs
+Provides-Extra: test
+Description-Content-Type: text/markdown
+
+![PurrfectMeow Logo](docs/_static/repo-logo.png)
+
+# PurrfectKit
+
+[![Docker Image](https://github.com/suwalutions/PurrfectKit/actions/workflows/docker-image.yml/badge.svg)](https://github.com/suwalutions/PurrfectKit/actions/workflows/docker-image.yml)
+
+**PurrfectKit** is a toolkit that simplifies Retrieval-Augmented Generation (RAG) into 5 easy steps:
+1. Suphalak - read content from files
+2. Malet - split content into chunks
+3. WichienMaat - embed chunks into vectors
+4. KhaoManee - search vectors with queries
+5. Kornja - generate answers from vectors
+
+> **_NOTE:_** Each step is inspired by a unique Thai cat breed, making the workflow memorable and fun.
+
+## Quickstart
+
+### Prerequisites
+- python
+- tesseract
+- git
+
+
+### Installation
+```bash
+pip install git+https://github.com/suwalutions/PurrfectKit.git
+
+```
+
+### Usage
+```python
+from purrfectmeow.meow.felis import DocTemplate, MetaFile
+from purrfectmeow import Suphalak, Malet, WichienMaat, KhaoManee
+
+file_path = 'test/test.pdf'
+metadata = MetaFile.get_metadata(file_path)
+content = Suphalak.reading(open(file_path, 'rb').read(), 'test.pdf', loader='PYMUPDF')
+chunks = Malet.chunking(content, chunk_method='token', chunk_size='500', chunk_overlap='25')
+docs = DocTemplate.create_template(chunks, metadata)
+embedding = WichienMaat.embedding(chunks)
+query = WichienMaat.embedding("ทดสอบ")
+KhaoManee.searching(query, embedding, docs, 2)
+
+```
+
+## 📄 License
+
+PurrfectKit is released under the [MIT License](LICENSE).
