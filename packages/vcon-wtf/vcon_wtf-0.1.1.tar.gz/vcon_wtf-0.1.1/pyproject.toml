@@ -1,0 +1,130 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vcon-wtf"
+version = "0.1.1"
+description = "Convert transcript JSONs to/from IETF World Transcription Format (WTF)"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "vCon Development Team", email = "vcon@ietf.org"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Text Processing :: Markup",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "jsonschema>=4.0.0",
+    "python-dateutil>=2.8.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    "twine>=6.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "black>=24.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "flake8-docstrings>=1.7.0",
+    "flake8-bugbear>=23.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "bandit>=1.7.0",
+    "safety>=2.3.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+# vcon = [
+#     "vcon-lib>=0.1.0",  # TODO: Add when vcon-lib is available
+# ]
+
+[project.scripts]
+vcon-wtf = "wtf_transcript_converter.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/vcon-dev/wtf-transcript-converter"
+Repository = "https://github.com/vcon-dev/wtf-transcript-converter"
+Documentation = "https://vcon-wtf.readthedocs.io"
+"Bug Tracker" = "https://github.com/vcon-dev/wtf-transcript-converter/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wtf_transcript_converter"]
+
+[tool.black]
+line-length = 99
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 99
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.flake8]
+max-line-length = 99
+extend-ignore = ["E203", "W503", "E501", "F401", "D107", "D200", "D401", "D403", "B007", "B017", "F541", "F841", "E402", "E712"]
+exclude = [".git", "__pycache__", "build", "dist", ".venv"]
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src/wtf_transcript_converter --cov-report=html --cov-report=term-missing"
+
+[dependency-groups]
+dev = [
+    "bandit>=1.8.6",
+    "black>=25.9.0",
+    "flake8>=7.3.0",
+    "flake8-bugbear>=24.12.12",
+    "flake8-docstrings>=1.7.0",
+    "isort>=6.0.1",
+    "mypy>=1.18.2",
+    "myst-parser>=4.0.1",
+    "pre-commit>=4.3.0",
+    "safety>=3.6.2",
+    "sphinx>=8.2.3",
+    "sphinx-autodoc-typehints>=3.2.0",
+    "sphinx-rtd-theme>=3.0.2",
+]
+integration = [
+    "openai>=1.0.0",
+    "deepgram-sdk>=3.0.0",
+    "assemblyai>=0.21.0",
+    "rev-ai>=2.0.0",
+    "requests>=2.28.0",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "datasets>=2.0.0",
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
+    "psutil>=7.1.0",
+    "numpy>=1.24.0",
+]
