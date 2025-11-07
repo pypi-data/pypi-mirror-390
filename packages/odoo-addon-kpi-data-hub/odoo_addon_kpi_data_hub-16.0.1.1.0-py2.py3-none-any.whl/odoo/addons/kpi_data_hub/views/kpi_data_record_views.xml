@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="kpi_hub_record_view_form" model="ir.ui.view">
+        <field name="name">kpi.hub.record.form</field>
+        <field name="model">kpi_hub.record</field>
+        <field name="arch" type="xml">
+            <form string="Data Record">
+                <header>
+                    <button
+                        name="action_calculate_formulas"
+                        string="Calculate Formulas"
+                        type="object"
+                        class="btn-primary"
+                        help="Recalculate all formula-based items with current values."
+                    />
+                </header>
+                <sheet>
+                    <field name="active" invisible="1" />
+                    <widget
+                        name="web_ribbon"
+                        title="Archived"
+                        bg_color="bg-danger"
+                        attrs="{'invisible': [('active', '=', True)]}"
+                    />
+                    <widget
+                        name="web_ribbon"
+                        title="Template Outdated"
+                        bg_color="bg-warning"
+                        attrs="{'invisible': [('is_outdated', '=', False)]}"
+                    />
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1" nolabel="1" /></h1>
+                        <field name="code" placeholder="e.g., P&amp;L_2023_Q4" />
+                    </div>
+
+                    <!-- Outdated Template Warning Banner -->
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                        attrs="{'invisible': [('is_outdated', '=', False)]}"
+                    >
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i
+                                        class="fa fa-exclamation-triangle"
+                                    /> Template Version Outdated</strong><br />
+                                <small><field
+                                        name="outdated_message"
+                                        readonly="1"
+                                        nolabel="1"
+                                    /></small>
+                            </div>
+                            <div>
+                                <button
+                                    name="action_sync_with_template"
+                                    type="object"
+                                    string="Update to Latest Version"
+                                    class="btn btn-warning btn-sm"
+                                    confirm="This will synchronize the record with the latest template version. Some data may be lost if items were removed from the template."
+                                />
+                                <button
+                                    name="action_view_template_history"
+                                    type="object"
+                                    string="View History"
+                                    class="btn btn-outline-secondary btn-sm ml-2"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="entity_id" />
+                            <field name="template_id" readonly="1" />
+                            <button
+                                name="action_open_change_template_wizard"
+                                type="object"
+                                string="Change Template"
+                            />
+                        </group>
+                        <group>
+                            <field name="date_range_id" />
+                            <label for="date_from" string="Period" />
+                            <div class="o_row">
+                                <field
+                                    name="date_from"
+                                    nolabel="1"
+                                    attrs="{'readonly': [('date_range_id', '!=', False)]}"
+                                />
+                                -
+                                <field
+                                    name="date_to"
+                                    nolabel="1"
+                                    attrs="{'readonly': [('date_range_id', '!=', False)]}"
+                                />
+                            </div>
+                            <field
+                                name="company_id"
+                                groups="base.group_multi_company"
+                            />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="KPI Values" name="kpi_values">
+                            <field
+                                name="value_ids"
+                                nolabel="1"
+                                context="{'tree_view_ref': 'kpi_data_hub.kpi_hub_item_value_data_tree', 'form_view_ref': 'kpi_data_hub.kpi_hub_item_value_advanced_form'}"
+                            >
+                                <tree
+                                    editable="top"
+                                    decoration-info="calculation_type == 'formula'"
+                                    decoration-success="calculation_type == 'group'"
+                                    decoration-bf="is_group == True"
+                                >
+                                    <field name="sequence" invisible="1" />
+                                    <field
+                                        name="display_name_with_level"
+                                        readonly="0"
+                                        force_save="1"
+                                    />
+                                    <field name="code" readonly="0" force_save="1" />
+                                    <field
+                                        name="value"
+                                        attrs="{'readonly': [('calculation_type', '!=', 'data')]}"
+                                        decoration-bf="calculation_type == 'formula' or calculation_type == 'group'"
+                                        string="Value"
+                                    />
+                                    <field
+                                        name="formatted_value"
+                                        readonly="1"
+                                        string="Formatted"
+                                    />
+                                    <field
+                                        name="calculation_type"
+                                        readonly="0"
+                                        string="Type"
+                                        optional="hide"
+                                    />
+                                    <field
+                                        name="data_type"
+                                        readonly="0"
+                                        string="Data Type"
+                                        optional="hide"
+                                    />
+                                    <field
+                                        name="formula"
+                                        readonly="0"
+                                        string="Formula"
+                                        optional="hide"
+                                    />
+                                    <field name="level" invisible="0" />
+                                    <field name="is_group" invisible="0" />
+                                </tree>
+                            </field>
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info" role="alert">
+                                            <h5><i class="fa fa-edit" /> Data Entry</h5>
+                                            <ul class="mb-0">
+                                                <li>Enter values for <strong
+                                                    >data items</strong> (white background)</li>
+                                                <li
+                                                >Values are validated by data type (currency, integer, etc.)</li>
+                                                <li
+                                                >Required fields must be completed</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert alert-success" role="alert">
+                                            <h5><i
+                                                    class="fa fa-calculator"
+                                                /> Calculated Results</h5>
+                                            <ul class="mb-0">
+                                                <li><span
+                                                        class="text-info"
+                                                    >Formula items (blue)</span> use custom expressions</li>
+                                                <li><span
+                                                        class="text-success"
+                                                    >Group totals (green)</span> sum their children</li>
+                                                <li
+                                                >Results update automatically after "Calculate Formulas"</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning" role="alert">
+                                    <i class="fa fa-lightbulb-o" /> <strong
+                                    >Tip:</strong> Use the optional columns (Type, Data Type, Formula) to see detailed information about each item.
+                                </div>
+                            </div>
+                        </page>
+                        <page
+                            string="Advanced View"
+                            name="advanced_view"
+                            groups="base.group_no_one"
+                        >
+                            <field name="value_ids" nolabel="1">
+                                <tree
+                                    create="true"
+                                    decoration-info="calculation_type == 'formula'"
+                                    decoration-success="calculation_type == 'group'"
+                                    decoration-bf="is_group == True"
+                                    decoration-muted="calculation_type in ('formula', 'group')"
+                                >
+                                    <field name="sequence" />
+                                    <field
+                                        name="display_name_with_level"
+                                        readonly="0"
+                                        force_save="1"
+                                    />
+                                    <field name="code" readonly="0" force_save="1" />
+                                    <field name="calculation_type" readonly="0" />
+                                    <field name="data_type" readonly="0" />
+                                    <field
+                                        name="value"
+                                        attrs="{'readonly': [('calculation_type', 'in', ['formula', 'group'])]}"
+                                    />
+                                    <field name="formatted_value" readonly="1" />
+                                    <field name="formula" readonly="0" />
+                                    <field name="level" />
+                                    <field name="is_group" />
+                                    <field name="min_value" readonly="0" />
+                                    <field name="max_value" readonly="0" />
+                                    <field name="is_required" readonly="0" />
+                                </tree>
+                            </field>
+                            <div class="mt-3">
+                                <p class="text-muted">
+                                    <i class="fa fa-cogs" title="Advanced" />
+                                    <strong
+                                    >Advanced View:</strong> Complete technical view showing all fields and metadata for debugging and administration purposes.
+                                </p>
+                            </div>
+                        </page>
+
+                        <!-- Template Version Information Page -->
+                        <page
+                            string="Template Version"
+                            name="template_version"
+                            attrs="{'invisible': [('template_id', '=', False)]}"
+                        >
+                            <group>
+                                <group string="Current Template">
+                                    <field name="template_id" readonly="1" />
+                                    <field
+                                        name="template_version_current"
+                                        readonly="1"
+                                        string="Template Version"
+                                    />
+                                    <field
+                                        name="template_version_date_current"
+                                        readonly="1"
+                                        string="Template Last Updated"
+                                    />
+                                    <field
+                                        name="template_version_changes_current"
+                                        readonly="1"
+                                        string="Last Changes"
+                                    />
+                                </group>
+                                <group string="Record Version Info">
+                                    <field
+                                        name="template_version"
+                                        readonly="1"
+                                        string="Record Template Version"
+                                    />
+                                    <field
+                                        name="template_version_date"
+                                        readonly="1"
+                                        string="Record Version Date"
+                                    />
+                                    <field name="is_outdated" readonly="1" />
+                                    <field
+                                        name="outdated_message"
+                                        readonly="1"
+                                        attrs="{'invisible': [('is_outdated', '=', False)]}"
+                                    />
+                                </group>
+                            </group>
+                            <div
+                                string="Version Actions"
+                                attrs="{'invisible': [('is_outdated', '=', False)]}"
+                            >
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="alert alert-warning" role="alert">
+                                            <div class="d-flex align-items-start">
+                                                <i
+                                                    class="fa fa-exclamation-triangle fa-2x me-3 mt-1"
+                                                />
+                                                <div class="flex-grow-1">
+                                                    <h5
+                                                        class="alert-heading mb-2"
+                                                    >Template Version Outdated</h5>
+                                                    <p
+                                                        class="mb-3"
+                                                    >This record uses an older version of the template. Synchronize with the latest version to ensure data consistency and access to new features.</p>
+                                                    <div class="d-flex gap-2 flex-wrap">
+                                                        <button
+                                                            name="action_sync_with_template"
+                                                            type="object"
+                                                            string="Synchronize with Latest Version"
+                                                            class="btn btn-warning btn-lg"
+                                                            icon="fa-refresh"
+                                                            confirm="This action will update the record to match the current template version. New KPI items will be added, and obsolete items will be removed. Some data may be lost. Do you want to continue?"
+                                                        />
+                                                        <button
+                                                            name="action_view_template_history"
+                                                            type="object"
+                                                            string="View Version History"
+                                                            class="btn btn-outline-secondary btn-lg"
+                                                            icon="fa-history"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vistas específicas para los diferentes tipos de valores -->
+    <record id="kpi_hub_item_value_data_tree" model="ir.ui.view">
+        <field name="name">kpi.hub.item.value.data.tree</field>
+        <field name="model">kpi_hub.item.value</field>
+        <field name="arch" type="xml">
+            <tree
+                editable="bottom"
+                decoration-info="calculation_type == 'formula'"
+                decoration-success="calculation_type == 'group'"
+                decoration-bf="is_group == True"
+                decoration-muted="calculation_type in ('formula', 'group')"
+            >
+                <field name="sequence" invisible="1" />
+                <field name="display_name_with_level" readonly="1" force_save="1" />
+                <field name="code" readonly="1" force_save="1" />
+                <field
+                    name="value"
+                    attrs="{'readonly': [('calculation_type', 'in', ['formula', 'group'])]}"
+                    string="Value"
+                />
+                <field name="formatted_value" readonly="1" string="Formatted" />
+                <field
+                    name="calculation_type"
+                    readonly="1"
+                    string="Type"
+                    optional="hide"
+                />
+                <field
+                    name="data_type"
+                    readonly="1"
+                    string="Data Type"
+                    optional="hide"
+                />
+                <field name="level" invisible="1" />
+                <field name="is_group" invisible="1" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="kpi_hub_item_value_formula_tree" model="ir.ui.view">
+        <field name="name">kpi.hub.item.value.formula.tree</field>
+        <field name="model">kpi_hub.item.value</field>
+        <field name="arch" type="xml">
+            <tree
+                create="false"
+                delete="false"
+                decoration-info="calculation_type == 'formula'"
+                decoration-success="calculation_type == 'group'"
+            >
+                <field name="sequence" invisible="1" />
+                <field name="display_name_with_level" readonly="1" force_save="1" />
+                <field name="code" readonly="1" force_save="1" />
+                <field
+                    name="value"
+                    readonly="1"
+                    decoration-bf="1"
+                    string="Calculated Value"
+                />
+                <field
+                    name="formatted_value"
+                    readonly="1"
+                    decoration-bf="1"
+                    string="Formatted"
+                />
+                <field name="calculation_type" readonly="1" string="Type" />
+                <field name="level" invisible="1" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="kpi_hub_item_value_advanced_form" model="ir.ui.view">
+        <field name="name">kpi.hub.item.value.advanced.form</field>
+        <field name="model">kpi_hub.item.value</field>
+        <field name="arch" type="xml">
+            <form string="Data Values">
+                <header>
+                    <!-- Info ribbon for calculated items -->
+                    <div
+                        class="alert alert-info mb-3"
+                        role="alert"
+                        attrs="{'invisible': [('calculation_type', 'not in', ['formula', 'group'])]}"
+                    >
+                        <i class="fa fa-calculator me-2" />
+                        <strong
+                        >Calculated Item:</strong> This item is automatically calculated and cannot be deleted or manually edited.
+                    </div>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1" nolabel="1" /></h1>
+                    </div>
+                    <group>
+                        <group string="Basic Information">
+                            <field name="code" readonly="0" />
+                            <field name="calculation_type" readonly="0" />
+                            <field name="data_type" readonly="0" />
+                            <field name="sequence" />
+                            <field name="level" />
+                        </group>
+                        <group string="Value Configuration">
+                            <field
+                                name="value"
+                                attrs="{'readonly': [('calculation_type', 'in', ['formula', 'group'])]}"
+                            />
+                            <field name="formatted_value" readonly="1" />
+                            <field name="is_required" readonly="0" />
+                            <field name="is_group" readonly="0" />
+                        </group>
+                    </group>
+                    <group
+                        string="Validation"
+                        attrs="{'invisible': [('data_type', 'not in', ['currency', 'float', 'integer'])]}"
+                    >
+                        <group>
+                            <field name="min_value" readonly="0" />
+                            <field name="max_value" readonly="0" />
+                        </group>
+                        <group>
+                            <field
+                                name="decimal_places"
+                                readonly="0"
+                                attrs="{'invisible': [('data_type', '!=', 'float')]}"
+                            />
+                        </group>
+                    </group>
+                    <group
+                        string="Calculation Details"
+                        attrs="{'invisible': [('calculation_type', '!=', 'formula')]}"
+                    >
+                        <field name="formula" readonly="0" widget="text" />
+                    </group>
+                    <group
+                        string="Hierarchy"
+                        attrs="{'invisible': [('parent_id', '=', False)]}"
+                    >
+                        <field name="parent_id" readonly="0" />
+                        <field name="auto_sum_children" readonly="0" />
+                    </group>
+                    <group string="Display Options">
+                        <group>
+                            <field name="prefix" readonly="0" />
+                            <field name="suffix" readonly="0" />
+                        </group>
+                        <group>
+                            <field name="display_name" readonly="0" />
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="kpi_hub_record_view_tree" model="ir.ui.view">
+        <field name="name">kpi.hub.record.tree</field>
+        <field name="model">kpi_hub.record</field>
+        <field name="arch" type="xml">
+            <tree string="Data Records" decoration-danger="is_outdated == True">
+                <header>
+                    <button
+                        name="%(kpi_data_hub.action_kpi_record_create_wizard)d"
+                        type="action"
+                        string="Create Record"
+                        icon="fa-plus"
+                        class="btn-primary"
+                    />
+                </header>
+                <field name="name" />
+                <field name="code" />
+                <field name="entity_id" />
+                <field name="template_id" />
+                <field name="date_from" />
+                <field name="date_to" />
+                <field name="template_version" />
+                <field name="is_outdated" />
+                <field name="company_id" groups="base.group_multi_company" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="kpi_hub_record_action" model="ir.actions.act_window">
+        <field name="name">Data Records</field>
+        <field name="res_model">kpi_hub.record</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No KPI records found. Click "Create Record" to add a new KPI data record.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action for Create Record Wizard -->
+    <record id="action_kpi_record_create_wizard" model="ir.actions.act_window">
+        <field name="name">Create KPI Record</field>
+        <field name="res_model">kpi_record_create_wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Server Action for Bulk Version Update -->
+    <record id="action_bulk_version_update" model="ir.actions.server">
+        <field name="name">Update Template Versions</field>
+        <field name="model_id" ref="model_kpi_hub_record" />
+        <field name="binding_model_id" ref="model_kpi_hub_record" />
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+            action = env['kpi_template_version_update_wizard'].create({
+                'record_ids': [(6, 0, records.ids)],
+                'template_id': records[0].template_id.id if records else False,
+            }).action_update_versions()
+        </field>
+    </record>
+</odoo>

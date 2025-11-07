@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <!-- ======================================== -->
+        <!-- DEMO DATA SIMPLIFICADO Y FUNCIONAL -->
+        <!-- ======================================== -->
+
+        <!-- ======================================== -->
+        <!-- 1. TIPO DE RANGO DE FECHA -->
+        <!-- ======================================== -->
+
+        <record id="demo_date_range_type" model="date.range.type">
+            <field name="name">Rangos de Fecha Demo</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 2. PLANTILLA DE DEMOSTRACIÓN -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_template" model="kpi_hub.template">
+            <field name="name">📊 Plantilla Demo Simple</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 3. ITEMS DE KPI -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_revenue" model="kpi_hub.item.template">
+            <field name="name">REVENUE</field>
+            <field name="code">REVENUE</field>
+            <field name="calculation_type">data</field>
+            <field name="template_id" ref="demo_simple_template" />
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="demo_simple_costs" model="kpi_hub.item.template">
+            <field name="name">COSTS</field>
+            <field name="code">COSTS</field>
+            <field name="calculation_type">data</field>
+            <field name="template_id" ref="demo_simple_template" />
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="demo_simple_profit" model="kpi_hub.item.template">
+            <field name="name">PROFIT</field>
+            <field name="code">PROFIT</field>
+            <field name="calculation_type">formula</field>
+            <field name="formula">REVENUE - COSTS</field>
+            <field name="template_id" ref="demo_simple_template" />
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="demo_simple_margin" model="kpi_hub.item.template">
+            <field name="name">MARGIN</field>
+            <field name="code">MARGIN</field>
+            <field name="calculation_type">formula</field>
+            <field name="formula">PROFIT / REVENUE * 100</field>
+            <field name="template_id" ref="demo_simple_template" />
+            <field name="sequence">40</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 4. ENTIDAD Y RANGO DE FECHA -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_entity" model="kpi_hub.entity">
+            <field name="name">Empresa Demo Simple</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_simple_date_range" model="date.range">
+            <field name="name">2025_DEMO</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2025-01-01</field>
+            <field name="date_end">2025-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 5. REGISTRO DE KPI -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_record" model="kpi_hub.record">
+            <field name="name">Registro Demo Simple 2025</field>
+            <field name="template_id" ref="demo_simple_template" />
+            <field name="entity_id" ref="demo_simple_entity" />
+            <field name="date_range_id" ref="demo_simple_date_range" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="date_from">2025-01-01</field>
+            <field name="date_to">2025-12-31</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 6. VALORES DE ITEMS (creados después del registro) -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_revenue_value" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_simple_revenue" />
+            <field name="record_id" ref="demo_simple_record" />
+            <field name="value">100000.00</field>
+        </record>
+
+        <record id="demo_simple_costs_value" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_simple_costs" />
+            <field name="record_id" ref="demo_simple_record" />
+            <field name="value">70000.00</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 7. REPORTE MIS DEMO -->
+        <!-- ======================================== -->
+
+        <record id="demo_mis_report" model="mis.report">
+            <field name="name">Reporte Demo KPI Hub</field>
+            <field name="description">Reporte de demostración para KPI Hub</field>
+        </record>
+
+        <record id="demo_mis_kpi_revenue" model="mis.report.kpi">
+            <field name="name">REVENUE</field>
+            <field name="description">Ingresos</field>
+            <field name="report_id" ref="demo_mis_report" />
+            <field name="sequence">10</field>
+            <field name="expression">kpi('REVENUE')</field>
+        </record>
+
+        <record id="demo_mis_kpi_costs" model="mis.report.kpi">
+            <field name="name">COSTS</field>
+            <field name="description">Costos</field>
+            <field name="report_id" ref="demo_mis_report" />
+            <field name="sequence">20</field>
+            <field name="expression">kpi('COSTS')</field>
+        </record>
+
+        <record id="demo_mis_kpi_profit" model="mis.report.kpi">
+            <field name="name">PROFIT</field>
+            <field name="description">Beneficio</field>
+            <field name="report_id" ref="demo_mis_report" />
+            <field name="sequence">30</field>
+            <field name="expression">kpi('PROFIT')</field>
+        </record>
+
+        <record id="demo_mis_kpi_margin" model="mis.report.kpi">
+            <field name="name">MARGIN</field>
+            <field name="description">Margen</field>
+            <field name="report_id" ref="demo_mis_report" />
+            <field name="sequence">40</field>
+            <field name="expression">kpi('MARGIN')</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 8. INSTANCIA DEL INFORME MIS -->
+        <!-- ======================================== -->
+
+        <record id="demo_mis_report_instance" model="mis.report.instance">
+            <field name="name">Instancia Demo KPI Hub</field>
+            <field name="report_id" ref="demo_mis_report" />
+            <field name="date">2025-12-31</field>
+        </record>
+
+        <record id="demo_mis_period" model="mis.report.instance.period">
+            <field name="name">2025</field>
+            <field name="report_instance_id" ref="demo_mis_report_instance" />
+            <field name="mode">fix</field>
+            <field name="manual_date_from">2025-01-01</field>
+            <field name="manual_date_to">2025-12-31</field>
+            <field name="source">actuals</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 9. FUENTE AEP -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_aep_source" model="kpi_hub.aep.source">
+            <field name="name">Fuente Demo Simple</field>
+            <field name="template_id" ref="demo_simple_template" />
+            <field name="active">True</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 10. INTEGRACIÓN MIS -->
+        <!-- ======================================== -->
+
+        <record id="demo_simple_mis_integration" model="kpi_hub.mis.report">
+            <field name="name">Integración MIS Demo Simple</field>
+            <field name="kpi_hub_template_id" ref="demo_simple_template" />
+            <field name="mis_report_id" ref="demo_mis_report" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="auto_map_items">True</field>
+        </record>
+
+        <!-- Nota: Para la integración básica, usamos directamente los valores de kpi_hub.item.value -->
+
+    </data>
+</odoo>

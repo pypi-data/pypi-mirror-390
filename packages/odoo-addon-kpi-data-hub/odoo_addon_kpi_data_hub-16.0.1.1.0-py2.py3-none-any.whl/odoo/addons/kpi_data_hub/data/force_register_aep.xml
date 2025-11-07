@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <!-- Force registration of KPI Hub AEP extension -->
+
+        <!-- Execute the force registration -->
+        <record id="force_register_aep_extension" model="ir.actions.server">
+            <field name="name">Force Register KPI Hub AEP Extension</field>
+            <field name="model_id" ref="model_mis_aep_extension" />
+            <field name="state">code</field>
+            <field name="code">env['mis.aep.extension'].force_register_aep()</field>
+        </record>
+
+        <!-- Cron job to ensure registration -->
+        <record id="cron_force_register_aep" model="ir.cron">
+            <field name="name">Force Register KPI Hub AEP</field>
+            <field name="model_id" ref="model_mis_aep_extension" />
+            <field name="state">code</field>
+            <field name="code">env['mis.aep.extension'].force_register_aep()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False" />
+            <field name="active" eval="True" />
+        </record>
+    </data>
+</odoo>

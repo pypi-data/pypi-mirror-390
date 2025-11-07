@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Actions for main models -->
+    <record id="kpi_hub_entity_action" model="ir.actions.act_window">
+        <field name="name">Entities</field>
+        <field name="res_model">kpi_hub.entity</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="kpi_hub_template_action" model="ir.actions.act_window">
+        <field name="name">Templates</field>
+        <field name="res_model">kpi_hub.template</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="kpi_hub_record_action" model="ir.actions.act_window">
+        <field name="name">Data Records</field>
+        <field name="res_model">kpi_hub.record</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No data records found.
+            </p>
+            <p>
+                Create a new record using the "Create Record" button or menu.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action for creating records using the wizard -->
+    <record id="action_kpi_record_create_wizard" model="ir.actions.act_window">
+        <field name="name">Create KPI Record</field>
+        <field name="res_model">kpi_record_create_wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menu structure -->
+    <menuitem id="kpi_hub_root" name="KPI Hub" sequence="10" />
+
+    <menuitem id="kpi_hub_data_menu" name="Data" parent="kpi_hub_root" sequence="10" />
+    <menuitem
+        id="kpi_hub_record_menu"
+        name="Data Records"
+        parent="kpi_hub_data_menu"
+        action="kpi_hub_record_action"
+        sequence="10"
+    />
+    <menuitem
+        id="kpi_hub_create_record_menu"
+        name="Create Record"
+        parent="kpi_hub_data_menu"
+        action="action_kpi_record_create_wizard"
+        sequence="20"
+    />
+
+    <menuitem
+        id="kpi_hub_config_menu"
+        name="Configuration"
+        parent="kpi_hub_root"
+        sequence="20"
+    />
+    <menuitem
+        id="kpi_hub_template_menu"
+        name="Templates"
+        parent="kpi_hub_config_menu"
+        action="kpi_hub_template_action"
+        sequence="10"
+    />
+    <menuitem
+        id="kpi_hub_entity_menu"
+        name="Entities"
+        parent="kpi_hub_config_menu"
+        action="kpi_hub_entity_action"
+        sequence="20"
+    />
+
+    <!-- MIS Builder Integration Menu -->
+    <menuitem
+        id="kpi_hub_mis_integration_menu"
+        name="MIS Integration"
+        parent="kpi_hub_config_menu"
+        sequence="30"
+    />
+
+    <record id="action_kpi_hub_mis_report" model="ir.actions.act_window">
+        <field name="name">MIS Report Integration</field>
+        <field name="res_model">kpi_hub.mis.report</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_kpi_hub_aep_source" model="ir.actions.act_window">
+        <field name="name">AEP Sources</field>
+        <field name="res_model">kpi_hub.aep.source</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem
+        id="kpi_hub_mis_report_menu"
+        name="MIS Report Integration"
+        parent="kpi_hub_mis_integration_menu"
+        action="action_kpi_hub_mis_report"
+        sequence="10"
+    />
+    <menuitem
+        id="kpi_hub_aep_source_menu"
+        name="AEP Sources"
+        parent="kpi_hub_mis_integration_menu"
+        action="action_kpi_hub_aep_source"
+        sequence="20"
+    />
+
+</odoo>

@@ -1,0 +1,523 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <!-- ======================================== -->
+        <!-- DEMO COMPLETO Y FUNCIONAL - KPI HUB + MIS BUILDER -->
+        <!-- ======================================== -->
+
+        <!-- ======================================== -->
+        <!-- 1. TIPOS DE RANGO DE FECHA -->
+        <!-- ======================================== -->
+
+        <record id="demo_quarterly_type" model="date.range.type">
+            <field name="name">Trimestres</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_monthly_type" model="date.range.type">
+            <field name="name">Mensual</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 2. ENTIDADES DE DEMOSTRACIÓN -->
+        <!-- ======================================== -->
+
+        <record id="demo_entity_tech_corp" model="kpi_hub.entity">
+            <field name="name">TechCorp Solutions</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_entity_retail_inc" model="kpi_hub.entity">
+            <field name="name">Retail Inc</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_entity_manufacturing" model="kpi_hub.entity">
+            <field name="name">Manufacturing Co</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 3. PLANTILLAS KPI COMPLETAS -->
+        <!-- ======================================== -->
+
+        <!-- Plantilla de P&amp;L (Profit &amp; Loss) -->
+        <record id="demo_pl_template" model="kpi_hub.template">
+            <field name="name">📊 P&amp;L Statement Template</field>
+            <field name="version">1</field>
+            <field name="version_date" eval="datetime.now()" />
+            <field name="version_changes">Initial template creation</field>
+        </record>
+
+        <!-- Plantilla de Balance Sheet -->
+        <record id="demo_balance_template" model="kpi_hub.template">
+            <field name="name">💰 Balance Sheet Template</field>
+            <field name="version">1</field>
+            <field name="version_date" eval="datetime.now()" />
+            <field name="version_changes">Initial template creation</field>
+        </record>
+
+        <!-- Plantilla de Cash Flow -->
+        <record id="demo_cashflow_template" model="kpi_hub.template">
+            <field name="name">💸 Cash Flow Template</field>
+            <field name="version">1</field>
+            <field name="version_date" eval="datetime.now()" />
+            <field name="version_changes">Initial template creation</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 4. ITEMS P&amp;L TEMPLATE -->
+        <!-- ======================================== -->
+
+        <!-- Revenue Section -->
+        <record id="demo_pl_revenue" model="kpi_hub.item.template">
+            <field name="name">REVENUE</field>
+            <field name="code">REVENUE</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">10</field>
+            <field name="is_required">True</field>
+        </record>
+
+        <record id="demo_pl_sales" model="kpi_hub.item.template">
+            <field name="name">Sales Revenue</field>
+            <field name="code">SALES</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">11</field>
+            <field name="parent_id" ref="demo_pl_revenue" />
+            <field name="level">1</field>
+        </record>
+
+        <record id="demo_pl_other_income" model="kpi_hub.item.template">
+            <field name="name">Other Income</field>
+            <field name="code">OTHER_INCOME</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">12</field>
+            <field name="parent_id" ref="demo_pl_revenue" />
+            <field name="level">1</field>
+        </record>
+
+        <!-- COGS Section -->
+        <record id="demo_pl_cogs" model="kpi_hub.item.template">
+            <field name="name">COST OF GOODS SOLD</field>
+            <field name="code">COGS</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">20</field>
+            <field name="is_required">True</field>
+        </record>
+
+        <!-- Operating Expenses -->
+        <record id="demo_pl_opex" model="kpi_hub.item.template">
+            <field name="name">OPERATING EXPENSES</field>
+            <field name="code">OPEX</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">30</field>
+            <field name="is_required">True</field>
+        </record>
+
+        <record id="demo_pl_salaries" model="kpi_hub.item.template">
+            <field name="name">Salaries &amp; Wages</field>
+            <field name="code">SALARIES</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">31</field>
+            <field name="parent_id" ref="demo_pl_opex" />
+            <field name="level">1</field>
+        </record>
+
+        <record id="demo_pl_rent" model="kpi_hub.item.template">
+            <field name="name">Rent &amp; Utilities</field>
+            <field name="code">RENT</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">32</field>
+            <field name="parent_id" ref="demo_pl_opex" />
+            <field name="level">1</field>
+        </record>
+
+        <record id="demo_pl_marketing" model="kpi_hub.item.template">
+            <field name="name">Marketing &amp; Advertising</field>
+            <field name="code">MARKETING</field>
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">33</field>
+            <field name="parent_id" ref="demo_pl_opex" />
+            <field name="level">1</field>
+        </record>
+
+        <!-- Calculated Fields -->
+        <record id="demo_pl_gross_profit" model="kpi_hub.item.template">
+            <field name="name">GROSS PROFIT</field>
+            <field name="code">GROSS_PROFIT</field>
+            <field name="calculation_type">formula</field>
+            <field name="formula">REVENUE - COGS</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">40</field>
+        </record>
+
+        <record id="demo_pl_operating_profit" model="kpi_hub.item.template">
+            <field name="name">OPERATING PROFIT</field>
+            <field name="code">OPERATING_PROFIT</field>
+            <field name="calculation_type">formula</field>
+            <field name="formula">GROSS_PROFIT - OPEX</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">50</field>
+        </record>
+
+        <record id="demo_pl_net_profit" model="kpi_hub.item.template">
+            <field name="name">NET PROFIT</field>
+            <field name="code">NET_PROFIT</field>
+            <field name="calculation_type">formula</field>
+            <field name="formula">OPERATING_PROFIT</field>
+            <field name="data_type">currency</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">60</field>
+        </record>
+
+        <record id="demo_pl_margin" model="kpi_hub.item.template">
+            <field name="name">PROFIT MARGIN %</field>
+            <field name="code">MARGIN</field>
+            <field name="calculation_type">formula</field>
+            <field name="formula">NET_PROFIT / REVENUE * 100</field>
+            <field name="data_type">percentage</field>
+            <field name="decimal_places">2</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="sequence">70</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 5. RANGOS DE FECHA -->
+        <!-- ======================================== -->
+
+        <record id="demo_q1_2025" model="date.range">
+            <field name="name">Q1 2025</field>
+            <field name="type_id" ref="demo_quarterly_type" />
+            <field name="date_start">2025-01-01</field>
+            <field name="date_end">2025-03-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_q2_2025" model="date.range">
+            <field name="name">Q2 2025</field>
+            <field name="type_id" ref="demo_quarterly_type" />
+            <field name="date_start">2025-04-01</field>
+            <field name="date_end">2025-06-30</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_q3_2025" model="date.range">
+            <field name="name">Q3 2025</field>
+            <field name="type_id" ref="demo_quarterly_type" />
+            <field name="date_start">2025-07-01</field>
+            <field name="date_end">2025-09-30</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_q4_2025" model="date.range">
+            <field name="name">Q4 2025</field>
+            <field name="type_id" ref="demo_quarterly_type" />
+            <field name="date_start">2025-10-01</field>
+            <field name="date_end">2025-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 6. REGISTROS KPI CON DATOS REALES -->
+        <!-- ======================================== -->
+
+        <!-- TechCorp Q1 2025 -->
+        <record id="demo_techcorp_q1_record" model="kpi_hub.record">
+            <field name="name">TechCorp Solutions - Q1 2025</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="entity_id" ref="demo_entity_tech_corp" />
+            <field name="date_range_id" ref="demo_q1_2025" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="date_from">2025-01-01</field>
+            <field name="date_to">2025-03-31</field>
+            <field name="template_version">1</field>
+            <field name="template_version_date" eval="datetime.now()" />
+        </record>
+
+        <!-- TechCorp Q2 2025 -->
+        <record id="demo_techcorp_q2_record" model="kpi_hub.record">
+            <field name="name">TechCorp Solutions - Q2 2025</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="entity_id" ref="demo_entity_tech_corp" />
+            <field name="date_range_id" ref="demo_q2_2025" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="date_from">2025-04-01</field>
+            <field name="date_to">2025-06-30</field>
+            <field name="template_version">1</field>
+            <field name="template_version_date" eval="datetime.now()" />
+        </record>
+
+        <!-- Retail Inc Q1 2025 -->
+        <record id="demo_retail_q1_record" model="kpi_hub.record">
+            <field name="name">Retail Inc - Q1 2025</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="entity_id" ref="demo_entity_retail_inc" />
+            <field name="date_range_id" ref="demo_q1_2025" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="date_from">2025-01-01</field>
+            <field name="date_to">2025-03-31</field>
+            <field name="template_version">1</field>
+            <field name="template_version_date" eval="datetime.now()" />
+        </record>
+
+        <!-- Manufacturing Co Q1 2025 -->
+        <record id="demo_manufacturing_q1_record" model="kpi_hub.record">
+            <field name="name">Manufacturing Co - Q1 2025</field>
+            <field name="template_id" ref="demo_pl_template" />
+            <field name="entity_id" ref="demo_entity_manufacturing" />
+            <field name="date_range_id" ref="demo_q1_2025" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="date_from">2025-01-01</field>
+            <field name="date_to">2025-03-31</field>
+            <field name="template_version">1</field>
+            <field name="template_version_date" eval="datetime.now()" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 7. VALORES REQUERIDOS PARA TODOS LOS REGISTROS -->
+        <!-- ======================================== -->
+
+        <!-- TechCorp Q1 Required Values -->
+        <record id="demo_techcorp_q1_revenue_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="item_template_id" ref="demo_pl_revenue" />
+            <field name="value">2550000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q1_cogs_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="item_template_id" ref="demo_pl_cogs" />
+            <field name="value">1200000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q1_opex_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="item_template_id" ref="demo_pl_opex" />
+            <field name="value">630000.00</field>
+        </record>
+
+        <!-- TechCorp Q2 Required Values -->
+        <record id="demo_techcorp_q2_revenue_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="item_template_id" ref="demo_pl_revenue" />
+            <field name="value">2875000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q2_cogs_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="item_template_id" ref="demo_pl_cogs" />
+            <field name="value">1300000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q2_opex_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="item_template_id" ref="demo_pl_opex" />
+            <field name="value">685000.00</field>
+        </record>
+
+        <!-- Retail Inc Q1 Required Values -->
+        <record id="demo_retail_q1_revenue_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="item_template_id" ref="demo_pl_revenue" />
+            <field name="value">1825000.00</field>
+        </record>
+
+        <record id="demo_retail_q1_cogs_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="item_template_id" ref="demo_pl_cogs" />
+            <field name="value">1100000.00</field>
+        </record>
+
+        <record id="demo_retail_q1_opex_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="item_template_id" ref="demo_pl_opex" />
+            <field name="value">620000.00</field>
+        </record>
+
+        <!-- Manufacturing Co Q1 Required Values -->
+        <record id="demo_manufacturing_q1_revenue_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="item_template_id" ref="demo_pl_revenue" />
+            <field name="value">3300000.00</field>
+        </record>
+
+        <record id="demo_manufacturing_q1_cogs_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="item_template_id" ref="demo_pl_cogs" />
+            <field name="value">2000000.00</field>
+        </record>
+
+        <record id="demo_manufacturing_q1_opex_val" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="item_template_id" ref="demo_pl_opex" />
+            <field name="value">750000.00</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 9. VALORES DE ITEMS ADICIONALES - TECHCORP Q1 -->
+        <!-- ======================================== -->
+
+        <record id="demo_techcorp_q1_sales" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_sales" />
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="value">2500000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q1_other_income" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_other_income" />
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="value">50000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q1_salaries" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_salaries" />
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="value">400000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q1_rent" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_rent" />
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="value">80000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q1_marketing" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_marketing" />
+            <field name="record_id" ref="demo_techcorp_q1_record" />
+            <field name="value">150000.00</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 10. VALORES DE ITEMS ADICIONALES - TECHCORP Q2 -->
+        <!-- ======================================== -->
+
+        <record id="demo_techcorp_q2_sales" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_sales" />
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="value">2800000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q2_other_income" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_other_income" />
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="value">75000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q2_salaries" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_salaries" />
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="value">420000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q2_rent" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_rent" />
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="value">85000.00</field>
+        </record>
+
+        <record id="demo_techcorp_q2_marketing" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_marketing" />
+            <field name="record_id" ref="demo_techcorp_q2_record" />
+            <field name="value">180000.00</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 11. VALORES DE ITEMS ADICIONALES - RETAIL INC Q1 -->
+        <!-- ======================================== -->
+
+        <record id="demo_retail_q1_sales" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_sales" />
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="value">1800000.00</field>
+        </record>
+
+        <record id="demo_retail_q1_other_income" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_other_income" />
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="value">25000.00</field>
+        </record>
+
+        <record id="demo_retail_q1_salaries" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_salaries" />
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="value">300000.00</field>
+        </record>
+
+        <record id="demo_retail_q1_rent" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_rent" />
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="value">120000.00</field>
+        </record>
+
+        <record id="demo_retail_q1_marketing" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_marketing" />
+            <field name="record_id" ref="demo_retail_q1_record" />
+            <field name="value">200000.00</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 12. VALORES DE ITEMS ADICIONALES - MANUFACTURING Q1 -->
+        <!-- ======================================== -->
+
+        <record id="demo_manufacturing_q1_sales" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_sales" />
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="value">3200000.00</field>
+        </record>
+
+        <record id="demo_manufacturing_q1_other_income" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_other_income" />
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="value">100000.00</field>
+        </record>
+
+        <record id="demo_manufacturing_q1_salaries" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_salaries" />
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="value">500000.00</field>
+        </record>
+
+        <record id="demo_manufacturing_q1_rent" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_rent" />
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="value">150000.00</field>
+        </record>
+
+        <record id="demo_manufacturing_q1_marketing" model="kpi_hub.item.value">
+            <field name="item_template_id" ref="demo_pl_marketing" />
+            <field name="record_id" ref="demo_manufacturing_q1_record" />
+            <field name="value">100000.00</field>
+        </record>
+
+    </data>
+</odoo>
