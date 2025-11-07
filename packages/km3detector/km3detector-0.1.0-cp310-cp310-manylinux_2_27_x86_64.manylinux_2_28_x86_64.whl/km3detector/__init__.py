@@ -1,0 +1,1 @@
+from .km3detector_ext import *
