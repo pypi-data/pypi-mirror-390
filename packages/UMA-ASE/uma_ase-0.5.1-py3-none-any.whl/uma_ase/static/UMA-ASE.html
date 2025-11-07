@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UMA-ASE Web Interface</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    font-family: "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+    color: #222;
+  }
+  header {
+    background: linear-gradient(120deg, #004d7a, #008793);
+    color: #fff;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .brand img {
+    width: 140px;
+    height: auto;
+    display: block;
+  }
+  .header-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .header-copy h1 {
+    margin: 0;
+  }
+  .header-copy p {
+    margin: 0;
+    max-width: 600px;
+  }
+  main {
+    padding: 2rem;
+  }
+  .layout-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (min-width: 1024px) {
+    .layout-grid {
+      grid-template-columns: 40% 60%;
+    }
+    .input-section {
+      grid-column: 1;
+    }
+    .actions-results {
+      grid-column: 2;
+      display: grid;
+      row-gap: 5px;
+    }
+  }
+  section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    padding: 1.5rem;
+  }
+  .form-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+  @media (min-width: 768px) {
+    .form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 1.5rem;
+    }
+    .form-grid .full-width {
+      grid-column: 1 / -1;
+    }
+  }
+  .thermo-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+  @media (min-width: 768px) {
+    .thermo-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .actions-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .actions-row button {
+    margin-top: 0;
+  }
+  .summary-block {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-family: "Fira Code", "Courier New", monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    margin: 0;
+    min-height: 120px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .actions-results {
+    display: grid;
+    row-gap: 5px;
+  }
+  #structure-summary h3 {
+    margin-bottom: 0.35rem;
+    margin-top: 0;
+  }
+  .group-title {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .is-disabled {
+    opacity: 0.45;
+  }
+  h2 {
+    margin-top: 0;
+    font-size: 1.25rem;
+    color: #004d7a;
+  }
+  label {
+    display: block;
+    margin-top: 0.75rem;
+    font-weight: 600;
+  }
+  input[type="file"],
+  select,
+  input[type="number"],
+  input[type="text"] {
+    width: 80%;
+    padding: 0.3rem 0.65rem;
+    margin-top: 0.2rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    min-height: 28px;
+  }
+  .file-indicator {
+    display: block;
+    font-size: 0.85rem;
+    color: #475569;
+    margin-top: 0.3rem;
+    word-break: break-word;
+  }
+  .help-hint {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+  }
+  .viewer-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .viewer-upload-label {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .viewer-controls input[type="file"] {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 0.4rem;
+  }
+  .viewer-panel {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1rem;
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+  }
+  .tabs {
+    display: inline-flex;
+    border-radius: 999px;
+    background: #e2e8f0;
+    padding: 0.25rem;
+    margin-bottom: 1.5rem;
+    gap: 0.35rem;
+  }
+  .tab-button {
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    color: #334155;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .tab-button.active {
+    background: #fff;
+    color: #008793;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  }
+  .tab-button:not(.active):hover {
+    color: #0f172a;
+  }
+  .tab-content {
+    display: none;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  .visualize-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (min-width: 1024px) {
+    .visualize-grid {
+      grid-template-columns: 40% 60%;
+    }
+  }
+  .viewer-section iframe {
+    width: 100%;
+    min-height: 520px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+    background: #fff;
+  }
+  .geoopt-extra {
+    display: grid;
+    gap: 0.75rem;
+  }
+  @media (min-width: 768px) {
+    .geoopt-extra {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 1.5rem;
+    }
+  }
+  .checkbox-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-weight: 500;
+  }
+  button {
+    background: #008793;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 1.75rem;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0, 135, 147, 0.22);
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+  button.secondary {
+    background: #0f172a;
+    margin-top: 0.75rem;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.9rem;
+  }
+  #results {
+    white-space: pre-wrap;
+    font-family: "Fira Code", "Courier New", monospace;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 8px;
+    min-height: 200px;
+    line-height: 1.2rem;
+    max-height: calc(25 * 1.2rem);
+    overflow-y: auto;
+  }
+  #status {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #444;
+  }
+  .status-text {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #444;
+  }
+  .status-text.error {
+    color: #b91c1c;
+  }
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.85rem;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="assets/logo.svg" alt="UMA-ASE logo" />
+  </div>
+  <div class="header-copy">
+    <h1>uma-ase GUI Interface</h1>
+    <p>Get single-point energies, run geometry optimisation and vibrational analysis at your fingertips.</p>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab-button active" data-tab="actions-tab">Calculate</button>
+    <button class="tab-button" data-tab="visualize-tab">Visualize</button>
+  </div>
+
+  <div id="actions-tab" class="tab-content active">
+    <div class="layout-grid">
+      <section class="input-section">
+        <h2>Input Details</h2>
+        <div class="form-grid">
+          <div>
+            <label for="input-geometry">Select Geometry Input file</label>
+            <input type="file" id="input-geometry" accept=".xyz,.pdb,.mol,.cif,.sdf,.gjf,.traj" />
+            <span id="input-file-name" class="file-indicator">No file selected</span>
+          </div>
+          <div>
+            <label for="charge">Charge</label>
+            <input type="number" id="charge" value="0" step="1" />
+          </div>
+          <div></div>
+          <div>
+            <label for="spin">Spin Multiplicity</label>
+            <input type="number" id="spin" value="1" min="1" step="1" />
+          </div>
+          <div>
+            <label for="mlff-checkpoint">MLFF Checkpoint</label>
+            <input type="text" id="mlff-checkpoint" value="uma-s-1p1" placeholder="Enter checkpoint identifier" />
+          </div>
+          <div>
+            <label for="mlff-task">MLFF Task</label>
+            <input type="text" id="mlff-task" value="omol" placeholder="Enter UMA task name" />
+          </div>
+          <div>
+            <label>Run Type</label>
+            <div id="run-type-group" class="checkbox-group">
+              <label><input type="checkbox" value="sp" checked /> Single Point</label>
+              <label><input type="checkbox" value="geoopt" /> GeoOpt</label>
+              <label><input type="checkbox" value="freqs" /> Frequencies</label>
+            </div>
+          </div>
+          <div></div>
+          <div id="optimizer-group">
+            <div class="thermo-grid">
+              <div>
+                <label for="optimizer">Optimizer</label>
+                <select id="optimizer">
+                  <option value="LBFGS">LBFGS (default)</option>
+                  <option value="BFGS">BFGS</option>
+                  <option value="BFGS_LINESEARCH">BFGS Line Search</option>
+                  <option value="FIRE">FIRE</option>
+                  <option value="MDMIN">MDMin</option>
+                </select>
+              </div>
+            </div>
+            <div id="geoopt-extra" class="geoopt-extra">
+              <div>
+                <label for="geoopt-grad">Force (eV/Å)</label>
+                <input type="number" id="geoopt-grad" value="0.01" step="0.001" min="0" />
+              </div>
+              <div>
+                <label for="geoopt-iter">Max Iter</label>
+                <input type="number" id="geoopt-iter" value="250" min="1" step="1" />
+              </div>
+            </div>
+          </div>
+          <div id="freqs-group">
+            <p class="group-title">Vib Analysis Settings</p>
+            <div class="thermo-grid">
+              <div>
+                <label for="temperature">Temperature (K)</label>
+                <input type="number" id="temperature" value="298.15" step="0.01" />
+              </div>
+              <div>
+                <label for="pressure">Pressure (Pa)</label>
+                <input type="number" id="pressure" value="101325" step="1" />
+              </div>
+            </div>
+          </div>
+          <div class="full-width" id="structure-summary">
+            <h3>Summary</h3>
+            <pre id="summary-message" class="summary-block">No structure loaded.</pre>
+          </div>
+        </div>
+      </section>
+      <div class="actions-results">
+        <section class="actions-section">
+          <h2>Calculate</h2>
+          <div class="actions-grid">
+            <button id="run-btn">Run uma-ase</button>
+            <div id="status" class="status-text"></div>
+            <div class="download-buttons">
+              <button id="download-log" class="secondary" disabled>Download Log</button>
+              <button id="download-traj" class="secondary" disabled>Download Trajectory</button>
+              <button id="download-opt" class="secondary" disabled>Download Optimized XYZ</button>
+            </div>
+          </div>
+        </section>
+        <section class="results-section">
+          <h2>Results</h2>
+          <div id="results">Upload a structure and run a job to see results here.</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="visualize-tab" class="tab-content">
+    <div class="visualize-grid">
+      <section class="input-section">
+        <h2>Input Details</h2>
+        <div class="form-grid">
+          <div class="full-width">
+            <label>Geometry Input file</label>
+            <span id="viz-file-name" class="file-indicator">No file selected</span>
+          </div>
+          <div>
+            <label for="viz-charge">Charge</label>
+            <input type="number" id="viz-charge" value="0" step="1" />
+          </div>
+          <div></div>
+          <div>
+            <label for="viz-spin">Spin Multiplicity</label>
+            <input type="number" id="viz-spin" value="1" min="1" step="1" />
+          </div>
+          <div class="full-width">
+            <h3>Summary</h3>
+            <pre id="viz-summary-message" class="summary-block">No structure loaded.</pre>
+          </div>
+        </div>
+      </section>
+      <section class="viewer-section">
+        <h2>3D Visualizer</h2>
+        <div class="viewer-controls">
+          <label class="viewer-upload-label" for="viewer-file-input">Preview without replacing selection</label>
+          <input id="viewer-file-input" type="file" accept=".xyz,.pdb,.mol,.cif,.sdf,.gjf,.traj" />
+          <span id="viewer-file-label" class="status-text">No file selected</span>
+        </div>
+        <div class="viewer-panel">
+          <div id="jsmol-applet"></div>
+          <div id="viewer-status" class="status-text">No structure loaded.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer>
+  &copy; 2025 uma-ase workflows. Use responsibly. Backend service required to execute calculations.
+</footer>
+
+<script src="/assets/jsmol/jquery/jquery-1.11.0.js"></script>
+<script src="/assets/jsmol/JSmol.min.js"></script>
+<script>
+  const resultsEl = document.getElementById("results");
+  const statusEl = document.getElementById("status");
+  const fileInput = document.getElementById("input-geometry");
+  const downloadBtn = document.getElementById("download-log");
+  const trajBtn = document.getElementById("download-traj");
+  const optBtn = document.getElementById("download-opt");
+  const checkpointInput = document.getElementById("mlff-checkpoint");
+  const taskInput = document.getElementById("mlff-task");
+  const chargeInput = document.getElementById("charge");
+  const spinInput = document.getElementById("spin");
+  const vizChargeInput = document.getElementById("viz-charge");
+  const vizSpinInput = document.getElementById("viz-spin");
+  const viewerFileInput = document.getElementById("viewer-file-input");
+  const jsmolContainer = document.getElementById("jsmol-applet");
+  const viewerStatusText = document.getElementById("viewer-status");
+  const viewerFileLabel = document.getElementById("viewer-file-label");
+  const gradInput = document.getElementById("geoopt-grad");
+  const iterInput = document.getElementById("geoopt-iter");
+  const optimizerSelect = document.getElementById("optimizer");
+  const temperatureInput = document.getElementById("temperature");
+  const pressureInput = document.getElementById("pressure");
+  const summaryMessage = document.getElementById("summary-message");
+  const vizSummaryMessage = document.getElementById("viz-summary-message");
+  const geooptExtras = document.getElementById("geoopt-extra");
+  const fileIndicatorPrimary = document.getElementById("input-file-name");
+  const fileIndicatorViz = document.getElementById("viz-file-name");
+  const resultsDefaultText = resultsEl.textContent;
+  const summaryDefaultText = summaryMessage.textContent;
+
+  const optimizerGroup = document.getElementById("optimizer-group");
+  const freqsGroup = document.getElementById("freqs-group");
+  const runTypeGroup = document.getElementById("run-type-group");
+  const runTypeCheckboxes = Array.from(runTypeGroup.querySelectorAll("input[type=checkbox]"));
+
+  let currentGeometryFile = null;
+  let previewRequestId = 0;
+  let chargeManuallyEdited = false;
+  let viewerReady = false;
+  let pendingViewerFile = null;
+  let jsmolApplet = null;
+  let viewerInitializing = false;
+
+  function updateViewerStatus(message, isError = false) {
+    if (!viewerStatusText) {
+      return;
+    }
+    viewerStatusText.textContent = message;
+    viewerStatusText.classList.toggle("error", isError);
+  }
+
+  function updateViewerFileLabel(file) {
+    if (!viewerFileLabel) {
+      return;
+    }
+    viewerFileLabel.textContent = file && file.name ? file.name : "No file selected";
+  }
+
+  function clearViewer() {
+    if (jsmolApplet && viewerReady) {
+      Jmol.script(jsmolApplet, "zap; background white;");
+    }
+    updateViewerStatus("No structure loaded.");
+  }
+
+  function loadStructureContent(name, content) {
+    if (!jsmolApplet) {
+      return;
+    }
+    const fileName = name || "geometry.xyz";
+    const trimmed = `${content}`.trim();
+    if (!trimmed) {
+      updateViewerStatus("Empty structure file.", true);
+      return;
+    }
+    const loadScript = [
+      'zap;',
+      'background white;',
+      'load DATA "inline"',
+      trimmed,
+      'END "inline";',
+      'spin off;',
+    ].join('\n');
+    Jmol.script(jsmolApplet, loadScript);
+    updateViewerStatus(`Loaded ${fileName}.`);
+    updateViewerFileLabel({ name: fileName });
+  }
+
+  function initializeViewer() {
+    if (!jsmolContainer) {
+      return;
+    }
+    viewerReady = false;
+    updateViewerStatus("Loading viewer...");
+    Jmol._isAsync = false;
+    Jmol._debugCode = false;
+    Jmol._ajaxTestSite = "";
+    Jmol._binaryTypes = [];
+
+    Jmol.setDocument(0);
+    const info = {
+      width: 600,
+      height: 400,
+      debug: false,
+      color: "0xFFFFFF",
+      use: "HTML5",
+      j2sPath: "/assets/jsmol/j2s",
+      script: "background white; set antialiasDisplay true; spin off;",
+      readyFunction: () => {
+        viewerReady = true;
+        updateViewerStatus("Viewer ready. Select a structure to display.");
+        if (pendingViewerFile !== null) {
+          const pending = pendingViewerFile;
+          pendingViewerFile = null;
+          dispatchFileToViewer(pending);
+        }
+        console.log("[UMA-ASE] viewer ready callback fired");
+      },
+    };
+
+    const applet = Jmol.getApplet("jsmolApplet", info);
+    console.log("[UMA-ASE] raw applet target", applet);
+    console.log("[UMA-ASE] applet panel", applet ? applet._appletPanel : undefined);
+    console.log("[UMA-ASE] viewerReady flag", viewerReady, "pending file", pendingViewerFile);
+    function wrapAppletEventHandlers(target) {
+      if (!target || typeof target !== "object") {
+        return target;
+      }
+      const guard = (fnName, panelMethod) => {
+        const original = target[fnName];
+        if (typeof original !== "function") {
+          return;
+        }
+        target[fnName] = function wrapped(...args) {
+          const panel = this._appletPanel;
+          if (!panel || typeof panel[panelMethod] !== "function") {
+            return null;
+          }
+          return original.apply(this, args);
+        };
+      };
+      guard("_processEvent", "processMouseEvent");
+      guard("_processGesture", "processTwoPointGesture");
+      guard("_processKeyEvent", "processKeyEvent");
+      return target;
+    }
+    jsmolApplet = wrapAppletEventHandlers(applet);
+    jsmolContainer.innerHTML = Jmol.getAppletHtml(jsmolApplet);
+    console.log("[UMA-ASE] JSmol applet initialised", jsmolApplet);
+    const readyCheck = setInterval(() => {
+      const panel = jsmolApplet && jsmolApplet._appletPanel;
+      if (!panel) {
+        return;
+      }
+      clearInterval(readyCheck);
+      if (!viewerReady) {
+        viewerReady = true;
+        updateViewerStatus("Viewer ready. Select a structure to display.");
+        if (pendingViewerFile !== null) {
+          const pending = pendingViewerFile;
+          pendingViewerFile = null;
+          dispatchFileToViewer(pending);
+        }
+      }
+      console.log("[UMA-ASE] panel detected via poll", panel);
+    }, 200);
+  }
+
+  function ensureViewerInitialized() {
+    if (jsmolApplet || viewerInitializing) {
+      return;
+    }
+    viewerInitializing = true;
+    requestAnimationFrame(() => {
+      initializeViewer();
+      viewerInitializing = false;
+    });
+  }
+
+  function evaluateRunTypeVisibility() {
+    const runTypes = runTypeCheckboxes
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value);
+
+    const showOptimizer = runTypes.includes("geoopt");
+    const showThermo = runTypes.includes("freqs");
+
+    optimizerGroup.classList.toggle("is-disabled", !showOptimizer);
+    optimizerSelect.disabled = !showOptimizer;
+    gradInput.disabled = !showOptimizer;
+    iterInput.disabled = !showOptimizer;
+    geooptExtras.classList.toggle("is-disabled", !showOptimizer);
+
+    freqsGroup.classList.toggle("is-disabled", !showThermo);
+    Array.from(freqsGroup.querySelectorAll("input")).forEach((input) => {
+      input.disabled = !showThermo;
+    });
+  }
+
+  evaluateRunTypeVisibility();
+
+  runTypeCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      evaluateRunTypeVisibility();
+      if (currentGeometryFile) {
+        requestStructurePreview();
+      }
+    });
+  });
+
+  function resetDownloadLink() {
+    downloadBtn.disabled = true;
+    downloadBtn.removeAttribute("data-href");
+    downloadBtn.title = "Log not available yet.";
+    if (trajBtn) {
+      trajBtn.disabled = true;
+      trajBtn.removeAttribute("data-href");
+      trajBtn.title = "Trajectory not available.";
+    }
+    if (optBtn) {
+      optBtn.disabled = true;
+      optBtn.removeAttribute("data-href");
+      optBtn.title = "Optimized geometry not available.";
+    }
+  }
+
+  resetDownloadLink();
+  updateFileIndicators(null);
+
+  function updateSummaryMessages(text) {
+    summaryMessage.textContent = text;
+    vizSummaryMessage.textContent = text;
+  }
+
+  function updateFileIndicators(file) {
+    const label = file && file.name ? file.name : "No file selected";
+    if (fileIndicatorPrimary) {
+      fileIndicatorPrimary.textContent = label;
+    }
+    if (fileIndicatorViz) {
+      fileIndicatorViz.textContent = label;
+    }
+  }
+
+  async function requestStructurePreview(options = {}) {
+    const { allowChargeUpdate = false } = options;
+    const file = currentGeometryFile;
+    if (!file) {
+      updateSummaryMessages(summaryDefaultText);
+      return;
+    }
+
+    const requestId = ++previewRequestId;
+    const formData = new FormData();
+    formData.append("geometry", file);
+    formData.append("charge", chargeInput.value);
+    formData.append("spin", spinInput.value);
+
+    try {
+      const response = await fetch("/api/uma-ase/preview", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (requestId !== previewRequestId) {
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || `Server returned ${response.status}`);
+      }
+
+      if (typeof data.charge === "number" && (allowChargeUpdate || !chargeManuallyEdited)) {
+        chargeInput.value = data.charge;
+        vizChargeInput.value = data.charge;
+      }
+      if (typeof data.spin === "number") {
+        spinInput.value = data.spin;
+        vizSpinInput.value = data.spin;
+      }
+
+      const summaryText = Array.isArray(data.lines) && data.lines.length
+        ? data.lines.join("\n")
+        : (data.message || summaryDefaultText);
+
+      updateSummaryMessages(summaryText);
+    } catch (error) {
+      if (requestId !== previewRequestId) {
+        return;
+      }
+      const errorText = `Preview unavailable: ${error.message}`;
+      updateSummaryMessages(errorText);
+    }
+  }
+
+  function parseChargeSpinFromFile(file) {
+    return new Promise((resolve) => {
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = typeof reader.result === "string" ? reader.result : "";
+          const lines = text.split(/\r?\n/);
+          if (lines.length < 2) {
+            resolve(null);
+            return;
+          }
+          const tokens = lines[1].trim().split(/\s+/).filter(Boolean);
+          let parsedCharge = null;
+          let parsedSpin = null;
+          tokens.forEach((token, index) => {
+            const value = Number(token);
+            if (!Number.isInteger(value)) {
+              return;
+            }
+            if (parsedCharge === null) {
+              parsedCharge = value;
+            } else if (parsedSpin === null) {
+              parsedSpin = value;
+            }
+          });
+          resolve({
+            charge: parsedCharge,
+            spin: parsedSpin,
+          });
+        } catch (error) {
+          console.warn("Unable to parse charge/spin from file", error);
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsText(file.slice(0, 2000));
+    });
+  }
+
+  function dispatchFileToViewer(file) {
+    const visualizeTab = document.getElementById("visualize-tab");
+    const visualizeActive = visualizeTab ? visualizeTab.classList.contains("active") : false;
+    if (!jsmolApplet && visualizeActive) {
+      ensureViewerInitialized();
+    }
+    if (!viewerReady) {
+      pendingViewerFile = file || null;
+      if (file) {
+        if (visualizeActive) {
+          updateViewerStatus(`Loading ${file.name || "structure"}...`);
+        } else {
+          updateViewerStatus("Open the Visualize tab to view the structure.");
+        }
+      } else {
+        updateViewerStatus("No structure loaded.");
+      }
+      console.debug("[UMA-ASE] viewer not ready; queued file:", file?.name || null);
+      return;
+    }
+    if (!file) {
+      pendingViewerFile = null;
+      clearViewer();
+      return;
+    }
+    updateViewerStatus(`Loading ${file.name || "structure"}...`);
+    console.debug("[UMA-ASE] dispatching file to JSmol:", file?.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        console.debug("[UMA-ASE] file reader complete, sending script");
+        loadStructureContent(file.name || "geometry.xyz", reader.result);
+      } catch (error) {
+        updateViewerStatus(`Unable to load structure: ${error.message}`, true);
+        console.error("[UMA-ASE] loadStructureContent failed", error);
+      }
+    };
+    reader.onerror = (event) => {
+      console.error("[UMA-ASE] file reader error", event);
+      updateViewerStatus("Unable to read file.", true);
+    };
+    reader.readAsText(file);
+    pendingViewerFile = null;
+  }
+
+  function handleFileSelection(file) {
+    currentGeometryFile = file;
+    chargeManuallyEdited = false;
+    if (!file) {
+    chargeInput.value = "0";
+    spinInput.value = "1";
+    vizChargeInput.value = "0";
+    vizSpinInput.value = "1";
+      updateSummaryMessages(summaryDefaultText);
+      resultsEl.textContent = resultsDefaultText;
+      updateFileIndicators(null);
+      dispatchFileToViewer(null);
+      updateViewerFileLabel(null);
+      return;
+    }
+
+    parseChargeSpinFromFile(file).then((parsed) => {
+      if (parsed && typeof parsed.charge === "number" && !chargeManuallyEdited) {
+        chargeInput.value = String(parsed.charge);
+        vizChargeInput.value = String(parsed.charge);
+      }
+      if (parsed && typeof parsed.spin === "number") {
+        spinInput.value = String(parsed.spin);
+        vizSpinInput.value = String(parsed.spin);
+      }
+    }).finally(() => {
+      updateFileIndicators(file);
+      vizChargeInput.value = chargeInput.value;
+      vizSpinInput.value = spinInput.value;
+      updateViewerFileLabel(file);
+      resultsEl.textContent = `Loaded ${file.name}. Ready to run calculations.`;
+      dispatchFileToViewer(file);
+      requestStructurePreview({ allowChargeUpdate: true });
+    });
+  }
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0] || null;
+    handleFileSelection(file);
+  });
+
+  if (viewerFileInput) {
+    viewerFileInput.addEventListener("change", () => {
+      const file = viewerFileInput.files[0] || null;
+      handleFileSelection(file);
+    });
+  }
+
+  [chargeInput, spinInput].forEach((input) => {
+    input.addEventListener("input", () => {
+      if (input === chargeInput) {
+        chargeManuallyEdited = input.value !== "";
+        vizChargeInput.value = input.value;
+      } else if (input === spinInput) {
+        vizSpinInput.value = input.value;
+      }
+      if (currentGeometryFile) {
+        requestStructurePreview();
+      }
+    });
+  });
+
+  if (vizChargeInput) {
+    vizChargeInput.addEventListener("input", () => {
+      chargeInput.value = vizChargeInput.value;
+      chargeManuallyEdited = vizChargeInput.value !== "";
+      if (currentGeometryFile) {
+        requestStructurePreview();
+      }
+    });
+  }
+
+  if (vizSpinInput) {
+    vizSpinInput.addEventListener("input", () => {
+      spinInput.value = vizSpinInput.value;
+      if (currentGeometryFile) {
+        requestStructurePreview();
+      }
+    });
+  }
+
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const tabContents = document.querySelectorAll(".tab-content");
+
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      tabButtons.forEach((btn) => btn.classList.remove("active"));
+      tabContents.forEach((content) => content.classList.remove("active"));
+      button.classList.add("active");
+      const target = document.getElementById(button.dataset.tab);
+      if (target) {
+        target.classList.add("active");
+      }
+      if (button.dataset.tab === "visualize-tab") {
+        requestAnimationFrame(() => ensureViewerInitialized());
+      }
+    });
+  });
+
+  const initiallyActiveTab = document.querySelector(".tab-button.active");
+  if (initiallyActiveTab && initiallyActiveTab.dataset.tab === "visualize-tab") {
+    ensureViewerInitialized();
+  }
+
+  let pollTimer = null;
+
+  function stopPolling() {
+    if (pollTimer !== null) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function startJobPolling(jobId) {
+    stopPolling();
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/uma-ase/job/${jobId}`);
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        const jobData = await response.json();
+        const logText = jobData.log || "";
+        if (logText) {
+          resultsEl.textContent = logText;
+          resultsEl.scrollTop = resultsEl.scrollHeight;
+        } else if (jobData.status === "completed") {
+          resultsEl.textContent = "Job completed. No output generated.";
+        }
+
+        if (jobData.status) {
+          statusEl.textContent = jobData.status.toUpperCase();
+        }
+
+        if (jobData.status === "error" && jobData.message) {
+          const combined = (logText ? `${logText}\n` : "") + jobData.message;
+          resultsEl.textContent = combined.trim();
+        }
+
+        if (jobData.log_download) {
+          downloadBtn.dataset.href = jobData.log_download;
+          downloadBtn.disabled = false;
+          downloadBtn.title = "Download log file";
+        } else {
+          downloadBtn.disabled = true;
+          downloadBtn.removeAttribute("data-href");
+          downloadBtn.title = "Log not available yet.";
+        }
+
+        if (trajBtn) {
+          if (jobData.traj_download) {
+            trajBtn.dataset.href = jobData.traj_download;
+            trajBtn.disabled = false;
+            trajBtn.title = "Download trajectory file";
+          } else {
+            trajBtn.disabled = true;
+            trajBtn.removeAttribute("data-href");
+            trajBtn.title = "Trajectory not available.";
+          }
+        }
+
+        if (optBtn) {
+          if (jobData.opt_download) {
+            optBtn.dataset.href = jobData.opt_download;
+            optBtn.disabled = false;
+            optBtn.title = "Download optimized geometry";
+          } else {
+            optBtn.disabled = true;
+            optBtn.removeAttribute("data-href");
+            optBtn.title = "Optimized geometry not available.";
+          }
+        }
+
+        if (jobData.status && jobData.status !== "running") {
+          stopPolling();
+          if (jobData.status === "completed") {
+            statusEl.textContent = "COMPLETED";
+          } else if (jobData.status === "error") {
+            statusEl.textContent = "ERROR";
+          }
+        }
+      } catch (error) {
+        stopPolling();
+        statusEl.textContent = "Job failed.";
+        resultsEl.textContent = `Error: ${error.message}`;
+        resetDownloadLink();
+      }
+    };
+
+    poll();
+    pollTimer = setInterval(poll, 1500);
+  }
+
+  async function runUmaJob() {
+    const file = fileInput.files[0] || currentGeometryFile;
+
+    if (!file) {
+      statusEl.textContent = "Please upload a geometry file first.";
+      return;
+    }
+
+    const runTypes = runTypeCheckboxes
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value);
+
+    if (runTypes.length === 0) {
+      statusEl.textContent = "Select at least one run type.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("geometry", file);
+    formData.append("charge", chargeInput.value);
+    formData.append("spin", spinInput.value);
+    formData.append("run_type", runTypes.join(" "));
+    formData.append("grad", gradInput.value || "0.01");
+    formData.append("iter", iterInput.value || "250");
+
+    if (runTypes.includes("geoopt")) {
+      formData.append("optimizer", optimizerSelect.value);
+    }
+    if (runTypes.includes("freqs")) {
+      formData.append("temperature", temperatureInput.value);
+      formData.append("pressure", pressureInput.value);
+    }
+
+    const checkpointValue = (checkpointInput.value || "").trim();
+    if (checkpointValue) {
+      formData.append("mlff_checkpoint", checkpointValue);
+    }
+
+    const taskValue = (taskInput.value || "").trim();
+    if (taskValue) {
+      formData.append("mlff_task", taskValue);
+    }
+
+    statusEl.textContent = "Submitting job...";
+    resultsEl.textContent = "";
+    resetDownloadLink();
+    stopPolling();
+
+    try {
+      const response = await fetch("/api/uma-ase/run", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      const jobId = data.job_id;
+      if (!jobId) {
+        throw new Error(data.message || "Unable to start UMA-ASE job.");
+      }
+
+      statusEl.textContent = "Running...";
+      resultsEl.textContent = "Waiting for output...";
+      startJobPolling(jobId);
+    } catch (error) {
+      stopPolling();
+      statusEl.textContent = "Job failed.";
+      resultsEl.textContent = `Error: ${error.message}\nCheck server logs for more information.`;
+      resetDownloadLink();
+    }
+  }
+
+  async function saveBlobWithDialog(blob, suggestedName, fallbackLabel) {
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: fallbackLabel,
+              accept: { "text/plain": [".log", ".txt", ".traj", ".xyz"] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return true;
+      } catch (error) {
+        if (error && error.name === "AbortError") {
+          return true;
+        }
+        console.error("Unable to save using file picker", error);
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = suggestedName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    return true;
+  }
+
+  downloadBtn.addEventListener("click", async () => {
+    const href = downloadBtn.dataset.href;
+    if (!href) {
+      return;
+    }
+    try {
+      const response = await fetch(href);
+      if (!response.ok) {
+        throw new Error(`Download failed (${response.status})`);
+      }
+      const blob = await response.blob();
+      const filename = href.split("/").pop() || "uma-ase.log";
+      await saveBlobWithDialog(blob, filename, "Log file");
+    } catch (error) {
+      statusEl.textContent = `Unable to download log: ${error.message}`;
+    }
+  });
+
+  if (trajBtn) {
+    trajBtn.addEventListener("click", async () => {
+      const href = trajBtn.dataset.href;
+      if (!href) {
+        return;
+      }
+      try {
+        const response = await fetch(href);
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+        const blob = await response.blob();
+        const filename = href.split("/").pop() || "uma-ase.traj";
+        await saveBlobWithDialog(blob, filename, "Trajectory file");
+      } catch (error) {
+        statusEl.textContent = `Unable to download trajectory: ${error.message}`;
+      }
+    });
+  }
+
+  if (optBtn) {
+    optBtn.addEventListener("click", async () => {
+      const href = optBtn.dataset.href;
+      if (!href) {
+        return;
+      }
+      try {
+        const response = await fetch(href);
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+        const blob = await response.blob();
+        const filename = href.split("/").pop() || "uma-ase-opt.xyz";
+        await saveBlobWithDialog(blob, filename, "Optimized geometry");
+      } catch (error) {
+        statusEl.textContent = `Unable to download optimized geometry: ${error.message}`;
+      }
+    });
+  }
+
+  document.getElementById("run-btn").addEventListener("click", runUmaJob);
+</script>
+</body>
+</html>
