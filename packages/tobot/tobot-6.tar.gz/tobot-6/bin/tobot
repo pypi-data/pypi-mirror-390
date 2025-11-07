@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+# This file is placed in the Public Domain.
+
+
+import inspect
+import json
+import logging
+import os
+import sys
+import threading
+import time
+import _thread
+
+
+sys.path.insert(0, os.getcwd())
+
+
+from tob.clients import Client
+from tob.handler import Event
+from tob.threads import launch
+
+
+from tobot.command import Commands, Mods, command, inits, modules, scan, scanner
+from tobot.logging import level
+from tobot.methods import parse
+from tobot.persist import Workdir, moddir, pidname, skel
+from tobot.runtime import Config, check, daemon, forever, pidfile
+from tobot.runtime import privileges, wrap, wrapped
+
+
+import tobot.modules as MODS
+
+
+Workdir.wdr = os.path.expanduser(f"~/.{Config.name}")
+
+
+Mods.add("local", "mods")
+Mods.add("mods", moddir())
+Mods.add("modules", MODS.__path__[0])
+
+
+class CLI(Client):
+
+    def __init__(self):
+        Client.__init__(self)
+        self.register("command", command)
+
+    def raw(self, txt):
+        print(txt.encode('utf-8', 'replace').decode("utf-8"))
+
+
+class Console(CLI):
+
+    def callback(self, event):
+        if not event.txt:
+            return
+        super().callback(event)
+        event.wait()
+
+    def poll(self):
+        evt = Event()
+        evt.txt = input("> ")
+        evt.type = "command"
+        return evt
+
+
+def banner(name, version):
+    tme = time.ctime(time.time()).replace("  ", " ")
+    logger = logging.getLogger()
+    print("%s %s since %s (%s)" % (
+                                   name.upper(),
+                                   version,
+                                   tme,
+                                   logging.getLevelName(logger.getEffectiveLevel())
+                                  ))
+    sys.stdout.flush()
+
+
+def background():
+    daemon(check("v"))
+    privileges()
+    level("debug")
+    scanner()
+    Commands.add(cmd)
+    pidfile(pidname(Config.name))
+    inits(modules())
+    forever()
+
+
+def console():
+    import readline # noqa: F401
+    parse(Config, " ".join(sys.argv[1:]))
+    level(Config.sets.level or "warn")    
+    if "v" in Config.opts:
+        banner(Config.name, Config.version)
+    mods = []
+    if "a" in Config.opts:
+        mods = modules()
+    scanner(mods)
+    Commands.add(cmd)
+    csl = Console()
+    for _mod, thr in inits(Config.sets.init or mods):
+        thr.join(30.0)
+    csl.start()
+    forever()
+
+
+def control():
+    if len(sys.argv) == 1:
+        return
+    scanner()
+    Commands.add(cmd, srv)
+    csl = CLI()
+    evt = Event()
+    evt.orig = repr(csl)
+    evt.txt = " ".join(sys.argv[1:])
+    evt.type = "command"
+    command(evt)
+    evt.wait()
+
+
+def service():
+    privileges()
+    level("warn")
+    banner(Config.name, Config.version)
+    scanner()
+    Commands.add(cmd)
+    pidfile(pidname(Config.name))
+    inits(modules())
+    forever()
+
+
+def cmd(event):
+    event.reply(",".join(sorted(Commands.names or Commands.cmds)))
+
+
+def srv(event):
+    import getpass
+    name = getpass.getuser()
+    event.reply(TXT % (Config.name.upper(), name, name, name, Config.name))
+
+
+TXT = """[Unit]
+Description=%s
+After=network-online.target
+
+[Service]
+Type=simple
+User=%s
+Group=%s
+ExecStart=/home/%s/.local/bin/%s -s
+
+[Install]
+WantedBy=multi-user.target"""
+
+
+def main():
+    if check("c"):
+        wrap(console)
+    elif check("d"):
+        background()
+    elif check("s"):
+        wrapped(service)
+    else:
+        wrapped(control)
+
+
+if __name__ == "__main__":
+    main()
