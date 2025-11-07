@@ -1,0 +1,81 @@
+{# 
+RHDS "Fast facts card" component from 
+ * https://ux.redhat.com/patterns/card/examples/#fast-facts-card 
+ * https://ux.redhat.com/elements/card/demos/#demo-promo
+#}
+{# NOTE: We're currently not using call to action link #}
+
+<rh-card class="ngui-one-card">
+{% if image %}
+  <img src="{{image}}" slot="image" aria-label="{{title}}">
+{% endif %}
+  <h2 slot="header">{{title}}</h2>
+
+  <dl>
+{%  for f in fields %}
+
+      <dt>{{f.get("name")}}</dt>
+      <dd>{% for item in f.get("data") %}
+{{      item }}{% if not loop.last %}, {% endif %}
+{%    endfor %}</dd>
+{%  endfor %}
+  </dl>
+</rh-card>
+
+<style>
+  .ngui-one-card {
+    /* Definition list itself */
+    & dl {
+      display: flex;
+      flex-flow: column;
+      gap: var(--rh-space-md, 8px);
+      margin: 0;
+      padding: 0;
+
+      & dt {
+        font-weight: var(--rh-font-weight-heading-medium, 500);
+      }
+
+      & dd {
+        margin: 0;
+        padding-block-end: var(--rh-space-md, 8px);
+        border-block-end: var(--rh-border-width-sm, 1px) solid var(--rh-color-border-subtle);
+
+        &:last-child {
+          padding-block-end: 0;
+          border-block-end: none;
+        }
+      }
+    }
+{% if image %}
+    &::part(container) {
+      display: grid;
+      grid-template-areas: 'image' 'header' 'body' 'footer';
+      grid-template-columns: 1fr;
+      place-items: start stretch;
+      /*gap: var(--rh-space-2xl, 32px);*/
+    }
+    &::part(image) {
+      grid-area: image;
+      padding: var(--rh-space-xl, 24px);
+    }
+
+    @container (min-width: 576px) {
+      &::part(container) {
+        grid-template-areas: 'image header' 'image body' 'image footer';
+        grid-template-columns: 1fr 2fr;
+      }
+    }
+    @container (min-width: 768px) {
+      &::part(image) {
+        padding: var(--rh-space-2xl, 32px);
+      }
+    }
+  }
+{% endif %}
+</style>
+
+<script type="module">
+  import '@rhds/elements/rh-cta/rh-cta.js';
+  import '@rhds/elements/rh-card/rh-card.js';
+</script>
