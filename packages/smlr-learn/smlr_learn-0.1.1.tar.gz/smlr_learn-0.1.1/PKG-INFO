@@ -1,0 +1,85 @@
+Metadata-Version: 2.4
+Name: smlr-learn
+Version: 0.1.1
+Summary: Python Package of Simplex-based Multinomial Logistic Regression
+Author-email: Zequan Xiong <xzqbear@foxmail.com>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: matplotlib>=3.10.7
+Requires-Dist: numpy>=2.2.6
+Requires-Dist: openpyxl>=3.1.5
+Requires-Dist: pandas>=2.3.3
+Requires-Dist: scikit-learn>=1.7.2
+Dynamic: license-file
+
+# SMLR Project
+
+## Introduction
+
+This is a project of SMLR (Simplex-based Multinomial Logistic Regression) + Penalty. You may know this model from paper by Fu et al.  [1]
+
+## Starter Guidance
+
+### By `pip`
+
+To create a virtual env in your device, use:
+
+```shell
+python3 -m venv .venv
+```
+
+Then use pip to install:
+
+```shell
+pip install smlr-learn
+```
+
+### Fit SMLR
+
+You can use SMLR by `sklearn`-like API:
+
+```python
+from smlr import SMLR
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+
+
+model = SMLR(penalty='l1', gamma=1.0)
+
+X, y = make_classification(
+    n_informative=10,
+    n_samples=1000,
+    random_state=42
+)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,random_state=42)
+
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+print(classification_report(y_pred, y_test))
+```
+
+Then you can see:
+
+```
+Iteration 1000, loss: 0.335493
+Converged after 1786 iterations, loss: 0.335087
+              precision    recall  f1-score   support
+
+           0       0.78      0.88      0.83       135
+           1       0.89      0.79      0.84       165
+
+    accuracy                           0.83       300
+   macro avg       0.83      0.84      0.83       300
+weighted avg       0.84      0.83      0.83       300
+```
+
+
+
+## References
+
+[1] S. Fu, P. Chen, Y. Liu, and Z. Ye, “Simplex-based Multinomial Logistic Regression with Diverging Numbers of Categories and Covariates,” STAT SINICA, 2024, doi: 10.5705/ss.202021.0082.
+
