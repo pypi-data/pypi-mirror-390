@@ -1,0 +1,14 @@
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/deps/serde-11e710c151f57bcb.d: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/serde-e6d441a26ddc4e71/out/private.rs
+
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/deps/libserde-11e710c151f57bcb.rlib: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/serde-e6d441a26ddc4e71/out/private.rs
+
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/deps/libserde-11e710c151f57bcb.rmeta: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/serde-e6d441a26ddc4e71/out/private.rs
+
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/serde-e6d441a26ddc4e71/out/private.rs:
+
+# env-dep:OUT_DIR=/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/serde-e6d441a26ddc4e71/out

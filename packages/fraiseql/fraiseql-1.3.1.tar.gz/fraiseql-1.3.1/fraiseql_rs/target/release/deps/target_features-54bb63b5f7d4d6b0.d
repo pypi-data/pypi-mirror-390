@@ -1,0 +1,13 @@
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/deps/target_features-54bb63b5f7d4d6b0.d: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/lib.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/simd.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.md /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/docs.rs
+
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/deps/libtarget_features-54bb63b5f7d4d6b0.rlib: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/lib.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/simd.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.md /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/docs.rs
+
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/deps/libtarget_features-54bb63b5f7d4d6b0.rmeta: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/lib.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/simd.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.md /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.rs /home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/docs.rs
+
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/lib.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-features-0.1.6/src/simd.rs:
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.md:
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/generated.rs:
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out/docs.rs:
+
+# env-dep:OUT_DIR=/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-features-11e1caabca372050/out

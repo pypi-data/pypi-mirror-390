@@ -1,0 +1,8 @@
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-lexicon-50c184a9a418d6af/build_script_build-50c184a9a418d6af.d: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/build.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/data_model.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/triple.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/targets.rs
+
+/home/lionel/code/fraiseql/fraiseql_rs/target/release/build/target-lexicon-50c184a9a418d6af/build_script_build-50c184a9a418d6af: /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/build.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/data_model.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/triple.rs /home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/targets.rs
+
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/build.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/data_model.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/triple.rs:
+/home/lionel/.local/share/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/target-lexicon-0.13.3/src/targets.rs:
