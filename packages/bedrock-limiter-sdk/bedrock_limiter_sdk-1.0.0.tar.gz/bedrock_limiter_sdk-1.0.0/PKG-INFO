@@ -1,0 +1,342 @@
+Metadata-Version: 2.4
+Name: bedrock-limiter-sdk
+Version: 1.0.0
+Summary: Drop-in replacement for boto3 bedrock-runtime client with token limiting
+Home-page: https://github.com/Tire-Rack-Innovation/token-limiter
+Author: Tire Rack
+Author-email: Tire Rack <dherthoge@tirerack.com>
+License: MIT
+Project-URL: Homepage, https://github.com/Tire-Rack-Innovation/token-limiter
+Project-URL: Repository, https://github.com/Tire-Rack-Innovation/token-limiter
+Project-URL: Documentation, https://github.com/Tire-Rack-Innovation/token-limiter/blob/main/docs/API_KEY_AUTHENTICATION.md
+Keywords: aws,bedrock,boto3,token-limiting,rate-limiting
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: boto3>=1.28.0
+Requires-Dist: botocore>=1.31.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Provides-Extra: langchain
+Requires-Dist: langchain>=0.1.0; extra == "langchain"
+Requires-Dist: langchain-aws>=0.1.0; extra == "langchain"
+Dynamic: author
+Dynamic: home-page
+Dynamic: requires-python
+
+# Bedrock Limiter SDK - Python
+
+Drop-in replacement for boto3's `bedrock-runtime` client that adds token limiting, user identification, and API key authentication.
+
+## Features
+
+- **Drop-in Replacement**: Works exactly like `boto3.client('bedrock-runtime')`
+- **Automatic Authentication**: Injects `X-User-ID` and `X-API-Key` headers automatically
+- **Full Compatibility**: All boto3 Bedrock methods work (converse, converse_stream, invoke_model, etc.)
+- **Framework Support**: Works with Langchain, Strands SDK, and any framework that accepts boto3 clients
+- **Streaming Support**: Fully supports streaming responses
+
+## Installation
+
+### From GitHub (Recommended for Internal Use)
+
+```bash
+# Install from main branch
+pip install git+https://github.com/Tire-Rack-Innovation/token-limiter.git#subdirectory=sdk/python
+
+# Install specific version (when tagged)
+pip install git+https://github.com/Tire-Rack-Innovation/token-limiter.git@v1.0.0#subdirectory=sdk/python
+```
+
+### Requirements
+
+- Python 3.8+
+- boto3 >= 1.28.0
+- botocore >= 1.31.0
+
+## Quick Start
+
+```python
+from bedrock_limiter_sdk import BedrockClient
+
+# Create authenticated client
+bedrock = BedrockClient(
+    user_id='alice@tirerack.com',
+    api_key='your-api-key-here',
+    endpoint_url='https://your-alb.elb.amazonaws.com'
+)
+
+# Use exactly like normal boto3 client
+response = bedrock.converse(
+    modelId='anthropic.claude-3-5-sonnet-20241022-v2:0',
+    messages=[
+        {
+            "role": "user",
+            "content": [{"text": "Hello! How are you?"}]
+        }
+    ]
+)
+
+print(response['output']['message']['content'][0]['text'])
+```
+
+## Usage Examples
+
+### Basic Conversation
+
+```python
+from bedrock_limiter_sdk import BedrockClient
+
+bedrock = BedrockClient(
+    user_id='alice@tirerack.com',
+    api_key='abc123...',
+    endpoint_url='https://bedrock-limiter.elb.amazonaws.com'
+)
+
+response = bedrock.converse(
+    modelId='anthropic.claude-3-haiku-20240307-v1:0',
+    messages=[
+        {"role": "user", "content": [{"text": "What is AWS Bedrock?"}]}
+    ]
+)
+
+print(response['output']['message']['content'][0]['text'])
+```
+
+### Streaming Responses
+
+```python
+from bedrock_limiter_sdk import BedrockClient
+
+bedrock = BedrockClient(
+    user_id='alice@tirerack.com',
+    api_key='abc123...',
+    endpoint_url='https://bedrock-limiter.elb.amazonaws.com'
+)
+
+response = bedrock.converse_stream(
+    modelId='anthropic.claude-3-haiku-20240307-v1:0',
+    messages=[
+        {"role": "user", "content": [{"text": "Write a short poem"}]}
+    ]
+)
+
+# Process streaming events
+for event in response['stream']:
+    if 'contentBlockDelta' in event:
+        delta = event['contentBlockDelta']['delta']
+        if 'text' in delta:
+            print(delta['text'], end='', flush=True)
+
+print()  # Newline after stream completes
+```
+
+### With Langchain
+
+```python
+from bedrock_limiter_sdk import BedrockClientForLangchain
+from langchain_aws import ChatBedrock
+
+# Create authenticated client
+bedrock_client = BedrockClientForLangchain(
+    user_id='alice@tirerack.com',
+    api_key='abc123...',
+    endpoint_url='https://bedrock-limiter.elb.amazonaws.com'
+)
+
+# Use with Langchain
+llm = ChatBedrock(
+    client=bedrock_client,
+    model_id='anthropic.claude-3-haiku-20240307-v1:0',
+    streaming=True
+)
+
+response = llm.invoke("What are the benefits of using AWS?")
+print(response.content)
+```
+
+### With Strands SDK
+
+```python
+from bedrock_limiter_sdk import BedrockClientForStrands
+from strands.models import BedrockModel
+from strands.agent import Agent
+
+# Create authenticated client
+bedrock_client = BedrockClientForStrands(
+    user_id='alice@tirerack.com',
+    api_key='abc123...',
+    endpoint_url='https://bedrock-limiter.elb.amazonaws.com'
+)
+
+# Create Strands model and replace its client
+model = BedrockModel(model_id='anthropic.claude-3-haiku-20240307-v1:0')
+model._client = bedrock_client
+
+# Use with Strands Agent
+agent = Agent(
+    model=model,
+    system_prompt="You are a helpful assistant"
+)
+
+response = agent.run("Hello!")
+print(response)
+```
+
+## API Reference
+
+### BedrockClient
+
+Main client class that wraps boto3's bedrock-runtime client.
+
+**Constructor Parameters:**
+- `user_id` (str, required): Your user identifier (email, username, etc.)
+- `api_key` (str, required): Your API key (obtain from administrator)
+- `endpoint_url` (str, required): Token limiter endpoint URL
+- `region_name` (str, optional): AWS region (default: 'us-east-1')
+
+**Methods:**
+
+All standard boto3 Bedrock methods are supported:
+- `converse()` - Standard conversation
+- `converse_stream()` - Streaming conversation
+- `invoke_model()` - Legacy API
+- `invoke_model_with_response_stream()` - Legacy streaming API
+- And all other bedrock-runtime methods
+
+### Helper Classes
+
+**BedrockClientForLangchain**
+- Same as `BedrockClient`, optimized for Langchain integration
+- Use when integrating with Langchain frameworks
+
+**BedrockClientForStrands**
+- Same as `BedrockClient`, optimized for Strands SDK integration
+- Use when integrating with AWS Strands Agents
+
+### get_client() Function
+
+Convenience function for creating a client (function-style API).
+
+```python
+from bedrock_limiter_sdk import get_client
+
+bedrock = get_client(
+    user_id='alice@tirerack.com',
+    api_key='abc123...',
+    endpoint_url='https://bedrock-limiter.elb.amazonaws.com'
+)
+```
+
+## How It Works
+
+The SDK wraps boto3's bedrock-runtime client and uses botocore's event system to automatically inject authentication headers before each request:
+
+1. You create a `BedrockClient` with your credentials
+2. The SDK creates a standard boto3 client pointing to your token limiter endpoint
+3. Before each API call, it injects `X-User-ID` and `X-API-Key` headers
+4. Your token limiter middleware validates the request and tracks token usage
+5. The request is proxied to AWS Bedrock
+6. The response is returned normally to your application
+
+## Token Limiting
+
+Token usage is tracked per user and per model. When you exceed your limit:
+
+- Non-streaming requests: Returns 400 error with details
+- Streaming requests: Stream is interrupted with error event
+
+Check with your administrator for your current limits.
+
+## Error Handling
+
+```python
+from bedrock_limiter_sdk import BedrockClient
+from botocore.exceptions import ClientError
+
+bedrock = BedrockClient(
+    user_id='alice@tirerack.com',
+    api_key='abc123...',
+    endpoint_url='https://bedrock-limiter.elb.amazonaws.com'
+)
+
+try:
+    response = bedrock.converse(
+        modelId='anthropic.claude-3-haiku-20240307-v1:0',
+        messages=[{"role": "user", "content": [{"text": "Hello"}]}]
+    )
+except ClientError as e:
+    error_code = e.response['Error']['Code']
+    error_message = e.response['Error']['Message']
+
+    if error_code == 'TokenLimitExceeded':
+        print(f"Token limit exceeded: {error_message}")
+    elif error_code == 'Unauthorized':
+        print(f"Authentication failed: {error_message}")
+    else:
+        print(f"Error: {error_message}")
+```
+
+## Troubleshooting
+
+### Import Error
+
+If you get `ModuleNotFoundError: No module named 'bedrock_limiter_sdk'`:
+
+```bash
+# Make sure you installed from GitHub
+pip install git+https://github.com/Tire-Rack-Innovation/token-limiter.git#subdirectory=sdk/python
+```
+
+### Authentication Failed
+
+If you get authentication errors:
+
+1. Verify your API key is correct
+2. Check that the endpoint URL is correct
+3. Ensure your user_id matches what's in the system
+
+### Connection Errors
+
+If you get connection timeout or refused errors:
+
+1. Verify the endpoint URL is accessible from your network
+2. Check VPC/security group settings if using private endpoints
+3. Ensure the token limiter service is running
+
+## Development
+
+### Installing for Development
+
+```bash
+git clone https://github.com/Tire-Rack-Innovation/token-limiter.git
+cd token-limiter/sdk/python
+pip install -e .
+```
+
+### Running Tests
+
+```bash
+# Unit tests (no AWS required)
+pytest tests/
+
+# Integration tests (requires deployed service)
+pytest tests/integration/
+```
+
+## Support
+
+For issues or questions:
+1. Check the [Python Installation Guide](../../docs/SDK_INSTALLATION_GUIDE_PYTHON.md)
+2. Check the main repository documentation
+3. Contact the platform team
+4. File an issue on GitHub
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Version History
+
+See [CHANGELOG.md](../../CHANGELOG.md) for version history and changes.
