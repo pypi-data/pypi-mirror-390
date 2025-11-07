@@ -1,0 +1,56 @@
+Metadata-Version: 2.4
+Name: longformer-embedder
+Version: 0.1.1
+Summary: A small wrapper for generating Longformer embeddings.
+Author-email: Yash Garg <gargyash195@gmail.com>
+License: MIT
+Keywords: longformer,transformers,embeddings,nlp
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.21
+Requires-Dist: torch>=1.12
+Requires-Dist: transformers>=4.0
+Requires-Dist: tqdm
+Dynamic: license-file
+
+# Longformer Embedder
+
+A lightweight wrapper around Hugging Face Longformer to easily generate mean-pooled embeddings.
+
+## Installation
+
+```bash
+pip install longformer-embedder
+```
+
+## Usage
+
+```python
+from longformer_embedder import LongformerEmbedder
+
+embedder = LongformerEmbedder(model_name="allenai/longformer-base-4096")
+vec = embedder.get_embedding("This is a test sentence.")
+print(vec.shape)  # (768,)
+```
+
+### Batch Mode
+
+```python
+texts = ["Text one", "Text two", "Text three"]
+embeddings = embedder.generate_embeddings(texts)
+print(embeddings.shape)  # (3, 768)
+```
+
+## Notes
+- Model weights are downloaded from Hugging Face automatically.
+- Ensure `torch` is installed and compatible with your device (CPU/GPU).
+- For GPU acceleration, install CUDA-enabled PyTorch.
+
+## 📜 License
+MIT License
