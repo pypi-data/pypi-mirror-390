@@ -1,0 +1,180 @@
+# BreadcrumbAddressbar プロジェクト - Cursor IDE 設定
+
+## プロジェクト概要
+- PySide6ベースのブレッドクラム形式アドレスバーウィジェット
+- qt-theme-managerによるテーマ管理機能
+- ファイルマネージャー向けの再利用可能なコンポーネント
+
+## プロジェクト構造と配置方針
+- プロジェクトルートディレクトリには main.py などのメインエントリーポイントのみ配置すること
+- メインパッケージ: `breadcrumb_addressbar/` ディレクトリに配置
+  - `core.py`: メインウィジェットクラス
+  - `themes.py`: テーマ管理機能
+  - `widgets.py`: 補助ウィジェット
+  - `popup.py`: ポップアップ関連
+  - `logger_setup.py`: ログ設定
+- `examples/` ディレクトリにデモ・サンプルコードを配置
+- `tests/` ディレクトリにテストコードを配置
+- `docs/` ディレクトリにドキュメントを配置
+- __init__.py は最低限の依存解決のために使用し、不要な副作用は避けること
+
+## コーディング規約
+
+### 命名規則
+- ファイル命名: スネークケース (`core.py`, `logger_setup.py`)
+- クラス名: パスカルケース (`BreadcrumbAddressBar`, `ThemeManager`)
+- 変数・関数名: スネークケース (`current_path`, `update_display`)
+- 定数: 大文字スネークケース (`DEFAULT_THEME`, `MAX_PATH_LENGTH`)
+- プライベートメンバー: アンダースコアプレフィックス (`_internal_state`, `_update_ui`)
+
+### 型ヒント
+- any型や動的型推論の乱用は禁止。可能な限り明示型を使用する
+- 必須: 関数の引数・戻り値、クラスメソッド、プロパティ
+- 推奨: 変数宣言時（特に複雑な型の場合）
+- 使用例:
+  ```python
+  def update_path(self, new_path: str) -> None:
+      self._current_path: str = new_path
+      self._update_display()
+  ```
+
+### Import規約
+- importの順序: 標準ライブラリ → サードパーティ → 自作モジュール
+- グループ間は空行で区切る
+- isortで自動整形すること
+- 使用例:
+  ```python
+  import os
+  import sys
+  from typing import List, Optional
+
+  from PySide6.QtCore import Qt, Signal
+  from PySide6.QtWidgets import QWidget
+
+  from .themes import ThemeManager
+  from .logger_setup import get_logger
+  ```
+
+## Debug規約
+- print関数によるデバッグ出力は禁止。必ずloggingモジュールまたはプロジェクト専用のLoggerを用いること
+- ログレベルは意図に応じてDEBUG, INFO, WARNING, ERRORを使い分けること
+- ログ出力の初期設定は `logger_setup.py` を通すこと
+- 使用例:
+  ```python
+  from .logger_setup import get_logger
+
+  logger = get_logger(__name__)
+  logger.debug("Path updated: %s", new_path)
+  logger.warning("Invalid path format: %s", path)
+  ```
+
+## 一時コードの管理
+- デバッグ用の一時関数・変数には `_debug_` プレフィックスを付与すること
+- 一時コードはPR作成前に必ず削除またはコメント化してレビュー時に明示すること
+- 使用例:
+  ```python
+  def _debug_print_state(self) -> None:  # TODO: 削除予定
+      print(f"Current state: {self._current_path}")
+  ```
+
+## 責務分離とモジュール構造
+- デバッグ中に機能追加が必要となった場合、上位モジュールへの安易な追記は禁止
+- 責務分離を明確にすること。必要に応じて下位モジュールや専用ユーティリティを新設する
+- 関数・クラス名はその責務が自然に読み取れるものにすること
+- 各モジュールの責務:
+  - `core.py`: メインウィジェットとパス管理
+  - `themes.py`: テーマ管理とスタイル適用
+  - `widgets.py`: 補助ウィジェット（ドロップダウン、ボタン等）
+  - `popup.py`: ポップアップメニューとコンテキストメニュー
+  - `logger_setup.py`: ログ設定とロガー管理
+
+## Qt/PySide6開発規約
+- Qtのシグナル・スロットは型ヒント付きで定義すること
+- ウィジェットの親子関係は明示的に管理すること
+- メモリリークを防ぐため、適切なライフサイクル管理を行うこと
+- 使用例:
+  ```python
+  from PySide6.QtCore import Signal, Slot
+  from PySide6.QtWidgets import QWidget
+
+  class BreadcrumbAddressBar(QWidget):
+      path_changed = Signal(str)  # 型ヒント付きシグナル
+
+      @Slot(str)
+      def update_path(self, new_path: str) -> None:
+          # 実装
+          pass
+  ```
+
+## テーマ管理規約
+- qt-theme-managerを使用したテーマ管理を実装すること
+- テーマ変更時は適切なシグナルを発信すること
+- カスタムテーマの定義は `themes.py` に集約すること
+- 使用例:
+  ```python
+  from qt_theme_manager import ThemeController
+
+  class MyWidget:
+      def __init__(self):
+          self._theme_controller = ThemeController()
+          # テーマを適用
+          self._theme_controller.apply_theme_to_widget(self)
+  ```
+
+## テスト規約
+- 新機能追加時は必ずテストコードを作成すること
+- pytest-qtを使用してQtウィジェットのテストを行うこと
+- テストファイルは `tests/` ディレクトリに配置し、`test_` プレフィックスを付けること
+- 使用例:
+  ```python
+  import pytest
+  from PySide6.QtWidgets import QApplication
+  from breadcrumb_addressbar import BreadcrumbAddressBar
+
+  @pytest.fixture
+  def app():
+      return QApplication([])
+
+  def test_path_update(app):
+      widget = BreadcrumbAddressBar()
+      widget.update_path("/test/path")
+      assert widget.current_path == "/test/path"
+  ```
+
+## CI/CDと検証方針
+- デバッグ完了後は、CI/CDパイプライン構築を推奨する
+- GitHub Actions導入時は、事前にworkflowシミュレータを設けて構文ミスや依存漏れを検知すること
+- CI環境では logger の出力が冗長にならないよう、適切なフィルター設定を行うこと
+- 必須チェック:
+  - black: コードフォーマット
+  - isort: import整理
+  - flake8: リント
+  - mypy: 型チェック
+  - pytest: テスト実行
+
+## 技術スタック
+- Python 3.12+
+- PySide6 (Qt for Python) >= 6.0.0
+- qt-theme-manager >= 0.2.0 (テーマ管理)
+- logging (ログ管理)
+
+## 開発環境
+- Cursor IDE
+- Python仮想環境推奨
+- 型チェック: mypy
+- コードフォーマット: black (line-length=79)
+- import整理: isort (black profile)
+- リント: flake8
+- テスト: pytest + pytest-qt
+
+## パッケージング規約
+- setuptoolsを使用したパッケージング
+- `pyproject.toml` で依存関係とビルド設定を管理
+- バージョン管理はセマンティックバージョニングに従う
+- 配布前に必ずテストを実行すること
+
+## ドキュメント規約
+- README.md: プロジェクト概要、インストール、基本的な使用方法
+- USAGE.md: 詳細な使用例とAPI説明
+- CHANGELOG.md: バージョン別の変更履歴
+- コード内コメント: 複雑なロジックには必ずコメントを付けること

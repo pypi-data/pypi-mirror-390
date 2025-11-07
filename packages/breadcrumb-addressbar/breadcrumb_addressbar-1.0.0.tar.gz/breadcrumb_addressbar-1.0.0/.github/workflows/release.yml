@@ -1,0 +1,97 @@
+name: Release to PyPI
+
+on:
+  push:
+    tags:
+      - "v*" # v1.0.0, v1.2.3 などのタグでトリガー
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e . --group test
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short -m "not qt" --disable-pytest-warnings
+        env:
+          QT_QPA_PLATFORM: offscreen
+          DISPLAY: :99
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "pytestqt"
+
+      - name: Install uv for linting
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install lint dependencies
+        run: |
+          uv pip install --system ruff mypy
+
+      - name: Run linting
+        run: |
+          ruff format --check .
+          ruff check .
+
+  build-and-publish:
+    needs: test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"  # TODO: Switch to 3.14 when PySide6 adds support
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install build dependencies
+        run: |
+          uv pip install --system build twine
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Test package installation
+        run: |
+          pip install dist/*.whl --force-reinstall
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          twine upload dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

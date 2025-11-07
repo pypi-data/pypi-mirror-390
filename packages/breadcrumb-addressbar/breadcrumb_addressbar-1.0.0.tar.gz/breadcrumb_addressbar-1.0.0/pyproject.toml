@@ -1,0 +1,119 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "breadcrumb-addressbar"
+version = "1.0.0"
+description = "A breadcrumb-style address bar for PySide6/PyQt6 file managers with theme support"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "scottlz0310", email = "scott.lz0310@gmail.com" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.12"
+dependencies = ["PySide6>=6.0.0", "qt-theme-manager>=0.2.0"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13",
+    "pytest>=8.0",
+    "pytest-qt>=4.4",
+    "pytest-cov>=6.0",
+    "pre-commit>=4.0",
+]
+test = ["pytest>=8.0", "pytest-qt>=4.4", "pytest-cov>=6.0"]
+ci = [
+    "pytest>=8.0",
+    "pytest-qt>=4.4",
+    "pytest-cov>=6.0",
+    "coverage>=7.6",
+    "ruff>=0.8.0",
+    "mypy>=1.13",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "S",   # flake8-bandit
+]
+ignore = ["E203", "S101", "SIM108"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
+"examples/*" = ["S101", "E501"]
+"breadcrumb_addressbar/*.py" = ["N802", "N815"] # Allow Qt naming conventions
+"scripts/*.py" = ["S602"]                       # Allow shell=True in scripts
+
+[tool.ruff.lint.isort]
+known-first-party = ["breadcrumb_addressbar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+markers = ["qt: marks tests as requiring Qt (deselect with '-m \"not qt\"')"]
+
+[tool.coverage.run]
+source = ["breadcrumb_addressbar"]
+omit = ["*/tests/*", "*/examples/*", "*/venv/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+no_implicit_optional = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+warn_no_return = false
+warn_unreachable = false
+strict_equality = false
+show_error_codes = false
+
+[[tool.mypy.overrides]]
+module = ["PySide6.*", "qt_theme_manager.*", "breadcrumb_addressbar.*"]
+ignore_missing_imports = true
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["PySide6.QtGui", "PySide6.QtCore", "PySide6.QtWidgets"]
+ignore_errors = true
