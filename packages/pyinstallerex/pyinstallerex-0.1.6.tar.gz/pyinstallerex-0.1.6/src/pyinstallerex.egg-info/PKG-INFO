@@ -1,0 +1,181 @@
+Metadata-Version: 2.1
+Name: pyinstallerex
+Version: 0.1.6
+Summary: 扩展PyInstaller 使其拥有单文件安装功能 不用每次都解压执行
+Home-page: https://gitee.com/iiixxxiii/py-installer-ex
+Author: lixin
+Author-email: iiixxxiii@qq.com
+License: MIT
+Description: # PyInstallerEx
+        Enhanced PyInstaller packaging tool that creates single-file executable programs with installation capabilities
+        
+        ## 🎯 Project Overview
+        
+        PyInstallerEx is an enhanced packaging tool based on PyInstaller that can package Python applications into single-file executable programs with installation capabilities. Unlike traditional PyInstaller which creates standalone executable files, the installer executable files created by PyInstallerEx have the following characteristics:
+        
+        - **Extract on first run**: Applications are extracted to a temporary directory
+        - **Reuse installed versions**: Subsequent runs use already extracted versions
+        - **Automatic cleanup**: Intelligent management of temporary files
+        
+        ### 🔧 Environment Requirements
+        - Python >= 2.7
+        - PyInstaller >= 3.2.1
+        - Go >= 1.21 (for building launchers)
+        
+        ### ⚙️ How It Works
+        1. **PyInstaller Packaging**: Use PyInstaller's `--onedir` mode to create a complete application directory
+        2. **Configuration Processing**: Apply user configurations and generate metadata
+        3. **Compression**: Compress the application directory into a ZIP file
+        4. **Binary Merging**: Merge the platform-specific launcher binary with the ZIP file
+        5. **Final Executable**: Create a single executable file that handles extraction and execution
+        
+        ## ✅ Completed Features
+        
+        ### 1. Core Packaging Features
+        - ✅ **PyInstaller Integration**: Use `--onedir` mode to create complete application directories
+        - ✅ **Configuration System**: JSON format configuration file support
+        - ✅ **ZIP Compression**: Compress application directories into ZIP files
+        - ✅ **Binary Merging**: Merge Go launcher with ZIP file into final executable file
+        
+        ### 2. Go Launcher Implementation
+        - ✅ **Cross-platform Support**: Windows, Linux x86, Linux ARM
+        - ✅ **Smart Installation**: Automatically extract on first run, reuse installed versions on subsequent runs
+        - ✅ **Configuration Parsing**: Read and process configuration information from executable files
+        - ✅ **Temporary Directory Management**: Automatic management of temporary files and cleanup
+        
+        ### 3. Project Structure Improvement
+        - ✅ **Modular Design**: Clear code organization structure
+        - ✅ **Error Handling**: Complete exception handling and logging
+        - ✅ **Build Scripts**: Automated compilation and testing scripts
+        - ✅ **Complete Documentation**: Detailed usage instructions and API documentation
+        
+        ## 🌟 New Features
+        
+        ### 1. Enhanced Cache Management
+        - ✅ **Smart Cache Reuse**: Check if the application is already installed before extracting (based on `ex_{filename}_{md5}` directory pattern)
+        - ✅ **Automatic Old Cache Cleanup**: Before extracting, search and remove old directories with the same filename prefix (`ex_{filename}_*`)
+        - ✅ **Cache Isolation**: Ensure only one version of the application is kept in the temporary directory
+        
+        ### 2. Improved Configuration Handling
+        - ✅ **Embedded Configuration Reading**: Read configuration from executable files for better portability
+        - ✅ **Flexible Configuration Override**: Command-line parameters override configuration files which override embedded defaults
+        
+        ## 🛠 Development
+        
+        ### Build from Source
+        
+        ```bash
+        git clone <repository>
+        cd PyInstallerEx-master
+        
+        # Development test installation
+        pip install -e .
+        
+        # Build package using traditional setup.py
+        python setup.py sdist bdist_wheel
+        
+        # Uninstall old version
+        pip uninstall pyinstallerex
+        
+        # Test installation
+        pip install dist/pyinstallerex-0.1.6-py2-none-any.whl
+        
+        # Test packaging
+        python -m PyInstallerEx test/test_script.py 
+        
+        # Build Go launcher
+        ./build_launchers.sh
+        ```
+        
+        ### Testing
+        
+        ```bash
+        # Test using included test script
+        python -m PyInstallerEx test/test_script.py --cfg test/test_config.json
+        
+        # Or from test directory
+        cd test
+        python -m PyInstallerEx test_script.py --cfg test_config.json
+        ```
+        
+        ## 📦 Installation
+        
+        Install the latest version from PyPI:
+        ```bash
+        pip install pyinstallerex
+        ```
+        
+        ## 🚀 Usage
+        
+        Basic usage:
+        ```bash
+        # Using pyinstallerex command
+        pyinstallerex your_script.py
+        
+        # Using PyInstallerEx command
+        PyInstallerEx your_script.py
+        
+        # Using Python -m method (recommended)
+        python -m PyInstallerEx your_script.py
+        ```
+        
+        Using configuration file:
+        ```bash
+        pyinstallerex your_script.py --cfg your_config.json
+        ```
+        
+        ## 📝 Changelog
+        
+        - 2025-11-07 V 0.1.6
+          - Fixed issue with missing launcher binaries in package distribution
+          - Improved launcher file search logic to support package data resources
+          - Enhanced cross-platform compatibility
+        
+        - 2025-11-06 V 0.1.5
+          - Updated documentation with latest version information and changelog
+        
+        - 2025-11-06 V 0.1.4
+          - Fixed issue with launcher file not found on Linux systems
+          - Improved launcher file search logic to support files installed via data_files
+          - Enhanced cross-platform compatibility
+        
+        - 2025-11-06 V 0.1.3
+          - Fixed package distribution issue to ensure launcher binary files are correctly included
+          - Improved package build and installation process
+        
+        - 2025-11-06 V 0.1.2
+          - Enhanced cache management with automatic cleanup of old directories
+          - Improved configuration handling with embedded configuration reading
+          - Added support for Linux ARM64 platform
+          - Added command-line option for specifying output filename
+        
+        - 2025-10-23 V 0.1.1
+          - Initial version, implemented temporary file installation functionality
+          - Complete Go launcher implementation
+          - Cross-platform support (Windows, Linux x86/ARM)
+          - Configuration system
+          - Automated build scripts
+        
+        ## 📄 License
+        
+        MIT License - see LICENSE file for details
+Keywords: PyInstaller,expand,single-file,installer
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Build Tools
+Requires-Python: >=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*
+Description-Content-Type: text/markdown
