@@ -1,0 +1,321 @@
+# Aegis Python SDK
+
+[![CI](https://github.com/mrsidrdx/aegis-python-sdk/workflows/CI/badge.svg)](https://github.com/mrsidrdx/aegis-python-sdk/actions)
+[![PyPI version](https://badge.fury.io/py/aegis.svg)](https://pypi.org/project/aegis/)
+[![Python versions](https://img.shields.io/pypi/pyversions/aegis.svg)](https://pypi.org/project/aegis/)
+[![Code coverage](https://codecov.io/gh/aegis/aegis-python-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/aegis/aegis-python-sdk)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+Secure AI tool guard integration for multi-agent frameworks.
+
+Aegis enables developers to integrate policy-based AI tool security directly into their agent workflows with minimal effort. It provides a simple `@aegis_guard` decorator or wrapper to protect any tool call, with automatic decision requests to the Aegis Data Plane and enforcement of allow/deny/sanitize policies in real time.
+
+## Features
+
+- **Simple Decorator**: One-line `@aegis_guard` decorator for any Python function
+- **Framework Agnostic**: Core SDK works with any Python code
+- **Real-time Policy Enforcement**: Automatic allow/deny/sanitize decisions
+- **Async Support**: Full async/await compatibility
+- **Resilient**: Built-in retries, timeouts, and error handling
+
+## Installation
+
+```bash
+pip install aegislib
+```
+
+## Quick Start
+
+```python
+from aegis import AegisConfig, DecisionClient, aegis_guard
+
+# Configure the SDK
+cfg = AegisConfig(api_key="your-api-key")
+client = DecisionClient(cfg)
+
+# Guard any tool function
+@aegis_guard(client, agent_id="ops-agent", tool_name="slack.post_message")
+def post_to_slack(channel: str, text: str):
+    print(f"Sending message: {text} to {channel}")
+
+# Use normally - Aegis will decide allow/deny/sanitize automatically
+post_to_slack("#support", "Hello!")
+```
+
+## Configuration
+
+Configure via environment variables:
+
+```bash
+export AEGIS_API_KEY="your-api-key"
+export AEGIS_TIMEOUT_S="1.0"
+export AEGIS_RETRIES="2"
+export AEGIS_LOG_LEVEL="info"
+```
+
+Or programmatically:
+
+```python
+cfg = AegisConfig(
+    api_key="your-api-key",
+    timeout_s=1.0,
+    retries=2,
+    log_level="info"
+)
+```
+
+## Advanced Usage
+
+### Async Support
+
+Aegis fully supports async functions:
+
+```python
+@aegis_guard(client, agent_id="async-agent", tool_name="async_tool")
+async def fetch_data(url: str) -> dict:
+    async with httpx.AsyncClient() as http:
+        response = await http.get(url)
+        return response.json()
+
+# Use with await
+data = await fetch_data("https://api.example.com/data")
+```
+
+### Custom Configuration
+
+```python
+from aegis import AegisConfig, DecisionClient
+
+# Detailed configuration
+config = AegisConfig(
+    base_url="https://api.aegis.cloudmatos.ai",
+    api_key="your-api-key",
+    timeout_s=5.0,        # Request timeout
+    retries=3,            # Number of retries
+    log_level="debug",    # Logging level
+    debug=True,           # Enable debug output
+)
+
+client = DecisionClient(config)
+```
+
+### Decision Effects
+
+Aegis supports four decision effects:
+
+1. **Allow**: Tool execution proceeds normally
+2. **Deny**: Tool execution is blocked with `ForbiddenError`
+3. **Sanitize**: Parameters are modified before execution
+4. **Approval Needed**: Requires manual approval
+
+### Error Handling
+
+```python
+from aegis import ForbiddenError, AuthError, TransportError
+
+@aegis_guard(client, agent_id="agent", tool_name="risky_tool")
+def risky_operation(data: str) -> str:
+    return f"Processing: {data}"
+
+try:
+    result = risky_operation("sensitive data")
+except ForbiddenError as e:
+    print(f"Operation blocked: {e}")
+except AuthError as e:
+    print(f"Authentication failed: {e}")
+except TransportError as e:
+    print(f"Network error: {e}")
+```
+
+### Session Context
+
+Pass additional context with your requests:
+
+```python
+session_data = {
+    "user_id": "user-123",
+    "session_id": "sess-456",
+    "context": "production"
+}
+
+# Manually call decide with session
+response = client.decide(
+    agent_id="agent",
+    tool_name="tool",
+    params={"key": "value"},
+    session=session_data
+)
+```
+
+## API Reference
+
+### AegisConfig
+
+Configuration class for the SDK.
+
+**Parameters:**
+- `base_url` (str): Aegis Data Plane endpoint URL
+- `api_key` (str): Tenant API key for authentication
+- `timeout_s` (float): HTTP request timeout in seconds (default: 10.0)
+- `retries` (int): Number of retry attempts (default: 2)
+- `user_agent` (str): User agent string (default: "aegis-python-sdk/0.1.1")
+- `log_level` (str): Logging level (default: "info")
+- `debug` (bool): Enable debug mode (default: False)
+
+**Environment Variables:**
+- `AEGIS_BASE_URL`: Override base URL
+- `AEGIS_API_KEY`: Override API key
+- `AEGIS_TIMEOUT_S`: Override timeout
+- `AEGIS_RETRIES`: Override retries
+- `AEGIS_LOG_LEVEL`: Override log level
+- `AEGIS_DEBUG`: Override debug mode
+
+### DecisionClient
+
+Client for interacting with Aegis Decision API.
+
+**Methods:**
+- `decide(agent_id, tool_name, params, session=None)`: Request a decision
+- `close()`: Close the HTTP client
+
+### aegis_guard
+
+Decorator for guarding tool functions.
+
+**Parameters:**
+- `client` (DecisionClient): Configured client instance
+- `agent_id` (str): Agent identifier
+- `tool_name` (str, optional): Tool name (defaults to function name)
+
+**Returns:** Decorated function
+
+## Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/mrsidrdx/aegis-python-sdk.git
+cd aegis-python-sdk
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install development dependencies
+make install-dev
+```
+
+### Running Tests
+
+```bash
+# Run all tests with coverage
+make test-cov
+
+# Run tests without coverage
+make test-fast
+
+# Run specific test file
+pytest tests/test_config.py
+
+# Run with verbose output
+pytest -v
+```
+
+### Code Quality
+
+```bash
+# Run all linting checks
+make lint
+
+# Format code
+make format
+
+# Type checking
+make type-check
+
+# Security checks
+make security
+```
+
+### Building
+
+```bash
+# Build distribution packages
+make build
+
+# Check packages
+make check-dist
+```
+
+### Publishing
+
+```bash
+# Publish to Test PyPI
+make publish-test
+
+# Publish to PyPI (requires confirmation)
+make publish
+```
+
+## Testing
+
+The SDK includes comprehensive unit tests with 100% code coverage:
+
+- Configuration management (`test_config.py`)
+- Error handling (`test_errors.py`)
+- Type definitions (`test_types.py`)
+- Utility functions (`test_util.py`)
+- Logging (`test_logging.py`)
+- HTTP client (`test_http.py`)
+- Decision client (`test_decision.py`)
+- Guard decorator (`test_guard.py`)
+
+Run tests with:
+
+```bash
+pytest --cov=aegis --cov-report=html
+```
+
+View coverage report at `htmlcov/index.html`.
+
+## CI/CD
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+- **CI Workflow**: Runs tests on multiple Python versions (3.11, 3.12, 3.13) and platforms (Linux, macOS, Windows)
+- **Publish Workflow**: Automatically publishes to PyPI on release
+- **Release Workflow**: Creates GitHub releases with changelog
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/):
+
+- **MAJOR**: Incompatible API changes
+- **MINOR**: New functionality (backward compatible)
+- **PATCH**: Bug fixes (backward compatible)
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+
+- Development setup
+- Code style guidelines
+- Testing requirements
+- Pull request process
+
+## Support
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/mrsidrdx/aegis-python-sdk/issues)
+- **Email**: bithal06@gmail.com
+
+## Acknowledgments
+
+Built with ❤️ by the Aegis team and contributors.
