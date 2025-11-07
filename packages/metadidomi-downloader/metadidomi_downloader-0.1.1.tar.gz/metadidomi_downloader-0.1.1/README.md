@@ -1,0 +1,23 @@
+# Metadidomi Downloader
+
+Simple GUI app to download audio/video using yt-dlp and ffmpeg.
+
+Install dependencies locally for development:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Build and publish (local build):
+
+```powershell
+python -m pip install build
+python -m build
+# then twine upload dist/*
+```
+
+Usage after installation:
+
+```powershell
+metadidomi-downloader
+```
