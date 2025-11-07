@@ -1,0 +1,327 @@
+stages:
+  - build
+  - test
+  - deploy
+
+include:
+  # -- python
+  - component: git.ligo.org/computing/gitlab/components/python/sdist@1
+  - component: git.ligo.org/computing/gitlab/components/python/code-quality@1
+    inputs:
+      analyzer: "ruff"
+      project_dir: "src"
+      requirements: "-r requirements-lint.txt"
+  - component: git.ligo.org/computing/gitlab/components/python/type-checking@1
+    inputs:
+      project_dir: "src"
+  # -- wheels (x86_64)
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+    inputs:
+      job_name: "wheel:linux:x86_64"
+      pure_python: false
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+      image: "containers.ligo.org/patrick.godwin/framecpp-manylinux/manylinux_2_34_x86_64:2.9.3"
+  # -- wheels (aarch64)
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+    inputs:
+      job_name: "wheel:linux:aarch64"
+      pure_python: false
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+      image: "containers.ligo.org/patrick.godwin/framecpp-manylinux/manylinux_2_34_aarch64:2.9.3"
+      runner_tags:
+        - aarch64
+  # -- wheels (macOS x86_64)
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+    inputs:
+      job_name: "wheel:macos:x86_64"
+      pure_python: false
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+      runner_tags:
+        - macos_ventura_x86_64
+  # -- wheels (macOS arm64)
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+    inputs:
+      job_name: "wheel:macos:arm64"
+      pure_python: false
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+      runner_tags:
+        - macos_sequoia_arm64
+  # -- test x86_64 wheels
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      job_name: "test:linux:x86_64"
+      install_target: "*.whl"
+      install_extra: "test"
+      pytest_options: "--pyargs gwframe.tests -v --cov=gwframe"
+      coverage: false  # Disable per-arch coverage job; use unified coverage job below
+      coverage_rcfile: "${CI_PROJECT_DIR}/pyproject.toml"
+      extra_test_commands:
+        - "cp -f .coverage* coverage.xml junit.xml ${CI_PROJECT_DIR}/ 2>/dev/null || true"
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+  # -- test aarch64 wheels
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      job_name: "test:linux:aarch64"
+      install_target: "*.whl"
+      install_extra: "test"
+      pytest_options: "--pyargs gwframe.tests -v --cov=gwframe"
+      coverage: false  # Disable per-arch coverage job; use unified coverage job below
+      coverage_rcfile: "${CI_PROJECT_DIR}/pyproject.toml"
+      extra_test_commands:
+        - "cp -f .coverage* coverage.xml junit.xml ${CI_PROJECT_DIR}/ 2>/dev/null || true"
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+        - "3.13"
+  # -- test macOS x86_64 wheels
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      job_name: "test:macos:x86_64"
+      python: "python${PYTHON_VERSION}"
+      install_target: "*.whl"
+      install_extra: "test"
+      pytest_options: "--pyargs gwframe.tests -v --cov=gwframe"
+      coverage: false  # Disable per-arch coverage job; use unified coverage job below
+      coverage_rcfile: "${CI_PROJECT_DIR}/pyproject.toml"
+      extra_test_commands:
+        - "cp -f .coverage* coverage.xml junit.xml ${CI_PROJECT_DIR}/ 2>/dev/null || true"
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+  # -- test macOS arm64 wheels
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      job_name: "test:macos:arm64"
+      python: "python${PYTHON_VERSION}"
+      install_target: "*.whl"
+      install_extra: "test"
+      pytest_options: "--pyargs gwframe.tests -v --cov=gwframe"
+      coverage: false  # Disable per-arch coverage job; use unified coverage job below
+      coverage_rcfile: "${CI_PROJECT_DIR}/pyproject.toml"
+      extra_test_commands:
+        - "cp -f .coverage* coverage.xml junit.xml ${CI_PROJECT_DIR}/ 2>/dev/null || true"
+      python_versions:
+        - "3.10"
+        - "3.11"
+        - "3.12"
+  # -- unified coverage (combines all architectures)
+  - component: git.ligo.org/computing/gitlab/components/python/coverage@1
+    inputs:
+      coverage_rcfile: "pyproject.toml"
+  # -- publish to PyPI
+  - component: git.ligo.org/computing/gitlab/components/python/publish@1
+    inputs:
+      files: "gwframe-{*.tar.*,*.whl}"
+  # -- docs
+  - component: git.ligo.org/computing/gitlab/components/mkdocs/build@1
+    inputs:
+      image: "python:3.12"
+      requirements: "-r requirements-docs.txt"
+  - component: git.ligo.org/computing/gitlab/components/mkdocs/pages@1
+    inputs:
+      pages_when: "default"
+
+
+# -- customizations
+.test-wheel: &test-wheel
+  before_script:
+    - CP_VERSION=cp$(echo $PYTHON_VERSION | tr -d '.')
+    - WORKING_DIRECTORY="$(mktemp -d)"
+    - cp gwframe-*-${CP_VERSION}-*.whl "${WORKING_DIRECTORY}/"
+    - cd "${WORKING_DIRECTORY}"
+  after_script:
+    - cd "${CI_PROJECT_DIR}"
+    - rm -rf "${WORKING_DIRECTORY}"
+  variables:
+    GWFRAME_TEST_DATA_DIR: "${CI_PROJECT_DIR}/src/gwframe/tests/data"
+
+.test-wheel-macos: &test-wheel-macos
+  <<: *test-wheel
+  before_script:
+    # Source MacPorts to make python3.x available in PATH
+    - source /opt/local/share/macports/setupenv.bash
+    # Run standard test-wheel setup
+    - CP_VERSION=cp$(echo $PYTHON_VERSION | tr -d '.')
+    - WORKING_DIRECTORY="$(mktemp -d)"
+    - cp gwframe-*-${CP_VERSION}-*.whl "${WORKING_DIRECTORY}/"
+    - cd "${WORKING_DIRECTORY}"
+
+ruff:
+  needs:
+    - requirements
+
+mkdocs:
+  needs:
+    - requirements
+    - wheel:linux:x86_64
+  before_script:
+    - pip install gwframe-*-cp312-*.whl
+
+test:linux:x86_64:
+  <<: *test-wheel
+  needs:
+    - wheel:linux:x86_64
+
+test:linux:aarch64:
+  <<: *test-wheel
+  tags:
+    - aarch64
+  needs:
+    - wheel:linux:aarch64
+
+# -- macOS build configuration
+.macos-env: &macos-env
+  CC: "clang"
+  CXX: "clang++"
+  MACOS_BOOST_ROOT: "/opt/local/libexec/boost/1.87"
+  CMAKE_IGNORE_PATH: "/opt/homebrew"
+  BOOST_ROOT: "${MACOS_BOOST_ROOT}"
+  Boost_ROOT: "${MACOS_BOOST_ROOT}"
+
+.macos-framecpp-build-vars: &macos-framecpp-build-vars
+  CMAKE_PREFIX_PATH: "${MACOS_BOOST_ROOT}:/opt/local"
+
+.macos-wheel-build-vars: &macos-wheel-build-vars
+  PKG_CONFIG_PATH: "/tmp/framecpp/lib/pkgconfig:/tmp/framecpp/lib64/pkgconfig:/tmp/framecpp/share/pkgconfig"
+  CMAKE_PREFIX_PATH: "${MACOS_BOOST_ROOT}:/opt/local:/tmp/framecpp"
+  LD_LIBRARY_PATH: "/tmp/framecpp/lib:/tmp/framecpp/lib64:${MACOS_BOOST_ROOT}/lib"
+  DYLD_LIBRARY_PATH: "/tmp/framecpp/lib:/tmp/framecpp/lib64:${MACOS_BOOST_ROOT}/lib"
+
+# -- macOS framecpp build jobs
+# Build framecpp dependencies for each architecture
+# - Cache intermediate build artifacts (ldas_build/) for faster rebuilds
+# - Save final installation (ldas_install/) as artifacts for wheel jobs
+.build-framecpp-macos: &build-framecpp-macos
+  stage: build
+  before_script:
+    - source /opt/local/share/macports/setupenv.bash
+    # Clean any existing installation at target path
+    - rm -rf /tmp/framecpp
+    # Clean CMake cache files from cached build directory to avoid stale paths
+    - find ldas_build -name "CMakeCache.txt" -delete 2>/dev/null || true
+    - find ldas_build -name "cmake_install.cmake" -delete 2>/dev/null || true
+  script:
+    - BUILD_DIR=$(pwd)/ldas_build INSTALL_PREFIX=/tmp/framecpp bash tools/build_framecpp.sh
+    # Copy installation to project dir for artifacts
+    - cp -r /tmp/framecpp ldas_install
+  cache:
+    key:
+      files:
+        - tools/build_framecpp.sh
+        - tools/patches/*
+      prefix: ${CI_JOB_NAME_SLUG}
+    paths:
+      - ldas_build/
+    policy: pull-push
+  artifacts:
+    paths:
+      - ldas_install/
+    expire_in: "1 day"
+
+build-framecpp:macos:x86_64:
+  <<: *build-framecpp-macos
+  tags:
+    - macos_ventura_x86_64
+  variables:
+    <<: [*macos-env, *macos-framecpp-build-vars]
+
+build-framecpp:macos:arm64:
+  <<: *build-framecpp-macos
+  tags:
+    - macos_sequoia_arm64
+  variables:
+    <<: [*macos-env, *macos-framecpp-build-vars]
+
+# -- Shared wheel build variables
+# Skip LFS file downloads during wheel builds to prevent setuptools-scm from
+# detecting workspace as dirty when LFS smudge fails inconsistently
+.wheel-vars: &wheel-vars
+  GIT_LFS_SKIP_SMUDGE: 1
+
+# -- Linux wheel build jobs (extend component jobs)
+wheel:linux:x86_64:
+  variables:
+    <<: *wheel-vars
+
+wheel:linux:aarch64:
+  variables:
+    <<: *wheel-vars
+
+# -- macOS wheel build jobs
+# Use pre-built framecpp from artifacts
+.build-macos-wheel: &build-macos-wheel
+  before_script:
+    - source /opt/local/share/macports/setupenv.bash
+    # Move artifacts to fixed location to avoid path patching
+    - |
+      if [ -d "ldas_install" ]; then
+        FRAMECPP_PREFIX="/tmp/framecpp"
+        rm -rf "${FRAMECPP_PREFIX}"
+        mv ldas_install "${FRAMECPP_PREFIX}"
+      fi
+
+wheel:macos:x86_64:
+  <<: *build-macos-wheel
+  variables:
+    <<: [*macos-env, *macos-wheel-build-vars, *wheel-vars]
+  needs:
+    - build-framecpp:macos:x86_64
+
+wheel:macos:arm64:
+  <<: *build-macos-wheel
+  variables:
+    <<: [*macos-env, *macos-wheel-build-vars, *wheel-vars]
+  needs:
+    - build-framecpp:macos:arm64
+
+test:macos:x86_64:
+  <<: *test-wheel-macos
+  tags:
+    - macos_ventura_x86_64
+  needs:
+    - wheel:macos:x86_64
+
+test:macos:arm64:
+  <<: *test-wheel-macos
+  tags:
+    - macos_sequoia_arm64
+  needs:
+    - wheel:macos:arm64
+
+# -- requirements
+requirements:
+  stage: build
+  image: python:3.12
+  script:
+    - python -m pip install pipx
+    - pipx ensurepath
+    - source ~/.bashrc
+    - pipx install hatch
+    - hatch dep show requirements > requirements.txt
+    - hatch dep show requirements --feature docs > requirements-docs.txt
+    - hatch dep show requirements --feature lint > requirements-lint.txt
+  artifacts:
+    paths:
+      - requirements*.txt

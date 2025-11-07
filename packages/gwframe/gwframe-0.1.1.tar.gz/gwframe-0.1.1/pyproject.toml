@@ -1,0 +1,231 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0.0", "setuptools-scm>=8.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "gwframe"
+dynamic = ["version"]
+description = "High-level Python library to work with gravitational-wave frame (GWF) files, based on framecpp"
+readme = "README.md"
+license = {text = "GPL-2.0-or-later"}
+authors = [
+    {name = "Patrick Godwin", email = "patrick.godwin@ligo.org"}
+]
+maintainers = [
+    {name = "Patrick Godwin", email = "patrick.godwin@ligo.org"}
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+    "Natural Language :: English",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+cli = [
+    "typer>=0.10.0",
+    "rich>=13.0.0",
+]
+test = [
+    "gwframe[cli]",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+docs = [
+    "mkdocs>=1.3",
+    "mkdocs-coverage>=0.2",
+    "mkdocs-gen-files>=0.3",
+    "mkdocs-literate-nav>=0.4",
+    "mkdocs-material-igwn",
+    "mkdocs-section-index>=0.3",
+    "mkdocstrings[python]",
+    "markdown-callouts>=0.2",
+    "markdown-exec>=0.5",
+    "toml>=0.10",
+]
+lint = [
+    "mypy>=1.0",
+    "mypy-extensions",
+    "pip",  # mypy requires pip to install type stubs
+    "ruff>=0.1.0",
+]
+dev = [
+    "gwframe[test]",
+    "gwframe[lint]",
+    "gwframe[docs]",
+]
+
+[project.scripts]
+gwframe = "gwframe.cli:main"
+
+[project.urls]
+Homepage = "https://git.ligo.org/patrick.godwin/gwframe"
+Repository = "https://git.ligo.org/patrick.godwin/gwframe"
+Documentation = "https://git.ligo.org/patrick.godwin/gwframe"
+"Issue Tracker" = "https://git.ligo.org/patrick.godwin/gwframe/issues"
+
+[tool.scikit-build]
+# Minimum required CMake version
+cmake.minimum-version = "3.15"
+
+# Verbose output for debugging
+cmake.verbose = true
+
+# Dynamic metadata from setuptools_scm
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+sdist.include = ["src/gwframe/_version.py"]
+
+# Wheel configuration
+# For binary wheels: uses system frameCPP + auditwheel/delocate to bundle libraries
+# For sdist: users install system frameCPP separately
+wheel.packages = ["src/gwframe"]
+
+# Exclude test data from wheels to save space (4MB test file)
+# Test data is still included in sdist for source builds
+wheel.exclude = ["gwframe/tests/data/*.gwf"]
+
+[tool.scikit-build.cmake.define]
+# By default, use system-installed frameCPP
+# This works for both:
+#   - Binary wheels (libraries bundled via auditwheel/delocate post-build)
+#   - Source installs (users have system frameCPP installed)
+USE_SYSTEM_FRAMECPP = "ON"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["src/gwframe/tests"]
+python_files = ["test_*.py"]
+addopts = "--import-mode=importlib"
+
+[tool.coverage.run]
+source = ["gwframe"]
+omit = [
+    "*/gwframe/tests/*",
+    "*/_version.py",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/gwframe",
+    "*/site-packages/gwframe",
+]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+omit = [
+    "_version.py",
+    "*/gwframe/tests/*",
+]
+exclude_lines = [
+    "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "docs",
+    "tests",
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # pyflakes
+    "F",
+    # isort
+    "I",
+    # pep8-naming
+    "N",
+    # flake8-bandit
+    "S",
+    # flake8-blind-except
+    "BLE",
+    # flake8-boolean-trap
+    "FBT",
+    # flake8-bugbear
+    "B",
+    # flake8-builtins
+    "A",
+    # flake8-comprehensions
+    "C4",
+    # flake8-datetimez
+    "DTZ",
+    # flake8-errmsg
+    "EM",
+    # flake8-executable
+    "EXE",
+    # flake8-future-annotations
+    "FA",
+    # flake8-logging
+    "LOG",
+    # flake8-logging-format
+    "G",
+    # flake8-pytest-style
+    "PT",
+    # flake8-return
+    "RET",
+    # flake8-self
+    "SLF",
+    # flake8-simplify
+    "SIM",
+    # flake8-slots
+    "SLOT",
+    # flake8-type-checking
+    "TCH",
+    # tryceratops
+    "TRY",
+    # ruff-specific rules
+    "RUF",
+]
+ignore = [
+    "E203",  # flags whitespace on slicing
+    "S101",  # assert statements
+    "B905",  # strict zip
+    "C414",  # unnecessary double-cast
+    "PT011",  # pytest generic raises
+    "PT018",  # composite assertions
+]
+exclude = ["_version.py"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"src/gwframe/tests/*" = [
+    "S101",    # assert statements
+    "SLF001",  # private member access (testing internals)
+]
+"src/gwframe/cli.py" = [
+    "B008",    # function calls in argument defaults (typer pattern)
+    "FBT001",  # boolean-typed positional argument (CLI flags)
+    "FBT002",  # boolean default positional argument (CLI flags)
+    "FBT003",  # boolean positional value (CLI flags)
+    "TC003",   # some imports needed by typer at runtime, not just for type checking
+]
+
+[tool.setuptools_scm]
+write_to = "src/gwframe/_version.py"
