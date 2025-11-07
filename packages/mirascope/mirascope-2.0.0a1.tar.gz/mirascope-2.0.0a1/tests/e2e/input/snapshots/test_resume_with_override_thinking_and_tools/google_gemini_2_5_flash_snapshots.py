@@ -1,0 +1,112 @@
+from inline_snapshot import snapshot
+
+from mirascope.llm import (
+    AssistantMessage,
+    Text,
+    Thought,
+    ToolCall,
+    ToolOutput,
+    UserMessage,
+)
+
+test_snapshot = snapshot(
+    {
+        "response": {
+            "provider": "google",
+            "model_id": "gemini-2.5-flash",
+            "params": {"thinking": False},
+            "finish_reason": None,
+            "messages": [
+                UserMessage(content=[Text(text="What is the 100th fibonacci number?")]),
+                AssistantMessage(
+                    content=[
+                        Thought(
+                            thought='The user is asking for the 100th Fibonacci number. I have access to a function called "compute_fib" that can compute the nth Fibonacci number (1-indexed). The user has provided the specific value n=100, so I have all the required parameters to make the function call.'
+                        ),
+                        ToolCall(
+                            id="toolu_01MnLnuRr9SYqk4Nt4zvBopq",
+                            name="compute_fib",
+                            args='{"n": 100}',
+                        ),
+                    ],
+                    provider="anthropic",
+                    model_id="claude-sonnet-4-0",
+                    raw_message={
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "signature": "ErQDCkYICRgCKkC1U5aLDccw6hfKtcWrClCTiZ6M12W9sfSIILD3F5gCggCOaELdyMLcXBM4QIU+YK9MZn5ZMu5v1Rx8ibkKyrbXEgxN0vJibplcGc6LU58aDI1emmpMRP8L7LzYaiIwmx+BjJtfz6CmWato1sgn/SInbtCLCoMAWXe51nSsFPtvUqF4qeOxliYQQjcxG6HOKpsC+PFTKFloh3uZJU18TX8i9GvZOe6UvoO10NdIZflTrRoBEZIPkGEh0X/8L2qD/ZyWKM+u2N0V7DzcEy+RA0Bczo+pzYmTJQo/xYrg+tOon3aboix8zWZvzolQatvxG9YIUhK8NtPTsFpOOFHmcCb2/Ap+piNfT3AWzKTy3h23Daaz6srxOuaHaW03t3vS4x24pMMrIleTbUcKFa7e+Uh7dSmrwZO5zBxo6RjauZvz5fV/Hz6LOYGHPC8uQ6fSAOgA1wQaRNvcdVHZVdvbWAxfhXoKCEOIRQB1KrqNa/sbo+ru6uXPeBsetHrRmLO8ZU3ZghgLpSrKKWvrdG01frZVS6+fgtdr3alTVsIhyIxXichJxe38IzvsTJyV2RgB",
+                                "thinking": 'The user is asking for the 100th Fibonacci number. I have access to a function called "compute_fib" that can compute the nth Fibonacci number (1-indexed). The user has provided the specific value n=100, so I have all the required parameters to make the function call.',
+                                "type": "thinking",
+                            },
+                            {
+                                "id": "toolu_01MnLnuRr9SYqk4Nt4zvBopq",
+                                "input": {"n": 100},
+                                "name": "compute_fib",
+                                "type": "tool_use",
+                            },
+                        ],
+                    },
+                ),
+                UserMessage(
+                    content=[
+                        ToolOutput(
+                            id="toolu_01MnLnuRr9SYqk4Nt4zvBopq",
+                            name="compute_fib",
+                            value="218922995834555169026",
+                        )
+                    ]
+                ),
+                AssistantMessage(
+                    content=[
+                        Text(
+                            text="The 100th Fibonacci number is 218,922,995,834,555,169,026."
+                        )
+                    ],
+                    provider="google",
+                    model_id="gemini-2.5-flash",
+                    raw_message={
+                        "parts": [
+                            {
+                                "video_metadata": None,
+                                "thought": None,
+                                "inline_data": None,
+                                "file_data": None,
+                                "thought_signature": None,
+                                "code_execution_result": None,
+                                "executable_code": None,
+                                "function_call": None,
+                                "function_response": None,
+                                "text": "The 100th Fibonacci number is 218,922,995,834,555,169,026.",
+                            }
+                        ],
+                        "role": "model",
+                    },
+                ),
+            ],
+            "format": None,
+            "tools": [
+                {
+                    "name": "compute_fib",
+                    "description": "Compute the nth Fibonacci number (1-indexed).",
+                    "parameters": """\
+{
+  "properties": {
+    "n": {
+      "title": "N",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "n"
+  ],
+  "additionalProperties": false,
+  "defs": null
+}\
+""",
+                    "strict": False,
+                }
+            ],
+        }
+    }
+)
