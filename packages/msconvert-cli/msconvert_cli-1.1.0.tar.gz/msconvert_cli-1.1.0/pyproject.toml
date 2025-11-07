@@ -1,0 +1,152 @@
+[project]
+name = "msconvert-cli"
+dynamic = ["version"]
+description = "Python wrapper for ProteoWizard msconvert with Docker support and preset configs"
+authors = [{ name = "Patrick Garrett", email = "pgarrett@scripps.edu" }]
+readme = "README.md"
+keywords = ['mass-spectrometry', 'proteomics', 'msconvert', 'proteowizard', 'docker']
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "typing-extensions>=4.0.0",
+]
+
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.scripts]
+mscli = "msconvert_cli.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/pgarrett-scripps/msconvert-cli"
+Repository = "https://github.com/pgarrett-scripps/msconvert-cli"
+Documentation = "https://pgarrett-scripps.github.io/msconvert-cli/"
+Issues = "https://github.com/pgarrett-scripps/msconvert-cli/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.2.0",
+    "pre-commit>=2.20.0",
+    "tox-uv>=1.11.3",
+    "mypy>=0.991",
+    "ruff>=0.11.5",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "msconvert-cli",  # This makes uv sync install it in editable mode
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/msconvert_cli/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/msconvert_cli"]
+
+
+[tool.mypy]
+files = ["src"]
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["msconvert_cli"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if False:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+select = [
+    # flake8-2020
+    "YTT",
+    # flake8-bandit
+    "S",
+    # flake8-bugbear
+    "B",
+    # flake8-builtins
+    "A",
+    # flake8-comprehensions
+    "C4",
+    # flake8-debugger
+    "T10",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # mccabe
+    "C90",
+    # pycodestyle
+    "E", "W",
+    # pyflakes
+    "F",
+    # pygrep-hooks
+    "PGH",
+    # pyupgrade
+    "UP",
+    # ruff
+    "RUF",
+    # tryceratops
+    "TRY",
+]
+ignore = [
+    # LineTooLong
+    "E501",
+    # DoNotAssignLambda
+    "E731",
+    # subprocess with untrusted input - we control the Docker command
+    "S603",
+    # logging.exception - we want more control over error logging
+    "TRY400",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+"src/msconvert_cli/cli.py" = ["C901"]  # cli function complexity is acceptable
+"src/msconvert_cli/converter.py" = ["C901"]  # _run_single_batch complexity is acceptable for error handling
+
+[tool.ruff.format]
+preview = true
