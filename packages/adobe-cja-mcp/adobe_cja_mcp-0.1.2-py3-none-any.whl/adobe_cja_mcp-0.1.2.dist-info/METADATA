@@ -1,0 +1,420 @@
+Metadata-Version: 2.4
+Name: adobe-cja-mcp
+Version: 0.1.2
+Summary: Model Context Protocol server for Adobe Customer Journey Analytics
+Author-email: Mark Hilton <mark.hilton@bhn.com>
+License: MIT
+Project-URL: Homepage, https://github.com/markhilton/adobe-cja-mcp
+Project-URL: Documentation, https://github.com/markhilton/adobe-cja-mcp#readme
+Project-URL: Repository, https://github.com/markhilton/adobe-cja-mcp
+Project-URL: Issues, https://github.com/markhilton/adobe-cja-mcp/issues
+Keywords: adobe,cja,customer-journey-analytics,mcp,model-context-protocol,analytics
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydantic-settings>=2.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.12.0; extra == "dev"
+Requires-Dist: black>=24.0.0; extra == "dev"
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Requires-Dist: mypy>=1.8.0; extra == "dev"
+Dynamic: license-file
+
+# Adobe Customer Journey Analytics MCP Server
+
+[![PyPI version](https://badge.fury.io/py/adobe-cja-mcp.svg)](https://pypi.org/project/adobe-cja-mcp/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Model Context Protocol (MCP) server for Adobe Customer Journey Analytics (CJA), enabling AI-powered analytics queries through Claude and other MCP clients.
+
+## ⚡ Quick Start (Simplest Setup)
+
+**No repository cloning required!** Users can run this MCP server with just 2 steps:
+
+### 1. Install `uv` (Python package manager)
+
+```bash
+# macOS/Linux
+brew install uv
+
+# Or with curl
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### 2. Configure Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "Adobe CJA": {
+      "command": "uvx",
+      "args": ["adobe-cja-mcp"],
+      "env": {
+        "ADOBE_CLIENT_ID": "your_client_id_here",
+        "ADOBE_CLIENT_SECRET": "your_client_secret_here",
+        "ADOBE_ORG_ID": "your_org_id@AdobeOrg",
+        "ADOBE_DATA_VIEW_ID": "dv_your_dataview_id"
+      }
+    }
+  }
+}
+```
+
+**That's it!**
+
+Restart Claude Desktop and `uvx` will automatically download and run the MCP server from PyPI - just like `npx` for Node.js!
+
+---
+
+## Overview
+
+This MCP server provides tools for querying Adobe CJA data, including:
+
+- Running analytics reports with dimensions and metrics
+- Multi-dimensional breakdown analysis
+- Time-series trend analysis at various granularities
+- Searching and filtering dimension values
+- Listing available dimensions and metrics
+- Data view configuration access
+
+## Features
+
+**Core Reporting Tools (MVP):**
+
+- Run ranked reports with dimensions and metrics
+- Get top N items for any dimension
+- List available dimensions and metrics
+- Access data view configuration
+
+**Advanced Reporting:**
+
+- **Breakdown Reports**: Multi-dimensional analysis (e.g., pages by device type)
+- **Trended Reports**: Time-series analysis with hourly/daily/weekly/monthly granularity
+- **Dimension Search**: Find specific dimension values (pages, products, campaigns)
+- **Segment Support**: Filter reports with segment IDs
+
+## Adobe CJA API Permissions
+
+### Required Permissions Scope
+
+For this MCP server to function, your Adobe API credentials (OAuth 2.0 Server-to-Server) **must** have the following permissions granted in Adobe Admin Console.
+
+### Authentication Scopes
+
+Your API credentials require these OAuth scopes:
+
+```
+openid
+AdobeID
+read_organizations
+additional_info.projectedProductContext
+cja.reporting         # CRITICAL - Required for all reporting operations
+cja.workspace         # Required for workspace objects (projects, filters, etc.)
+```
+
+### Critical Permissions (Required for Core Functionality)
+
+Without these permissions, the MCP server **cannot perform analytics queries**:
+
+#### 1. CJA Reporting API - Ranked Reports
+
+- **API Endpoint**: `POST https://cja.adobe.io/reports`
+- **Permission**: CJA Reporting API Access
+- **Required For**:
+  - Running analytical reports with dimensions and metrics
+  - Querying website performance data (sessions, page views, conversions)
+  - Generating attribution analysis
+  - Creating breakdown reports
+- **MCP Tools Blocked Without Permission**:
+  - `cja_run_report` - Main reporting tool
+  - `cja_get_top_items` - Top performers analysis
+  - `cja_get_trended_report` - Time-series analysis
+  - `cja_get_breakdown_report` - Multi-dimensional breakdowns
+  - `cja_get_sessions_data` - Session analytics
+  - `cja_get_conversions_data` - Conversion tracking
+  - `cja_get_attribution_analysis` - Attribution modeling
+  - `cja_get_funnel_analysis` - Funnel analysis
+
+#### 2. CJA Reporting API - Top Items
+
+- **API Endpoint**: `GET https://cja.adobe.io/reports/topItems`
+- **Permission**: CJA Reporting API Access
+- **Required For**:
+  - Ranking dimension items by metrics
+  - Finding top pages, products, campaigns
+- **MCP Tools Blocked Without Permission**:
+  - `cja_get_top_items` (alternative implementation)
+
+### Working Permissions (Read-Only Access)
+
+These permissions are typically granted by default for read-only CJA API access and should already be available:
+
+1. **GET `/data/dataviews/{id}/dimensions`** - List available dimensions
+2. **GET `/data/dataviews/{id}/metrics`** - List available metrics
+3. **GET `/data/dataviews/{id}`** - Get data view configuration details
+4. **GET `/calculatedmetrics`** - List calculated metrics
+5. **GET `/filters`** - List filters/segments
+6. **GET `/dateranges`** - List date ranges
+7. **GET `/annotations`** - List annotations
+8. **GET `/projects`** - List Analysis Workspace projects
+9. **GET `/data/connections`** - List data connections
+
+### Optional Permissions (Enhanced Features)
+
+These permissions enable additional features but are not required for basic operation:
+
+#### Individual Dimension/Metric Details
+
+- **Endpoints**:
+  - `GET /data/dataviews/{id}/dimensions/{dimId}`
+  - `GET /data/dataviews/{id}/metrics/{metricId}`
+- **Benefit**: Get detailed metadata for specific dimensions/metrics
+- **Workaround**: Use list endpoints instead
+
+#### Filter Validation
+
+- **Endpoint**: `POST /filters/validate`
+- **Benefit**: Validate filter definitions before use
+- **Workaround**: Test filters directly in reports
+
+#### List All Data Views
+
+- **Endpoint**: `GET /dataviews`
+- **Benefit**: Discover all available data views
+- **Workaround**: Use configured data view ID from environment variables
+
+## Setting Up Permissions in Adobe Admin Console
+
+### Step 1: Navigate to API Credentials
+
+1. Log in to [Adobe Admin Console](https://adminconsole.adobe.com/)
+2. Navigate to **Products** → **Customer Journey Analytics**
+3. Click on **API Credentials**
+4. Select your OAuth Server-to-Server credential (Client ID)
+
+### Step 2: Add Product Profile
+
+1. Click **Add Product Profile**
+2. Select a profile that includes **CJA Reporting API Access**
+3. Ensure the profile has the following permissions:
+   - **Reporting API**: Full access to POST /reports and GET /reports/topItems
+   - **Workspace API**: Access to filters, calculated metrics, projects
+   - **Data Views**: Read access to configured data views
+
+### Step 3: Verify OAuth Scopes
+
+In the API credential configuration, verify these scopes are enabled:
+
+- `openid`
+- `AdobeID`
+- `read_organizations`
+- `additional_info.projectedProductContext`
+- `cja.reporting` ← **CRITICAL**
+- `cja.workspace` ← **CRITICAL**
+
+### Step 4: Generate New Credentials (if needed)
+
+If updating an existing credential doesn't enable reporting access:
+
+1. Create a new OAuth Server-to-Server credential
+2. Add CJA API as a service
+3. Select a Product Profile with full Reporting API access
+4. Copy the new Client ID and Client Secret to your `.env` file
+
+## Example Queries and Expected Results
+
+### Session Analysis
+
+**Query:**
+
+```
+Show me session count in a bar chart for the last 30 days
+```
+
+**What Happens:**
+
+1. Claude identifies you want session metrics over time
+2. Calls `cja_get_trended_report` or `cja_run_report` with:
+   - Metric: `sessions` or `visits`
+   - Date range: Last 30 days
+   - Granularity: `day`
+3. Formats results as a text-based bar chart or table
+4. Returns daily session counts with visualization
+
+**Expected Output:**
+
+```
+Session Count - Last 30 Days
+
+Oct 1  ████████████████ 1,245
+Oct 2  ██████████████ 1,108
+Oct 3  ███████████████ 1,189
+...
+Oct 30 ████████████████████ 1,523
+
+Total Sessions: 38,420
+Average: 1,281 sessions/day
+Peak: Oct 30 (1,523 sessions)
+```
+
+### Top Pages Analysis
+
+**Query:**
+
+```
+What are the top 10 pages by page views this month?
+```
+
+**What Happens:**
+
+1. Calls `cja_get_top_items` with:
+   - Dimension: `page` or `pageName`
+   - Metric: `pageviews`
+   - Date range: This month
+   - Limit: 10
+2. Returns ranked list of pages
+
+**Expected Output:**
+
+```
+Top 10 Pages by Page Views - October 2025
+
+1. /home                    15,234 views
+2. /products                 8,901 views
+3. /about                    6,543 views
+4. /contact                  4,321 views
+5. /blog/article-123         3,987 views
+6. /pricing                  3,456 views
+7. /features                 2,890 views
+8. /blog                     2,543 views
+9. /documentation            2,234 views
+10. /support                 1,987 views
+
+Total: 52,096 page views
+```
+
+### Conversion Funnel
+
+**Query:**
+
+```
+Show me the checkout funnel conversion rates for last week
+```
+
+**What Happens:**
+
+1. Calls `cja_get_funnel_analysis` with predefined checkout steps
+2. Or calls `cja_run_report` multiple times for each funnel step
+3. Calculates drop-off rates between steps
+
+**Expected Output:**
+
+```
+Checkout Funnel - Last 7 Days
+
+Step 1: Product Page     → 10,000 visitors (100.0%)
+         ↓ 45.0%
+Step 2: Add to Cart      →  4,500 visitors ( 45.0%)
+         ↓ 66.7%
+Step 3: Checkout Started →  3,000 visitors ( 30.0%)
+         ↓ 50.0%
+Step 4: Payment Info     →  1,500 visitors ( 15.0%)
+         ↓ 80.0%
+Step 5: Purchase         →  1,200 visitors ( 12.0%)
+
+Overall Conversion Rate: 12.0%
+Biggest Drop-off: Product Page → Add to Cart (55%)
+```
+
+### Marketing Attribution
+
+**Query:**
+
+```
+Show me first-touch attribution for conversions in the last 14 days
+```
+
+**What Happens:**
+
+1. Calls `cja_get_attribution_analysis` with:
+   - Attribution model: `first_touch`
+   - Success event: `orders` or `conversions`
+   - Date range: Last 14 days
+2. Returns marketing channel credit distribution
+
+**Expected Output:**
+
+```
+First-Touch Attribution - Last 14 Days
+Total Conversions: 450
+
+Channel              Conversions    % of Total    Revenue
+──────────────────────────────────────────────────────────
+Organic Search            180         40.0%      $45,000
+Paid Search               135         30.0%      $33,750
+Direct                     68         15.1%      $17,000
+Email                      45         10.0%      $11,250
+Social Media               22          4.9%       $5,500
+
+Top First-Touch Channel: Organic Search
+Highest Revenue/Conversion: Paid Search ($250 avg)
+```
+
+## Available MCP Tools
+
+### Core Reporting
+
+- `cja_run_report` - Run custom analytics reports
+- `cja_get_top_items` - Get top-performing items for a dimension
+- `cja_get_trended_report` - Get time-series trends
+- `cja_get_breakdown_report` - Get multi-dimensional breakdowns
+
+### Metadata
+
+- `cja_list_dimensions` - List available dimensions
+- `cja_list_metrics` - List available metrics
+- `cja_list_calculated_metrics` - List calculated metrics
+- `cja_list_filters` - List filters/segments
+- `cja_list_date_ranges` - List predefined date ranges
+- `cja_get_dataview_info` - Get data view configuration
+
+### Advanced Analytics
+
+- `cja_search_dimension_items` - Search for dimension values
+- `cja_get_sessions_data` - Analyze session metrics
+- `cja_get_conversions_data` - Analyze conversion events
+- `cja_get_attribution_analysis` - Run attribution models
+- `cja_get_funnel_analysis` - Analyze conversion funnels
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## Support
+
+For issues or questions:
+
+- Adobe CJA API Documentation: https://developer.adobe.com/cja-apis/docs/
+- Adobe Developer Console: https://developer.adobe.com/console
+- Model Context Protocol: https://modelcontextprotocol.io/
