@@ -1,0 +1,70 @@
+# Cartalyzer
+
+**Cartalyzer** is a Python-based tool designed to streamline data ingestion, transformation, and synchronization for multi-source e-commerce datasets. It provides a flexible and extensible pipeline structure that enables developers to automate complex ETL (Extract, Transform, Load) operations with minimal setup.
+
+---
+
+## 🧩 Project Purpose
+
+The goal of **Cartalyzer** is to simplify and standardize how product data is processed across different vendors and platforms.
+It ensures:
+
+* Consistent data formats across all sources
+* Reliable handling of pipeline configuration and package data
+* Easy integration into other Python or CLI-based workflows
+
+This makes it ideal for developers working on data automation, analytics pipelines, or marketplace integrations.
+
+---
+
+## ⚙️ Installation
+
+You can install the package directly from PyPI:
+
+```bash
+pip install cartalyzer
+```
+
+---
+
+## 🚀 Usage Guide
+
+Once installed, you can run the tool from your command line using the provided entry point:
+
+```bash
+cartalyzer
+```
+
+---
+
+## 🧠 Handling the Package Data (.cfg file)
+
+Python packages often face a challenge when trying to access data files (like `.cfg` configuration files) included within the package — especially when installed via `pip`.
+
+To solve this, **Cartalyzer** uses the `importlib.resources` module (introduced in Python 3.9+) for safely reading data files bundled within the package.
+
+Example:
+
+```python
+from importlib import resources
+
+cfg_path = resources.files('pipeline').joinpath('pipeline.cfg')
+with cfg_path.open("r") as f:
+    config = configparser.ConfigParser()
+    config.read_file(f)
+```
+
+This approach:
+
+* Works both in development and after installation from PyPI.
+* Avoids deprecated methods like `pkg_resources` and `importlib.resources.open_text()`.
+* Ensures compatibility with modern Python packaging standards.
+
+---
+
+## 🧾 License
+
+This project is licensed under the **MIT License**.
+
+
+
