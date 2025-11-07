@@ -1,0 +1,98 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "signifikante"
+version = "0.1.0"
+description = "Scalable gene regulatory network inference using tree-based ensemble regressors with p-values"
+readme = "README.rst"
+requires-python = ">=3.10,<3.14"
+
+
+authors = [
+    { name="Anne Hartebrodt", email="anne.hartebrodt@fau.de" },
+    { name="Fabian Woller", email="fabian.woller@fau.de" },
+    { name="Paul Martini", email="paul.martini@fau.de" },
+	{ name = "Thomas Moerman", email = "thomas.moerman@gmail.com" },
+]
+
+license = { text = "GNU General Public License v3 (GPLv3)" }
+
+urls = {Homepage = "https://github.com/bionetslab/SignifiKANTE"}
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+
+# Dependencies for pip installs 
+dependencies = [
+	"dask",
+	"distributed",
+	"numpy<2.0",
+	"pandas",
+	"scikit-learn",
+	"scipy",
+	"scikit-learn-extra",
+	"setuptools",  # required for scikit-learn-extra under python 3.13
+	"pyarrow",
+	"numba",
+	"pytest",
+	"xgboost",
+]
+
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+python = "*" # Ensure Python is defined as a dependency
+dask = "*"
+distributed = "*"
+numpy = "*" 
+pandas = "*"
+scikit-learn = "*"
+scipy = "*"
+scikit-learn-extra = "*"
+pyarrow = "*" 
+numba = "*"
+pytest = "*"
+xgboost = "*"
+
+[tool.pixi.pypi-dependencies]
+# This section remains for pure-Python packages not available or preferred from Conda,
+# but it currently only contains the local editable install.
+signifikante = { path = ".", editable = true }
+
+[tool.pixi.environments]
+kernel = ["kernel"]
+
+
+# --- KERNEL ENVIRONMENT  ---
+# Defines a new, separate environment named 'kernel'.
+[tool.pixi.feature.kernel.dependencies]
+python = "*"
+dask = "*"
+distributed = "*"
+numpy = "*" 
+pandas = "*"
+scikit-learn = "*"
+scipy = "*"
+scikit-learn-extra = "*"
+pyarrow = "*" 
+ipykernel = "*"
+numba = "*"
+xgboost="*"
+
+
+[tool.pixi.feature.kernel.pypi-dependencies]
+# This section remains for pure-Python packages not available or preferred from Conda,
+# but it currently only contains the local editable install.
+signifikante = { path = ".", editable = true }
+
+[tool.pixi.feature.kernel.tasks]
+install-kernel = "python -m ipykernel install --user --name pixi_alternet_new --display-name pixi_alternet_new"
+uninstall-kernel = "jupyter kernelspec uninstall pixi_alternet_new"
