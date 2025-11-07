@@ -1,0 +1,22 @@
+{#- For libraries -#}
+#include <stdint.h>
+#include "kernels/typedefs.hpp"
+
+{# Design header of the array -#}
+static const {{ data_t }} {{ name }}[{{ values|length }}] __attribute__((section(".nn_data"))) =
+{
+    {# For loop to add new elements -#}
+    {%- for i in range(values|length) %}
+
+        {#- Last value -#}
+        {%- if (i+1) == values|length -%}
+        {{ values[i]|string }}
+        {%- else -%}
+            {%- if (i+1) % 5 == 0 -%}
+            {{ values[i]|string + ",\n\t" }}
+            {%- else -%}
+            {{ values[i]|string + ", " }}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor %}
+};

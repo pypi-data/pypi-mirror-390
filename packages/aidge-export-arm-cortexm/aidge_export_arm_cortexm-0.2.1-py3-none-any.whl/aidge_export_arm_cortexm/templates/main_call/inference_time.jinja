@@ -1,0 +1,63 @@
+#ifndef INFERENCE_TIME_HPP
+#define INFERENCE_TIME_HPP
+
+#include "stdio.h" 
+#include "forward.hpp"
+
+// Necessary to have HAL_GetTick()
+#include "{{ board }}xx_hal.h"
+{% for name in inputs_name %}
+#include "{{ name }}.h"
+{% endfor %}
+
+{% set printf_formats = {
+    "double": "%lf",
+    "float": "%f",
+    "int8_t": "%hhd",
+    "int16_t": "%hd",
+    "int32_t": "%d",
+    "int64_t": "%lld",
+    "uint8_t": "%hhu",
+    "uint16_t": "%hu",
+    "uint32_t": "%u",
+    "uint64_t": "%llu"
+} %}
+
+int inference_time()
+{
+    // Initialize the output arrays
+    {%- for o in range(outputs_name | length) %}
+    {{ outputs_dtype[o] }}* {{ outputs_name[o] }} = NULL;
+    {% endfor %}
+    uint32_t start;
+    uint32_t end;
+    size_t NB_WARMUP = {{ nb_warmup }};
+    size_t NB_ITERATIONS = {{ nb_iterations }};
+    size_t NB_MODEL_EXECUTIONS= {{ nb_iterations }};
+    double times[{{ nb_iterations }}] = {0};
+
+    // Warm-up phase
+    for (int i = 0; i < NB_WARMUP; ++i) {
+        {{ func_name }}({{ inputs_name|join(", ") }}{% if inputs_name %}, {% endif %}&{{ outputs_name|join(", &") }});
+    }
+
+    // Timed measurements
+
+    for (size_t i = 0; i < NB_ITERATIONS; ++i) {
+        start = HAL_GetTick();
+        for(size_t j = 0; j < NB_MODEL_EXECUTIONS; ++j) {
+            {{ func_name }}({{ inputs_name|join(", ") }}{% if inputs_name %}, {% endif %}&{{ outputs_name|join(", &") }});
+        }
+        end = HAL_GetTick();
+        times[i] = ((double)(end - start))/NB_MODEL_EXECUTIONS;
+    }
+    // Print timings
+    printf("inference_time: ");
+    for (size_t i = 0; i < NB_ITERATIONS; ++i) {
+        printf("%.10lf ", times[i]);
+    }
+    printf("\n");
+    return 0;
+}
+
+#endif //INFERENCE_TIME_HPP

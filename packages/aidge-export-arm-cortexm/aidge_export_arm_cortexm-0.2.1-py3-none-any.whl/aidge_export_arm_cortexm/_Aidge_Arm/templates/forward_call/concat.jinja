@@ -1,0 +1,20 @@
+{% filter indent(width=4, first=False) %}
+{% include "./_mem_offset.jinja" %}
+const float* {{ name|upper }}_INPUTS[] = {
+    {%- for i in range(nb_in) -%}
+        {{ in_name[i] }}{{ ", " if not loop.last else "" }}
+    {%- endfor -%}
+};
+
+unsigned int {{ name|upper }}_SIZES[] = {
+    {%- for i in range(nb_in) -%}
+        {{ name|upper }}_INPUT_{{i}}_SIZE{{ ", " if not loop.last else "" }}
+    {%- endfor -%}
+};
+
+aidge_concat<float, {{ nb_in }}> (
+    {{name|upper}}_AXIS,
+    {{ name|upper }}_INPUTS,
+    {{ name|upper }}_SIZES,
+    {{ out_name[0] }});
+    {% endfilter %}

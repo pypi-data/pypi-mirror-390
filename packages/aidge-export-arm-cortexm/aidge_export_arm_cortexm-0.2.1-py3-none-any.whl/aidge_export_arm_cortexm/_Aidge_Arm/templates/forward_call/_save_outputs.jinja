@@ -1,0 +1,30 @@
+{% for outidx in range(nb_out) -%}
+    {%if out_dims[outidx]|length == 4 %}
+    printf("{{ out_name[outidx] }} (NCHW format):\r\n");
+    int N_{{ out_name[outidx] }} = {{ out_dims[outidx][0] }};
+    int C_{{ out_name[outidx] }} = {{ out_dims[outidx][1] }};
+    int H_{{ out_name[outidx] }} = {{ out_dims[outidx][2] }};
+    int W_{{ out_name[outidx] }} = {{ out_dims[outidx][3] }};
+
+    for (int n = 0; n < N_{{ out_name[outidx] }}; ++n) {
+        for (int c = 0; c < C_{{ out_name[outidx] }}; ++c) {
+            printf("Batch %d, Channel %d:\r\n", n, c);
+            for (int h = 0; h < H_{{ out_name[outidx] }}; ++h) {
+                for (int w = 0; w < W_{{ out_name[outidx] }}; ++w) {
+                    printf("%f ", {{ out_name[outidx] }}[n * H_{{ out_name[outidx] }} * W_{{ out_name[outidx] }} * C_{{ out_name[outidx] }} + h * W_{{ out_name[outidx] }} * C_{{ out_name[outidx] }} + w * C_{{ out_name[outidx] }} + c]);
+                }
+                printf("\r\n");
+            }
+            printf("\r\n");
+        }
+    }
+    printf("\r\n");
+    {% else %}
+    printf("{{ out_name[outidx] }}:\r\n");
+    for (int o = 0; o < {{ out_size[outidx] }}; ++o) {
+        printf("%f ", {{ out_name[outidx] }}[o]);
+    }
+    printf("\r\n");
+    {% endif %}
+    printf("\r\n");
+{% endfor %}

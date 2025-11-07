@@ -1,0 +1,44 @@
+#ifndef MAIN_CALL_HPP
+#define MAIN_CALL_HPP
+
+#include "forward.hpp"
+#include "stdio.h" 
+{% for name in inputs_name %}
+#include "{{ name }}.h"
+{% endfor %}
+
+{% set printf_formats = {
+    "double": "%lf",
+    "float": "%f",
+    "int8_t": "%hhd",
+    "int16_t": "%hd",
+    "int32_t": "%d",
+    "int64_t": "%lld",
+    "uint8_t": "%hhu",
+    "uint16_t": "%hu",
+    "uint32_t": "%u",
+    "uint64_t": "%llu"
+} %}
+
+// Function declaration for main_call
+int print_output(){
+    // Initialize the output arrays
+    {%- for o in range(outputs_name | length) %}
+    {{ outputs_dtype[o] }}* {{ outputs_name[o] }} = NULL;
+    {% endfor %}
+
+    // Call the forward function
+    {{ func_name }}({{ inputs_name|join(", ") }}{% if inputs_name %}, {% endif %}&{{ outputs_name|join(", &") }});
+
+    // Print the results of each output
+    {%- for o in range(outputs_name | length) %}
+    printf("{{ outputs_name[o] }}:\n\r");
+    for (int o = 0; o < {{ outputs_size[o] }}; ++o) {
+        printf("{{ printf_formats[outputs_dtype[o]] }} ", {{ outputs_name[o] }}[o]);
+    }
+    printf("\n\r");
+    {% endfor %}
+    return 0;
+};
+
+#endif // MAIN_CALL_HPP

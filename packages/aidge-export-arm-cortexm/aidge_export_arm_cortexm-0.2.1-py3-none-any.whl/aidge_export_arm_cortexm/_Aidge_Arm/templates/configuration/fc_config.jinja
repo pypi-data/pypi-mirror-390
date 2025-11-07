@@ -1,0 +1,31 @@
+{#- For name header -#}
+#ifndef {{ name|upper }}_LAYER_H
+#define {{ name|upper }}_LAYER_H
+
+#include "kernels/nn_scaling_functions.hpp"
+
+{# For layer configuration -#}
+{% include "./_def_io.jinja" %}
+{% include "./_meminfo.jinja" %}
+
+// Activation/Scaling
+#define {{ name|upper }}_ACTIVATION {{ activation }}
+
+{%- if scaling_type == "floating_point" %}
+static const N2D2_Export::FloatingPointScaling {{ name|upper }}_SCALING = { {{scaling_value}} };
+{%- elif scaling_type == "fixed_point" %}
+static const N2D2_Export::FixedPointScaling<{{scaling_value}}, {{fractional_bits}}> {{ name|upper }}_SCALING;
+{%- elif scaling_type == "single_shift" %}
+static const N2D2_Export::SingleShiftScaling<{{shift_value}}> {{ name|upper }}_SCALING;
+{%- else %}
+static const N2D2_Export::NoScaling {{ name|upper }}_SCALING;
+{%- endif %}
+
+{# Calculate sizes -#}
+// Sizes
+#define {{ name|upper }}_WEIGHTS_SIZE {{ out_chan[0] * in_chan[0] * in_height[0] * in_width[0] }}
+#define {{ name|upper }}_BIASES_SIZE {{ out_chan[0] }}
+#define {{ name|upper }}_OUTPUTS_SIZE {{ out_chan[0] * out_height[0] * out_width[0] }}
+#define {{ name|upper }}_CHANNELS_SIZE {{ in_chan[0] * in_height[0] * in_width[0] }}
+
+#endif /* {{ name|upper }}_LAYER_H */

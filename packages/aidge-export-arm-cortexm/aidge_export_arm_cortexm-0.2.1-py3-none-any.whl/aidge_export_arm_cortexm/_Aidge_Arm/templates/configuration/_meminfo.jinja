@@ -1,0 +1,27 @@
+// MEMINFO {{ name }}
+
+{% for inidx in range(nb_in) -%}
+{%- if in_node[inidx] is none -%}
+// GRAPH INPUT MEMINFO
+#define {{ in_name[inidx]|upper }}_SIZE {{ in_chan[inidx] }}
+#define {{ in_name[inidx]|upper }}_OFFSET  0
+#define {{ in_name[inidx]|upper }}_STRIDE {{ in_chan[inidx] }}
+#define {{ in_name[inidx]|upper }}_LENGTH {{ in_size[inidx] }}
+#define {{ in_name[inidx]|upper }}_CONT_SIZE {{ in_size[inidx] }}
+#define {{ in_name[inidx]|upper }}_CONT_OFFSET 0
+#define {{ in_name[inidx]|upper }}_WRAP_OFFSET 0
+#define {{ in_name[inidx]|upper }}_WRAP_SIZE 0
+{% endif -%}
+{% endfor -%}
+
+{% for outidx in range(nb_out) -%}
+// OUTPUT {{ outidx }}
+#define {{ out_name[outidx]|upper }}_SIZE {{ mem_info_size[outidx]}}
+#define {{ out_name[outidx]|upper }}_OFFSET {{ mem_info_offset[outidx]}}
+#define {{ out_name[outidx]|upper }}_STRIDE {{ mem_info_stride[outidx]}}
+#define {{ out_name[outidx]|upper }}_LENGTH {{ mem_info_length[outidx]}}
+#define {{ out_name[outidx]|upper }}_CONT_SIZE {{ mem_info_cont_size[outidx]}}
+#define {{ out_name[outidx]|upper }}_CONT_OFFSET {{ mem_info_cont_offset[outidx]}}
+#define {{ out_name[outidx]|upper }}_WRAP_OFFSET {{ mem_info_wrap_offset[outidx]}}
+#define {{ out_name[outidx]|upper }}_WRAP_SIZE {{ mem_info_wrap_size[outidx]}}
+{% endfor -%}

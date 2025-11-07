@@ -1,0 +1,192 @@
+Metadata-Version: 2.4
+Name: aidge_export_arm_cortexm
+Version: 0.2.1
+Summary: Aidge export for ARM CortexM systems
+License: Eclipse Public License 2.0 (EPL-2.0)
+Project-URL: Homepage, https://www.deepgreen.ai/en/platform
+Project-URL: Documentation, https://eclipse.dev/aidge/
+Project-URL: Repository, https://gitlab.eclipse.org/eclipse/aidge/aidge_export_arm_cortexm
+Project-URL: Issues, https://gitlab.eclipse.org/eclipse/aidge/aidge_export_arm_cortexm/-/issues/
+Project-URL: Changelog, https://gitlab.eclipse.org/eclipse/aidge/aidge_export_arm_cortexm/-/releases
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.21.6
+Requires-Dist: onnx>=1.16.0
+Requires-Dist: Jinja2>=3.1.2
+Requires-Dist: pyocd>=0.35.0
+Requires-Dist: pyserial>=3.5
+Provides-Extra: dev
+Requires-Dist: ipython; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Dynamic: license-file
+
+# Aidge Export for ARM CortexM systems
+
+This plugin is to add in your `Aidge` environment to create exports for ARM CortexM systems.
+
+## Installation
+
+### From Source
+
+To install the export manager from the gitlab repository, 
+run these commands in the Python environment where aidge is already installed.
+
+```
+git clone https://gitlab.eclipse.org/eclipse/aidge/aidge_export_arm_cortexm.git
+cd aidge_export_arm_cortexm
+pip install .
+```
+## Benchmark Export_arm_cortexm - STM32H7
+
+This project allows automatic benchmarking on an **STM32H7xxx** target, using exports generated with the `aidge_export_arm_cortexm` backend.
+
+---
+
+### Installation
+
+#### Project Requirements
+
+The following packages are required and have been added in the `pyproject.toml` file:
+- `pyocd >= 0.35.0`
+- `pyserial >= 3.5`
+
+#### Manual update of the STM32 pack is required 
+
+By default, **pyOCD does not include all STM32 packs**. The pack corresponding to **NUCLEO-H743ZI** (`stm32h743zitx`) must be installed manually:
+
+`pyocd pack install stm32h743zitx`
+
+This operation can take several minutes.
+
+#### Verify that the board is correctly detected
+
+Connect your board via USB and run:
+
+`pyocd list`
+
+Expected output example:
+
+```
+  #   Probe/Board     Unique ID                  Target 
+------------------------------------------------------------------
+  0   STM32 STLink    066DFF343339415043185830   ✔︎ stm32h743zitx 
+      NUCLEO-H743ZI
+```
+
+If you see a green check `✔︎`, the board is properly detected. 
+If you see a red cross `x`, manually install the pack as described above.
+
+#### A permissions issue with PyOCD: "No available debug probes are connected"
+
+If running the following command results in an error:
+
+`pyocd list`
+
+`No available debug probes are connected`
+
+but your STM32 device is visible via `lsusb`, this may be due to **missing USB permissions**.
+
+#### Follow these steps to fix the issue : 
+
+- Create a new udev rule:
+
+  `sudo nano /etc/udev/rules.d/50-st-link.rules`
+
+- Paste this content:
+
+  `SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374b", MODE="0666"`
+
+- Reload udev and trigger:
+
+  `sudo udevadm control --reload-rules`
+
+  `sudo udevadm trigger`
+
+- Unplug and replug your STM32 device.
+
+- Try again:
+
+  `pyocd list`
+
+  You should now see your board listed.
+
+---
+
+### Using the benchmark
+
+From the `aidge_core/benchmark` directory, you can run benchmarks with the following commands:
+
+#### Compare with ONNXRuntime (compute_output)
+
+`aidge_benchmark --config-file ./operator_config/relu_config.json --modules aidge_export_arm_cortexm --results-directory results`
+
+#### Inference time measurement (measure_inference_time)
+
+`aidge_benchmark --config-file ./operator_config/relu_config.json --modules aidge_export_arm_cortexm --results-directory results --nb-iteration 20 -t`
+
+---
+
+### Important notes
+#### Serial Port: "Permission denied: '/dev/ttyACM0'"
+
+If you see an error like this when trying to flash :
+
+`Error connecting to serial port: [Errno 13] could not open port /dev/ttyACM0: [Errno 13] Permission denied: '/dev/ttyACM0'`
+
+This usually means your user doesn't have the right permissions for serial access.
+
+For fix that you have to add your user to the `dialout` groupe : 
+
+`sudo usermod -a -G dialout $USER`
+
+Then Restart your terminal for the change to take effect
+
+
+#### Capture timeout and longer UART output
+
+- When measuring inference time using multiple forward calls, capture times may increase. To avoid premature interruption of the capture process, it is important to increase `uart_capture_duration` in the `board_config.json` accordingly (e.g., from 30s to 60 or more),
+
+
+#### Retrying flash in case of UART failure
+
+- The flashing process now includes a retry mechanism:  
+  if the UART output file is missing or empty, the firmware is reflashed up to **5 times by default** (this can be changed via the `MAX_RETRIES` constant in the code).
+  
+- This improves robustness against rare flashing issues caused by the `pyOCD` library, where firmware may not start correctly despite successful flashing.
+- A special **end keyword** (default: `"DEMO END"`) is now expected in the UART output to determine when inference is complete and to stop UART capture.
+
+
+- The file `uart_output.txt` is automatically generated during execution and placed in the `export_folder`.
+- An `export_log.log` file is generated at compilation to store the build logs.
+- The `board_config.json` file is essential for configuring board flashing. When testing dimensions like `[16]`, you must increase `uart_capture_duration` to at least `60` or more.
+
+---
+
+### Limitations
+
+#### 1. **Memory limitations (RAM / Flash)**
+
+- From dimensions like `[32, 32, 32, 32]` (e.g., for ReLU), compilation errors or RAM/Flash overflows may occur.
+- It is recommended to stay within maximum dimensions of `16`, such as `[1,1,1,1]`, `[4,4,4,4]`, or `[16,16,16,16]`.
+
+#### 2. **Instability during consecutive flashes**
+- If the firmware does not start correctly or no UART output is captured, the system retries flashing.
+- You can modify the number of attempts by adjusting the `MAX_RETRIES` constant in the code.
+A known issue exists when running the program on the STM32 board multiple times in sequence or with a large `.elf` file.
+
+- When running multiple benchmarks consecutively, the STM32 may not execute the firmware correctly, even if flashing appears successful.
+- The UART remains silent (`uart_output.txt` is empty), requiring several attempts until the UART finally outputs expected values.
+---
+
+### Recommendations
+
+- **Avoid running benchmarks consecutively in the same session.**
+- **Separate different tensor dimensions into different JSON config files.**
+- Running benchmarks **individually** helps reduce flashing failures.
+- Increase `uart_capture_duration` when working with large output tensors.
+
+## License
+
+Aidge has a Eclipse Public License 2.0, as found in the [LICENSE](LICENSE).
