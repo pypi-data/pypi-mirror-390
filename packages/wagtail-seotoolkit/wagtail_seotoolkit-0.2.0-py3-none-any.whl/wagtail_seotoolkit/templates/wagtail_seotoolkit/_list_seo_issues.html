@@ -1,0 +1,90 @@
+{% load i18n l10n wagtailadmin_tags %}
+
+<div class="seo-issues-container nice-padding">
+    {% for issue in seo_issues_list %}
+        {% with page=issue.page %}
+            {% if page %}
+                {% page_permissions page as page_perms %}
+            {% endif %}
+            <div class="seo-issue-card {% if issue.issue_severity == 3 %}seo-issue-card--critical{% elif issue.issue_severity == 2 %}seo-issue-card--warning{% else %}seo-issue-card--info{% endif %} {% if page and not page.live %}unpublished{% endif %}">
+                <div class="issue-header">
+                    <div class="issue-type-and-page">
+                        <span class="issue-type">{{ issue.get_issue_type_display }}</span>
+                        <span class="issue-separator">-</span>
+                        <div class="issue-page-name">
+                            {% if page %}
+                                {% page_permissions page as page_perms %}
+                                {% if page_perms.can_edit %}
+                                    <a href="{% url 'wagtailadmin_pages:edit' page.id %}" title="{% trans 'Edit this page' %}" class="issue-page-link">
+                                        {{ page.get_admin_display_title }}
+                                    </a>
+                                {% else %}
+                                    <span class="issue-page-text">{{ page.get_admin_display_title }}</span>
+                                {% endif %}
+                            {% else %}
+                                {% if issue.page_title %}
+                                    <span class="issue-page-text">{{ issue.page_title }}</span>
+                                {% else %}
+                                    <em class="issue-page-text--empty">{% trans "No page" %}</em>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if page %}
+                        <div class="issue-meta-group">
+                            {% if issue.requires_dev_fix %}
+                                <span class="dev-badge">
+                                    <svg class="dev-badge__icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                                    </svg>
+                                    Dev needed
+                                    <span class="dev-badge__tooltip">This issue requires code changes</span>
+                                </span>
+                            {% endif %}
+                            {% i18n_enabled as show_locale_labels %}
+                            {% if show_locale_labels %}
+                                <span class="w-status w-status--label issue-locale-label">{{ page.locale.get_display_name }}</span>
+                            {% endif %}
+                            <span class="issue-status">
+                                {% include "wagtailadmin/shared/page_status_tag.html" with page=page %}
+                            </span>
+                            <ul class="actions issue-actions">
+                                {% page_listing_buttons page request.user %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if issue.description %}
+                    <p class="issue-description">{{ issue.description|safe }}</p>
+                {% endif %}
+                
+                {% load wagtail_seotoolkit_tags %}
+                {% if issue.issue_type|is_bulk_edit_issue %}
+                    <div class="issue-bulk-edit-link">
+                        <a href="{% url 'bulk_edit' %}?{% issue_type_filters issue.issue_type %}&action={{ issue.issue_type|get_bulk_edit_action }}" class="button button-small button-secondary">
+                            <svg class="icon icon-edit" aria-hidden="true"><use href="#icon-edit"></use></svg>
+                            {% trans "Fix in Bulk Editor" %}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        {% endwith %}
+    {% empty %}
+        <div class="empty-state">
+            {% if request.GET.issue_severity %}
+                <p class="empty-state__title">
+                    {% trans "No results found matching the selected filters." %}
+                </p>
+                <p class="empty-state__subtitle">
+                    {% trans "Try adjusting or clearing your filters to see more results." %}
+                </p>
+            {% else %}
+                <p class="empty-state__title">
+                    {% trans "No issues found! Your site is in great shape." %} ✅
+                </p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
