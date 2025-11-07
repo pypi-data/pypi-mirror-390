@@ -1,0 +1,136 @@
+- name: "BerserkArch"
+  description: "BerserkArch Docker Containers"
+  containers:
+    - name: berserkarch-latest
+      description: BerserkArch Latest Docker Image
+      command: "docker pull berserkarch/berserkarch:latest"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --privileged --name berserkarch --hostname berserk berserkarch/berserkarch:latest"
+
+    - name: berserkarch-offsec
+      description: BerserkArch Offsec Docker Image
+      command: "docker pull berserkarch/berserkarch:offsec"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --privileged --name berserkarch --hostname berserk --user user -w /home/user berserkarch/berserkarch:offsec"
+
+    - name: berserkarch-base-devel
+      description: BerserkArch Latest Docker Image
+      command: "docker pull berserkarch/berserkarch:base-devel"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --privileged --name berserkarch --hostname berserk berserkarch/berserkarch:base-devel"
+
+    - name: berserkarch-novnc
+      description: BerserkArch Latest Docker Image
+      command: "docker pull berserkarch/berserkarch:novnc"
+      run: "docker run -it --rm --security-opt seccomp=unconfined --hostname berserk --name berserkarch --privileged -p 5901:5901 -p 6080:6080 -p 2222:22 -p 8080:8080 berserkarch/berserkarch:novnc"
+
+- name: "Penetration Testing"
+  description: "Docker containers for penetration testing"
+  containers:
+    - name: "kali-linux"
+      description: "Official Kali Linux container with full toolset"
+      command: "docker pull kalilinux/kali-rolling"
+      run: "docker run -it --rm --network host kalilinux/kali-rolling /bin/bash"
+
+    - name: "metasploit"
+      description: "Metasploit Framework container"
+      command: "docker pull metasploitframework/metasploit-framework"
+      run: "docker run -it --rm -v ~/.msf4:/root/.msf4 metasploitframework/metasploit-framework"
+
+    - name: "parrot-security"
+      description: "Parrot Security OS container"
+      command: "docker pull parrotsec/security"
+      run: "docker run -it --rm --privileged parrotsec/security /bin/bash"
+
+- name: "Tool Containers"
+  description: "Standalone tools in docker containers"
+  categories:
+    - name: "Web Security"
+      description: "Containers for web application security testing"
+      containers:
+        - name: "owasp-zap"
+          description: "OWASP ZAP security testing proxy"
+          command: "docker pull zaproxy/zap-stable"
+          run: "docker run -u zap -p 8080:8080 -i zaproxy/zap-stable zap-webswing.sh"
+
+        - name: "burpsuite"
+          description: "Burp Suite Community Edition"
+          command: "docker pull secsi/burpsuite"
+          run: "docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix secsi/burpsuite"
+
+        - name: "sqlmap"
+          description: "Automated SQL injection tool"
+          command: "docker pull paoloo/sqlmap"
+          run: "docker run -it --rm paoloo/sqlmap -u 'http://target.com/?id=1' --dbs"
+
+        - name: "wpscan"
+          description: "WordPress security scanner"
+          command: "docker pull wpscanteam/wpscan"
+          run: "docker run -it --rm wpscanteam/wpscan --url https://target.com"
+
+    - name: "Network Analysis"
+      description: "Network scanning and analysis containers"
+      containers:
+        - name: "nmap"
+          description: "Network discovery and security auditing"
+          command: "docker pull instrumentisto/nmap"
+          run: "docker run --rm instrumentisto/nmap -sV -p- target.com"
+
+        - name: "wireshark"
+          description: "Network protocol analyzer"
+          command: "docker pull linuxserver/wireshark"
+          run: "docker run -d --name=wireshark --net=host -e PUID=1000 -e PGID=1000 -p 3000:3000 linuxserver/wireshark"
+
+        - name: "masscan"
+          description: "Fast TCP port scanner"
+          command: "docker pull secsi/masscan"
+          run: "docker run --rm secsi/masscan -p1-65535 --rate=1000 192.168.1.0/24"
+
+    - name: "Password Cracking"
+      description: "Password recovery and cracking tools"
+      containers:
+        - name: "hashcat"
+          description: "Advanced password recovery"
+          command: "docker pull dizcza/docker-hashcat"
+          run: "docker run --rm -it --gpus all -v $(pwd):/data dizcza/docker-hashcat -m 0 -a 0 /data/hashes.txt /data/wordlist.txt"
+
+        - name: "john"
+          description: "John the Ripper password cracker"
+          command: "docker pull secsi/john"
+          run: "docker run --rm -v $(pwd):/data secsi/john /data/passwords.txt"
+
+        - name: "hydra"
+          description: "Network logon cracker"
+          command: "docker pull secsi/hydra"
+          run: "docker run --rm secsi/hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://target.com"
+
+    - name: "Forensics"
+      description: "Digital forensics and incident response"
+      containers:
+        - name: "volatility"
+          description: "Memory forensics framework"
+          command: "docker pull phocean/volatility"
+          run: "docker run --rm -v $(pwd):/dumps phocean/volatility -f /dumps/memory.dmp imageinfo"
+
+        - name: "autopsy"
+          description: "Digital forensics platform"
+          command: "docker pull acastaner/autopsy"
+          run: "docker run -d -p 9999:9999 --name autopsy acastaner/autopsy"
+
+        - name: "sleuthkit"
+          description: "Forensic analysis tools"
+          command: "docker pull secsi/sleuthkit"
+          run: "docker run --rm -v $(pwd):/evidence secsi/sleuthkit fls /evidence/disk.dd"
+
+- name: "GUI Applications"
+  description: "Standalone applications in docker containers"
+  categories:
+    - name: "Browser"
+      description: "Disposable browsers in docker containers"
+      containers:
+        - name: "firefox"
+          description: "Firefox browser"
+          command: "docker pull lscr.io/linuxserver/firefox:latest"
+          run: "docker run --rm -d --name=firefox -e PUID=1000 -e PGID=1000 -e TZ=Etc/UTC -e FIREFOX_CLI=https://berserkarch.xyz -p 3000:3000 -p 3001:3001 -v ~/.config/btweak/firefox:/config --shm-size='1gb' lscr.io/linuxserver/firefox:latest"
+          runtime_comments:
+            [
+              "- To stop the container run: docker stop firefox",
+              "- Access the container at: https://localhost:3001/",
+            ]
