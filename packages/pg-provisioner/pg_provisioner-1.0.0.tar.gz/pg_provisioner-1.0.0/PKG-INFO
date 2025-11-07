@@ -1,0 +1,328 @@
+Metadata-Version: 2.4
+Name: pg-provisioner
+Version: 1.0.0
+Summary: Python library for provisioning and managing PostgreSQL on AWS RDS.
+Home-page: https://gitlab.com/causum/pg-provisioner
+Author: Causum™ Analytics
+Author-email: info@causum.ai
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: boto3>=1.35.0
+Requires-Dist: botocore>=1.35.0
+Requires-Dist: psycopg2-binary>=2.9.9
+Requires-Dist: python-dotenv>=1.2.1
+Requires-Dist: typing-extensions>=4.10.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: moto[rds,s3]>=5.0; extra == "dev"
+Requires-Dist: boto3-stubs[rds,s3,sts]>=1.35.0; extra == "dev"
+Requires-Dist: types-psycopg2>=2.9.21; extra == "dev"
+Requires-Dist: mypy>=1.10.0; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# pg-provisioner
+
+**pg-provisioner** is a Python service library for provisioning, managing, and connecting to **PostgreSQL databases on AWS RDS**.
+
+It wraps `boto3` and `psycopg2` with a simple, consistent API for:
+- creating, modifying, and deleting RDS instances
+- resizing and downsizing instances (with export/import)
+- snapshot management and S3 export
+- safe connection management (plug-and-play with psycopg2)
+- robust error handling and structured logging
+
+---
+
+## ✨ Features
+
+- 🏗 **Provision PostgreSQL** on AWS RDS with a single call
+- ⚙️ **Resize and downsize** instances automatically
+- 🧩 **Snapshots and exports** to S3 for backup or migration
+- 🔐 **Connection management** ready for psycopg2
+- 🪶 **Typed exceptions** with detailed context
+- 🔁 **Retries and waiters** for long-running AWS operations
+- 🧠 **Fully mockable and testable** (100% test coverage)
+- 🧾 **Structured logging** with dynamic verbosity
+- 🌍 **Environment-configurable defaults**
+
+---
+
+## 📦 Installation
+
+```bash
+pip install pg-provisioner
+````
+
+Or, from source:
+
+```bash
+git clone https://github.com/your-org/pg-provisioner.git
+cd pg-provisioner
+pip install -e .
+```
+
+---
+
+## ⚙️ Configuration
+
+`pg-provisioner` uses environment variables for defaults (all optional):
+
+| Variable                   | Default              | Description                            |
+| -------------------------- | -------------------- | -------------------------------------- |
+| `PG_DEFAULT_REGION`        | `us-west-2`          | Default AWS region                     |
+| `PG_DEFAULT_CLASS`         | `db.t3.micro`        | Default instance type                  |
+| `PG_DEFAULT_ENGINE`        | `postgres`           | RDS engine                             |
+| `PG_DEFAULT_STORAGE`       | `20`                 | Allocated storage in GB                |
+| `PG_DEFAULT_DB_NAME`       | `appdb`              | Default DB name                        |
+| `PG_DEFAULT_POLL_INTERVAL` | `20`                 | Polling interval for status checks     |
+| `LOG_LEVEL`                | `INFO`               | Logging verbosity                      |
+| `LOG_TO_FILE`              | `0`                  | Write logs to file (set `1` to enable) |
+| `LOG_FILE`                 | `pg_provisioner.log` | Log file path                          |
+
+You can store these in a `.env` file (optional) or use supported boto3/aws credentials in your system/environment.
+
+```sh
+# .env
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=...
+```
+
+---
+
+## 🚀 Quick Start
+
+### Synchronous (CLI/Scripts)
+
+For scripts or CLI tools where blocking is acceptable:
+
+```python
+from pg_provisioner import PostgresProvisioner
+
+# Initialize the provisioner
+prov = PostgresProvisioner(region_name="us-west-2")
+
+# Create a new PostgreSQL instance (waits until available ~6 mins)
+db = prov.create_instance(
+    identifier="demo-db",
+    db_name="myapp",
+    master_user="pgadmin",  # Don't use 'admin' (reserved word)
+    master_pass="StrongPass123!",
+    wait=True  # Blocks until available
+)
+
+print("Created DB:", db.identifier, db.endpoint)
+
+# Connect to the database (psycopg2)
+conn = prov.connect("demo-db", password="StrongPass123!")
+print("Connection established:", conn)
+conn.close()
+
+# Resize (change instance class)
+prov.resize_instance("demo-db", new_class="db.t3.small")
+
+# Delete instance
+prov.delete_instance("demo-db")
+```
+
+### Asynchronous (API/Web Services)
+
+For APIs or web services where you need non-blocking operations:
+
+```python
+from pg_provisioner import PostgresProvisioner
+
+prov = PostgresProvisioner(region_name="us-west-2")
+
+# Step 1: Initiate provisioning (returns immediately!)
+db = prov.create_instance(
+    identifier="user-db-123",
+    db_name="myapp",
+    master_user="pgadmin",
+    master_pass="StrongPass123!",
+    wait=False  # Non-blocking (default)
+)
+
+print(f"Provisioning initiated: {db.status}")  # Usually 'creating'
+
+# Step 2: Poll for status (in separate API requests)
+info = prov.describe_instance("user-db-123")
+if info.is_available():
+    # Step 3: Get connection config when ready
+    config = prov.get_connection_info("user-db-123", "StrongPass123!")
+    # config is ready for: psycopg2.connect(**config)
+    print(f"Ready! Connect to: {config['host']}:{config['port']}")
+```
+
+**See [API_USAGE.md](API_USAGE.md) for complete API integration patterns.**
+
+---
+
+## 🔒 Error Handling
+
+All exceptions inherit from `PGProvisionerError` and carry context:
+
+| Exception                 | Description                               |
+| ------------------------- | ----------------------------------------- |
+| `ProvisioningError`       | Failed to create or configure an instance |
+| `ResizeError`             | Failed to resize instance                 |
+| `DeletionError`           | Deletion failed                           |
+| `SnapshotError`           | Snapshot or export failed                 |
+| `AWSOperationError`       | AWS API or boto3 error                    |
+| `NetworkError`            | Network or endpoint connectivity issue    |
+| `ConnectionNotReady`      | Instance not yet `available`              |
+| `InvalidCredentialsError` | Bad PostgreSQL username/password          |
+| `ConnectionErrorPG`       | psycopg2 connection failed                |
+
+Example:
+
+```python
+from pg_provisioner import PostgresProvisioner
+from pg_provisioner.exceptions import ProvisioningError
+
+prov = PostgresProvisioner()
+
+try:
+    prov.create_instance("test-db")
+except ProvisioningError as e:
+    print(f"Failed to provision DB: {e}")
+```
+
+---
+
+## 🧾 Logging
+
+By default, logs are printed to stdout:
+
+```
+[2025-11-05 12:00:00] [INFO] [pg_provisioner.provisioner] Creating instance demo-db...
+[2025-11-05 12:01:23] [INFO] [pg_provisioner.utils] [demo-db] reached state: available
+```
+
+Enable file logging with:
+
+```bash
+export LOG_TO_FILE=1
+export LOG_FILE=/var/log/pg_provisioner.log
+```
+
+---
+
+## 🎯 Usage Patterns
+
+### For Web APIs & Services
+
+`pg_provisioner` is designed for **async/polling workflows** where long-running operations can't block API requests:
+
+```python
+# API Endpoint 1: Initiate provisioning (returns immediately)
+@app.post("/provision")
+def initiate_provisioning(request):
+    prov = PostgresProvisioner()
+    db = prov.create_instance(
+        identifier=f"user-{request.user_id}-db",
+        wait=False  # Returns immediately!
+    )
+    return {"instance_id": db.identifier, "status": db.status.value}
+
+# API Endpoint 2: Check status (poll this every 10-30 seconds)
+@app.get("/provision/{instance_id}/status")
+def check_status(instance_id):
+    prov = PostgresProvisioner()
+    info = prov.describe_instance(instance_id)
+    return {"status": info.status.value, "is_available": info.is_available()}
+
+# API Endpoint 3: Get connection config (when ready)
+@app.get("/provision/{instance_id}/config")
+def get_config(instance_id, password):
+    prov = PostgresProvisioner()
+    config = prov.get_connection_info(instance_id, password)
+    return {"config": config}  # User can now migrate their data
+```
+
+**Typical provisioning time: 5-8 minutes**
+
+For complete API integration examples, see [API_USAGE.md](API_USAGE.md).
+
+---
+
+## 🧪 Testing
+
+```bash
+pip install -e '.[dev]'
+pytest --cov=src --cov-report=term-missing --cov-fail-under=75
+```
+
+### Functional tests (mock AWS):
+
+```bash
+pytest tests/test_functional.py -v
+```
+
+These tests use [`moto`](https://github.com/getmoto/moto) to simulate AWS RDS and S3 locally.
+
+### Real AWS Integration Tests:
+
+```sh
+export RUN_REAL_AWS=1
+pytest tests/test_real_aws_rds.py -v
+```
+
+**⚠️ WARNING:** This creates real RDS instances on AWS and incurs costs. The test includes:
+- `test_real_rds_lifecycle` - Full lifecycle with `wait=True`
+- `test_real_rds_async_workflow` - Demonstrates async polling pattern for APIs
+
+Both tests clean up resources automatically.
+
+---
+
+## 🧱 Project Structure
+
+```
+src/
+├── aws_client.py          # AWS SDK wrapper with retries & consistent errors
+├── constants.py           # Default config and environment overrides
+├── exceptions.py          # Typed exceptions for all failure modes
+├── logging_config.py      # Centralized structured logging
+├── models.py              # DBInstanceInfo dataclass for RDS metadata
+├── provisioner.py         # High-level provisioning logic
+├── utils.py               # Waiters and helpers
+└── py.typed               # Type hint marker
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork and clone the repo
+2. Create a new branch: `git checkout -b feature/awesome`
+3. Write or update tests (100% coverage required)
+4. Run tests: `pytest --cov=src --cov-fail-under=75`
+5. Submit a PR 🎉
+
+---
+
+## 🧩 License
+
+MIT License © 2025 — Causum™ Analytics
