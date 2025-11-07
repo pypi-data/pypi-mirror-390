@@ -1,0 +1,117 @@
+Metadata-Version: 2.4
+Name: carconnectivity
+Version: 0.9.1
+Summary: Library for retrieving information from car connectivity services
+Author: Till Steinbach
+Classifier: Development Status :: 3 - Alpha
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: argparse
+Requires-Dist: cryptography
+Requires-Dist: JSON_minify~=0.3.0
+Requires-Dist: pytimeparse~=1.1.8
+Provides-Extra: connectors
+Requires-Dist: carconnectivity-connector-volkswagen; extra == "connectors"
+Requires-Dist: carconnectivity-connector-skoda; extra == "connectors"
+Requires-Dist: carconnectivity-connector-seatcupra; extra == "connectors"
+Requires-Dist: carconnectivity-connector-tronity; extra == "connectors"
+Provides-Extra: plugins
+Requires-Dist: carconnectivity-plugin-mqtt; extra == "plugins"
+Requires-Dist: carconnectivity-plugin-mqtt_homeassistant; extra == "plugins"
+Requires-Dist: carconnectivity-plugin-abrp; extra == "plugins"
+Requires-Dist: carconnectivity-plugin-homekit; extra == "plugins"
+Requires-Dist: carconnectivity-plugin-webui; extra == "plugins"
+Provides-Extra: images
+Requires-Dist: pillow~=12.0.0; extra == "images"
+Requires-Dist: ascii_magic~=2.7.2; extra == "images"
+Provides-Extra: all
+Requires-Dist: carconnectivity[connectors,images,plugins]; extra == "all"
+Dynamic: license-file
+
+
+
+# CarConnectivity
+[![GitHub sourcecode](https://img.shields.io/badge/Source-GitHub-green)](https://github.com/tillsteinbach/CarConnectivity/)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/tillsteinbach/CarConnectivity)](https://github.com/tillsteinbach/CarConnectivity/releases/latest)
+[![GitHub](https://img.shields.io/github/license/tillsteinbach/CarConnectivity)](https://github.com/tillsteinbach/CarConnectivity/blob/master/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/tillsteinbach/CarConnectivity)](https://github.com/tillsteinbach/CarConnectivity/issues)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/carconnectivity?label=PyPI%20Downloads)](https://pypi.org/project/carconnectivity/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/carconnectivity)](https://pypi.org/project/carconnectivity/)
+[![Donate at PayPal](https://img.shields.io/badge/Donate-PayPal-2997d8)](https://www.paypal.com/donate?hosted_button_id=2BVFF5GJ9SXAJ)
+[![Sponsor at Github](https://img.shields.io/badge/Sponsor-GitHub-28a745)](https://github.com/sponsors/tillsteinbach)
+
+## CarConnectivity will become the successor of [WeConnect-python](https://github.com/tillsteinbach/WeConnect-python) in 2025 with similar functionality but support for other brands beyond Volkswagen!
+
+Python API to connect to various car services. If you are not a developer and ended up here you probably want to check out a project using this library (see below).
+
+## Projects in which the library is used
+- [CarConnectivity-cli](https://github.com/tillsteinbach/CarConnectivity-cli): A commandline interface to interact with your Vehicles
+- [CarConnectivity-MQTT](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt): A MQTT Client that provides Vehicle data to the MQTT Broker of your choice (e.g. your home automation solution such as [ioBroker](https://www.iobroker.net), [FHEM](https://fhem.de) or [Home Assistant](https://www.home-assistant.io))
+
+## Supported Car Brands
+CarConenctivity uses a connector plugin architecture to enable access to the services of various brands. Currently known connector plugins are:
+
+| Brand                            | Connector                                                                                                          | Maintainer                                        |
+|----------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
+| Skoda                            | [CarConnectivity-connector-skoda](https://github.com/tillsteinbach/CarConnectivity-connector-skoda)                | [tillsteinbach](https://github.com/tillsteinbach) |
+| Volkswagen                       | [CarConnectivity-connector-volkswagen](https://github.com/tillsteinbach/CarConnectivity-connector-volkswagen)      | [tillsteinbach](https://github.com/tillsteinbach) |
+| Volkswagen (North America only)  | [CarConnectivity-connector-volkswagen-na](https://github.com/zackcornelius/CarConnectivity-connector-volkswagen-na)| [zackcornelius](https://github.com/zackcornelius) |
+| Seat/Cupra                       | [CarConnectivity-connector-seatcupra](https://github.com/tillsteinbach/CarConnectivity-connector-seatcupra)        | [tillsteinbach](https://github.com/tillsteinbach) |
+| Audi                             | [CarConnectivity-connector-audi](https://github.com/acfischer42/CarConnectivity-connector-audi)                    | [acfischer42](https://github.com/acfischer42)     |
+| [Tronity](https://www.tronity.io) | [CarConnectivity-connector-tronity](https://github.com/tillsteinbach/CarConnectivity-connector-tronity)           | [tillsteinbach](https://github.com/tillsteinbach) |
+
+If you know of a connector not listed here let me know and I will add it to the list.
+If you are a python developer and willing to implement a connector for a brand not listed here, let me know and I try to support you as good as possible
+
+## Supported Plugins
+CarConenctivity uses a plugin architecture to enable connectivity to other services and protocols. Currently known plugins are:
+
+| Service or Protocol              | Connector                                                                                                               | Maintainer                                         |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
+| WebUI (easy to use webinterface) | [CarConnectivity-plugin-webui](https://github.com/tillsteinbach/CarConnectivity-plugin-webui)                           | [tillsteinbach](https://github.com/tillsteinbach)  |
+| MQTT                             | [CarConnectivity-plugin-mqtt](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt)                             | [tillsteinbach](https://github.com/tillsteinbach)  |
+| Home Assistant MQTT              | [CarConnectivity-plugin-mqtt_homeassistant](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt_homeassistant) | [tillsteinbach](https://github.com/tillsteinbach)  |
+| A Better Routeplanner (ABRP)     | [CarConnectivity-plugin-abrp](https://github.com/tillsteinbach/CarConnectivity-plugin-abrp)                             | [tillsteinbach](https://github.com/tillsteinbach)  |
+| Apple Homekit                    | [CarConnectivity-plugin-homekit](https://github.com/tillsteinbach/CarConnectivity-plugin-homekit)                       | [tillsteinbach](https://github.com/tillsteinbach)  |
+
+If you know of a plugin not listed here let me know and I will add it to the list.
+If you are a python developer and willing to implement a plugin for a service not listed here, let me know and I try to support you as good as possible
+
+## Configuration
+In your carconnectivity.json configuration add a section for the connectors you like to use like this:
+```
+{
+    "carConnectivity": {
+        "connectors": [
+            {
+                "type": "volkswagen",
+                "config": {
+                    "username": "test@test.de",
+                    "password": "testpassword123"
+                }
+            },
+            {
+                "type": "skoda",
+                "config": {
+                    "username": "test@test.de",
+                    "password": "testpassword123"
+                }
+            }
+        ]
+    }
+}
+```
+The detailed configuration options of the connectors can be found in their README files.
+
+## Getting started
+- To get started have a look in the [examples folder](https://github.com/tillsteinbach/CarConnectivity/tree/main/examples)
