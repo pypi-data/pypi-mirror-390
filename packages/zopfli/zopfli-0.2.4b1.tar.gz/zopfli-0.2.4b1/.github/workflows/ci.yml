@@ -1,0 +1,140 @@
+name: Build + Deploy
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [master]
+  release:
+    types:
+      - published
+
+env:
+  CIBW_TEST_EXTRAS: test
+  CIBW_TEST_COMMAND: pytest {package}/tests -v
+  CIBW_SKIP: "cp38-* cp39-* pp38-* pp39-* pp310-* cp314t-*"
+
+jobs:
+
+  build_sdist:
+    name: Build Source Distribution
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+    - name: Install dependencies
+      run: pip install --upgrade setuptools twine
+    - name: Build sdist
+      run: python setup.py sdist
+    - name: Check metadata
+      run: twine check dist/*.tar.gz
+    - uses: actions/upload-artifact@v4
+      with:
+        path: dist/*.tar.gz
+        name: sdist
+
+  build_wheels:
+    name: ${{ matrix.type }} ${{ matrix.arch }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-13 runners are still x86_64, macos-14 (latest) are arm64; we want to build
+        # the x86_64 wheel on/for x86_64 macs
+        os: [macos-13, windows-latest]
+        arch: [auto64]
+        build: ["*"]
+        include:
+          # the manylinux2014 image contains python 3.10, 3.11, 3.12, 3.13, 3.14 and pypy3.11
+          - os: ubuntu-latest
+            arch: auto
+            type: manylinux2014
+            build: "pp311-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+            CIBW_ENABLE: pypy
+            CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+            CIBW_MANYLINUX_I686_IMAGE: manylinux2014
+
+          - os: macos-latest
+            arch: universal2
+            build: "*"
+
+          - os: windows-latest
+            arch: auto32
+            build: "*"
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+    - name: Install dependencies
+      run: pip install cibuildwheel
+    - name: Build Wheels
+      run: python -m cibuildwheel --output-dir wheelhouse .
+      env:
+        CIBW_BUILD: ${{ matrix.build }}
+        CIBW_ENABLE: ${{ matrix.CIBW_ENABLE }}
+        CIBW_MANYLINUX_I686_IMAGE: ${{ matrix.CIBW_MANYLINUX_I686_IMAGE }}
+        CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.CIBW_MANYLINUX_X86_64_IMAGE }}
+        CIBW_ARCHS: ${{ matrix.arch }}
+    - uses: actions/upload-artifact@v4
+      with:
+        path: wheelhouse/*.whl
+        name: wheels-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.type }}
+
+
+  build_arch_wheels:
+    name: py${{ matrix.python }} on ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # aarch64 uses qemu so it's slow, build each py version in parallel jobs
+        python: ["cp310", "cp311", "cp312", "cp313", "cp314", "pp311"]
+        arch: [aarch64]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - uses: docker/setup-qemu-action@v3
+      with:
+        platforms: all
+    - name: Install dependencies
+      run: pip install cibuildwheel
+    - name: Build Wheels
+      run: python -m cibuildwheel --output-dir wheelhouse .
+      env:
+        CIBW_BUILD: ${{ matrix.python }}-*
+        CIBW_ENABLE: ${{ contains(matrix.python, 'pp') && 'pypy' || '' }}
+        CIBW_ARCHS: ${{ matrix.arch }}
+    - uses: actions/upload-artifact@v4
+      with:
+        path: wheelhouse/*.whl
+        name: wheels-${{ matrix.arch }}-${{ matrix.python }}
+
+  deploy:
+    name: Upload if release
+    needs: [build_wheels, build_arch_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        path: dist
+        merge-multiple: true
+
+    - uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_PASSWORD }}
