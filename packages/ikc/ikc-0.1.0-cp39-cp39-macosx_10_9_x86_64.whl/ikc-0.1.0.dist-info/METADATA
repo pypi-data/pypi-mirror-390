@@ -1,0 +1,277 @@
+Metadata-Version: 2.4
+Name: ikc
+Version: 0.1.0
+Summary: Fast C++ implementation of Iterative K-Core Clustering with Python bindings
+Home-page: https://github.com/vikramr2/ikc
+Author: Vikram Ramavarapu
+Author-email: vikramr2@illinois.edu
+License: MIT
+Project-URL: Bug Reports, https://github.com/vikramr2/ikc/issues
+Project-URL: Source, https://github.com/vikramr2/ikc
+Keywords: graph clustering k-core community-detection network-analysis
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: C++
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pybind11>=2.6.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# IKC - Iterative K-Core Clustering
+
+Fast C++ implementation of Iterative K-Core Clustering with Python wrapper.
+
+## Project Structure
+
+```
+ikc/
+├── app/          # C++ application
+├── lib/          # C++ libraries
+├── python/       # Python wrapper
+│   ├── ikc/      # Python package
+│   └── example.py
+├── data/         # Test datasets
+└── build/        # Build directory
+```
+
+## Building the C++ Executable
+
+```bash
+cd build
+cmake ..
+make
+```
+
+The compiled executable will be at `build/ikc`.
+
+## C++ Command-Line Usage
+
+```bash
+./ikc -e <graph_file.tsv> -o <output.csv> [-k <min_k>] [-t <num_threads>] [-q] [--tsv]
+```
+
+### Options
+
+- `-e <graph_file.tsv>` - Path to input graph edge list (TSV format)
+- `-o <output.csv>` - Path to output file
+- `-k <min_k>` - Minimum k value for valid clusters (default: 0)
+- `-t <num_threads>` - Number of threads (default: hardware concurrency)
+- `-q` - Quiet mode (suppress verbose output)
+- `--tsv` - Output as TSV (node_id cluster_id) without header
+
+### Examples
+
+```bash
+# Run with default settings (CSV output with all columns)
+./ikc -e data/cit_hepph.tsv -o output.csv
+
+# Run with min_k=10 and TSV output
+./ikc -e data/cit_hepph.tsv -o output.tsv -k 10 --tsv
+
+# Run with 8 threads in quiet mode
+./ikc -e data/cit_hepph.tsv -o output.csv -k 10 -t 8 -q
+```
+
+### Output Formats
+
+**CSV format** (default):
+```
+node_id,cluster_id,k_value,modularity
+3306,1,30,1.0
+9803315,1,30,1.0
+```
+
+**TSV format** (with `--tsv` flag):
+```
+3306	1
+9803315	1
+```
+
+## Python Wrapper
+
+The Python wrapper uses **pybind11** to directly bind the C++ code, providing:
+- Fast performance (no subprocess overhead)
+- Clean Python API
+- No heavy dependencies (no pandas required)
+
+### Installation
+
+**Option 1: Install from PyPI (once published):**
+
+```bash
+pip install ikc
+```
+
+**Option 2: Install from source:**
+
+**Install dependencies:**
+
+```bash
+pip install -r requirements.txt
+```
+
+**Install the Python package:**
+
+```bash
+pip install -e .
+```
+
+This will automatically compile the C++ extension and install the Python package.
+
+Alternatively, install in one step (pip will handle dependencies):
+
+```bash
+pip install -e .
+```
+
+**Verify installation:**
+
+```bash
+python3 -c "import ikc; print('IKC wrapper installed successfully!')"
+```
+
+### Python Usage
+
+```python
+import ikc
+
+# Load a graph from a TSV edge list file
+g = ikc.load_graph('net.tsv')
+
+# Run the IKC algorithm with min_k=10
+c = g.ikc(10)
+
+# Save results as TSV (node_id, cluster_id, no header)
+c.save('out.tsv', tsv=True)
+
+# Or save as CSV with all columns (node_id, cluster_id, k_value, modularity)
+c.save('out.csv', tsv=False)
+
+# Access clustering information
+print(f"Number of clusters: {c.num_clusters}")
+print(f"Number of nodes: {c.num_nodes}")
+
+# Access the underlying data as list of tuples
+print(c.data[:10])  # First 10 rows
+```
+
+### Python API Reference
+
+#### `ikc.load_graph(graph_file, num_threads=None, verbose=False)`
+
+Load a graph from a TSV edge list file.
+
+**Parameters:**
+- `graph_file` (str): Path to the graph edge list file (TSV format)
+- `num_threads` (int, optional): Number of threads for loading (default: hardware concurrency)
+- `verbose` (bool): Print loading progress (default: False)
+
+**Returns:**
+- `Graph`: Graph object ready for clustering
+
+#### `Graph.ikc(min_k=0, verbose=False)`
+
+Run the Iterative K-Core Clustering algorithm.
+
+**Parameters:**
+- `min_k` (int): Minimum k value for valid clusters (default: 0)
+- `verbose` (bool): Print algorithm progress (default: False)
+
+**Returns:**
+- `ClusterResult`: Object containing the clustering results
+
+#### `ClusterResult.save(filename, tsv=False)`
+
+Save clustering results to a file.
+
+**Parameters:**
+- `filename` (str): Output file path
+- `tsv` (bool): If True, save as TSV with only node_id and cluster_id (no header). If False, save as CSV with all columns (default: False)
+
+#### `ClusterResult` Properties
+
+- `num_clusters`: Number of clusters found
+- `num_nodes`: Number of nodes in the clustering
+- `data`: List of tuples `(node_id, cluster_id, k_value, modularity)` for all clustered nodes
+- `clusters`: List of C++ Cluster objects with `nodes`, `k_value`, and `modularity` attributes
+
+### Python Example
+
+```python
+import ikc
+
+# Load graph with 4 threads
+g = ikc.load_graph('data/cit_hepph.tsv', num_threads=4)
+print(g)  # Graph(file='...', nodes=34546, edges=420877)
+
+# Run IKC with min_k=10
+clusters = g.ikc(min_k=10)
+
+# Print summary
+print(clusters)  # ClusterResult(nodes=34546, clusters=27639)
+
+# Save in TSV format
+clusters.save('output.tsv', tsv=True)
+
+# Save in CSV format with all columns
+clusters.save('output.csv', tsv=False)
+
+# Access the data (first 5 rows)
+for row in clusters.data[:5]:
+    node_id, cluster_id, k_value, modularity = row
+    print(f"Node {node_id} in cluster {cluster_id}")
+
+# Get cluster statistics
+print(f"Total clusters: {clusters.num_clusters}")
+print(f"Total nodes: {clusters.num_nodes}")
+```
+
+### Run Example Script
+
+```bash
+python3 python/example.py
+```
+
+## Requirements
+
+### C++
+- CMake 3.10+
+- C++17 compatible compiler
+- OpenMP support (for parallel graph loading)
+
+### Python
+- Python 3.7+
+- pybind11 >= 2.6.0 (automatically installed with `pip install`)
+
+## Input Format
+
+The input graph file should be a TSV (tab-separated) edge list with two columns:
+```
+node1	node2
+node3	node4
+...
+```
+
+No header required. Nodes can be any integer IDs.
