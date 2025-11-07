@@ -1,0 +1,48 @@
+[project]
+name = "gym-collabsort"
+# Use dynamic versioning.
+# See https://pydevtools.com/handbook/how-to/how-to-add-dynamic-versioning-to-uv-projects/ for details
+dynamic = ["version"]
+description = "A Gymnasium environment for training agents on a collaborative sorting task"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README_PACKAGE.md"  # Project description on PyPI
+authors = [
+    { name = "Baptiste Pesquet", email = "bpesquet@gmail.com" }
+]
+keywords = ["gym", "gymnasium", "rl", "collaboration"]
+requires-python = ">=3.12"
+dependencies = [
+    "gymnasium>=1.2.0",
+    "pygame>=2.6.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/bpesquet/gym-collabsort"
+Repository = "https://github.com/bpesquet/gym-collabsort.git"
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+]
+
+[tool.ruff.lint]
+# Enhance checking. See https://docs.astral.sh/ruff/rules/#flake8-bugbear-b for details
+extend-select = ["B"]
+
+[tool.pytest.ini_options]
+# Add code coverage reporting
+addopts = "--cov=gym_collabsort --cov-report=term-missing"
+
+[tool.hatch.version]
+# Use dynamic versioning based on git tags following semantic versioning
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+# Provide a fallback version for environments without version control information (like Dependabot)
+fallback-version = "0.0.0"
