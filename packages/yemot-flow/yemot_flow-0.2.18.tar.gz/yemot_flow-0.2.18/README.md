@@ -1,0 +1,484 @@
+# yemot-flow 🚀
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.2.18-blue.svg" alt="גרסה 0.2.18">
+  <img src="https://img.shields.io/badge/python-%3E%3D3.11-green.svg" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="רישיון MIT">
+</p>
+
+**ספריית Python מודרנית עם async/await ליצירת מערכות IVR חכמות לימות המשיח**
+
+🎯 **פשוט כמו Node.js yemot-router2** - כותבים קוד ליניארי עם `await`, והמנוע מטפל בכל השאר!
+
+✨ **חדש בגרסה 0.2.18**: תמיכה מלאה ב-async/await עם המשכיות אוטומטית + תיעוד מושלם!
+
+---
+
+## 🌟 למה yemot-flow?
+
+```python
+@flow.get("")
+async def welcome(call: Call):
+    # כותבים קוד פשוט ורציף!
+    name = await call.read([('text', 'מה השם שלך?')], mode="stt", val_name="name")
+    age = await call.read([('text', f'שלום {name}, כמה אתה בן?')], val_name="age", max_digits=2)
+    
+    call.play_message([('text', f'נעים להכיר {name} בן {age}!')])
+    call.hangup()
+```
+
+## 🚀 תכונות מרכזיות
+
+| ✨ | תכונה | פירוט |
+|---|---|---|
+| **async/await** | קוד ליניארי וטבעי כמו ב-Node.js - ללא ניהול מצב ידני | 
+| **המשכיות אוטומטית** | המנוע זוכר איפה עצרת וממשיך אחרי כל קלט מהמשתמש |
+| **תמיכה מלאה** | Flask, FastAPI, זיהוי דיבור (STT), הקלטות, כל סוגי הקלטים |
+| **פשוט להתקין** | `pip install yemot-flow` או `uv add yemot-flow` - מוכן לשימוש! |
+| **מהיר עם uv** | פיתוח מהיר פי 10 עם uv package manager |
+| **דוגמאות רבות** | מערכת הזמנות, תפריטים מתקדמים, בוט AI ועוד |
+
+---
+
+## 📦 התקנה מהירה
+
+### 🐍 עם pip (רגיל)
+
+```bash
+# התקנה בסיסית
+pip install yemot-flow
+
+# עם Flask (מומלץ למתחילים)
+pip install yemot-flow flask
+
+# עם FastAPI (לביצועים גבוהים)  
+pip install yemot-flow fastapi uvicorn
+```
+
+### ⚡ עם uv (מומלץ - מהיר יותר!)
+
+```bash
+# התקן uv אם אין לך
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# התקנה בסיסית
+uv add yemot-flow
+
+# עם Flask
+uv add yemot-flow flask
+
+# עם FastAPI
+uv add yemot-flow fastapi uvicorn
+
+# יצירת פרויקט חדש עם uv
+uv init my-ivr-project
+cd my-ivr-project
+uv add yemot-flow flask
+```
+
+**דרישות**: Python 3.11+ (נבדק על 3.11, 3.12, 3.13)
+
+### 🚀 למה uv?
+
+| ⚡ | יתרון | פירוט |
+|---|-------|--------|
+| **מהיר פי 10-100** | התקנת packages מהירה בצורה דרמטית | 
+| **ניהול Python** | מנהל גרסאות Python אוטומטית |
+| **Lock files** | גרסאות קבועות לכל הצוות |
+| **Virtual envs** | ניהול אוטומטי של סביבות וירטואליות |
+| **פשוט** | כל מה שצריך ב-tool אחד |
+
+---
+
+## 🎬 התחלה מהירה עם uv
+
+```bash
+# 1. התקן uv (אם אין לך)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. צור פרויקט חדש
+uv init my-ivr-system
+cd my-ivr-system
+
+# 3. הוסף yemot-flow
+uv add yemot-flow flask
+
+# 4. צור קובץ app.py
+cat > app.py << 'EOF'
+from flask import Flask, request, Response
+from yemot_flow import Flow, Call
+
+app = Flask(__name__)
+flow = Flow(print_log=True)
+
+@flow.get("")
+async def hello(call: Call):
+    name = await call.read([('text', 'מה שמך?')], mode="stt", val_name="name")
+    call.play_message([('text', f'שלום {name}!')])
+    call.hangup()
+
+@app.route("/yemot", methods=["GET", "POST"])
+def yemot():
+    return Response(flow.handle_request(request.values.to_dict()), 
+                   mimetype="text/plain; charset=utf-8")
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+EOF
+
+# 5. הרץ!
+uv run python app.py
+```
+
+🎉 **זהו! המערכת רצה על http://localhost:5000/yemot**
+
+---
+
+## ⚡ דוגמה מהירה (5 דקות!)
+
+### 🔥 הדרך החדשה - async/await
+
+```python
+from flask import Flask, request, Response
+from yemot_flow import Flow, Call
+
+app = Flask(__name__)
+flow = Flow(print_log=True)
+
+@flow.get("")
+async def welcome(call: Call):
+    """שיחה פשוטה עם 3 קלטים"""
+    
+    # קלט 1
+    input1 = await call.read([('text', 'אנא הקש 1')], 
+                            val_name="input1", max_digits=1, digits_allowed="1")
+    
+    # קלט 2 
+    input2 = await call.read([('text', 'עכשיו הקש 2')], 
+                            val_name="input2", max_digits=1, digits_allowed="2")
+    
+    # קלט 3
+    input3 = await call.read([('text', 'ולסיום הקש 3')], 
+                            val_name="input3", max_digits=1, digits_allowed="3")
+    
+    # סיכום
+    call.play_message([('text', f'קלטת: {input1}, {input2}, {input3}. תודה!')])
+    call.hangup()
+
+@app.route("/yemot", methods=["GET", "POST"])
+def yemot_entry():
+    return Response(
+        flow.handle_request(request.values.to_dict()),
+        mimetype="text/plain; charset=utf-8"
+    )
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+```
+
+### 🚀 הפעלה
+
+```bash
+# עם Python רגיל
+python app.py
+
+# עם uv (מומלץ)
+uv run app.py
+
+# המערכת רצה על: http://localhost:5000/yemot
+```
+
+**🔗 הגדרה בימות**: כתובת API ← `http://your-server-ip:5000/yemot`
+
+### 📱 הדרך הישנה (sync) - עדיין נתמכת
+
+```python
+@flow.get("")
+def old_style(call):
+    call.play_message([("text", "שלום וברכה! הקש 1")])
+    call.read([("text", "הקש 1 להמשך")], max_digits=1, digits_allowed="1")
+    if call.params.get("Digits") == "1":
+        call.goto("thanks")
+
+@flow.get("thanks") 
+def thanks(call):
+    call.play_message([("text", "תודה ולהתראות")])
+    call.hangup()
+```
+
+---
+
+## 🎯 דוגמאות מתקדמות
+
+### 🗣️ זיהוי דיבור (STT)
+
+```python
+@flow.get("stt")
+async def speech_demo(call: Call):
+    name = await call.read([('text', 'אמור את שמך')], 
+                          mode="stt", val_name="name", lang="he-IL")
+    
+    call.play_message([('text', f'שלום {name}, נעים להכיר!')])
+    call.hangup()
+```
+
+### 🎙️ הקלטה
+
+```python
+@flow.get("record")
+async def recording_demo(call: Call):
+    recording = await call.read([('text', 'תתחיל הקלטה אחרי הצפצוף')], 
+                               mode="record", val_name="recording", 
+                               max_length=30, path="/recordings")
+    
+    call.play_message([('text', 'תודה על ההקלטה')])
+    call.hangup()
+```
+
+### 🍕 מערכת הזמנות מסעדה
+
+```python
+@flow.get("")
+async def restaurant(call: Call):
+    # בחירת פיצה
+    pizza = await call.read([
+        ('text', 'ברוכים הבאים לפיצה שמח!'),
+        ('text', 'הקש 1 למרגריטה, 2 לפפרוני, 3 לירקות')
+    ], val_name="pizza", max_digits=1, digits_allowed="123")
+    
+    pizza_names = {"1": "מרגריטה", "2": "פפרוני", "3": "ירקות"}
+    
+    # בחירת גודל
+    size = await call.read([
+        ('text', f'בחרת פיצה {pizza_names[pizza]}'),
+        ('text', 'הקש 1 לקטנה, 2 לבינונית, 3 לגדולה')
+    ], val_name="size", max_digits=1, digits_allowed="123")
+    
+    sizes = {"1": "קטנה", "2": "בינונית", "3": "גדולה"}
+    
+    # פרטי משלוח
+    phone = await call.read([('text', 'אמור מספר טלפון למשלוח')], 
+                           mode="stt", val_name="phone", lang="he-IL")
+    
+    address = await call.read([('text', 'אמור כתובת למשלוח')], 
+                             mode="stt", val_name="address", lang="he-IL")
+    
+    # אישור הזמנה
+    call.play_message([
+        ('text', f'אישור הזמנה: פיצה {pizza_names[pizza]} {sizes[size]}'),
+        ('text', f'טלפון: {phone}'),
+        ('text', f'כתובת: {address}'),
+        ('text', 'ההזמנה תגיע תוך 30 דקות. תודה!')
+    ])
+    call.hangup()
+```
+
+---
+
+## 📚 API מלא
+
+### Flow - המנוע הראשי
+
+```python
+flow = Flow(timeout=30000, print_log=True)
+
+# רישום handlers
+@flow.get("")          # שלוחה ראשית
+@flow.get("sales")     # שלוחת מכירות  
+@flow.get("support")   # שלוחת תמיכה
+
+# ניהול בקשות
+response = flow.handle_request(params_dict)
+```
+
+### Call - אובייקט השיחה
+
+#### 🎵 play_message - השמעת הודעות
+
+```python
+call.play_message([
+    ("text", "שלום וברכה"),           # טקסט
+    ("file", "welcome"),              # קובץ שמע
+    ("digits", "12345"),             # ספרות
+    ("number", "150"),               # מספר (מאה וחמישים)
+    ("alpha", "abc"),                # אותיות
+])
+```
+
+#### 🎹 read - קבלת קלטים
+
+```python
+# הקשות מקלדת
+result = await call.read([('text', 'הקש מספר')], 
+                        val_name="user_input",
+                        max_digits=3,
+                        min_digits=1,
+                        digits_allowed="123456789",
+                        sec_wait=10)
+
+# זיהוי דיבור
+speech = await call.read([('text', 'דבר עכשיו')], 
+                        mode="stt",
+                        val_name="speech",
+                        lang="he-IL")
+
+# הקלטה
+recording = await call.read([('text', 'תתחיל הקלטה')], 
+                           mode="record",
+                           val_name="recording",
+                           max_length=60,
+                           path="/recordings/")
+```
+
+#### 🔄 ניווט
+
+```python
+call.goto("sales")      # מעבר לשלוחה
+call.goto("")           # חזרה לראשית  
+call.hangup()           # ניתוק השיחה
+```
+
+---
+
+## 🌐 FastAPI Support
+
+```python
+from fastapi import FastAPI, Request, Response
+from yemot_flow import Flow, Call
+
+app = FastAPI()
+flow = Flow()
+
+@flow.get("")
+async def root(call: Call):
+    name = await call.read([('text', 'מה שמך?')], mode="stt", val_name="name")
+    call.play_message([('text', f'שלום {name} מ-FastAPI!')])
+    call.hangup()
+
+@app.api_route("/yemot", methods=["GET", "POST"])
+async def yemot_entry(request: Request):
+    if request.method == "POST":
+        params = await request.form()
+    else:
+        params = request.query_params
+    
+    resp = flow.handle_request(dict(params))
+    return Response(resp, media_type="text/plain; charset=utf-8")
+
+# הפעלה עם uvicorn רגיל
+# uvicorn main:app --host 0.0.0.0 --port 8000
+
+# הפעלה עם uv (מומלץ)  
+# uv run uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+---
+
+## 🧪 דוגמאות נוספות
+
+ראה תיקיית `examples/` לדוגמאות מלאות:
+
+- **minimal_example.py** - דוגמה פשוטה ביותר
+- **flask_basic_example.py** - Flask מתקדם עם תפריטים
+- **fastapi_basic_example.py** - FastAPI עם async handlers
+- **restaurant_ordering_system.py** - מערכת הזמנות מסעדה מלאה
+- **hebrew_no_encoding_example.py** - עברית ללא בעיות קידוד
+
+---
+
+## 🛠️ פיתוח ותרומה
+
+### 🐍 עם pip
+
+```bash
+# Clone + setup
+git clone https://github.com/davidTheDeveloperY/yemot-flow
+cd yemot-flow
+pip install -e .
+
+# הרצת בדיקות
+pytest tests/
+
+# בדיקת examples
+python examples/minimal_example.py
+```
+
+### ⚡ עם uv (מומלץ למפתחים)
+
+```bash
+# Clone + setup
+git clone https://github.com/davidTheDeveloperY/yemot-flow
+cd yemot-flow
+uv sync
+
+# הרצת בדיקות
+uv run pytest tests/
+
+# בדיקת examples
+uv run python examples/minimal_example.py
+
+# פיתוח עם hot reload
+uv run python examples/flask_basic_example.py
+
+# בנייה ופרסום
+uv build
+uv publish
+```
+
+---
+
+## 🐛 פתרון בעיות נפוצות
+
+### ❌ שגיאת חיבור
+- וודא שהשרת רץ על IP חיצוני (`host="0.0.0.0"`)
+- בדוק firewall/router settings
+- השתמש בטרמינל: `curl "http://your-server:5000/yemot?ApiCallId=test"`
+
+### ❌ עברית לא עובדת
+- הוסף `charset=utf-8` ל-Response
+- השתמש ב-`url_encode=True` ב-play_message אם יש בעיות
+
+### ❌ השיחה נתקעת
+- בדוק שיש `val_name` ייחודי לכל `read()`
+- ודא ש-`digits_allowed` מכיל את הספרות הנכונות
+- הוסף `print_log=True` ל-Flow לראות מה קורה
+
+---
+
+## 📋 Changelog
+
+### v0.2.18 (נוכחי)
+- 📚 README מושלם ומפורט
+- 🎯 דוגמאות async/await מלאות
+- 🔧 תיקוני תיעוד וסדר
+
+### v0.2.17
+- ✨ תמיכה מלאה ב-async/await 
+- 🔧 המשכיות אוטומטית של handlers
+- 🚀 ביצועים משופרים
+- 📚 דוגמאות מעודכנות
+
+### v0.2.16
+- 🐛 תיקוני באגים ביציבות
+- 📝 שיפורי תיעוד
+
+---
+
+## 🤝 תמיכה ועזרה
+
+- **GitHub Issues**: [yemot-flow/issues](https://github.com/davidTheDeveloperY/yemot-flow/issues)
+- **דוגמאות**: ראה תיקיית `examples/`
+- **פורום ימות**: חפש "yemot-flow" 
+
+---
+
+## 📄 רישיון
+
+MIT License - חופשי לשימוש מסחרי ואישי
+
+---
+
+<p align="center">
+  <b>💝 נהנת מהספרייה? תן לנו ⭐ ב-GitHub!</b><br>
+  Made with ❤️ by davidTheDeveloper
+</p>
