@@ -1,0 +1,241 @@
+
+# Getting Started with Payrix
+
+## Install the Package
+
+The package is compatible with Python versions `3.7+`.
+Install the package from PyPi using the following pip command:
+
+```bash
+pip install payrix-api-sdk==1.0.0
+```
+
+You can also view the package at:
+https://pypi.python.org/pypi/payrix-api-sdk/1.0.0
+
+## Initialize the API Client
+
+**_Note:_** Documentation for the client can be found [here.](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/client.md)
+
+The following parameters are configurable for the API Client:
+
+| Parameter | Type | Description |
+|  --- | --- | --- |
+| environment | `Environment` | The API environment. <br> **Default: `Environment.SANDBOX`** |
+| http_client_instance | `Union[Session, HttpClientProvider]` | The Http Client passed from the sdk user for making requests |
+| override_http_client_configuration | `bool` | The value which determines to override properties of the passed Http Client from the sdk user |
+| http_call_back | `HttpCallBack` | The callback value that is invoked before and after an HTTP call is made to an endpoint |
+| timeout | `float` | The value to use for connection timeout. <br> **Default: 60** |
+| max_retries | `int` | The number of times to retry an endpoint call if it fails. <br> **Default: 0** |
+| backoff_factor | `float` | A backoff factor to apply between attempts after the second try. <br> **Default: 2** |
+| retry_statuses | `Array of int` | The http statuses on which retry is to be done. <br> **Default: [408, 413, 429, 500, 502, 503, 504, 521, 522, 524]** |
+| retry_methods | `Array of string` | The http methods on which retry is to be done. <br> **Default: ['GET', 'PUT']** |
+| proxy_settings | [`ProxySettings`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/proxy-settings.md) | Optional proxy configuration to route HTTP requests through a proxy server. |
+| api_key_credentials | [`ApiKeyCredentials`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature.md) | The credential object for Custom Header Signature |
+| session_key_credentials | [`SessionKeyCredentials`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-1.md) | The credential object for Custom Header Signature |
+| txn_session_key_credentials | [`TxnSessionKeyCredentials`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-2.md) | The credential object for Custom Header Signature |
+| username_credentials | [`UsernameCredentials`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-3.md) | The credential object for Custom Header Signature |
+| password_credentials | [`PasswordCredentials`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-4.md) | The credential object for Custom Header Signature |
+
+The API client can be initialized as follows:
+
+```python
+from payrix.configuration import Environment
+from payrix.http.auth.api_key import ApiKeyCredentials
+from payrix.http.auth.password import PasswordCredentials
+from payrix.http.auth.session_key import SessionKeyCredentials
+from payrix.http.auth.txn_session_key import TxnSessionKeyCredentials
+from payrix.http.auth.username import UsernameCredentials
+from payrix.payrix_client import PayrixClient
+
+client = PayrixClient(
+    api_key_credentials=ApiKeyCredentials(
+        apikey='APIKEY'
+    ),
+    session_key_credentials=SessionKeyCredentials(
+        sessionkey='SESSIONKEY'
+    ),
+    txn_session_key_credentials=TxnSessionKeyCredentials(
+        txnsessionkey='TXNSESSIONKEY'
+    ),
+    username_credentials=UsernameCredentials(
+        username='USERNAME'
+    ),
+    password_credentials=PasswordCredentials(
+        password='PASSWORD'
+    ),
+    environment=Environment.SANDBOX
+)
+```
+
+## Environments
+
+The SDK can be configured to use a different environment for making API calls. Available environments are:
+
+### Fields
+
+| Name | Description |
+|  --- | --- |
+| sandbox | **Default** |
+| canada sandbox | - |
+
+## Authorization
+
+This API uses the following authentication schemes.
+
+* [`apiKey (Custom Header Signature)`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature.md)
+* [`sessionKey (Custom Header Signature)`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-1.md)
+* [`txnSessionKey (Custom Header Signature)`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-2.md)
+* [`username (Custom Header Signature)`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-3.md)
+* [`password (Custom Header Signature)`](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/auth/custom-header-signature-4.md)
+
+## List of APIs
+
+* [API Keys](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/api-keys.md)
+* [Apple Domains](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/apple-domains.md)
+* [Apple Domains Mass Enablement](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/apple-domains-mass-enablement.md)
+* [Accounts Verifications](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/accounts-verifications.md)
+* [Aggregation Result Groups](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/aggregation-result-groups.md)
+* [Aggregation Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/aggregation-results.md)
+* [Alert Actions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/alert-actions.md)
+* [Alert Triggers](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/alert-triggers.md)
+* [Authentication Tokens](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/authentication-tokens.md)
+* [Batches Settlements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/batches-settlements.md)
+* [Billing Modifiers](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/billing-modifiers.md)
+* [Billing Events](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/billing-events.md)
+* [Change Requests](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/change-requests.md)
+* [Chargeback Documents](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/chargeback-documents.md)
+* [Chargeback Message Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/chargeback-message-results.md)
+* [Chargeback Messages](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/chargeback-messages.md)
+* [Chargeback Statuses](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/chargeback-statuses.md)
+* [Confirmation Codes](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/confirmation-codes.md)
+* [Decision Actions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/decision-actions.md)
+* [Decision Rules](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/decision-rules.md)
+* [Disbursement Entries](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/disbursement-entries.md)
+* [Disbursement Reference](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/disbursement-reference.md)
+* [Disbursement Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/disbursement-results.md)
+* [Embedded Finance](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/embedded-finance.md)
+* [Entity Debts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entity-debts.md)
+* [Entity Reserves](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entity-reserves.md)
+* [Entity Returns](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entity-returns.md)
+* [Entity Terms](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entity-terms.md)
+* [Entry Origin](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entry-origin.md)
+* [Fee Modifiers](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fee-modifiers.md)
+* [Fee Rules](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fee-rules.md)
+* [Fraud Sight Enablements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fraud-sight-enablements.md)
+* [Host Themes](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/host-themes.md)
+* [Fund Origins](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fund-origins.md)
+* [IP Address Lists](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/ip-address-lists.md)
+* [Invoice Items](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/invoice-items.md)
+* [Invoice Parameters](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/invoice-parameters.md)
+* [Invoice Line Items](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/invoice-line-items.md)
+* [Invoice Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/invoice-results.md)
+* [Logins Helpers](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/logins-helpers.md)
+* [Merchant Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/merchant-results.md)
+* [Merchant Platform Statuses](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/merchant-platform-statuses.md)
+* [Message Threads](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/message-threads.md)
+* [Note Documents](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/note-documents.md)
+* [Orgs VAS Efe Products](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs-vas-efe-products.md)
+* [Orgs VAS Omni Tokens](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs-vas-omni-tokens.md)
+* [Orgs VAS Revenue Boosts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs-vas-revenue-boosts.md)
+* [Orgs VAS Safer Payments](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs-vas-safer-payments.md)
+* [Orgs VA Stax Form Enablements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs-va-stax-form-enablements.md)
+* [Org Entities](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/org-entities.md)
+* [Org Flow Actions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/org-flow-actions.md)
+* [Org Flows](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/org-flows.md)
+* [Org Flow Rules](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/org-flow-rules.md)
+* [Payment Update Groups](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/payment-update-groups.md)
+* [Payment Updates](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/payment-updates.md)
+* [Payout Flows](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/payout-flows.md)
+* [Pending Entry](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/pending-entry.md)
+* [Profit Share Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/profit-share-results.md)
+* [Profit Share Rules](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/profit-share-rules.md)
+* [Profit Shares](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/profit-shares.md)
+* [Reserve Entry](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/reserve-entry.md)
+* [Revenue Boosts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/revenue-boosts.md)
+* [Rev Share Schedules](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/rev-share-schedules.md)
+* [Rev Share Statements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/rev-share-statements.md)
+* [Safer Payments](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/safer-payments.md)
+* [Statement Entry](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/statement-entry.md)
+* [Subscription Tokens](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/subscription-tokens.md)
+* [Tax Form Requests](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/tax-form-requests.md)
+* [Team Logins](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/team-logins.md)
+* [Terminal Transaction Reference](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/terminal-transaction-reference.md)
+* [Terminal Transactions Datas](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/terminal-transactions-datas.md)
+* [Terminal Transactions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/terminal-transactions.md)
+* [Terminal Transaction Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/terminal-transaction-results.md)
+* [Terminal Transactions Metadatas](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/terminal-transactions-metadatas.md)
+* [Token Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/token-results.md)
+* [Transaction Datas](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/transaction-datas.md)
+* [Transaction Metadatas](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/transaction-metadatas.md)
+* [Transaction Holds](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/transaction-holds.md)
+* [Transaction Items](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/transaction-items.md)
+* [Transactions Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/transactions-results.md)
+* [Fee Refunds](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fee-refunds.md)
+* [Transactions Txns](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/transactions-txns.md)
+* [Tax Form Enablements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/tax-form-enablements.md)
+* [Txn Sessions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/txn-sessions.md)
+* [VAS Efe Offers](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/vas-efe-offers.md)
+* [VAS Efe Offer Updates](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/vas-efe-offer-updates.md)
+* [Orgs VA Sfraud Sight Enablements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs-va-sfraud-sight-enablements.md)
+* [Fraud Sight Results](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fraud-sight-results.md)
+* [Accounts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/accounts.md)
+* [Adjustments](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/adjustments.md)
+* [Aggregations](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/aggregations.md)
+* [Alerts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/alerts.md)
+* [Assessments](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/assessments.md)
+* [Billing](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/billing.md)
+* [Bins](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/bins.md)
+* [Chargebacks](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/chargebacks.md)
+* [Contacts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/contacts.md)
+* [Credentials](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/credentials.md)
+* [Customers](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/customers.md)
+* [Decisions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/decisions.md)
+* [Disbursements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/disbursements.md)
+* [Divisions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/divisions.md)
+* [Entities](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entities.md)
+* [Entity Refs](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entity-refs.md)
+* [Entity Data](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entity-data.md)
+* [Entities Custom Fields](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entities-custom-fields.md)
+* [Entries](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/entries.md)
+* [Fees](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/fees.md)
+* [Funds](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/funds.md)
+* [Invoices](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/invoices.md)
+* [Logins](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/logins.md)
+* [Mappings](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/mappings.md)
+* [Members](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/members.md)
+* [Merchants](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/merchants.md)
+* [Messages](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/messages.md)
+* [Notes](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/notes.md)
+* [Omni Tokens](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/omni-tokens.md)
+* [Orgs](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/orgs.md)
+* [Payouts](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/payouts.md)
+* [Plans](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/plans.md)
+* [Reserves](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/reserves.md)
+* [Secrets](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/secrets.md)
+* [Sessions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/sessions.md)
+* [Statements](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/statements.md)
+* [Subscriptions](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/subscriptions.md)
+* [Teams](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/teams.md)
+* [Terminals](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/terminals.md)
+* [Tokens](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/tokens.md)
+* [Vendors](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/controllers/vendors.md)
+
+## SDK Infrastructure
+
+### Configuration
+
+* [ProxySettings](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/proxy-settings.md)
+
+### HTTP
+
+* [HttpResponse](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/http-response.md)
+* [HttpRequest](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/http-request.md)
+
+### Utilities
+
+* [ApiHelper](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/api-helper.md)
+* [HttpDateTime](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/http-date-time.md)
+* [RFC3339DateTime](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/rfc3339-date-time.md)
+* [UnixDateTime](https://www.github.com/sdks-io/payrix-api-python-sdk/tree/1.0.0/doc/unix-date-time.md)
+
