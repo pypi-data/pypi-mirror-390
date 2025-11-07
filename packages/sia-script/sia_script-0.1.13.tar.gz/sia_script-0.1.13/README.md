@@ -1,0 +1,41 @@
+SIA — Simplified Integrated Architecture
+
+SIA (Simplified Integrated Architecture) by SIA SOFTWARE INNOVATIONS simplifies Python frameworks for learning and experimentation.
+
+Modules
+
+SiaNTT (sia.ntt) — Simplified Object/Entity model for OOP.
+SiaQBT (sia.qbt) — Educational Quantum Circuit Simulator.
+SiaCHI (sia.chi) — Chemical Analysis utility for molecular calculations and analysis (like molar mass).
+
+Installation
+
+pip install sia-script
+
+
+Usage
+
+As a Library (in Python scripts):
+
+# Example 1: Quantum Circuit (SiaQBT)
+from sia.qbt import QuantumCircuit
+qc = QuantumCircuit(2).h(0).cnot(0, 1).run()
+
+# Example 2: Chemical Analysis (SiaCHI)
+from sia.chi.analysis import ChemicalAnalysisUtility
+analysis = ChemicalAnalysisUtility()
+result = analysis.calculate_molar_mass("H2O")
+print(f"Molar Mass of H2O: {result} g/mol")
+
+
+As an Interactive Command-Line Tool (CLI):
+
+sia-qsim
+
+
+Author
+
+Naga Sai Durga Nagesh 
+Founder, 
+SIA SOFTWARE INNOVATIONS 
+Email: sbvnagesh00@gmail.com
