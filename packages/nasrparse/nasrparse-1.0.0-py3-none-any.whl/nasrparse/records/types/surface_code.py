@@ -1,0 +1,33 @@
+from nasrparse.records.types._base_enum import BaseEnum
+
+
+class SurfaceCode(BaseEnum):
+    CEMENT_CONCRETE = "CONC"
+    ASPHALT_CONCRETE = "ASPH"
+    SNOW = "SNOW"
+    ICE = "ICE"
+    PIERCED_STEEL_PLANKING = "MATS"
+    TREATED = "TREATED"
+    GRAVEL = "GRAVEL"
+    TURF = "TURF"
+    DIRT = "DIRT"
+    PARTIAL_CONCRETE = "PEM"
+    ROOFTOP = "ROOF-TOP"
+    WATER = "WATER"
+    ALUMINUM = "ALUMINUM"
+    BRICK = "BRICK"
+    CALICHE = "CALICHE"
+    CORAL = "CORAL"
+    DECK = "DECK"
+    GRASS = "GRASS"
+    MATS = "MATS"
+    METAL = "METAL"
+    NON_STANDARD = "NSTD"
+    OIL_CHIP = "OIL&CHIP"
+    PSP = "PSP"
+    SAND = "SAND"
+    SOD = "SOD"
+    STEEL = "STEEL"
+    TRTD = "TRTD"
+    WOOD = "WOOD"
+    NULL = None

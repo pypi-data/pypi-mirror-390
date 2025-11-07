@@ -1,0 +1,19 @@
+from ._base_enum import BaseEnum
+
+
+class NASPCode(BaseEnum):
+    NPIAS = "N"
+    FE_PROGRAM = "B"
+    GRANT_AGREEMENTS = "G"
+    ACCESSIBILITY_COMPLIANCE = "H"
+    PUBLIC_LAW_289 = "P"
+    REGULATION_16_WAA = "R"
+    CONVEYANCE_SEC_16 = "S"
+    FAAP_AGREEMENT = "V"
+    TRANSFER_OBLIGATIONS = "X"
+    TITLE_VI_ASSURANCES = "Y"
+    CONVEYANCE_SEC_303 = "Z"
+    EXPIRED_GRANT_AGREEMENT = "1"
+    EXPIRED_SEC_303 = "2"
+    EXPIRED_DLAND_DCLA = "3"
+    NULL = None
