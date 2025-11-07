@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2><a href="{{ base_url }}numero/{{ numero.slug }}/">{{ numero.name }}</a></h2>
+
+  <article>
+    <header>
+      <h3>{{ article.title_f }}</h3>
+      <h4>{{ article.subtitle_f }}</h4>
+
+      {% if article.authors %}
+        <div>
+          {% for author in article.authors %}
+            <details>
+              <summary role="button"><em>{{ author.forname }} {{ author.surname }}</em></summary>
+              {{ author.biography|markdown }}
+              <a href="{{ base_url }}auteur/{{ author.slug }}/" role="button" class="secondary">Autres articles de l’auteur·ice →</a>
+            </details>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% for keyword in article.keywords %}
+        <a href="{{ base_url }}mot-clef/{{ keyword.slug }}/">#{{ keyword.name }}</a>({{ keyword.articles|length }}){%- if not loop.last -%}, {% endif %}
+      {% endfor %}
+    </header>
+
+    <div>
+      {% if article.abstract %}
+        {% for abstract in article.abstract %}
+          {% if abstract.lang == 'fr' %}
+            <blockquote>{{ abstract.text_f|markdown }}</blockquote>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {{ article.content_html }}
+    </div>
+  </article>
+{% endblock content %}
