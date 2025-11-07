@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devlake-mcp"
+version = "0.1.0"
+description = "Model Context Protocol server for DevLake"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "wangzhong", email = "wangzhong@g7.com.cn" }
+]
+license = { text = "MIT" }
+keywords = ["mcp", "devlake", "model-context-protocol", "ai", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+# 项目依赖
+dependencies = [
+    "fastmcp>=0.5.0",
+]
+
+# 可选依赖
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+# 命令行入口点 - 这是 pipx 安装所需的关键配置
+[project.scripts]
+devlake-mcp = "devlake_mcp.server:main"
+
+[project.urls]
+Homepage = "https://git.chinawayltd.com/engineering-efficiency/devlake-mcp"
+Repository = "https://git.chinawayltd.com/engineering-efficiency/devlake-mcp"
+Issues = "https://git.chinawayltd.com/engineering-efficiency/devlake-mcp"
+
+[tool.setuptools]
+packages = ["devlake_mcp"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+devlake_mcp = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
