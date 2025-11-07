@@ -1,0 +1,134 @@
+Metadata-Version: 2.4
+Name: biolith
+Version: 0.0.11
+Summary: Bayesian Ecological Modeling in Python
+Author-email: Timm Haucke <haucke@mit.edu>
+License: MIT
+Project-URL: Documentation, https://timm.haucke.xyz/biolith/
+Project-URL: Source, https://github.com/timmh/biolith
+Keywords: python,occupancy,numpyro,bayesian,ecology
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy==2.3.4
+Requires-Dist: pandas==2.3.3
+Requires-Dist: jax==0.8.0
+Requires-Dist: numpyro==0.19.0
+Requires-Dist: funsor==0.4.5
+Provides-Extra: cuda11
+Requires-Dist: jax[cuda11]==0.8.0; extra == "cuda11"
+Provides-Extra: cuda12
+Requires-Dist: jax[cuda12]==0.8.0; extra == "cuda12"
+Provides-Extra: cuda13
+Requires-Dist: jax[cuda13]==0.8.0; extra == "cuda13"
+Provides-Extra: tpu
+Requires-Dist: jax[tpu]==0.8.0; extra == "tpu"
+Provides-Extra: rocm
+Requires-Dist: jax[rocm]==0.8.0; extra == "rocm"
+Provides-Extra: dev
+Requires-Dist: black; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: docformatter; extra == "dev"
+Requires-Dist: pylint; extra == "dev"
+Requires-Dist: pyright; extra == "dev"
+Requires-Dist: sphinx; extra == "dev"
+Requires-Dist: sphinx_rtd_theme; extra == "dev"
+Requires-Dist: myst_parser; extra == "dev"
+Dynamic: license-file
+
+# <img alt="Biolith logo" src="assets/biolith.svg" style="height: 2em;"> Biolith: <ins>B</ins>ayes<ins>i</ins>an Ec<ins>ol</ins>ogical Modeling <ins>i</ins>n Py<ins>th</ins>on
+
+[![Test](https://github.com/timmh/biolith/actions/workflows/test.yml/badge.svg)](https://github.com/timmh/biolith/actions/workflows/test.yml) [![PyPI - Version](https://img.shields.io/pypi/v/biolith)](https://pypi.org/project/biolith/) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15706627.svg)](https://doi.org/10.5281/zenodo.15706627)
+
+Biolith is a Python package designed for Bayesian ecological modeling and analysis with a focus on occupancy modeling. It has similar goals to [Unmarked](https://github.com/biodiverse/unmarked) and [spOccupancy](https://github.com/biodiverse/spOccupancy/), but is written in Python and uses [NumPyro](https://num.pyro.ai) and [JAX](https://jax.readthedocs.io) to enable rapid model fitting and iteration.
+
+## Features
+
+- **Hackable**: Models are easy to understand and implement, no likelihood derivations needed.
+- **Fast**: Models can be fit on GPUs, which is _fast_.
+- **Familiar**: Everything is written in Python, making it easy to integrate into existing pipelines.
+
+## Installation
+
+Install Biolith using pip:
+
+```bash
+pip install biolith
+```
+
+### Accelerator support
+
+For NVIDIA GPU support, check your CUDA version with `nvidia-smi` and install the corresponding JAX variant:
+
+```bash
+# CUDA 13.x
+pip install biolith[cuda13]
+```
+
+For AMD GPUs:
+```bash
+pip install biolith[rocm]
+```
+
+For Google Cloud TPU VMs:
+```bash
+pip install biolith[tpu]
+```
+
+## Usage
+
+Here is a simple example using simulated data to get you started:
+
+```python
+from biolith.models import occu, simulate
+from biolith.utils import fit
+
+# Simulate dataset
+data, true_params = simulate()
+
+# Fit model to simulated data
+results = fit(occu, **data)
+
+# Compare estimated occupancy probability to the true mean occupancy
+print(f"Mean estimated psi: {results.samples['psi'].mean():.2f}")
+print(f"Mean true occupancy: {true_params['z'].mean():.2f}")
+```
+
+## Real-world Example
+To see a real-world example on camera trap data, see [this Jupyter Notebook](./assets/CameraTrapExample.ipynb) from the [EFI Statistical Methods Seminar Series](https://github.com/eco4cast/Statistical-Methods-Seminar-Series/tree/main/beery-haucke_biolith) or [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/timmh/biolith/blob/main/assets/CameraTrapExample.ipynb)
+
+## Documentation
+API Documentation and examples are available [here](https://timm.haucke.xyz/biolith/).
+
+## Development
+
+Make sure to install development dependencies, e.g. using:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Run `python -m unittest` to run unit tests.
+
+Run `scripts/format.sh` to format the codebase. Execute `scripts/check.sh` to run
+isort, docformatter and black in check mode along with pylint and pyright.
+
+To install the pre-commit hook for formatting and code linting, run:
+
+```bash
+./scripts/install_precommit.sh
+```
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+For questions or feedback, please open an issue or email [haucke@mit.edu](mailto:haucke@mit.edu).
+
+## Acknowledgements
+This work was supported by the AI and Biodiversity Change (ABC) Global Center, which is funded by the [US National Science Foundation under Award No. 2330423](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2330423&HistoricalAwards=false) and [Natural Sciences and Engineering Research Council of Canada under Award No. 585136](https://www.nserc-crsng.gc.ca/ase-oro/Details-Detailles_eng.asp?id=782440). This work draws on research supported in part by the Social Sciences and Humanities Research Council.
