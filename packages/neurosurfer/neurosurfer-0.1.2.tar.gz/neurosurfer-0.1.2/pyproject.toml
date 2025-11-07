@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=69", "wheel", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neurosurfer"
+dynamic = ["version"]
+description = "Neurosurfer: production-ready AI agent framework with multi-LLM, RAG, tools, and FastAPI server"
+readme = { file = "README-pypi.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [
+  { name = "Nouman Ahsan", email = "naumanhsa965@gmail.com" }
+]
+maintainers = [
+  { name = "Nouman Ahsan", email = "naumanhsa965@gmail.com" }
+]
+keywords = ["LLM", "agents", "RAG", "transformers", "FastAPI", "ChromaDB"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Environment :: GPU",
+  "Environment :: GPU :: NVIDIA CUDA",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+
+# Default deps to "test the app"
+dependencies = [
+  "fastapi>=0.110,<1.0",
+  "uvicorn[standard]>=0.29,<1.0",
+  "gunicorn>=21,<24",
+
+  "pydantic>=2.6,<3.0",
+  "pydantic[email]>=2.6,<3.0",
+  "pydantic_settings>=2.2,<3.0",
+
+  "numpy>=1.24,<3.0",
+  "pandas>=2.1,<3.0",
+
+  "tqdm>=4.66,<5",
+  "rich>=13,<15",
+
+  "itsdangerous>=2.1,<3.0",
+  "bcrypt>=4.1,<5.0",
+  "passlib>=1.7,<2.0",
+  "python-jose[cryptography]>=3.3,<4",
+
+  "openai>=1.30,<2.0",
+  "huggingface_hub>=0.20,<1.0",
+  "chromadb>=1.0,<2",
+  "SQLAlchemy>=2.0,<3.0",
+
+  "PyMuPDF>=1.23,<2",
+  "python-docx>=1.0,<2",
+  "python-pptx>=0.6.21,<1",
+  "fonttools>=4.43,<5",
+  "beautifulsoup4>=4.10,<5",
+  "altair>=5,<6",
+
+  "python-magic>=0.4,<0.5; platform_system != 'Windows'",
+  "python-magic-bin>=0.4,<0.5; platform_system == 'Windows'",
+  "typing-extensions>=4.6,<5; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+torch = [
+  "torch>=2.8,<3.0",
+  "torchvision>=0.23,<0.24",
+  "torchaudio>=2.8,<2.9",
+  "transformers>=4.56,<5.0",
+  "sentence-transformers>=5.1,<6.0",
+  "bitsandbytes>=0.48,<0.49",
+  "unsloth>=2025.10,<2026.0",
+  "accelerate>=1.10.1,<2.0"
+]
+
+[project.scripts]
+neurosurfer = "neurosurfer.cli.main:main"
+
+[project.urls]
+Homepage = "https://naumanhsa.github.io/neurosurfer/"
+Repository = "https://github.com/NaumanHSA/neurosurfer"
+Issues = "https://github.com/NaumanHSA/neurosurfer/issues"
+Documentation = "https://naumanhsa.github.io/neurosurfer/"
+
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE*"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { attr = "neurosurfer.__version__" }
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["neurosurfer*"]
+
+[tool.setuptools.package-data]
+neurosurfer = ["py.typed", "ui_build/**"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_unused_ignores = true
