@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "liteprofile"
+version = "0.1.0"
+description = "A lightweight, fast data profiling library built on Polars (with Pandas fallback)."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Inez Van Laer" }]
+requires-python = ">=3.8"
+keywords = ["EDA", "profiling", "polars", "pandas", "duckdb", "data"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+# Keep deps minimal; users can opt into duckdb
+dependencies = [
+  "polars>=0.20.0",
+  "pandas>=2.0.0"
+]
+
+[project.optional-dependencies]
+duck = ["duckdb>=0.10.0"]
+dev = ["ruff>=0.5.0", "black>=24.0.0", "mypy>=1.8.0", "pytest>=8.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/inezvl/liteprofile"
+Issues = "https://github.com/inezvl/liteprofile/issues"
+
+# Because this is a single-file module named 'liteprofile.py'
+[tool.setuptools]
+py-modules = ["liteprofile"]
+
+# Expose a CLI command `liteprofile` that calls main() inside liteprofile.py
+[project.scripts]
+liteprofile = "liteprofile:main"
