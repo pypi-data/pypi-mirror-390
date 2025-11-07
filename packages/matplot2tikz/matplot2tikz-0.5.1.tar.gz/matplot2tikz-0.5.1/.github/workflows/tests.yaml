@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  - pull_request
+
+jobs:
+  test:
+    # Run on a single, standard runner
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      # We just need one modern Python version to run the 'tox' command itself.
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Tox and tox-uv
+      # Install the required tools into the workflow runner environment
+      run: |
+        pip install --upgrade pip
+        pip install tox tox-uv
+
+    - name: Run All Tox Environments
+      # The 'tox' command executes the full matrix (py310, py311, etc.)
+      # defined in tox.ini. tox-uv handles the fast installation.
+      run: tox
