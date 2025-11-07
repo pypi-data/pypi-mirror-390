@@ -1,0 +1,3 @@
+
+class XInjectError(Exception):
+    pass

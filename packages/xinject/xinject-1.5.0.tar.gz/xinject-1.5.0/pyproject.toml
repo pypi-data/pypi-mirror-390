@@ -1,0 +1,69 @@
+[tool.poetry]
+name = "xinject"
+version = "1.5.0"
+description = "Lazy dependency injection."
+authors = ["Josh Orr <josh@orr.blue>"]
+packages = [{include = "xinject"}]
+readme = "README.md"
+repository = "https://github.com/xyngular/py-xinject"
+keywords = ["dependency", "injection", "lazy", "resource"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: The Unlicense (Unlicense)"
+]
+
+
+[tool.poetry.dependencies]
+python = "^3.12"
+xsentinels = "^1.2.0"
+
+
+[tool.poetry.group.dev.dependencies]
+mkdocs-git-revision-date-plugin = "^0.3.2"
+mkdocs = "^1.4.0"
+mike = "^2"
+pytest-pycodestyle = "^2.3.0"
+pytest = "^8"
+pdoc3 = "^0"
+mkdocs-material = "^9"
+tomlkit = "^0"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--verbose --pycodestyle"
+testpaths = ["tests", "xinject"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.custom.xpublish]
+extra-module-docs = ['xsentinels']
+
+[tool.poetry.plugins]
+# Pytest plugin to support automatic clearing of all current dependency dependencies between each test.
+pytest11 = {xinject_pytest_plugin = "xinject.pytest_plugin"}
+
+[tool.black]
+line-length = 119
+skip-string-normalization = 1
+target_version = ['py38']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''
