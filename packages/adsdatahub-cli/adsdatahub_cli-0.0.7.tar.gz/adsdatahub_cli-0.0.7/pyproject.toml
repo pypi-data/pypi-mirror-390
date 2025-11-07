@@ -1,0 +1,36 @@
+[project]
+name = "adsdatahub-cli"
+version = "0.0.7"
+description = ""
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "ya7010", email = "ya7010@outlook.com" }]
+dependencies = [
+  "adsdatahub",
+  "pandas",
+  "rich",
+  "rich-argparse",
+]
+
+[dependency-groups]
+dev = [
+  "pandas-stubs",
+  "pyright",
+  "pytest",
+  "ruff",
+  "taskipy",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.taskipy.tasks]
+ci = "task format && task lint && task typecheck && task test"
+format = "ruff format ."
+lint = "ruff check ."
+test = "pytest"
+typecheck = "pyright src/** tests/**"
+
+[tool.uv.sources]
+adsdatahub = { workspace = true }
