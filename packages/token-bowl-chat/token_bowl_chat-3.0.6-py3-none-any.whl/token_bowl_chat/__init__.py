@@ -1,0 +1,90 @@
+"""Token Bowl Chat Client - A chat client for Token Bowl."""
+
+from .agent import TokenBowlAgent
+from .async_client import AsyncTokenBowlClient
+from .client import TokenBowlClient
+from .exceptions import (
+    AuthenticationError,
+    ConflictError,
+    NetworkError,
+    NotFoundError,
+    RateLimitError,
+    ServerError,
+    TimeoutError,
+    TokenBowlError,
+    ValidationError,
+)
+from .models import (
+    AdminMessageUpdate,
+    AdminUpdateUserRequest,
+    ConversationResponse,
+    CreateConversationRequest,
+    HTTPValidationError,
+    MessageResponse,
+    MessageType,
+    PaginatedConversationsResponse,
+    PaginatedMessagesResponse,
+    PaginationMetadata,
+    PublicUserProfile,
+    Role,
+    SendMessageRequest,
+    StytchAuthenticateRequest,
+    StytchAuthenticateResponse,
+    StytchLoginRequest,
+    StytchLoginResponse,
+    UnreadCountResponse,
+    UpdateConversationRequest,
+    UpdateLogoRequest,
+    UpdateUsernameRequest,
+    UpdateWebhookRequest,
+    UserProfileResponse,
+    UserRegistration,
+    UserRegistrationResponse,
+)
+from .websocket_client_v3 import TokenBowlWebSocket
+
+__version__ = "3.0.6"
+__all__ = [
+    "__version__",
+    # Clients
+    "TokenBowlClient",
+    "AsyncTokenBowlClient",
+    "TokenBowlWebSocket",
+    "TokenBowlAgent",
+    # Models
+    "MessageResponse",
+    "MessageType",
+    "Role",
+    "PaginatedMessagesResponse",
+    "PaginationMetadata",
+    "SendMessageRequest",
+    "UpdateLogoRequest",
+    "UpdateUsernameRequest",
+    "UpdateWebhookRequest",
+    "UserRegistration",
+    "UserRegistrationResponse",
+    "UserProfileResponse",
+    "PublicUserProfile",
+    "UnreadCountResponse",
+    "StytchLoginRequest",
+    "StytchLoginResponse",
+    "StytchAuthenticateRequest",
+    "StytchAuthenticateResponse",
+    "AdminUpdateUserRequest",
+    "AdminMessageUpdate",
+    "HTTPValidationError",
+    "ConversationResponse",
+    "CreateConversationRequest",
+    "UpdateConversationRequest",
+    "PaginatedConversationsResponse",
+    # Exceptions
+    "TokenBowlError",
+    "AuthenticationError",
+    "ValidationError",
+    "NotFoundError",
+    "ConflictError",
+    "RateLimitError",
+    "ServerError",
+    "NetworkError",
+    "TimeoutError",
+]
