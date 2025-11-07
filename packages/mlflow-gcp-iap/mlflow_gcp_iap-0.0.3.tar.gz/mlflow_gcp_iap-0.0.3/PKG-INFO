@@ -1,0 +1,70 @@
+Metadata-Version: 2.4
+Name: mlflow-gcp-iap
+Version: 0.0.3
+Summary: Add-on for accessing MlFlow tracking server behing GCP IAP.
+Author: AiBox Lab
+Maintainer-email: Moésio Filho <moesio.f@gmail.com>
+Project-URL: Homepage, https://github.com/aiboxlab/mlflow-gcp-iap
+Project-URL: Repository, https://github.com/aiboxlab/mlflow-gcp-iap
+Project-URL: Issues, https://github.com/aiboxlab/mlflow-gcp-iap/issues
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Development Status :: 3 - Alpha
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: google-auth>=2.38,~=2.40.0
+Requires-Dist: platformdirs>=4.0.0
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: requests>=2.32.5
+Requires-Dist: typer>=0.17.4
+Requires-Dist: uv>=0.8.15
+Requires-Dist: mlflow>=2.19.0
+Dynamic: license-file
+
+<h1 align="center">
+  <br>
+  <a href="https://aiboxlab.org/en/"><img src="https://aiboxlab.org/img/logo-aibox.png" alt="AiBox Lab" width="200"></a>
+  <br>
+  mlflow-gcp-iap
+  <br>
+</h1>
+
+<h4 align="center">MlFlow add-on to access IAP-enabled tracking server on GCP.</h4>
+
+
+[![Python](https://img.shields.io/pypi/pyversions/mlflow-gcp-iap.svg)](https://badge.fury.io/py/mlflow-gcp-iap)
+[![PyPI](https://badge.fury.io/py/mlflow-gcp-iap.svg)](https://badge.fury.io/py/mlflow-gcp-iap)
+
+# Quickstart
+
+Install the library using your favorite package manager:
+
+```sh
+uv add mlflow-gcp-iap
+uv pip install mlflow-gcp-iap
+pip install mlflow-gcp-iap
+```
+
+Once the library is installed, you must configure it by running `mlflow-gcp-iap setup`. The CLI will ask for the required configuration. 
+
+It is essential that the [GCP Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc) is configured locally, and that the user and service account have sufficient permissions. For the user, permissions related to Service Account Impersonation and token creation are required. For the service account, only the permission to access the IAP-protected MlFlow tracking server is mandatory.
+
+To check whether the configuration works correctly, run `mlflow-gcp-iap test`. This command runs the script [`src/mlflow_gcp_iap/test.py`](./src/mlflow_gcp_iap/test.py), which creates a run on the MlFlow server. 
+
+The library provides a simple context manager that automatically refresh tokens and update the MlFlow environment variables. The intended usage is as follows:
+
+```python
+import mlflow
+
+from mlflow_gcp_iap import TokenRefresher
+
+
+if __name__ == "__main__":
+    with TokenRefresher():
+        with mlflow.start_run(run_name="my-run"):
+            mlflow.log_params({"a": 10, "b": 20})
+            mlflow.log_metrics({"MSE": 0.0})
+```
