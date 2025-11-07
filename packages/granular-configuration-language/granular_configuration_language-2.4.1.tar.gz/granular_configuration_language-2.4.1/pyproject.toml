@@ -1,0 +1,216 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+classifiers = [
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Topic :: Utilities",
+  "Typing :: Typed",
+]
+packages = [{ include = "granular_configuration_language" }]
+requires-poetry = ">=2.1"
+
+[project.urls]
+homepage = "https://lifedox.github.io/granular-configuration-language/README.html"
+repository = "https://github.com/lifedox/granular-configuration-language"
+documentation = "https://lifedox.github.io/granular-configuration-language/README.html"
+
+[project]
+name = "granular-configuration-language"
+version = "2.4.1"
+description = "This general purpose configuration utility library allows your code to use YAML as a configuration language for internal and external parties, allowing configuration to be crafted from multiple sources and merged just before use, using YAML Tags for additional functionality."
+license = { text = "MIT" }
+authors = [{ name = "Eric Jensen", email = "eric.jensen42@gmail.com" }]
+readme = "README.md"
+dynamic = ["classifiers"]
+requires-python = ">=3.10"
+dependencies = [
+  "python-jsonpath",
+  "ruamel.yaml>=0.18",
+  "python-dateutil ; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+printing = ["tabulate>=0.9.0"]
+
+[tool.poetry.group.renovate_main.dependencies]
+# pinned dependencies for Renovate
+python-jsonpath = ">=2.0.1"
+"ruamel.yaml" = ">=0.18.16"
+
+[tool.poetry.group.pyright]
+optional = true
+
+[tool.poetry.group.pyright.dependencies]
+python-dateutil = ">=2.9.0.post0"
+pyright = { version = ">=1.1.407", extras = ["nodejs"] }
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = { version = ">=8.2.3", python = ">=3.11" }
+sphinx_rtd_theme = { version = ">=3.0.2", python = ">=3.11" }
+myst-parser = { version = ">=4.0.1", python = ">=3.11" }
+sphinx-copybutton = { version = ">=0.5.2", python = ">=3.11" }
+
+[tool.poetry.group.dev.dependencies]
+tabulate = "0.9.0"
+# Types
+types-python-dateutil = "2.9.0.20251008" # mypy wants it even if >3.10
+types-tabulate = " 0.9.0.20241207"
+# Testing
+pytest = "8.4.2"
+pytest-cov = "7.0.0"
+coverage = "7.11.0"
+# Linting
+ruff = "0.14.4"
+mypy = "1.18.2"
+bandit = "1.8.6"
+
+[project.entry-points."granular_configuration_language_20_tag"]
+"official_extra" = "granular_configuration_language.yaml._tags.func_and_class"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+addopts = '''
+  -ra
+  --cov-config=pyproject.toml
+  --cov=granular_configuration_language
+  --cov-report term-missing
+  --verbose
+  --durations 0
+  --durations-min .035
+  --color yes
+'''
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+
+[tool.coverage.report]
+exclude_also = [
+  "def __repr__",
+  "if __name__ == .__main__.:",
+  "(?:if|else).*TYPE_CHECKING",
+  "class .*?\\(.*?,?Protocol,?.*?\\):",
+  "@(abc\\.)?abstractmethod",
+  "raise NotImplementedError",
+  "\\.\\.\\.",
+]
+precision = 2
+
+[tool.mypy]
+python_version = "3.13"
+check_untyped_defs = true
+disallow_subclassing_any = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = false
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+extra_checks = true
+warn_unused_ignores = true
+warn_unused_configs = true
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+deprecateTypingAliases = true
+reportImplicitStringConcatenation = "error"
+reportPropertyTypeMismatch = "error"
+reportShadowedImports = "error"
+
+# Disabling the following
+reportMissingTypeArgument = "none"
+reportPrivateUsage = "none"          # tests exist
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"   # Way too broad
+reportUnnecessaryIsInstance = "none" # I decide if I need a real check
+reportUnusedImport = "none"          # Others linter do this better
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+fix = false
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 80
+
+[tool.ruff.lint]
+select = [
+  # pycodestyle
+  "E",
+  # Pyflakes
+  "F",
+  # pyupgrade
+  "UP",
+  # flake8-bugbear
+  "B",
+  # flake8-simplify
+  "SIM",
+  # isort
+  "I",
+  # flake-bandit
+  "S",
+  # flake8-future-annotations,
+  "FA",
+  # flake8-raise
+  "RSE",
+  # flake8-implicit-str-concat
+  "ISC",
+  # flake8-tidy-imports
+  "TID",
+  # flake8-slots
+  "SLOT",
+  # mccabe
+  "C90",
+  # flake8-use-pathlib
+  "PTH",
+  # flake8-import-conventions
+  "ICN",
+  # Perflint
+  "PERF",
+]
+ignore = [
+  # Long Strings
+  "E501", # Line too long
+
+  # Disagree with (clarity requires rejection)
+  "E731",   # Do not assign a `lambda` expression
+  "SIM108", # Use ternary operator
+]
+unfixable = [
+  "ERA", # do not autoremove commented out code
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"test_*.py" = [
+  "B018",   # Found useless expression
+  "SIM117", # Use a single `with` statement
+  "B009",   # Do not call `getattr` with a constant attribute value
+  "S",      # Bandit
+]
+
+[tool.ruff.lint.flake8-import-conventions.extend-aliases]
+"typing" = "typ"
+"operator" = "op"
+"collections.abc" = "tabc"
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
