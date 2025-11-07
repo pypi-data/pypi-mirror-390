@@ -1,0 +1,696 @@
+Metadata-Version: 2.1
+Name: ailoos
+Version: 2.0.22
+Summary: Sovereign Decentralized AI Library for EmpoorioLM Training
+Home-page: https://github.com/empoorio/ailoos
+Author: Empoorio
+Author-email: dev@empoorio.com
+License: Proprietary - Ailoos Technologies & Empoorio Ecosystem
+Project-URL: Bug Tracker, https://github.com/empoorio/ailoos/issues
+Project-URL: Documentation, https://ailoos.dev/docs
+Project-URL: Source Code, https://github.com/empoorio/ailoos
+Project-URL: Discord, https://discord.gg/ailoos
+Keywords: ai,machine-learning,federated-learning,decentralized,blockchain,empoorio,sovereign-ai
+Platform: any
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Distributed Computing
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp>=3.8.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: tqdm>=4.64.0
+Provides-Extra: ai
+Requires-Dist: transformers>=4.21.0; extra == "ai"
+Requires-Dist: accelerate>=0.12.0; extra == "ai"
+Requires-Dist: datasets>=2.4.0; extra == "ai"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: isort>=5.10.0; extra == "dev"
+Requires-Dist: flake8>=4.0.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Requires-Dist: sphinx>=5.0.0; extra == "dev"
+Requires-Dist: sphinx-rtd-theme>=1.0.0; extra == "dev"
+Provides-Extra: full
+Requires-Dist: torch>=2.0.0; extra == "full"
+Requires-Dist: torchvision>=0.15.0; extra == "full"
+Requires-Dist: torchaudio>=2.0.0; extra == "full"
+Requires-Dist: transformers>=4.21.0; extra == "full"
+Requires-Dist: datasets>=2.4.0; extra == "full"
+Requires-Dist: accelerate>=0.12.0; extra == "full"
+Requires-Dist: pandas>=1.5.0; extra == "full"
+Requires-Dist: matplotlib>=3.5.0; extra == "full"
+Requires-Dist: seaborn>=0.11.0; extra == "full"
+Requires-Dist: scikit-learn>=1.1.0; extra == "full"
+Provides-Extra: gpu
+Requires-Dist: torch>=2.0.0; extra == "gpu"
+Requires-Dist: torchvision>=0.15.0; extra == "gpu"
+Requires-Dist: torchaudio>=2.0.0; extra == "gpu"
+Provides-Extra: lite
+
+# 🚀 Ailoos - Sovereign Decentralized AI Library
+
+**Ailoos** is a comprehensive Python library for decentralized AI training and inference, specifically designed for training **EmpoorioLM** and other models across a global network of nodes using federated learning.
+
+[![PyPI version](https://badge.fury.io/py/ailoos.svg)](https://pypi.org/project/ailoos/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Proprietary License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
+[![Discord](https://img.shields.io/discord/123456789)](https://discord.gg/ailoos)
+
+## 📋 Table of Contents
+
+- [🌟 Key Features](#-key-features)
+- [📦 Installation](#-installation)
+- [🚀 Quick Start Guide](#-quick-start-guide)
+- [⚙️ Configuration](#️-configuration)
+- [💻 Complete CLI Reference](#-complete-cli-reference)
+- [🐍 Python API Usage](#-python-api-usage)
+- [🔧 Troubleshooting](#-troubleshooting)
+- [📊 System Requirements](#-system-requirements)
+- [📚 Documentation](#-documentation)
+- [📄 License](#-license)
+
+## 🌟 Key Features
+
+- 🤖 **Federated Learning**: FedAvg algorithm for privacy-preserving distributed training
+- 🌐 **Decentralized Network**: P2P communication between training nodes
+- 🧠 **EmpoorioLM Support**: Native support for sovereign AI model training
+- 💻 **CLI Tools**: Command-line interface for easy node management (59+ commands)
+- 🔧 **Auto-Setup**: Intelligent environment configuration
+- 📊 **Monitoring**: Built-in logging and performance metrics
+- 🔒 **Privacy-First**: Zero-trust architecture, data never leaves your device
+- ⚡ **Hardware Optimization**: Automatic GPU/CPU detection and optimization
+- 💰 **DRACMA Rewards**: Earn tokens for computational contributions
+
+## 📦 Installation
+
+### Paso 1: Instalar Python
+Asegúrate de tener Python 3.8 o superior instalado:
+```bash
+python --version  # Debería mostrar Python 3.8+
+```
+
+### Paso 2: Instalar Ailoos
+
+#### Instalación Básica (Recomendada)
+```bash
+pip install ailoos
+```
+
+#### Instalación con GPU (para entrenamiento acelerado)
+```bash
+pip install ailoos[gpu]
+```
+
+#### Instalación Completa (todos los extras)
+```bash
+pip install ailoos[full]
+```
+
+#### Instalación de Desarrollo
+```bash
+git clone https://github.com/empoorio/ailoos.git
+cd ailoos
+pip install -e .[dev]
+```
+
+### Paso 3: Verificar Instalación
+```bash
+ailoos --version
+ailoos --help
+```
+
+## 🚀 Quick Start Guide
+
+### 🏁 Paso 1: Configuración Inicial
+
+#### Opción A: Configuración Automática (Recomendada)
+```bash
+ailoos config init --auto
+```
+Esto creará automáticamente un archivo de configuración con valores predeterminados.
+
+#### Opción B: Configuración Manual
+```bash
+# Crear configuración básica
+ailoos config init
+
+# Configurar tu ID de nodo
+ailoos config set node.id "mi_nodo_unico"
+
+# Configurar directorio de datos
+ailoos config set data.directory "./ailoos_data"
+
+# Ver configuración actual
+ailoos config show
+```
+
+### 🏁 Paso 2: Iniciar tu Nodo
+
+#### Opción A: Inicio Simple
+```bash
+ailoos node start --id mi_nodo
+```
+
+#### Opción B: Inicio con Configuración Avanzada
+```bash
+ailoos node start \
+  --id mi_nodo \
+  --port 8080 \
+  --max-connections 50 \
+  --enable-gpu
+```
+
+#### Verificar que el nodo está funcionando
+```bash
+ailoos node status
+```
+
+### 🏁 Paso 3: Descargar un Modelo
+
+#### Ver modelos disponibles
+```bash
+ailoos model list
+```
+
+#### Descargar EmpoorioLM (recomendado)
+```bash
+ailoos model download empoorio-lm
+```
+
+#### Verificar descarga
+```bash
+ailoos model info empoorio-lm
+ailoos model test empoorio-lm
+```
+
+### 🏁 Paso 4: Unirse a Entrenamiento Federado
+
+#### Ver sesiones disponibles
+```bash
+ailoos federated sessions
+```
+
+#### Unirse a una sesión
+```bash
+ailoos federated join --session-id <session_id>
+```
+
+#### Monitorear progreso
+```bash
+ailoos federated monitor
+ailoos federated status
+```
+
+### 🏁 Paso 5: Verificar Recompensas
+
+#### Ver balance de DRACMA
+```bash
+ailoos rewards balance
+```
+
+#### Ver historial de recompensas
+```bash
+ailoos rewards history
+```
+
+## ⚙️ Configuration
+
+### Archivo de Configuración
+Por defecto, Ailoos busca configuración en:
+- `./ailoos.yaml` (directorio actual)
+- `~/.ailoos/config.yaml` (directorio home)
+- `/etc/ailoos/config.yaml` (sistema)
+
+### Comandos de Configuración
+```bash
+# Ver configuración actual
+ailoos config show
+
+# Establecer un valor
+ailoos config set node.id "mi_nodo"
+ailoos config set coordinator.host "localhost"
+ailoos config set rewards.auto_claim true
+
+# Obtener un valor específico
+ailoos config get node.id
+
+# Respaldar configuración
+ailoos config backup
+
+# Restaurar configuración
+ailoos config restore
+
+# Validar configuración
+ailoos config validate
+```
+
+## 💻 Complete CLI Reference
+
+Ailoos incluye **59 comandos** organizados en 7 grupos principales. Todos los comandos incluyen ayuda integrada con `comando --help`.
+
+### 🎯 Comandos de Configuración (9 comandos)
+
+```bash
+# Gestión de configuración
+ailoos config init              # Inicializar nueva configuración
+ailoos config show              # Mostrar configuración actual
+ailoos config get <key>         # Obtener valor de configuración
+ailoos config set <key> <value> # Establecer valor de configuración
+ailoos config unset <key>       # Eliminar clave de configuración
+ailoos config validate          # Validar archivo de configuración
+ailoos config backup            # Crear respaldo de configuración
+ailoos config restore           # Restaurar configuración desde respaldo
+ailoos config migrate           # Migrar configuración a formato más reciente
+ailoos config copy <src> <dst>  # Copiar configuración entre archivos
+```
+
+### 👑 Comandos de Coordinador (6 comandos)
+
+```bash
+# Gestión del coordinador federado
+ailoos coordinator start                    # Iniciar coordinador simple
+ailoos coordinator status                   # Verificar estado del coordinador
+ailoos coordinator create-session           # Crear nueva sesión de aprendizaje
+ailoos coordinator list-sessions            # Listar todas las sesiones
+ailoos coordinator session-info <id>        # Información detallada de sesión
+ailoos coordinator start-session <id>       # Iniciar sesión específica
+```
+
+### 🔄 Comandos Federados (10 comandos)
+
+```bash
+# Gestión de aprendizaje federado
+ailoos federated sessions           # Listar sesiones disponibles
+ailoos federated join <session>     # Unirse a sesión federada
+ailoos federated leave              # Abandonar sesión actual
+ailoos federated status             # Mostrar estado del entrenamiento
+ailoos federated monitor            # Monitoreo en tiempo real
+ailoos federated pause              # Pausar sesión de entrenamiento
+ailoos federated resume             # Reanudar sesión pausada
+ailoos federated abort              # Abortar sesión (irreversible)
+ailoos federated results            # Descargar y mostrar resultados
+ailoos federated analyze            # Analizar rendimiento del entrenamiento
+```
+
+### 📋 Comandos de Logs (7 comandos)
+
+```bash
+# Gestión de logs y monitoreo
+ailoos logs tail                    # Mostrar logs recientes
+ailoos logs search <pattern>        # Buscar patrones en logs
+ailoos logs analyze                 # Analizar logs por patrones/anomalías
+ailoos logs monitor                 # Monitoreo de componentes en tiempo real
+ailoos logs diagnostics             # Generar reporte de diagnóstico del sistema
+ailoos logs config                  # Configurar ajustes de logging
+ailoos logs debug                   # Habilitar modo debug para troubleshooting
+```
+
+### 🤖 Comandos de Modelos (8 comandos)
+
+```bash
+# Gestión de modelos de IA
+ailoos model list                   # Listar modelos disponibles
+ailoos model download <model>       # Descargar modelo del repositorio
+ailoos model info <model>           # Información detallada del modelo
+ailoos model test <model>           # Probar modelo con datos de muestra
+ailoos model verify <model>         # Verificar integridad del modelo
+ailoos model export <model> <format> # Exportar modelo a diferentes formatos
+ailoos model remove <model>         # Eliminar modelo descargado localmente
+ailoos model clean                  # Limpiar modelos antiguos o no usados
+```
+
+### 🖥️ Comandos de Nodo (7 comandos)
+
+```bash
+# Gestión de nodos de red
+ailoos node start                   # Iniciar nodo de aprendizaje federado
+ailoos node stop                    # Detener nodo en ejecución
+ailoos node status                  # Mostrar estado e información del nodo
+ailoos node config                  # Actualizar configuración del nodo
+ailoos node monitor                 # Monitorear rendimiento del nodo en tiempo real
+ailoos node logs                    # Mostrar logs recientes del nodo
+ailoos node backup                  # Crear respaldo de datos y configuración del nodo
+ailoos node reset                   # Resetear nodo a estado inicial (elimina todos los datos)
+```
+
+### 💰 Comandos de Recompensas (12 comandos)
+
+```bash
+# Gestión de tokens DRACMA y recompensas
+ailoos rewards balance              # Mostrar balance de tokens DRACMA
+ailoos rewards history              # Mostrar historial de recompensas
+ailoos rewards claim                # Reclamar recompensas disponibles
+ailoos rewards stake <amount>       # Stakear tokens para multiplicador de recompensas
+ailoos rewards unstake <amount>     # Des-stakear tokens
+ailoos rewards delegate <validator> # Delegar tokens a validador
+ailoos rewards undelegate <validator> # Des-delegar tokens de validador
+ailoos rewards delegations          # Mostrar delegaciones actuales
+ailoos rewards stakes               # Mostrar posiciones de staking actuales
+ailoos rewards stats                # Mostrar estadísticas de recompensas
+ailoos rewards settings             # Configurar ajustes de recompensas
+ailoos rewards test                 # Comando de prueba para instanciar DRACMA_Manager
+```
+
+## 🐍 Python API Usage
+
+### Configuración Inicial
+```python
+from ailoos import setup_logging, get_config
+
+# Configurar logging
+logger = setup_logging(level="INFO")
+
+# Obtener configuración
+config = get_config()
+print(f"Node ID: {config.get('node.id')}")
+```
+
+### Gestión Básica de Nodos
+```python
+from ailoos import Node
+
+# Crear e iniciar nodo
+node = Node(node_id="mi_nodo_python")
+await node.start()
+
+print(f"✅ Nodo activo: {node.status}")
+print(f"📊 Conexiones: {node.connections_count}")
+
+# Monitorear estado
+status = await node.get_status()
+print(f"💻 CPU: {status['cpu_usage']}%")
+print(f"🧠 RAM: {status['memory_usage']}%")
+```
+
+### Entrenamiento Federado
+```python
+from ailoos import FederatedTrainer
+
+# Crear entrenador federado
+trainer = FederatedTrainer(
+    model_name="empoorio-lm",
+    rounds=10,
+    local_epochs=3,
+    batch_size=32,
+    learning_rate=0.001
+)
+
+# Unirse a sesión federada
+await trainer.join_session(session_id="session_123")
+
+# Iniciar entrenamiento
+results = await trainer.train()
+
+print(f"🎉 Entrenamiento completado!")
+print(f"📈 Precisión promedio: {results['average_accuracy']:.2f}%")
+print(f"⏱️ Tiempo total: {results['total_time']} segundos")
+```
+
+### Gestión de Modelos
+```python
+from ailoos import ModelManager
+
+# Cargar gestor de modelos
+manager = ModelManager()
+
+# Descargar modelo
+await manager.download_model("empoorio-lm")
+
+# Cargar modelo
+await manager.load_model("empoorio-lm")
+
+# Realizar inferencia
+response = await manager.infer(
+    model_name="empoorio-lm",
+    prompt="¿Cómo funciona la IA soberana?",
+    max_tokens=100,
+    temperature=0.7
+)
+print(f"🤖 Respuesta: {response}")
+
+# Ver información del modelo
+info = await manager.get_model_info("empoorio-lm")
+print(f"📊 Parámetros: {info['parameters']}")
+print(f"🎯 Precisión: {info['accuracy']:.2f}%")
+```
+
+### Gestión de Recompensas
+```python
+from ailoos import RewardsManager
+
+# Crear gestor de recompensas
+rewards = RewardsManager()
+
+# Ver balance
+balance = await rewards.get_balance()
+print(f"💰 Balance total: {balance['total']} DRACMA")
+print(f"✅ Disponible: {balance['available']} DRACMA")
+print(f"⏳ Pendiente: {balance['pending']} DRACMA")
+
+# Reclamar recompensas
+claimed = await rewards.claim_rewards()
+print(f"🎁 Reclamado: {claimed} DRACMA")
+
+# Stakear tokens
+await rewards.stake_tokens(amount=1000)
+print("✅ Tokens stakeados exitosamente")
+```
+
+## 🔧 Troubleshooting
+
+### Problemas Comunes y Soluciones
+
+#### ❌ Error: "Command not found"
+```bash
+# Verificar instalación
+pip list | grep ailoos
+
+# Reinstalar si es necesario
+pip uninstall ailoos
+pip install ailoos
+```
+
+#### ❌ Error: "Permission denied" al iniciar nodo
+```bash
+# En Linux/Mac
+sudo ailoos node start --port 8080
+
+# O cambiar a puerto no privilegiado
+ailoos node start --port 8080
+```
+
+#### ❌ Error: "CUDA not available" en GPU
+```bash
+# Verificar instalación de PyTorch con CUDA
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Verificar GPU
+ailoos logs diagnostics
+```
+
+#### ❌ Error: "Connection refused" al unirse a federated
+```bash
+# Verificar conectividad de red
+ping coordinator.ailoos.network
+
+# Verificar configuración de coordinador
+ailoos config get coordinator.host
+ailoos config get coordinator.port
+```
+
+#### ❌ Error: "Out of memory" durante entrenamiento
+```bash
+# Reducir batch size
+ailoos config set training.batch_size 8
+
+# Usar CPU en lugar de GPU
+ailoos config set training.device cpu
+
+# Liberar memoria del sistema
+# En Linux: free -h && sudo sysctl -w vm.drop_caches=3
+```
+
+#### ❌ Modelo no descarga
+```bash
+# Verificar conexión a internet
+curl -I https://models.ailoos.network
+
+# Intentar descarga manual
+ailoos model download empoorio-lm --force
+
+# Verificar espacio en disco
+df -h
+```
+
+### Comandos de Diagnóstico
+```bash
+# Generar reporte completo del sistema
+ailoos logs diagnostics > diagnostico.txt
+
+# Ver logs detallados
+ailoos logs tail --level DEBUG --follow
+
+# Monitorear recursos del sistema
+ailoos logs monitor
+
+# Verificar configuración
+ailoos config validate
+```
+
+### Obtener Ayuda Adicional
+```bash
+# Ayuda general
+ailoos --help
+
+# Ayuda de comando específico
+ailoos node --help
+ailoos federated join --help
+
+# Modo verbose para más detalles
+ailoos --verbose node status
+```
+
+## 📊 System Requirements
+
+### Requisitos Mínimos
+- **Python**: 3.8 o superior
+- **RAM**: 4GB
+- **Almacenamiento**: 2GB libre
+- **Red**: Conexión a internet estable
+- **SO**: Windows 10+, macOS 10.15+, Ubuntu 18.04+
+
+### Recomendado para Entrenamiento
+- **Python**: 3.10 o superior
+- **RAM**: 16GB o más
+- **Almacenamiento**: 50GB+ SSD
+- **GPU**: NVIDIA con 8GB+ VRAM (CUDA 11.8+)
+- **CPU**: 4+ núcleos, 3.0GHz+
+- **Red**: 100Mbps+ conexión
+
+### Instalación por Sistema Operativo
+
+#### Windows
+```powershell
+# Instalar Python
+# Descargar desde https://python.org
+
+# Instalar Ailoos
+pip install ailoos[gpu]
+
+# Verificar GPU (opcional)
+nvidia-smi
+```
+
+#### macOS
+```bash
+# Instalar Python via Homebrew
+brew install python@3.10
+
+# Instalar Ailoos
+pip install ailoos
+
+# Para GPU (si tienes Apple Silicon M1/M2)
+pip install ailoos[gpu]  # Usará Metal
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+# Instalar dependencias del sistema
+sudo apt update
+sudo apt install python3 python3-pip python3-venv
+
+# Para GPU NVIDIA
+sudo apt install nvidia-cuda-toolkit
+
+# Instalar Ailoos
+pip install ailoos[gpu]
+```
+
+## 📚 Documentation
+
+- [📖 Documentación Completa](https://ailoos.dev/docs)
+- [🔄 Guía de Aprendizaje Federado](https://ailoos.dev/docs/federated)
+- [🖥️ Gestión de Nodos](https://ailoos.dev/docs/nodes)
+- [🔒 Arquitectura de Seguridad](https://ailoos.dev/docs/security)
+- [💰 Sistema de Recompensas DRACMA](https://ailoos.dev/docs/rewards)
+- [🐍 Referencia de API Python](https://ailoos.dev/docs/api)
+- [🚀 Guías de Inicio Rápido](https://ailoos.dev/docs/quickstart)
+
+## 🤝 Contributing
+
+¡Agradecemos las contribuciones! Consulta nuestra [Guía de Contribución](CONTRIBUTING.md).
+
+### Flujo de Trabajo
+1. **Fork** el repositorio
+2. Crear rama de **feature**: `git checkout -b feature/nueva-funcionalidad`
+3. Realizar **cambios** y **tests**
+4. Ejecutar **linting**: `black . && isort . && flake8`
+5. **Commit**: `git commit -m "feat: descripción del cambio"`
+6. **Push**: `git push origin feature/nueva-funcionalidad`
+7. Crear **Pull Request**
+
+### Tipos de Commit
+- `feat:` Nueva funcionalidad
+- `fix:` Corrección de bug
+- `docs:` Cambios en documentación
+- `style:` Cambios de estilo (formateo, etc.)
+- `refactor:` Refactorización de código
+- `test:` Agregar o modificar tests
+- `chore:` Cambios de mantenimiento
+
+## 📄 License
+
+This project is licensed under the **Proprietary License** of Ailoos Technologies & Empoorio Ecosystem - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+### Canales de Soporte
+- **💬 Discord**: [Únete a nuestra comunidad](https://discord.gg/ailoos)
+- **🐛 Issues**: [GitHub Issues](https://github.com/empoorio/ailoos/issues)
+- **📚 Documentación**: [Docs Oficiales](https://ailoos.dev/docs)
+- **📧 Email**: dev@empoorio.com
+
+### Reportar Problemas
+```bash
+# Generar información de diagnóstico
+ailoos logs diagnostics > diagnostico_$(date +%Y%m%d_%H%M%S).txt
+
+# Incluir en el reporte:
+# - Sistema operativo y versión
+# - Versión de Python: python --version
+# - Versión de Ailoos: ailoos --version
+# - Comando que falla
+# - Salida completa del error
+# - Archivo de diagnóstico generado
+```
+
+## 🙏 Acknowledgments
+
+- **🏢 Empoorio Ecosystem** - Por la visión de IA soberana
+- **🔬 PyTorch y Transformers** - Comunidades por frameworks de IA
+- **📊 Comunidad de Federated Learning** - Por algoritmos y investigación
+- **🌐 Comunidad Open Source** - Por herramientas y bibliotecas
+- **💪 Contribuidores** - Por hacer Ailoos mejor cada día
+
+---
+
+**🚀 Ailoos - Democratizando la IA a través de Entrenamiento Soberano y Descentralizado**
+
+*Construido con ❤️ para el Ecosistema Empoorio*
