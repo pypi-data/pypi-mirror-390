@@ -1,0 +1,47 @@
+name: CI
+
+on: [push]
+
+jobs:
+  generate-matrix:
+    uses: solaluset/python-version-matrix/.github/workflows/generate.yml@v1.0
+    with:
+      runners: '[
+        "ubuntu-22.04"
+      ]'
+      min-version: "3.7"
+      include-pre-releases: true
+      implementations: '["CPython", "PyPy"]'
+
+  Test:
+    needs: [generate-matrix]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install packages
+      run: pip install '.[tests]' && pip install git+https://github.com/solaluset/pytest || true
+
+    - name: Test
+      run: pwcp --version && pytest
+
+  Check:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.13"
+
+    - name: Install packages
+      run: pip install pre-commit
+
+    - name: Check
+      run: pre-commit run --all
