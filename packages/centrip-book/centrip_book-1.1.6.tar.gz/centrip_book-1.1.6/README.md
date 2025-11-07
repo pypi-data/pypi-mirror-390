@@ -1,0 +1,79 @@
+# 📘 Centrip Book
+
+A simple tool to save, organize, and run your favorite terminal commands.
+
+---
+
+## 💡 Usage
+
+| Command | Description |
+|----------|-------------|
+| `book <alias\|index> [args...]` | Run a saved command (supports `{1}`, `{2}`, `{all}` if present) |
+| `book add "<command>" [alias]` | Add or update a command (optional alias) |
+| `book find <keyword>` | Search commands by keyword |
+| `book rm <n\|alias>` | Remove a saved command (auto-reindexes) |
+
+---
+
+## 🧠 Examples
+
+```bash
+# Add and name commands
+book add "sudo nginx -t && sudo systemctl reload nginx" nginx
+book add "cd /var/www/live" live
+book add "git status" gs
+
+# List saved commands
+book
+
+# Run by alias or index
+book nginx
+book 2
+
+# Search and remove
+book find nginx
+book rm nginx
+```
+
+---
+
+## ⚙️ Arguments (optional)
+
+Some commands can take arguments using placeholders:
+
+| Placeholder | Meaning |
+|--------------|----------|
+| `{1}` | First argument |
+| `{2}` | Second argument |
+| `{all}` | All arguments joined by spaces |
+
+```bash
+book add "echo Hello {1}" hi
+book hi world
+# → echo Hello world
+```
+
+---
+
+## 📂 Storage Format
+
+Commands are stored in `~/.book` in this format:
+
+```
+nginx → sudo nginx -t && sudo systemctl reload nginx
+live → cd /var/www/live
+? → git status
+```
+
+? indicates that no alias was defined but the bookmark can still be referenced by it's index
+
+---
+
+## 🚀 Install
+
+```bash
+pip install centrip-book
+```
+
+After installation, use the `book` command directly in your terminal.
+
