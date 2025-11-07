@@ -1,0 +1,348 @@
+Metadata-Version: 2.4
+Name: openquantum-sdk
+Version: 0.2.0
+Summary: Python SDK for Open Quantum
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.25.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: pytest-mock; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: black; extra == "dev"
+
+# Open Quantum Python SDK
+
+A lightweight, modern Python SDK for the **Open Quantum Platform**.
+
+**Features:**
+
+* **Management API** — list organizations, backend classes, and providers
+* **Scheduler API** — job categories, upload, prepare, submit, poll, and **one-call `submit_job()`**
+* **Smart defaults** — auto-select execution plan & queue priority from quote
+* **Thread-safe auth** — Keycloak client-credentials with auto-refresh
+* **Automatic output download** — `download_job_output()` returns parsed JSON
+
+## Installation
+
+```bash
+pip install -U openquantum-sdk
+# or local dev:
+pip install -e .
+```
+
+Python 3.9+ required.
+
+## Authentication
+
+### Option 1: SDK Key File (Recommended)
+
+Download from [Open Quantum SDK Keys](https://dev.openquantum.com/keys):
+
+```json
+{
+  "client_id": "s_abc123...",
+  "client_secret": "e460c8..."
+}
+```
+
+```bash
+export OPENQUANTUM_SDK_KEY=/path/to/sdk-key.json
+```
+
+### Option 2: Environment Variables
+
+```bash
+export OPENQUANTUM_CLIENT_ID="s_..."
+export OPENQUANTUM_CLIENT_SECRET="e460c8..."
+```
+
+### Option 3: Direct in Code
+
+```python
+from openquantum_sdk.auth import ClientCredentials, ClientCredentialsAuth
+
+auth = ClientCredentialsAuth(
+    creds=ClientCredentials(client_id="s_...", client_secret="e460c8...")
+)
+```
+
+## Quickstart: One-Call Submission (Recommended)
+
+```python
+from openquantum_sdk.clients import SchedulerClient, ManagementClient, JobSubmissionConfig
+from openquantum_sdk.enums import ExecutionPlanType, QueuePriorityType
+
+# 1. Instantiate clients (auto-loads auth from env)
+scheduler = SchedulerClient()
+management = ManagementClient()
+
+try:
+    # 2. Discover your Organization ID
+    print("Discovering organization...")
+    orgs = management.list_user_organizations()
+    org_id = orgs.organizations[0].id
+    print(f" > Using Org: {orgs.organizations[0].name}")
+
+    # 2.5 Discover available backend providers
+    print("\nAvailable providers:")
+    providers = management.list_providers()
+    for p in providers.providers:
+        print(f" > {p.name} ({p.short_code or 'no short code'}) — {p.description}")
+
+    # 2.6 Discover backend classes
+    print("\nAvailable backend classes:")
+    classes = management.list_backend_classes()
+    for bc in classes.backend_classes:
+        print(f" > {bc.name} ({bc.short_code or 'no short code'}) — {bc.type}")
+        print(f"   ├ Qubits: {bc.constraint_data.get('min_qubits', '?')}–{bc.constraint_data.get('max_qubits', '?')}")
+        print(f"   ├ Status: {bc.status or 'Unknown'} | Queue depth: {bc.queue_depth or 'N/A'}")
+        print(f"   └ Use: '{bc.short_code or bc.id}' in backend_class_id")
+
+    # 3. Define config
+    config = JobSubmissionConfig(
+        organization_id=org_id,
+        backend_class_id="ionq:aria-1",
+        name="Bell State SDK Quickstart",
+        job_subcategory_id="finance:portfolio-optimization",
+        shots=100,
+        execution_plan="auto",
+        queue_priority="auto",
+        auto_approve_quote=True,
+        verbose=True
+    )
+
+    # 4. Submit + wait + get result
+    dummy_qasm = b"OPENQASM 2.0; qreg q[2]; creg c[2]; h q[0]; cx q[0],q[1]; measure q -> c;"
+    job = scheduler.submit_job(config, file_content=dummy_qasm)
+
+    # 5. Download and print parsed JSON output
+    print("\n--- JOB SUCCEEDED ---")
+    print(f"Job ID: {job.id}")
+    print(f"Status: {job.status}")
+
+    if job.output_data_url:
+        output_json = scheduler.download_job_output(job.id)
+        print("\n--- JOB OUTPUT (JSON) ---")
+        print(json.dumps(output_json, indent=2))
+    else:
+        print("No output available.")
+
+except Exception as e:
+    print(f"\n--- JOB FAILED ---")
+    print(f"Error: {e}")
+
+finally:
+    scheduler.close()
+    management.close()
+```
+
+> Handles **everything** in **one call** — including **automatic JSON download**.
+
+## Quickstart: Low-Level (Advanced)
+
+```python
+from openquantum_sdk.clients import SchedulerClient, ManagementClient
+from openquantum_sdk.models import JobPreparationCreate
+from openquantum_sdk.utils import poll_for_status
+import json
+
+scheduler = SchedulerClient()
+management = ManagementClient()
+
+try:
+    # 1. Get org
+    org = management.list_user_organizations().organizations[0]
+
+    # 1.5 List providers & backend classes
+    print("Providers:")
+    for p in management.list_providers().providers:
+        print(f" - {p.name} ({p.short_code})")
+
+    print("\nBackend classes:")
+    for bc in management.list_backend_classes().backend_classes:
+        print(f" - {bc.name} [{bc.type}] — {bc.short_code or bc.id}")
+
+    # 2. Choose IDs
+    MY_BACKEND = "ionq:aria-1"
+    MY_SUBCATEGORY = "finance:portfolio-optimization"
+
+    # 3. Upload
+    upload_id = scheduler.upload_job_input(file_path="circuit.qasm")
+
+    # 4. Prepare
+    prep = JobPreparationCreate(
+        organization_id=org.id,
+        backend_class_id=MY_BACKEND,
+        name="Low-Level Test",
+        upload_endpoint_id=upload_id,
+        job_subcategory_id=MY_SUBCATEGORY,
+        shots=100,
+        configuration_data={}
+    )
+    prep_resp = scheduler.prepare_job(prep)
+
+    # 5. Poll preparation
+    def get_prep_status(prep_id: str):
+        result = scheduler.get_preparation_result(prep_id)
+        done = result.status in ("Completed", "Failed")
+        return done, result
+
+    result = poll_for_status(
+        get_status_fn=get_prep_status,
+        resource_id=prep_resp.id,
+        interval=2.0,
+        timeout=300
+    )
+
+    if result.status == "Failed":
+        raise RuntimeError(f"Preparation failed: {result.message or 'Unknown error'}")
+
+    # Quote inspection
+    print("\nQuote received:")
+    for plan in result.quote:
+        print(f" • {plan.name} — Base: {plan.price} credit{'s' if plan.price != 1 else ''}")
+        for qp in plan.queue_priorities:
+            total = plan.price + qp.price_increase
+            print(f"    ├ {qp.name}: +{qp.price_increase} → Total: {total}")
+        print(f"    └ Plan ID: {plan.execution_plan_id}")
+
+    # 6. Select cheapest
+    cheapest_plan = min(result.quote, key=lambda p: p.price)
+    cheapest_prio = min(cheapest_plan.queue_priorities, key=lambda q: q.price_increase)
+
+    # 7. Create job
+    job = scheduler.create_job(
+        organization_id=org.id,
+        job_preparation_id=prep_resp.id,
+        execution_plan_id=cheapest_plan.execution_plan_id,
+        queue_priority_id=cheapest_prio.queue_priority_id,
+    )
+
+    # 8. Poll completion
+    def get_job_status(job_id: str):
+        job_obj = scheduler.get_job(job_id)
+        done = job_obj.status in ("Completed", "Failed", "Canceled")
+        return done, job_obj
+
+    final_job = poll_for_status(
+        get_status_fn=get_job_status,
+        resource_id=job.id,
+        interval=5.0,
+        timeout=86_400,
+    )
+
+    print(f"\nJob finished: {final_job.status}")
+
+    # 9. Download and print JSON output
+    if final_job.output_data_url:
+        output_json = scheduler.download_job_output(final_job.id)
+        print("\n--- JOB OUTPUT (JSON) ---")
+        print(json.dumps(output_json, indent=2))
+    else:
+        print("No output available.")
+
+finally:
+    scheduler.close()
+    management.close()
+```
+
+## High-Level API: `submit_job()`
+
+| Parameter | Type | Default | Description |
+|---------|------|---------|-------------|
+| `config` | `JobSubmissionConfig` | — | All job metadata |
+| `file_path` | `str` | — | Input file |
+| `file_content` | `bytes` | — | Or pass bytes |
+
+### `JobSubmissionConfig`
+
+| Field | Type | Default | Notes |
+|------|------|---------|-------|
+| `organization_id` | `str` | — | **Required** |
+| `backend_class_id` | `str` | — | **Required** (short code or UUID) |
+| `job_subcategory_id` | `str` | — | **Required** |
+| `name` | `str` | — | **Required** |
+| `shots` | `int` | — | **Required** |
+| `execution_plan` | `ExecutionPlanType \| "auto"` | `"auto"` | |
+| `queue_priority` | `QueuePriorityType \| "auto"` | `"auto"` | |
+| `auto_approve_quote` | `bool` | `True` | Set `False` in notebooks |
+| `job_timeout_seconds` | `int` | `86400` | 1 day |
+
+## API Reference
+
+### `SchedulerClient`
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `get_job_categories(limit=20, cursor=...)` | `PaginatedJobCategories` | List top-level categories |
+| `get_job_subcategories(category_id, limit=20, cursor=...)` | `PaginatedJobCategories` | List subcategories |
+| `upload_job_input(file_path=... or file_content=...)` | `str` | Returns upload ID |
+| `prepare_job(JobPreparationCreate)` | `JobPreparationResponse` | Starts preparation |
+| `get_preparation_result(preparation_id)` | `JobPreparationResultResponse` | Includes `.quote` |
+| `create_job(JobCreate)` | `JobRead` | Submits job |
+| `get_job(job_id)` | `JobRead` | Fetch job status |
+| `cancel_job(job_id)` | `None` | Cancel running job |
+| `list_jobs(organization_id, limit=20, cursor=..., status=...)` | `PaginatedJobs` | List your jobs |
+| **`download_job_output(job_id)`** | `Any` | **Downloads + parses JSON output** |
+| `submit_job(config, file_path=... or file_content=...)` | `JobRead` | **One-call submission + polling** |
+
+### `ManagementClient`
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `list_user_organizations(limit=20, cursor=...)` | `PaginatedOrganizations` | Your orgs |
+| `list_providers(limit=20, cursor=...)` | `PaginatedProviders` | All backend providers |
+| `list_backend_classes(provider_id=None, limit=20, cursor=...)` | `PaginatedBackendClasses` | Available backends |
+
+## Data Models
+
+| Model | Key Fields |
+|-------|-----------|
+| `OrganizationRead` | `id`, `name`, `description` |
+| `ProviderRead` | `id`, `name`, `short_code`, `description` |
+| `BackendClassRead` | `id`, `name`, `short_code`, `type`, `provider_id`, `constraint_data` (dict), `queue_depth`, `status` |
+| `JobCategoryRead` | `id`, `name`, `short_code`, `description`, `parent_id` |
+| `QuotePlan` | `name`, `price`, `description`, `execution_plan_id`, `queue_priorities: List[QueuePriority]` |
+| `QueuePriority` | `name`, `description`, `price_increase`, `queue_priority_id` |
+| `JobRead` / `JobList` | `id`, `status`, `name`, `submitted_at`, `started_at`, `completed_at`, `output_data_url`, `message`, `shots`, `organization_id`, `backend_class_id`, `job_subcategory_id` |
+| `JobPreparationResultResponse` | `organization_id`, `backend_class_id`, `status`, `name`, `input_data_url`, `job_category_id`, `job_subcategory_id`, `shots`, `message`, `quote: List[QuotePlan]`, `configuration_data` |
+| `ErrorResponse` | `status_code`, `message: List[str]`, `error_code` |
+
+## Enums
+
+```python
+from openquantum_sdk.enums import ExecutionPlanType, QueuePriorityType
+```
+
+| Enum | Values |
+|------|--------|
+| `ExecutionPlanType` | `PUBLIC`, `PRIVATE` |
+| `QueuePriorityType` | `STANDARD`, `PRIORITY`, `INSTANT` |
+
+## CLI (Experimental)
+
+```bash
+python -m openquantum_sdk --sdk-key ./key.json \
+                          --input bell.qasm \
+                          --backend "ionq:aria-1" \
+                          --subcategory "mathematics:linear-systems" \
+                          --shots 100 \
+                          --auto-approve
+```
+
+Automatically **downloads and pretty-prints JSON output**.
+
+## FAQ
+
+**Q: How do I get results as JSON?**  
+**A:** Use `scheduler.download_job_output(job.id)` — returns parsed object.
+
+**Q: Why does auto mode fail on some QPUs?**  
+**A:** `auto` only allows `PUBLIC` + `STANDARD`. Use explicit enums for private/instant access.
+
+**Q: Can I pass a JWT directly?** Yes: `SchedulerClient(token="ey...")`
