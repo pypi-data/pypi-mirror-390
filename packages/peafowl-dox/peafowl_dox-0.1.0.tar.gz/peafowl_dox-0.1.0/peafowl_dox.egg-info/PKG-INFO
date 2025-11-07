@@ -1,0 +1,235 @@
+Metadata-Version: 2.1
+Name: peafowl-dox
+Version: 0.1.0
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=2.2.6
+Requires-Dist: pillow>=11.1.0
+Requires-Dist: opencv-python>=4.8.0
+Requires-Dist: pymupdf>=1.23.0
+
+# Peafowl Dox
+
+![Peafowl Dox Logo](https://i.postimg.cc/YqtjKKSq/peafowl-dox-logo.png)
+
+A utility library for image and document processing. Essential tools for handling multipart uploads, PDF conversion, and preparing documents for OCR and ML pipelines.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+  - [Image Upload Processing](#image-upload-processing)
+  - [PDF Conversion](#pdf-conversion)
+  - [Image Resizing](#image-resizing)
+  - [OCR Preparation](#ocr-preparation)
+  - [Image Processor Class](#image-processor-class)
+- [Error Handling](#error-handling)
+- [Depencies](#dependencies)
+
+---
+
+## Installation
+
+```bash
+pip install peafowl_dox
+```
+
+---
+
+## Quick Start
+
+```python
+from fastapi import UploadFile
+from peafowl_dox import multipart_to_array
+
+@app.post("/upload/")
+async def upload_image(file: UploadFile):
+        image_array = multipart_to_array(file.file)
+        print(f"Image shape: {image_array.shape}")
+        return {"message": "Image processed successfully"}
+```
+
+---
+
+## API Reference
+
+### Image Upload Processing
+
+Convert multipart file uploads to numpy arrays.
+
+```python
+from peafowl_dox import multipart_to_array
+
+# From FastAPI upload
+array = multipart_to_array(file.file)
+
+# From Flask upload
+array = multipart_to_array(request.files['image'])
+
+# From BytesIO
+from io import BytesIO
+with open('image.jpg', 'rb') as f:
+        buffer = BytesIO(f.read())
+        array = multipart_to_array(buffer)
+```
+
+**Returns:** `np.ndarray` with shape `(height, width, channels)`
+
+---
+
+### PDF Conversion
+
+Convert PDF pages to image arrays.
+
+```python
+from peafowl_dox import pdf_to_images
+
+# From file path
+images = pdf_to_images("document.pdf", dpi=150)
+
+# From bytes
+with open("document.pdf", "rb") as f:
+        images = pdf_to_images(f.read(), dpi=200)
+
+# From upload
+images = pdf_to_images(file.file, dpi=150)
+
+print(f"Converted {len(images)} pages")
+```
+
+**Parameters:**
+
+- `pdf_input`: File path, bytes, or file-like object
+- `dpi`: Resolution (default: 150)
+- `image_format`: "RGB", "RGBA", or "L" (grayscale)
+
+**Returns:** List of numpy arrays (one per page)
+
+---
+
+### Image Resizing
+
+Resize images with aspect ratio preservation.
+
+```python
+from peafowl_dox import resize_image
+
+# Resize to specific dimensions
+resized = resize_image(image, (800, 600), maintain_aspect=True)
+
+# Resize by max dimension
+resized = resize_image(image, 1024)  # Max 1024px
+
+# Resize without aspect ratio
+resized = resize_image(image, (800, 600), maintain_aspect=False)
+```
+
+**Parameters:**
+
+- `image`: Numpy array
+- `target_size`: `(width, height)` tuple or single int for max dimension
+- `maintain_aspect`: Preserve aspect ratio (default: True)
+- `interpolation`: OpenCV interpolation method (default: `cv2.INTER_AREA`)
+
+---
+
+### OCR Preparation
+
+Prepare images for OCR with enhancement.
+
+```python
+from peafowl_dox import prepare_for_ocr
+
+# Basic preparation
+ocr_ready = prepare_for_ocr(image)
+
+# With resize and enhancement
+ocr_ready = prepare_for_ocr(image, target_size=1200, enhance=True)
+
+# Custom size without enhancement
+ocr_ready = prepare_for_ocr(image, target_size=(1024, 768), enhance=False)
+```
+
+**Parameters:**
+
+- `image`: Numpy array
+- `target_size`: Optional resize target (int or tuple)
+- `enhance`: Apply noise reduction and contrast enhancement (default: True)
+
+**Returns:** Grayscale numpy array optimized for OCR
+
+---
+
+### Image Processor Class
+
+Full-featured processor for complex workflows.
+
+```python
+from peafowl_dox import ImageProcessor
+
+processor = ImageProcessor(default_ocr_size=1200)
+
+# Process from path
+image = processor.process_image("path/to/image.jpg")
+
+# Process from bytes
+with open("image.jpg", "rb") as f:
+        image = processor.process_image(f.read())
+
+# Process from numpy array
+image = processor.process_image(existing_array)
+
+# Process directly for OCR
+ocr_ready = processor.process_for_ocr("path/to/scan.jpg", enhance=True)
+```
+
+**Methods:**
+
+- `process_image(img)`: Accepts path, bytes, or numpy array → returns RGB array
+- `process_for_ocr(img, target_size, enhance)`: Process and prepare for OCR
+
+---
+
+## Error Handling
+
+```python
+from peafowl_dox import (
+        PeafowlDoxError,
+        ImageProcessingError,
+        PDFConversionError
+)
+
+try:
+        images = pdf_to_images("document.pdf")
+except PDFConversionError as e:
+        print(f"PDF conversion failed: {e}")
+
+try:
+        array = multipart_to_array(file)
+except ImageProcessingError as e:
+        print(f"Image processing failed: {e}")
+```
+
+---
+
+## Dependencies
+
+- Python >= 3.8
+- numpy >= 1.24.0
+- Pillow >= 10.0.0
+- opencv-python >= 4.8.0
+- PyMuPDF >= 1.23.0
+
+---
+
+## Changelog
+
+### [0.1.0] - 2025-11-06
+
+- Initial release
+- `multipart_to_array`: Convert uploads to numpy arrays
+- `pdf_to_images`: PDF to image conversion
+- `resize_image`: Smart image resizing
+- `prepare_for_ocr`: OCR preparation with enhancement
+- `ImageProcessor`: Full-featured processing class
