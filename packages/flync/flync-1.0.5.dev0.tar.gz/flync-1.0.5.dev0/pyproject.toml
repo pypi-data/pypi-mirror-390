@@ -1,0 +1,96 @@
+[project]
+name = "flync"
+# Version is now derived automatically from git tags via setuptools-scm.
+# Remove static 'version =' to avoid manual bumps; tags like 'v1.0.3' produce version '1.0.3'.
+dynamic = ["version"]  # PEP 621: declare version provided by setuptools-scm
+description = "FLYNC: lncRNA discovery pipeline for Drosophila melanogaster"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "FLYNC Contributors"}
+]
+keywords = ["bioinformatics", "lncRNA", "genomics", "machine-learning", "RNA-seq"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+
+# Note: All dependencies are managed in environment.yml
+# Install with: conda env create -f environment.yml && conda activate flync && pip install -e .
+
+# Note: Conda package is platform-specific (linux-64, osx-64) due to compiled bioinformatics deps.
+# CI should NOT assume a noarch artifact.
+
+[project.optional-dependencies]
+# Python-only feature extraction stack (no external bio binaries)
+features = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "pyfaidx>=0.7.0",
+    "gffutils>=0.12.0",
+    "pyranges>=0.0.129",
+    "pybigwig>=0.3.22",
+    "pybedtools>=0.9.1",
+    "biopython>=1.81",
+    "tqdm>=4.65.0",
+    "requests>=2.31.0"
+]
+
+# Machine learning + optimization components
+ml = [
+    "scikit-learn>=1.3.0",
+    "joblib>=1.3.0",
+    "optuna>=3.0.0",
+    "mlflow>=2.7.0",
+    "interpret>=0.4.0"
+]
+
+# Workflow orchestration (Snakemake light)
+workflow = [
+    "snakemake-minimal>=7.32.0"
+]
+
+# Aggregate all optional Python dependencies (still excludes heavy external bio binaries)
+all = [
+    "flync[features,ml,workflow]"
+]
+
+# NOTE:
+# External command-line tools (hisat2, stringtie, gffcompare, samtools, bedtools, sra-tools, R/ballgown)
+# are NOT installed via pip. For a fully functional pipeline use the conda packages:
+#   conda create -n flync -c bioconda -c conda-forge flync
+# Optional DGE layer (Ballgown):
+#   conda install -n flync flync-dge
+
+[project.scripts]
+flync = "flync.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Support tags with optional leading 'v', e.g. v1.0.2
+tag_regex = '^(?:v)?(?P<version>\d+\.\d+\.\d+)$'
+local_scheme = "no-local-version"  # Avoid +dirty or local hash for release artifacts
+write_to = "src/flync/_version.py"
+fallback_version = "0.0.0"  # Used only if no git metadata available (e.g. sdist without .git)
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"flync.assets" = ["*.model", "*.pkl", "*.json"]
+"flync.workflows" = ["Snakefile", "rules/*.smk", "scripts/*.R"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
