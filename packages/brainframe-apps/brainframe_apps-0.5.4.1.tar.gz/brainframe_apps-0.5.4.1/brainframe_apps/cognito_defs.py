@@ -1,0 +1,3 @@
+COGNITO_PORTS = [21849, 32047, 31415]
+COGNITO_TOKEN_EP = "oauth2/token"
+COGNITO_AUTHORIZE_EP = "oauth2/authorize"
