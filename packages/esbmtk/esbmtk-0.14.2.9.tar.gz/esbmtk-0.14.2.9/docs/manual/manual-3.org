@@ -1,0 +1,360 @@
+#+options: toc:nil author:nil num:nil
+
+* Adding isotopes
+ ESBMTK support the use of isotopes for many processes and species out of the box. This is best demonstrated with an example. In the following we use tow reservoirs of equal size, and apply an exchange flux. The reservoirs have similar concentrations but their isotopic ratios are different (-20 mUr versus +20 mUr [VSMOV].  After 3\space{}ky both reservoirs are isotopically homogeneous and have approached a \delta^{18}O value of 0 mUr  [VSMOV]. Note that this only required code changes on lines 17 and 23 where declare the initial delta values.
+#+BEGIN_SRC ipython :tangle iso_1.py
+# This example is available as iso_1.py in ESBMTK Examples Repository
+# https://github.com/uliw/ESBMTK-Examples/tree/main/Examples_from_the_manual
+from esbmtk import (
+    Model,  # the model class
+    Reservoir,  # the reservoir class
+    ConnectionProperties,  # the connection class
+    SourceProperties,  # the source class
+    SinkProperties,  # sink class
+)
+M = Model(
+    stop="3 kyr",  # end time of model
+    max_timestep="100 yr",  # upper limit of time step
+    element=["Oxygen"],  # list of element definitions
+)
+Reservoir(
+    name="S_b",  # box name
+    volume="50E16 m**3",  # surface box volume
+    concentration={M.O2: "200 umol/l"},  # initial concentration
+    delta={M.O2: -20},
+)
+Reservoir(
+    name="D_b",  # box name
+    volume="50E16 m**3",  # deeb box volume
+    concentration={M.O2: "200 umol/l"},  # initial concentration
+    delta={M.O2: 20},
+)
+ConnectionProperties(  # thermohaline downwelling
+    source=M.S_b,  # source of flux
+    sink=M.D_b,  # target of flux
+    ctype="scale_with_concentration",
+    scale="20 Sv",
+    id="downwelling"
+)
+ConnectionProperties(  # thermohaline upwelling
+    source=M.D_b,  # source of flux
+    sink=M.S_b,  # target of flux
+    ctype="scale_with_concentration",
+    scale="20 Sv",
+    id="upwelling",
+)
+M.run(method="BDF")
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+ESBMTK 0.14.1.0.post1.dev11+g530dbbd.d20250125  
+ Copyright (C) 2020 - 2025  Ulrich G.Wortmann
+This program comes with ABSOLUTELY NO WARRANTY
+For details see the LICENSE file
+This is free software, and you are welcome to redistribute it
+under certain conditions; See the LICENSE file for details.
+
+
+nfev=101, njev=1, nlu=22
+
+status=0
+message=The solver successfully reached the end of the integration interval.
+
+
+ Execution took 0.00 cpu seconds, wt = 0.00
+
+This run used 0.29 Gbytes of memory 
+#+end_example
+
+Plotting with
+#+BEGIN_SRC ipython :tangle iso_1.py
+M.plot([M.S_b.O2, M.D_b.O2], fn="iso_1.png")
+#+END_SRC
+results in the following output:
+#+attr_org: :width 300
+#+attr_rst: :width 400
+#+attr_latex: :width 0.5\textwidth
+#+name: iso1
+#+caption: It takes about 3 kys to equilibrate both ocean boxes.
+[[./iso_1.png]]
+
+
+In the next example, we use two reservoirs of equal size, and equal isotope ratios. This time, we declare that the transport from the =D_b= to =S_b= involves a fractionation of 5\space{}mUr (line 38). Note that the fractionation has to be provided as the enrichment factor \epsilon and not as the fractionation factor \alpha, where 
+\[
+\epsilon = (\alpha -1) \times 1000
+\]
+Similarly to the first example, the system reaches equilibrium after about 3\space{}kyrs. The above is then easily adapted to model, e.g., isotope fractionation during the evaporation of water.
+#+name:iso3code
+#+BEGIN_SRC ipython :tangle iso_3.py
+# This example is available as iso_3.py in ESBMTK Examples Repository
+# https://github.com/uliw/ESBMTK-Examples/tree/main/Examples_from_the_manual
+from esbmtk import (
+    ConnectionProperties,  # the connection class
+    Model,  # the model class
+    Reservoir,  # the reservoir class
+)
+
+M = Model(
+    stop="3 kyr",  # end time of model
+    max_timestep="100 yr",  # upper limit of time step
+    element=["Oxygen"],  # list of element definitions
+)
+Reservoir(
+    name="S_b",  # box name
+    volume="50E16 m**3",  # surface box volume
+    concentration={M.O2: "200 umol/l"},  # initial concentration
+    delta={M.O2: 0},
+)
+Reservoir(
+    name="D_b",  # box name
+    volume="50E16 m**3",  # deeb box volume
+    concentration={M.O2: "200 umol/l"},  # initial concentration
+    delta={M.O2: 0},
+)
+ConnectionProperties(  # thermohaline downwelling
+    source=M.S_b,  # source of flux
+    sink=M.D_b,  # target of flux
+    ctype="scale_with_concentration",
+    scale="20 Sv",
+    id="downwelling",
+)
+ConnectionProperties(  # thermohaline upwelling
+    source=M.D_b,  # source of flux
+    sink=M.S_b,  # target of flux
+    ctype="scale_with_concentration",
+    scale="20 Sv",
+    id="upwelling",
+    epsilon=5,  # mUr
+)
+M.run()
+#+END_SRC
+
+Plotting with 
+#+BEGIN_SRC ipython :tangle iso_3.py
+M.plot([M.S_b.O2, M.D_b.O2], fn="iso_3.png")
+#+END_SRC
+results in the following output:
+#+attr_org: :width 300
+#+attr_rst: :width 400
+#+attr_latex: :width 0.5\textwidth
+#+name: iso
+#+caption: It takes about 3 kys to fully fractionate both ocean boxes.
+[[./iso_3.png]]
+
+# define a test function
+#+name: testrunner
+#+BEGIN_SRC ipython :exports none
+# run tests
+@pytest.mark.parametrize("test_input, expected", test_values)
+def test_values(test_input, expected):
+    t = 1e-2
+    assert abs(expected) * (1 - t) <= abs(test_input) <= abs(expected) * (1 + t)
+#+END_SRC
+# create testable script
+#+BEGIN_SRC jupyter-python :noweb yes :tangle iso3_test.py :exports none
+<<iso3code>>
+#+END_SRC
+# create test runner 
+# create unit test for iso3 case
+#+BEGIN_SRC ipython :noweb yes :tangle test_iso3.py :exports none
+import pytest
+import  iso3_test # import script
+
+M = iso3_test.M  # get model handle
+test_values = [  # result, reference value
+    (M.S_b.O2.c[-1], 0.00019999999999999998),
+    (M.D_b.O2.c[-1], 0.00019999999999999998),
+    (M.S_b.O2.d[-1], 2.4921132299215945),
+    (M.D_b.O2.d[-1], -2.492088372772069),
+]
+<<testrunner>>
+#+END_SRC
+
+
+** Isotope and Signals
+While signals can be used to multiply or add, e.g., a given flux, care must be taken when signals also modify isotope values, since there is currently no universal way how to interpret the delta value. As such, the signal delta value is ignored for multiplication type signals. For addition type signals, ESBMTK will not perform isotope mixing calculations. It is thus best, to add signals not o an existing flux, but to create a new flux with a value of zero, and assign a signal to this zero-value flux.
+
+** Isotopes and Gas Exchange
+In the last example, we model the oxygen isotope fractionation during the air-sea gas exchange. This involves kinetic fractionation during degassing, and equilibrium fractionation during gas solution. At present, ESBMTK
+
+ uses the equilibrium fractionation factor parametrization of  Benson and Krause, 1984 (http://dx.doi.org/10.4319/lo.1984.29.3.0620)
+
+\[
+\alpha_{dg}=  1 + (-0.73 + (427 / T)) / 1000
+\] 
+
+and the kinetic fraction factor of Knox and  McElroy 1984 (http://dx.doi.org/10.1029/JD089iD03p04629)
+
+\[ \alpha_u =  0.9972
+\] 
+
+The fractionation factors for CO_{2} follow the parametrization of Zeebe 2012 (http://dx.doi.org/10.1029/JD089iD03p04629)
+
+Note however, that in order to calculate gas-exchange fluxes, we need to declare the surface area, of =S_b= (line 22), as well as the pressure, temperature and salinity conditions (line 25). The base model code looks like this: 
+#+name:iso4code
+#+BEGIN_SRC ipython :tangle iso_4.py
+# This example is available as iso_4.py in ESBMTK Examples Repository
+# https://github.com/uliw/ESBMTK-Examples/tree/main/Examples_from_the_manual
+from esbmtk import (
+    Model,  # the model class
+    Reservoir,  # the reservoir class
+    ConnectionProperties,  # the connection class
+    GasReservoir,  # sink class
+    Species2Species,
+)
+M = Model(
+    stop="1 yr",  # end time of model
+    max_timestep="1 month",  # upper limit of time step
+    element=["Oxygen"],  # list of element definitions
+)
+GasReservoir(
+    name="O2_At",
+    species=M.O2,
+    species_ppm="21 percent",
+    delta=0,
+)
+Reservoir(
+    name="S_b",  # box name
+    geometry={"area": "2.85e14m**2", "volume": "3E16 m**3"},
+    concentration={M.O2: "200 umol/l"},  # initial concentration
+    delta={M.O2: 0},
+    seawater_parameters={"T": 21.5, "P": 1, "S": 35},
+)
+#+END_SRC
+Presently ESBMTK does not support the automatic matching of liquid species to gas reservoirs. Therefore we have to declare each gas-exchange flux individually using the =Species2Species= connection type:
+#+name: iso4codegx
+#+BEGIN_SRC ipython :tangle iso_4.py
+Species2Species(  # Ocean to atmosphere F8
+    source=M.O2_At,  # Reservoir Species
+    sink=M.S_b.O2,  # Reservoir Species
+    species=M.O2,
+    piston_velocity="4.8 m/d",
+    ctype="gasexchange",
+    id="ex_O2",
+)
+M.run(method="BDF")
+#+END_SRC
+In the following example the atmosphere equilibrates withe the surface ocean within a couple of months.
+plotting with
+#+BEGIN_SRC ipython :tangle iso_4.py
+M.plot([M.S_b.O2, M.O2_At], fn="iso_4.png")
+#+END_SRC
+results in the following output:
+#+attr_org: :width 300
+#+attr_rst: :width 400
+#+attr_latex: :width 0.5\textwidth
+#+name: iso4
+#+caption: It takes about 3 kys to fully fractionate both ocean boxes.
+[[./iso_4.png]]
+# create testable script
+#+BEGIN_SRC jupyter-python :noweb yes :tangle iso4_test.py :exports none
+<<iso4code>>
+<<iso4codegx>>
+#+END_SRC
+# create test runner 
+# create unit test for iso2 case
+#+BEGIN_SRC ipython :noweb yes :tangle test_iso4.py :exports none
+import pytest
+import  iso4_test # import script
+
+M = iso4_test.M  # get model handle
+test_values = [  # result, reference value
+    (M.S_b.O2.c[-1]*1e6, 230.617),
+    (M.O2_At.c[-1]*1e3, 209.99470974440993),
+    (M.S_b.O2.d[-1], 0.720482831),
+    (M.O2_At.d[-1], -0.0001367157717765818),
+]
+<<testrunner>>
+#+END_SRC
+
+
+** Using user supplied parametrizations and custom species for gas exchange reactions.
+Currently ESBMTK provides useful defaults for CO_{2} and O_2, but other gas species (or parametrizations) can be easily added. 
+Users can provide their own fractionation factor parametrizations by providing their own values to the connection object. To make simple example that considers fixed values:
+#+name: iso5
+#+BEGIN_SRC ipython
+Species2Species(  # Ocean to atmosphere F8
+    source=M.O2_At,  # Reservoir Species
+    sink=M.S_b.O2,  # Reservoir Species
+    species=M.O2,
+    solubility="1098 mmol/(m^3 * atm)",  # solubility
+    a_u=0.9972,  # kinetic fractionation factor
+    a_dg=1.00073,  # equilibrium fractionation factor
+    piston_velocity="4.8 m/d",
+    ctype="gasexchange",
+    id="ex_O2",
+)
+#+END_SRC
+# create example script
+#+BEGIN_SRC ipython :noweb yes :tangle iso_5.py :exports none
+<<iso4code>>
+<<iso5>>
+M.run()
+M.plot([M.S_b.O2, M.O2_At])
+#+END_SRC
+Note that in the above case, the ESBMTK will automatically correct the
+solubility value for water vapor pressure.  For carbon there is another variable
+that defines the fractionation between CO_{2}aq and HCO_{3}^{-} (=a_db= the
+fractionation between HCO_{3}^{-} and CO_{3}^{2-} ) is currently not considered by ESBMTK.
+
+#+BEGIN_SRC jupyter-python  :noweb yes :tangle iso_2.py :exports none
+"""Testcase for scale with flux isotope calculations.
+
+Also available as iso_2.py in the ESBMTK Examples Repository. See
+https://github.com/uliw/ESBMTK-Examples/tree/main/Examples_from_the_manual
+"""
+
+from esbmtk import (
+    ConnectionProperties,  # the connection class
+    Model,  # the model class
+    Reservoir,  # the reservoir class
+)
+
+M = Model(
+    stop="3 kyr",  # end time of model
+    max_timestep="100 yr",  # upper limit of time step
+    element=["Carbon"],  # list of element definitions
+)
+Reservoir(
+    name="S_b",  # box name
+    volume="50E16 m**3",  # surface box volume
+    concentration={M.DIC: "2000 umol/l"},  # initial concentration
+    delta={M.DIC: 0},
+)
+Reservoir(
+    name="D_b",  # box name
+    volume="50E16 m**3",  # deeb box volume
+    concentration={M.DIC: "2000 umol/l"},  # initial concentration
+    delta={M.DIC: 0},
+)
+ConnectionProperties(  # thermohaline downwelling
+    source=M.S_b,  # source of flux
+    sink=M.D_b,  # target of flux
+    ctype="scale_with_concentration",
+    scale="20 Sv",
+    id="downwelling",
+)
+ConnectionProperties(  # thermohaline upwelling
+    source=M.D_b,  # source of flux
+    sink=M.S_b,  # target of flux
+    ctype="scale_with_concentration",
+    scale="20 Sv",
+    id="upwelling",
+)
+Fd = M.flux_summary(filter_by="downwelling", return_list=True)[0]
+
+ConnectionProperties(  # thermohaline upwelling
+    source=M.S_b,  # source of flux
+    sink=M.D_b,  # target of flux
+    ctype="scale_with_flux",
+    ref_flux=Fd,
+    scale=0.2,
+    epsilon=28,
+    id="PIC",
+)
+
+M.run(method="BDF")
+#+END_SRC
+
