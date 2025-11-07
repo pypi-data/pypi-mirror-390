@@ -1,0 +1,31 @@
+include README.md
+recursive-include src/django_ldap3_auth/migrations *.py
+recursive-include src/django_ldap3_auth/static *
+recursive-include src/django_ldap3_auth/management *
+
+# ===========================
+# Пример settings.py (минимум)
+# ===========================
+# INSTALLED_APPS += ['django_ldap3_auth']
+# AUTHENTICATION_BACKENDS = [
+#   'django_ldap3_auth.backends.LDAPBackend',
+#   'django.contrib.auth.backends.ModelBackend',
+# ]
+# LDAP_HOST = 'example.com'
+# LDAP_PORT = 389
+# LDAP_USE_SSL = False
+# LDAP_BASE_DN = 'DC=admin,DC=admin'
+# LDAP_BIND_DN = 'admin@example.com'   # сервисный пользователь для поиска DN
+# LDAP_BIND_PASSWORD = os.getenv('LDAP_BIND_PASSWORD')
+# LDAP_SUPERUSER_GROUP = 'CN=GG_Django_Admins,OU=Groups,DC=example,DC=com'
+# LDAP_STAFF_GROUP     = 'CN=GG_Django_Staff,OU=Groups,DC=example,DC=com'
+# LDAP_USE_DB_CONFIG = True  # чтобы видеть/менять в админке
+
+
+# ===========================
+# Заметки по безопасности
+# ===========================
+# - Никогда не храните реальные пароли в репозитории. Используйте переменные окружения/секреты.
+# - Для LDAPS используйте 636 и LDAP_USE_SSL=True. При необходимости добавьте проверку сертификата (ldap3.Tls).
+# - В продакшене разумно сделать поля bind_password read‑only в админке и заполнять их только из env.
+# - Если хотите шифрование в БД, можно добавить зависимость на django-fernet-fields и заменить CharField.

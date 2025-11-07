@@ -1,0 +1,55 @@
+# django-ldap3-auth
+
+Простой backend для аутентификации Django через Active Directory/LDAP (библиотека `ldap3`).
+
+## Установка
+```bash
+pip install django-ldap3-auth
+```
+
+## Настройка
+В `settings.py`:
+```python
+INSTALLED_APPS = [
+    # ...
+    'django_ldap3_auth',
+]
+
+AUTHENTICATION_BACKENDS = [
+    'django_ldap3_auth.backends.LDAPBackend',
+    'django.contrib.auth.backends.ModelBackend',  # на случай суперпользователя из БД
+]
+
+# Базовые параметры
+LDAP_HOST = 'dc01.example.local'  # или dc.example.com
+LDAP_PORT = 389  # 636 для LDAPS
+LDAP_USE_SSL = False  # True для LDAPS
+LDAP_BASE_DN = 'DC=example,DC=local'
+
+# Как искать пользователя в AD
+LDAP_SEARCH_FILTER = '(&(objectClass=user)(sAMAccountName={username}))'
+LDAP_SEARCH_ATTRS = ['cn', 'mail', 'givenName', 'sn', 'memberOf', 'userPrincipalName']
+
+# Сервисная учётка для поиска (опционально, но рекомендуется)
+LDAP_BIND_DN = 'svc_ldap@example.local'  # или 'EXAMPLE\\svc_ldap'
+LDAP_BIND_PASSWORD = os.getenv('LDAP_BIND_PASSWORD', '')
+
+# Политики создания/обновления локального пользователя
+LDAP_DEFAULT_EMAIL_DOMAIN = 'example.local'  # если в AD нет e-mail
+LDAP_MAP_FIRST_NAME = 'givenName'  # из каких атрибутов AD брать имя/фамилию
+LDAP_MAP_LAST_NAME = 'sn'
+
+# Маппинг групп AD → права в Django
+LDAP_SUPERUSER_GROUP = 'CN=GG_Django_Admins,OU=Groups,DC=example,DC=local'
+LDAP_STAFF_GROUP = 'CN=GG_Django_Staff,OU=Groups,DC=example,DC=local'
+
+# Разрешить переопределение настроек из БД (единичная запись в модели LDAPConfig)
+LDAP_USE_DB_CONFIG = True
+```
+
+После этого выполните миграции:
+```bash
+python manage.py migrate
+```
+И попробуйте войти в /admin под учётной записью AD.
+
