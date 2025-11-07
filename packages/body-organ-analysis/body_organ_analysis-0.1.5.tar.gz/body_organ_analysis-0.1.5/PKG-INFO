@@ -1,0 +1,126 @@
+Metadata-Version: 2.1
+Name: body-organ-analysis
+Version: 0.1.5
+Summary: BOA is a tool for segmentation of CT scans developed by the SHIP-AI group at the Institute for Artificial Intelligence in Medicine (https://ship-ai.ikim.nrw/). Combining the TotalSegmentator and the Body Composition Analysis, this tool is capable of analyzing medical images and identifying the different structures within the human body, including bones, muscles, organs, and blood vessels.
+Home-page: https://github.com/UMEssen/Body-and-Organ-Analyzer
+License: Apache-2.0
+Keywords: python,segmentation,nnunet,boa,body composition analysis
+Author: Jannis Straus
+Author-email: jannis.straus@uk-essen.de
+Requires-Python: >=3.9,<3.11
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Provides-Extra: pacs
+Provides-Extra: storage
+Provides-Extra: triton
+Requires-Dist: Jinja2 (>=3.0.3,<4.0.0)
+Requires-Dist: SimpleITK (>=2.0.1,<3.0.0)
+Requires-Dist: WeasyPrint (>=52.5,<53.0)
+Requires-Dist: batchgenerators (==0.21)
+Requires-Dist: boa-contrast (>=0.1.4,<0.2.0)
+Requires-Dist: celery (==5.2.7) ; extra == "pacs"
+Requires-Dist: dataclasses-json (>=0.5.7,<0.6.0)
+Requires-Dist: dicomweb-client (>=0.59.0,<0.60.0) ; extra == "pacs" or extra == "storage"
+Requires-Dist: fury (>=0.8.0,<0.9.0)
+Requires-Dist: kaleido (==0.2.1)
+Requires-Dist: matplotlib (>=3.6.2,<4.0.0)
+Requires-Dist: medpy (>=0.4.0,<0.5.0)
+Requires-Dist: nibabel (>=5.1.0,<6.0.0)
+Requires-Dist: numpy (>=1.24.0,<2.0.0)
+Requires-Dist: p-tqdm (>=1.4.0,<2.0.0)
+Requires-Dist: plotly (>=5.3.1,<6.0.0)
+Requires-Dist: psutil (>=5.9.4,<6.0.0)
+Requires-Dist: psycopg2-binary (>=2.9.9,<3.0.0) ; extra == "pacs"
+Requires-Dist: pydicom (>=2.3.1,<3.0.0)
+Requires-Dist: pydicom-seg (>=0.4.1,<0.5.0) ; extra == "pacs" or extra == "storage"
+Requires-Dist: pywavelets (>=1.1.1,<2.0.0)
+Requires-Dist: requests (>=2.28.2,<3.0.0)
+Requires-Dist: scikit-learn (==1.3.0)
+Requires-Dist: smbprotocol (>=1.10.1,<2.0.0) ; extra == "pacs" or extra == "storage"
+Requires-Dist: tqdm (>=4.45.0,<5.0.0)
+Requires-Dist: tritonclient[grpc] (>=2.5.0,<3.0.0) ; extra == "triton"
+Requires-Dist: unidecode (>=1.3.6,<2.0.0)
+Requires-Dist: xlsxwriter (>=3.1.2,<4.0.0)
+Requires-Dist: xvfbwrapper (>=0.2.9,<0.3.0)
+Project-URL: Repository, https://github.com/UMEssen/Body-and-Organ-Analyzer
+Description-Content-Type: text/markdown
+
+# BOA: Body and Organ Analysis
+
+![BOA](images/BOA-banner.png)
+
+BOA is a tool for segmentation of CT scans developed by the [SHIP.AI group at
+the Institute for Artificial Intelligence in Medicine
+(IKIM)](https://ship-ai.ikim.nrw/). Combining the
+[TotalSegmentator](https://arxiv.org/abs/2208.05868) and the
+[Body Composition Analysis](https://pubmed.ncbi.nlm.nih.gov/32945971/), this
+tool is capable of analyzing medical images and identifying the different
+structures within the human body, including bones, muscles, organs, and blood
+vessels.The tool also includes functionalities for the following tasks:
+
+- Skeleton
+- Organs
+- Bone Mineral Density
+- Contrast Media Recognition
+- Cardiovascular System
+- Body Parts
+- Body Tissue Composition
+- Body Region Detection
+
+## Example Segmentations
+
+The BOA tool can be used to generate full body segmentations of CT scans:
+
+![Segmentation of human body](https://raw.githubusercontent.com/UMEssen/Body-and-Organ-Analysis/main/images/segmentation.png)
+
+Additionally, the generated segmentations can be used as input to generate
+realistic images using [Siemens' Cinematic Rendering](https://www.siemens-healthineers.com/digital-health-solutions/cinematic-rendering).
+
+![Cinematic rendering](https://raw.githubusercontent.com/UMEssen/Body-and-Organ-Analysis/main/images/cinematic.svg)
+
+## Citation
+
+If you use this tool, please cite the following papers:
+
+[BOA](https://journals.lww.com/investigativeradiology/abstract/9900/boa__a_ct_based_body_and_organ_analysis_for.176.aspx):
+
+```text
+Haubold, J., Baldini, G., Parmar, V., Schaarschmidt, B. M., Koitka, S., Kroll, 
+L., van Landeghem, N., Umutlu, L., Forsting, M., Nensa, F., & Hosch, R. (2023). 
+BOA: A CT-Based Body and Organ Analysis for Radiologists at the Point of Care. 
+Investigative radiology, 10.1097/RLI.0000000000001040. Advance online 
+publication. https://doi.org/10.1097/RLI.0000000000001040
+```
+
+[TotalSegmentator](https://pubs.rsna.org/doi/10.1148/ryai.230024):
+
+```text
+Wasserthal J, Breit H-C, Meyer MT, et al. TotalSegmentator: Robust Segmentation 
+of 104 Anatomic Structures in CT Images. Radiol. Artif. Intell. 2023:e230024. 
+Available at: https://pubs.rsna.org/doi/10.1148/ryai.230024.
+```
+
+[nnU-Net](https://www.nature.com/articles/s41592-020-01008-z):
+
+```text
+Isensee F, Jaeger PF, Kohl SAA, et al. nnU-Net: a self-configuring method for 
+deep learning-based biomedical image segmentation. Nat. Methods. 
+2021;18(2):203–211. Available at: https://www.nature.com/articles/s41592-020-01008-z.
+```
+
+## How to run?
+
+- Set up the [environment variables](./documentation/environment_variables.md).
+- Either use the [PACS integration](./documentation/pacs_integration.md) or the
+[command line tool](./documentation/command_line.md).
+
+## Notes on Performance
+
+To make an estimate on how much power and time is needed to process a study, we
+used the [following table](https://github.com/wasserth/TotalSegmentator/blob/master/resources/imgs/runtime_table.png)
+provided by the TotalSegmentator. However, for very large series
+(e.g. 1600 slices 1mm), the performance may be worse and more CPU power may be
+needed. According to our tests, 16GB of GPU should be sufficient.
+
