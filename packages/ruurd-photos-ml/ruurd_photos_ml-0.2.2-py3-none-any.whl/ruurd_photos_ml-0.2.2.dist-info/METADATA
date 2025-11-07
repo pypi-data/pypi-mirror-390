@@ -1,0 +1,205 @@
+Metadata-Version: 2.4
+Name: ruurd-photos-ml
+Version: 0.2.2
+Summary: Some image related machine learning methods, to be used by Ruurd Photos.
+Project-URL: Homepage, https://github.com/RuurdBijlsma/ruurd-photos-ml
+Project-URL: Repository, https://github.com/RuurdBijlsma/ruurd-photos-ml
+Project-URL: Documentation, https://ruurdbijlsma.github.io/ruurd-photos-ml
+Author-email: Ruurd Bijlsma <ruurd@bijlsma.dev>
+License-Expression: MIT
+Requires-Python: >=3.12
+Requires-Dist: accelerate>=1.11.0
+Requires-Dist: hf-xet>=1.1.10
+Requires-Dist: insightface>=0.7.3
+Requires-Dist: onnxruntime-gpu>=1.23.0
+Requires-Dist: onnxruntime>=1.23.1
+Requires-Dist: open-clip-torch>=3.2.0
+Requires-Dist: opencv-python>=4.12.0.88
+Requires-Dist: pillow>=11.3.0
+Requires-Dist: pytesseract>=0.3.13
+Requires-Dist: torch>=2.8.0
+Requires-Dist: torchvision>=0.23.0
+Requires-Dist: transformers>=4.57.0
+Description-Content-Type: text/markdown
+
+# Ruurd Photos ML
+
+[![Python Quality Checks](https://github.com/RuurdBijlsma/ruurd-photos-ml/actions/workflows/quality-checks.yaml/badge.svg)](https://github.com/RuurdBijlsma/ruurd-photos-ml/actions/workflows/quality-checks.yaml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A Python package providing a suite of machine learning tools for image analysis, designed to be the
+backbone of the [Ruurd Photos](https://github.com/RuurdBijlsma/photos-backend) project, a
+self-hosted
+Google Photos alternative. This package is intended to be called from Rust
+using [PyO3](https://pyo3.rs/).
+
+## ✨ Features
+
+This library offers a selection of pre-trained models for various image analysis tasks:
+
+### <caption> Image Captioning
+
+Generate descriptive captions for images and ask questions about their content.
+
+* **InstructBLIP**: A powerful model for both generating detailed descriptions and answering
+  questions about an image.
+* **Salesforce BLIP**: A robust model for generating high-quality image captions.
+
+### 😀 Facial Recognition
+
+Detect and analyze faces within images.
+
+* **InsightFace**: A comprehensive toolkit for face analysis that can:
+    * Detect multiple faces in an image.
+    * Estimate age and gender.
+    * Identify key facial landmarks (eyes, nose, mouth).
+    * Generate facial embeddings for clustering and recognition.
+
+### 🖼️ Object Detection
+
+Identify and locate various objects within an image.
+
+* **ResNet**: Utilizes a ResNet-based model to detect a wide range of common objects, returning
+  their labels and bounding boxes.
+
+### 🔤 Optical Character Recognition (OCR)
+
+Detect and extract text from images.
+
+* **ResNet & Tesseract**: A two-stage process that first uses a ResNet model to determine if an
+  image contains legible text, and then employs Tesseract to extract the text and its bounding
+  boxes.
+
+## 🚀 Installation
+
+This package will be available on PyPI. You can install it using pip:
+
+```bash
+pip install ruurd-photos-ml
+```
+
+## 💻 Usage
+
+The library is designed to be simple to use. Here are some examples for each of the main
+functionalities.
+
+First, you'll need to load an image using Pillow:
+
+```python
+from PIL import Image
+
+# Load your image
+image = Image.open("path/to/your/image.jpg")
+```
+
+### Image Captioning
+
+```python
+from ruurd_photos_ml import get_captioner, CaptionerProvider
+
+# Initialize the captioner
+captioner = get_captioner(CaptionerProvider.BLIP_INSTRUCT)
+
+# Generate a simple caption
+caption = captioner.caption(image)
+print(f"Caption: {caption}")
+
+# Ask a question about the image
+question = "What color is the main object?"
+answer = captioner.caption(image, instruction=question)
+print(f"Answer: {answer}")
+```
+
+### Facial Recognition
+
+```python
+from ruurd_photos_ml import get_facial_recognition, FacialRecognitionProvider
+
+# Initialize the facial recognition model
+face_detector = get_facial_recognition(FacialRecognitionProvider.INSIGHT)
+
+# Get faces from the image
+faces = face_detector.get_faces(image)
+
+for face in faces:
+    print(f"Found a face at position {face.position} with confidence {face.confidence}")
+    print(f"  - Age: {face.age}")
+    print(f"  - Gender: {face.sex}")
+    print(f"  - Embedding: {face.embedding[:5]}...")  # Showing first 5 values
+```
+
+### Object Detection
+
+```python
+from ruurd_photos_ml import get_object_detection, ObjectDetectionProvider
+
+# Initialize the object detector
+object_detector = get_object_detection(ObjectDetectionProvider.RESNET)
+
+# Detect objects in the image
+objects = object_detector.detect_objects(image)
+
+for obj in objects:
+    print(f"Detected '{obj.label}' with confidence {obj.confidence}")
+```
+
+### Optical Character Recognition (OCR)
+
+```python
+from ruurd_photos_ml import get_ocr, OCRProvider
+
+# Initialize the OCR model
+ocr = get_ocr(OCRProvider.RESNET_TESSERACT)
+
+# Check for legible text
+if ocr.has_legible_text(image):
+    # Extract text (specify languages for better accuracy)
+    text = ocr.get_text(image, languages=("eng", "nld"))
+    print(f"Extracted Text: {text}")
+
+    # Get text with bounding boxes
+    boxes = ocr.get_boxes(image, languages=("eng", "nld"))
+    for box in boxes:
+        print(f"Found text: '{box.text}' at position {box.position}")
+
+```
+
+## 🛠️ Development
+
+To contribute to this project, you can set up a local development environment.
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/RuurdBijlsma/ruurd-photos-ml.git
+   cd ruurd-photos-ml
+   ```
+
+2. **Install dependencies using `uv`:**
+   ```bash
+   uv sync --all-extras --dev
+   ```
+
+3**Run tests:**
+
+   ```bash
+   uv run pytest
+   ```
+
+3**Quality checks:**
+
+   ```bash
+   pre-commit run -a
+   ```
+
+## 🔗 Project Links
+
+* **Homepage
+  **: [https://github.com/RuurdBijlsma/ruurd-photos-ml](https://github.com/RuurdBijlsma/ruurd-photos-ml)
+* **Repository
+  **: [https://github.com/RuurdBijlsma/ruurd-photos-ml](https://github.com/RuurdBijlsma/ruurd-photos-ml)
+* **Documentation
+  **: [https://ruurdbijlsma.github.io/ruurd-photos-ml](https://ruurdbijlsma.github.io/ruurd-photos-ml)
+
+## 📜 License
+
+This project is licensed under the MIT License.
