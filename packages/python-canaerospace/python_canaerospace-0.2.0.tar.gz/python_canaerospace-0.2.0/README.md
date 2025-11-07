@@ -1,0 +1,135 @@
+# CANAerospace for Python
+
+A Python implementation of the CANAS protocol, designed for hardware-agnostic CAN communication, testing, and simulation. This entire work is a port of the fantastic C++ library created by MJS513. 
+
+# Features
+* mjs513/CANaerospace Compatible API
+* Hardware-agnostic CAN (Standard and FD)
+* Built-in support for redundant CAN bus
+* CANAS 1.7 DataTypes, packing, and unpacking
+* Parameter subscription and advertisement
+* Service handling with a centralized `NodeServiceHandler`
+* Modular Identifier Directory support
+* Support for virtual can (python-can), socket-can (python-can), and other `python-can` backends
+* Transmission scheduling for time-triggered messages
+* Unit system using `pint` for dimensional analysis
+
+# Roadmap
+
+This project is actively under development. Here is a roadmap of the key features and improvements that are planned:
+
+### Core Logic
+- [x] **Implement the main `update` method**: The core logic for processing incoming frames and dispatching them to handlers is now implemented.
+- [x] **Implement Repeated Message Filtering**: Logic to filter out repeated messages based on timestamps and message codes is now implemented for both parameters and services.
+- [x] **Implement Timeout Handling**: Logic to handle timeouts for services and other time-sensitive operations is now implemented.
+
+### Advanced Service Handling
+- [ ] **Stateful, Multi-Frame Services**: Refactor the `NodeServiceHandler` or create new classes to manage stateful, multi-frame services like Data Download (DDS) and Data Upload (DUS). This will involve handling session management, data chunking, and checksum verification.
+- [ ] **Complete Service Implementation**: Implement the full logic for all services defined in the `ServiceCode` enum, including error handling and all specified message codes.
+
+### Comprehensive Testing
+- [x] **Expand Test Coverage for Core Logic**: The core logic is now well-tested.
+- [ ] **Full Service Lifecycle Tests**: Create tests that cover the complete lifecycle of each service, including multi-frame transfers, error conditions, and timeouts.
+- [ ] **Integration Tests**: Add integration tests that simulate a complete CAN bus with multiple nodes to verify the interaction between different components of the library.
+
+### Documentation
+- [ ] **API Reference**: Generate a complete API reference using a tool like Sphinx.
+- [ ] **Usage Examples**: Provide more detailed examples of how to use the library for common tasks, such as creating an ECU, sending and receiving messages, and interacting with services.
+
+# Extending the Transport Layer
+
+The library is designed to be hardware-agnostic, and it is easy to add support for new transport layers. Here is an example of how to create a custom transport layer that reads CAN messages from a Redis server.
+
+First, you will need a class that implements the `BusAdapter` protocol defined in `src/canaerospace/driver.py`. This class will need to implement the `send` and `set_filters` methods.
+
+```python
+# src/canaerospace/transport/redis.py
+import redis
+import json
+from src.canaerospace.driver import BusAdapter, CANFrame, CANFilterConfig
+
+class RedisBus(BusAdapter):
+    def __init__(self, channel: str):
+        self.redis = redis.Redis()
+        self.pubsub = self.redis.pubsub()
+        self.channel = channel
+        self.pubsub.subscribe(self.channel)
+
+    def send(self, iface: int, frame: CANFrame) -> int:
+        message = {
+            'iface': iface,
+            'id': frame.id,
+            'data': frame.data.hex(),
+            'is_extended_id': frame.is_extended_id
+        }
+        return self.redis.publish(self.channel, json.dumps(message))
+
+    def set_filters(self, iface: int, filters: list[CANFilterConfig]):
+        # Redis pub/sub does not support filtering, so we do nothing.
+        pass
+
+    def receive(self, timeout: float | None = None) -> CANFrame | None:
+        message = self.pubsub.get_message(timeout=timeout)
+        if message and message['type'] == 'message':
+            data = json.loads(message['data'])
+            return CANFrame(
+                id=data['id'],
+                data=bytes.fromhex(data['data']),
+                is_extended_id=data['is_extended_id']
+            )
+        return None
+```
+
+Now, you can use this `RedisBus` with the `CANASInstance`:
+
+```python
+# main.py
+from src.canaerospace import CANASInstance, CANAeroConfig
+from src.canaerospace.transport.redis import RedisBus
+from src.canaerospace.frame import decode
+import time
+
+def main():
+    bus = RedisBus(channel='can-bus')
+    config = CANAeroConfig(bus=bus, node_id=1)
+    instance = CANASInstance(config)
+
+    while True:
+        frame = bus.receive(timeout=1.0)
+        if frame:
+            now = int(time.time() * 1e6)
+            instance.update_timestamp(0, frame, now)
+
+            # Decode and print the message
+            try:
+                msg = decode(frame.id, frame.data)
+                print(f"Received Message: {msg}")
+                print(f"  Message ID: {msg.can_id}")
+                print(f"  Data Type: {msg.data_type.name}")
+                print(f"  Decoded Data: {msg.values()}")
+            except Exception as e:
+                print(f"Error decoding frame: {e}")
+
+if __name__ == "__main__":
+    main()
+
+```
+
+# Testing
+
+This project uses `pytest` for unit testing. To run the full test suite, simply run the following command from the root of the project:
+
+```bash
+pytest
+```
+
+This will automatically discover and run all tests in the `tests/` directory.
+
+# Contributing
+
+Contributions are welcome! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for detailed guidelines on how to contribute to the project.
+
+## Development
+
+### Linting
+Pre-commit hooks for linting are enabled. More info at https://pre-commit.com/
