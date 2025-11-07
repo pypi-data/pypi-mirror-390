@@ -1,0 +1,410 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import time
+import optparse
+
+import numpy             as np
+import matplotlib.pyplot as plt
+import radical.analytics as ra
+
+from radical.analytics.utils import to_latex
+
+RES = int(os.environ.get('RADICAL_ANALYTICS_RESOLUTION', 252))
+
+# ----------------------------------------------------------------------------
+#
+plt.style.use(ra.get_mplstyle("radical_mpl"))
+
+
+# ------------------------------------------------------------------------------
+#
+TITLE     = ''
+DELIM     = ''
+MATCH     = None
+COLUMN_X  = 'count'
+COLUMNS_Y = ['1']
+LEGEND    = []
+LABEL_X   = ''
+LABEL_Y   = ''
+TICKS_X   = []
+TICKS_Y   = []
+RANGE     = [None, None, None, None]
+LOG_X     = False
+LOG_Y     = False
+LOG       = ''
+STYLES    = ['line', 'point']  # 'point', 'line', 'step', 'bar', 'hist', 'lp'
+GRID      = False   # True, False
+FNAME     = None
+SAVE_AS   = 'x11'   # 'svg', 'png', 'x11', 'pdf'
+WIDTH     = RES
+HEIGHT    = None
+STDEV     = False
+
+
+# ------------------------------------------------------------------------------
+#
+def usage(msg=None):
+
+    ret = 0
+    if msg:
+        print('\n\n\t\tError: %s\n' % msg)
+        ret = 1
+
+    print('''
+
+    usage  : radical-analytics-plot [<src>] [options]
+    example: radical-analytics-plot experiment.dat -t 'title' --log 'x,y'
+    source : space separated data file (read from stdin if not specified)
+    options:
+        -h, --help                             : this message
+        -t, --title      <title>               : plot title
+        -X, --x-label    <label>               : x-axis label
+        -Y, --y-label    <label>               : y-axis label
+        -d, --delim      <char>                : column delimiter
+        -m, --match      <pattern>             : use lines matching pattern
+        -x, --x-column   <col>                 : source column for x-values
+        -y, --y-columns  <col_1,col_2,...>     : list of columns columns to plot
+        -S, --stdev                            : plot stdev from `col + 1`
+        -L, --legend     <label_1,label_2,...> : name of plots specified in '-y'
+        -u, --x-ticks    <tick_1,tick_2,...>   : not yet supported
+        -v, --y-ticks    <tick_1,tick_2,...>   : not yet supported
+        -r, --range      <xmin,xmax,ymin,ymax> : axis range
+        -s, --style      <point | line | step | bar | hist | lp>
+                                               : plot type
+        -W, --width      <pixels>              : canvas width (default: 500)
+        -H, --height     <pixels>              : canvas height
+        -l, --log        <x | y | x,y>         : log-scale for x and/or y axis
+        -g, --grid                             : grid lines (default: no)
+        -a, --save-as    <png | svg | x11>     : save fig in format (x11: show)
+        -f, --file-name  <filename>            : name to save to (w/o ext)
+
+''')
+
+    sys.exit(ret)
+
+
+# ------------------------------------------------------------------------------
+# parse options
+parser = optparse.OptionParser(add_help_option=False)
+
+parser.add_option('-t', '--title',     dest='title')
+parser.add_option('-X', '--x-label',   dest='xlabel')
+parser.add_option('-Y', '--y-label',   dest='ylabel')
+parser.add_option('-d', '--delimiter', dest='delim')
+parser.add_option('-m', '--match',     dest='match')
+parser.add_option('-x', '--x-column',  dest='xcol')
+parser.add_option('-y', '--y-columns', dest='ycols')
+parser.add_option('-u', '--x-ticks',   dest='xticks')
+parser.add_option('-v', '--y-ticks',   dest='yticks')
+parser.add_option('-S', '--stdev',     dest='stdev', action='store_true')
+parser.add_option('-r', '--range',     dest='range')
+parser.add_option('-L', '--legend',    dest='legend')
+parser.add_option('-s', '--style',     dest='style')
+parser.add_option('-W', '--width',     dest='width')
+parser.add_option('-H', '--height',    dest='height')
+parser.add_option('-l', '--log',       dest='log')
+parser.add_option('-g', '--grid',      dest='grid', action='store_true')
+parser.add_option('-a', '--save-as',   dest='save')
+parser.add_option('-f', '--file-name', dest='fname')
+parser.add_option('-h', '--help',      dest='help', action='store_true')
+
+options, args = parser.parse_args()
+if len(args) > 1:
+    usage("Too many arguments (%s)" % args)
+
+if len(args) < 1:
+    src = None
+else:
+    src = args[0]
+
+if options.help   : usage()
+if options.title  : TITLE        =  str(options.title)
+if options.delim  : DELIM        =  str(options.delim)
+if options.match  : MATCH        =  str(options.match)
+if options.xcol   : COLUMN_X     =  str(options.xcol)
+if options.ycols  : COLUMNS_Y    = [str(x) for x in options.ycols .split(',')]
+if options.xlabel : LABEL_X      =  str(options.xlabel)
+if options.ylabel : LABEL_Y      =  str(options.ylabel)
+if options.xticks : TICKS_X      = [str(x) for x in options.xticks.split(',')]
+if options.yticks : TICKS_Y      = [str(x) for x in options.yticks.split(',')]
+if options.legend : LEGEND       = [str(x) for x in options.legend.split(',')]
+if options.width  : WIDTH        =  int(options.width)
+if options.height : HEIGHT       =  int(options.height)
+if options.log    : LOG          =  str(options.log)
+if options.grid   : GRID         =  str(options.grid)
+if options.style  : STYLES       =  str(options.style).split(',')
+if options.save   : SAVE_AS      =  str(options.save)
+if options.fname  : FNAME        =  str(options.fname)
+if options.stdev  : STDEV        =  True
+if options.grid   : GRID         =  True
+
+if options.range  :
+    RANGE = options.range .split(',')
+    RANGE = [float(x) if x else None for x in RANGE]
+
+LEGEND  = [s.strip() for s in LEGEND]
+TICKS_X = [s.strip() for s in TICKS_X]
+TICKS_Y = [s.strip() for s in TICKS_Y]
+
+if 'x' in LOG: LOG_X = True
+if 'y' in LOG: LOG_Y = True
+
+if COLUMN_X not in ['count']:
+    COLUMN_X = int(COLUMN_X)
+
+if SAVE_AS not in ['x11', 'png', 'svg', 'pdf']:
+    raise ValueError('invalid save_as value: %s' % SAVE_AS)
+
+for STYLE in STYLES:
+    if STYLE not in ['point', 'line', 'step', 'bar', 'hist', 'lp']:
+        raise ValueError('invalid style: %s' % STYLE)
+
+
+# ------------------------------------------------------------------------------
+# read and sort data
+def get_lines():
+    if src:
+        with open(src, 'r') as fin:
+            for line in fin.readlines():
+                line = line.strip()
+                if line:
+                    yield line
+    else:
+        for line in sys.stdin:
+            line = line.strip()
+            if line:
+                yield line
+
+
+# ------------------------------------------------------------------------------
+def get_elems(line):
+    if DELIM:
+        elems = [e.strip() for e in line.split(DELIM)]
+    else:
+        elems = line.split()
+
+    ret = list()
+    for e in elems:
+        if e in ['-', 'nan']:
+            ret.append(np.nan)
+        else:
+            try:
+                ret.append(float(e))
+            except:
+                ret.append(e)
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+rows    = list()
+rlabels = list()
+for line in get_lines():
+
+    if line.startswith('#'):
+        rlabels = get_elems(line)[1:]
+        if not LABEL_X:
+            try:
+                LABEL_X = rlabels[int(COLUMN_X)]
+            except:
+                pass
+
+        elems  = get_elems(line)[1:]
+        if not LEGEND:
+            LEGEND = [''] * (len(elems))
+        for idx in range(len(elems)):
+            elem = elems[idx]
+            if idx == COLUMN_X:
+                if LABEL_X == '-':
+                    LABEL_X = None
+                else:
+                    LABEL_X = elem
+            else:
+                if not LEGEND:
+                    LEGEND[idx] = elem
+
+    else:
+        if MATCH and MATCH not in line:
+            continue
+        rows.append(get_elems(line))
+
+if not LABEL_X:
+    LABEL_X = COLUMN_X
+
+if not rows:
+    raise ValueError('no matching data')
+
+
+# ------------------------------------------------------------------------------
+# invert rows to actual data layout
+data  = list()
+ncols = len(rows[0])
+for idx in range(ncols):
+    data.append(list())
+
+for row in rows:
+    for col in range(ncols):
+        data[col].append(row[col])
+
+if 'hist' in STYLES:
+    if COLUMN_X and COLUMN_X != 'count':
+        raise ValueError('histogram plots should specify `-y`, not `-x`')
+
+# ------------------------------------------------------------------------------
+# plot data
+# pprint.pprint(data)
+try:
+
+    fig, ax = plt.subplots(figsize=ra.get_plotsize(width=WIDTH, height=HEIGHT))
+    cnum = 0
+    for col in COLUMNS_Y:
+
+        data_y_err = None
+
+        if   LEGEND[0] == ['-']: label = None,
+        elif LEGEND            : label = to_latex(LEGEND[cnum])
+        else                   : label = to_latex(str(cnum))
+
+        cnum += 1
+
+        if COLUMN_X == 'count':
+            data_x = list(range(len(data[0])))
+        else:
+            data_x = np.array(data[int(COLUMN_X)])
+
+
+        if '+' in col:
+            cols   = [int(c) for c in col.split('+')]
+            data_y = sum([np.array(data[c]) for c in cols])
+            if STDEV:
+                data_y_err = sum([np.array(data[c + 1]) for c in cols])
+            if not label:
+                label = '+'.join([rlabels[int(col)] for col in cols])
+
+        elif '-' in col:
+            cols   = [int(c) for c in col.split('-')]
+            data_y = np.array(data[cols[0]])
+            if STDEV:
+                data_y_err = np.array(data[cols[0] + 1])
+            for c in cols[1:]:
+                data_y -= np.array(data[c])
+                if STDEV:
+                    data_y_err += np.array(data[c + 1])
+            if not label:
+                label = '-'.join([rlabels[int(col)] for col in cols])
+
+        elif '*' in col:
+            cols   = [int(c) for c in col.split('*')]
+            data_y = np.array(data[cols[0]])
+            if STDEV:
+                data_y_err = np.array(data[cols[0] + 1])
+            for c in cols[1:]:
+                data_y *= np.array(data[c])
+                if STDEV:
+                    data_y_err += np.array(data[c + 1])
+            if not label:
+                label = '*'.join([rlabels[int(col)] for col in cols])
+
+        elif '/' in col:
+            cols   = [int(c) for c in col.split('/')]
+            data_y = np.array(data[cols[0]])
+            if STDEV:
+                data_y_err = np.array(data[cols[0] + 1])
+            for c in cols[1:]:
+                data_y /= np.array(data[c])
+                if STDEV:
+                    data_y_err += np.array(data[c + 1])
+            if not label:
+                label = '/'.join([rlabels[int(col)] for col in cols])
+
+        else:
+            col = int(col)
+            time.sleep(1)
+            data_y = np.array(data[col])
+            if STDEV:
+                data_y_err = np.array(data[col + 1])
+            if not label:
+                label = rlabels[int(col)]
+
+        if STDEV and data_y_err is None:
+            raise ValueError('stdev not available with column spec %s' % col)
+
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        color = colors[cnum]
+
+        # label only once, so reset `label` on first match
+        if 'point' in STYLES:
+            ax.scatter(data_x, data_y,      c=color, label=label, s=10)
+            label = None
+
+        elif 'line'  in STYLES:
+            ax.plot   (data_x, data_y, 'b', c=color, label=label)
+            label = None
+
+        elif 'step'  in STYLES:
+            ax.step   (data_x, data_y, 'b', c=color, label=label)
+            label = None
+
+        elif 'bar'   in STYLES:
+            ax.bar    (data_x, data_y,      c=color, label=label)
+            label = None
+
+        elif 'hist'  in STYLES:
+            ax.hist   (data_y,  150,        color=color, label=label)
+            label = None
+
+        elif 'lp'    in STYLES:
+            ax.plot   (data_x, data_y, 'b', c=color, label=label, marker='.')
+            label = None
+
+      # if STDEV:
+      #     ax.fill_between(data_x, data_y - data_y_err, data_y + data_y_err,
+      #                     color=color, alpha=0.1)
+
+        if STDEV:
+            ax.errorbar(data_x, data_y, yerr=data_y_err, fmt='.', color=color)
+
+except IndexError:
+    print('index error')
+    for i,e in enumerate(data[0]):
+        print('    %2d: %s' % (i, e))
+    raise
+
+print(LEGEND)
+if LEGEND[0] != '-':
+    plt.legend(ncol=len(LEGEND), bbox_to_anchor=(1.05, 1.25),
+          fancybox=True)
+
+# ax.ytick.label_format(axis='both', style='sci', scilimits=(2,None))
+
+if TITLE   : ax.set_title(TITLE, loc='center')
+if LOG_X   : ax.set_xscale('log')
+if LOG_Y   : ax.set_yscale('log')
+if LABEL_X : ax.set_xlabel(to_latex(LABEL_X))
+if LABEL_Y : ax.set_ylabel(to_latex(LABEL_Y))
+if TICKS_X : ax.set_xticks([int(t) for t in TICKS_X], TICKS_X)
+if TICKS_Y : ax.set_yticks([int(t) for t in TICKS_Y], TICKS_Y, )
+if GRID    : ax.grid(True)
+
+xmin, xmax, ymin, ymax = RANGE
+if xmin is not None: ax.set_xlim(left=xmin)
+if xmax is not None: ax.set_xlim(right=xmax)
+if ymin is not None: ax.set_ylim(bottom=ymin)
+if ymax is not None: ax.set_ylim(top=ymax)
+
+if not FNAME:
+    FNAME = TITLE.lower().replace(' ', '_')
+    FNAME = FNAME.replace(':', '_-_')
+    FNAME = FNAME.replace('__', '_')
+
+if   SAVE_AS == 'png': fig.savefig('%s.png' % FNAME, bbox_inches="tight")
+elif SAVE_AS == 'svg': fig.savefig('%s.svg' % FNAME, bbox_inches="tight")
+elif SAVE_AS == 'pdf': fig.savefig('%s.pdf' % FNAME, dpi=300,
+                                              bbox_inches="tight")
+elif SAVE_AS == 'x11': fig.show()
+
+
+# ------------------------------------------------------------------------------
+
