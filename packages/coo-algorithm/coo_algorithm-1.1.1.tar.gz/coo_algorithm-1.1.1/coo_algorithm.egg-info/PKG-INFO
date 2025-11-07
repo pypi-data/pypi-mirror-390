@@ -1,0 +1,73 @@
+Metadata-Version: 2.4
+Name: coo_algorithm
+Version: 1.1.1
+Summary: COO Algorithm — Canine Olfactory Optimization (COO). Surrogate-assisted, pack-based black-box optimizer.
+Home-page: https://github.com/SandipGarai/coo_algorithm
+Author: Sandip Garai
+Author-email: Sandip Garai <sandipnicksandy@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://sandipgarai.github.io/coo_algorithm/
+Project-URL: Documentation, https://github.com/SandipGarai/coo_algorithm/blob/main/README.md
+Project-URL: Repository, https://github.com/SandipGarai/coo_algorithm
+Project-URL: Issues, https://github.com/SandipGarai/coo_algorithm/issues
+Keywords: metaheuristic,optimization,surrogate,hyperparameter-tuning,black-box,evolutionary
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.21
+Requires-Dist: scipy>=1.7
+Requires-Dist: scikit-learn>=1.0
+Requires-Dist: joblib>=1.1
+Requires-Dist: optuna>=3.0
+Provides-Extra: full
+Requires-Dist: lightgbm>=4.0; extra == "full"
+Requires-Dist: cma>=3.3.0; extra == "full"
+Requires-Dist: optuna>=3.0; extra == "full"
+Requires-Dist: matplotlib>=3.5; extra == "full"
+Requires-Dist: pandas>=1.5; extra == "full"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: flake8>=6.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Provides-Extra: tests
+Requires-Dist: pytest>=7.0; extra == "tests"
+Requires-Dist: pytest-cov; extra == "tests"
+
+# coo — Canine Olfactory Optimization (COO)
+
+COO (Canine Olfactory Optimization) is an adaptive, surrogate-assisted, multi-pack black-box optimizer inspired by olfactory search behaviors. It is intended for expensive, noisy, multimodal continuous optimization and hyperparameter tuning.
+
+This repository contains:
+
+- `coo.py` — the COO optimizer implementation
+- `examples/` — example scripts (ANN tuning)
+- `tests/` — smoke tests
+- `docs/` — mathematical explanation and pseudocode
+
+## Features
+
+- Multi-pack population (clusters) for structured exploration
+- Lightweight surrogate ensemble (RF/GBM/GP/LGBM) with uncertainty-based selection
+- Olfactory map: coarse grid memory guiding attraction between promising regions
+- Gradient refinement (finite-difference) on top candidates
+- Caching of evaluations to avoid repeated expensive function calls
+
+## Quick usage
+
+```python
+from coo import COO
+# define bounds as list of (low, high)
+bounds = [(-5, -1), (1, 3), (8, 64), (-6, -1), (16, 64), (0, 2)]
+opt = COO(bounds=bounds, n_packs=4, init_pack_size=12, max_iterations=100, surrogate_enabled=True)
+best_x, best_f, hist, diag, best_pos_hist = opt.optimize(lambda x: -objective(x))
+# note: this implementation treats objectives as maximization; to minimize, pass -objective(x)
+```
