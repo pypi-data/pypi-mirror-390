@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Boundary Drawing Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .upload-section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .upload-area {
+            border: 3px dashed #007bff;
+            border-radius: 8px;
+            padding: 40px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            background: #e3f2fd;
+            border-color: #0056b3;
+        }
+        .upload-area.dragover {
+            background: #bbdefb;
+            border-color: #1976d2;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            min-height: calc(100vh - 200px);
+        }
+        .sidebar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+        .image-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: auto;
+        }
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+            pointer-events: auto;
+        }
+        .control-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .control-section:last-child {
+            border-bottom: none;
+        }
+        .control-section h3 {
+            margin: 0 0 15px 0;
+            color: #34495e;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .zone-types {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .zone-btn {
+            padding: 10px 15px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.2s ease;
+            background: #f8f9fa;
+            color: #495057;
+        }
+        .zone-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .zone-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        .zone-btn.queue { background: #28a745; color: white; }
+        .zone-btn.staff { background: #17a2b8; color: white; }
+        .zone-btn.entry { background: #ffc107; color: #212529; }
+        .zone-btn.exit { background: #dc3545; color: white; }
+        .zone-btn.restricted { background: #6f42c1; color: white; }
+        .zone-btn.waiting { background: #fd7e14; color: white; }
+        .zone-btn.service { background: #20c997; color: white; }
+        .zone-btn.security { background: #495057; color: white; }
+        
+        .drawing-controls {
+            display: grid;
+            gap: 8px;
+        }
+        .control-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+        .control-btn:hover {
+            background: #f8f9fa;
+            border-color: #adb5bd;
+        }
+        .control-btn.primary {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        .control-btn.danger {
+            background: #dc3545;
+            color: white;
+            border-color: #c82333;
+        }
+        .control-btn.success {
+            background: #28a745;
+            color: white;
+            border-color: #1e7e34;
+        }
+        
+        .coordinates-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            min-height: 20px;
+        }
+        
+        .zones-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .zone-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            margin-bottom: 1px;
+        }
+        .zone-item:last-child {
+            border-bottom: none;
+        }
+        .zone-tag {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+        .zone-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .zone-actions button {
+            padding: 2px 6px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .code-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #4a5568;
+        }
+        
+        .current-mouse {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .mode-indicator {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 500;
+            color: #1976d2;
+        }
+        
+        .instructions {
+            background: #f0f8f0;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .custom-tag-input {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .custom-tag-input input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .custom-tag-input button {
+            padding: 6px 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Boundary Drawing Tool</h1>
+        
+        <div id="uploadSection" class="upload-section">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📁</div>
+                <h3>Select Image or Video File</h3>
+                <p>Click here to select a file or drag and drop</p>
+                <p style="color: #666; font-size: 14px;">
+                    Supported formats: JPG, PNG, MP4, AVI, MOV, etc.
+                </p>
+            </div>
+            <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;">
+        </div>
+        
+        <div id="mainContent" class="main-content hidden">
+            <div class="sidebar">
+                <div class="instructions">
+                    <strong>Instructions:</strong><br>
+                    1. Select a zone type<br>
+                    2. Click on image to add points<br>
+                    3. Complete polygon/line<br>
+                    4. Copy generated code
+                </div>
+                
+                <div class="mode-indicator" id="modeIndicator">
+                    Select a zone type to start
+                </div>
+                
+                <div class="control-section">
+                    <h3>Zone Types</h3>
+                    <div class="zone-types">
+                        <div class="zone-btn queue" onclick="setZoneType('queue')">🏃 Queue Area</div>
+                        <div class="zone-btn staff" onclick="setZoneType('staff')">👥 Staff Area</div>
+                        <div class="zone-btn entry" onclick="setZoneType('entry')">🚪 Entry Zone</div>
+                        <div class="zone-btn exit" onclick="setZoneType('exit')">🚶 Exit Zone</div>
+                        <div class="zone-btn restricted" onclick="setZoneType('restricted')">🚫 Restricted</div>
+                        <div class="zone-btn waiting" onclick="setZoneType('waiting')">⏰ Waiting Area</div>
+                        <div class="zone-btn service" onclick="setZoneType('service')">🛎️ Service Area</div>
+                        <div class="zone-btn security" onclick="setZoneType('security')">🔒 Security Zone</div>
+                    </div>
+                    
+                    <div class="custom-tag-input">
+                        <input type="text" id="customTagInput" placeholder="Custom tag...">
+                        <button onclick="setCustomZoneType()">Add</button>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Drawing Mode</h3>
+                    <div class="drawing-controls">
+                        <button class="control-btn primary" onclick="setDrawingMode('polygon')" id="polygonBtn">📐 Polygon</button>
+                        <button class="control-btn" onclick="setDrawingMode('line')" id="lineBtn">📏 Line</button>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Controls</h3>
+                    <div class="drawing-controls">
+                        <button class="control-btn primary" onclick="completeCurrentZone()">✅ Complete Zone</button>
+                        <button class="control-btn" onclick="undoLastPoint()">↶ Undo Point</button>
+                        <button class="control-btn danger" onclick="cancelCurrentZone()">❌ Cancel Zone</button>
+                        <button class="control-btn" onclick="clearAll()">🗑️ Clear All</button>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Current Position</h3>
+                    <div class="coordinates-display" id="currentCoords">
+                        Move mouse over image
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Export</h3>
+                    <div class="drawing-controls">
+                        <button class="control-btn success" onclick="generateCode()">📋 Generate Code</button>
+                        <button class="control-btn" onclick="saveConfiguration()">💾 Save Config</button>
+                        <button class="control-btn" onclick="loadConfiguration()">📁 Load Config</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-container">
+                <div class="image-wrapper">
+                    <img id="referenceImage" alt="Reference Image" style="display: none;">
+                    <canvas id="drawingCanvas"></canvas>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Defined Zones</h3>
+                    <div class="zones-list" id="zonesList">
+                        <div style="padding: 20px; text-align: center; color: #666;">
+                            No zones defined yet
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Generated Code</h3>
+                    <div class="code-output" id="codeOutput">
+# No zones defined yet
+zones = {}
+                    </div>
+                    <button class="control-btn success" onclick="copyCode()" style="margin-top: 10px;">📋 Copy Code</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="current-mouse" id="mouseTracker">x: 0, y: 0</div>
+    
+    <input type="file" id="configInput" accept=".json" style="display: none;" onchange="handleConfigLoad(event)">
+    
+    <script>
+        // Global state
+        let currentZoneType = null;
+        let currentDrawingMode = 'polygon';
+        let currentPoints = [];
+        let completedZones = [];
+        let isDrawing = false;
+        let mousePos = { x: 0, y: 0 };
+        let currentFile = null;
+        
+        // Canvas and image elements
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const img = document.getElementById('referenceImage');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const currentCoords = document.getElementById('currentCoords');
+        const mouseTracker = document.getElementById('mouseTracker');
+        const zonesList = document.getElementById('zonesList');
+        const codeOutput = document.getElementById('codeOutput');
+        const uploadSection = document.getElementById('uploadSection');
+        const mainContent = document.getElementById('mainContent');
+        const fileInput = document.getElementById('fileInput');
+        
+        // Zone type colors
+        const zoneColors = {
+            'queue': '#28a745',
+            'staff': '#17a2b8', 
+            'entry': '#ffc107',
+            'exit': '#dc3545',
+            'restricted': '#6f42c1',
+            'waiting': '#fd7e14',
+            'service': '#20c997',
+            'security': '#495057'
+        };
+        
+        // File upload handling
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop handling
+        const uploadArea = document.querySelector('.upload-area');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+        
+        function handleFile(file) {
+            currentFile = file;
+            const fileType = file.type;
+            
+            if (fileType.startsWith('image/')) {
+                loadImage(file);
+            } else if (fileType.startsWith('video/')) {
+                extractFirstFrame(file);
+            } else {
+                showError('Unsupported file format. Please select an image or video file.');
+            }
+        }
+        
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+                img.onload = function() {
+                    setupCanvas();
+                    showMainContent();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function extractFirstFrame(file) {
+            const video = document.createElement('video');
+            video.muted = true;
+            video.currentTime = 0;
+            
+            video.onloadeddata = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                ctx.drawImage(video, 0, 0);
+                
+                const dataURL = canvas.toDataURL('image/jpeg');
+                img.src = dataURL;
+                img.onload = function() {
+                    setupCanvas();
+                    showMainContent();
+                };
+                
+                URL.revokeObjectURL(video.src);
+            };
+            
+            video.onerror = function() {
+                showError('Error loading video file. Please try a different format.');
+                URL.revokeObjectURL(video.src);
+            };
+            
+            video.src = URL.createObjectURL(file);
+        }
+        
+        function showMainContent() {
+            uploadSection.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            uploadSection.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+        
+        function setupCanvas() {
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            canvas.style.width = img.clientWidth + 'px';
+            canvas.style.height = img.clientHeight + 'px';
+            img.style.display = 'block';
+            redrawCanvas();
+        }
+        
+        // Mouse event handlers
+        canvas.addEventListener('mousemove', function(e) {
+            updateMousePosition(e);
+        });
+        
+        canvas.addEventListener('click', function(e) {
+            if (!currentZoneType) {
+                alert('Please select a zone type first!');
+                return;
+            }
+            addPoint(e);
+        });
+        
+        canvas.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            if (currentPoints.length > 0) {
+                completeCurrentZone();
+            }
+        });
+        
+        function updateMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            mousePos.x = Math.round((e.clientX - rect.left) * scaleX);
+            mousePos.y = Math.round((e.clientY - rect.top) * scaleY);
+            
+            currentCoords.textContent = `x: ${mousePos.x}, y: ${mousePos.y}`;
+            mouseTracker.textContent = `x: ${mousePos.x}, y: ${mousePos.y}`;
+            
+            redrawCanvas();
+        }
+        
+        function addPoint(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = Math.round((e.clientX - rect.left) * scaleX);
+            const y = Math.round((e.clientY - rect.top) * scaleY);
+            
+            currentPoints.push([x, y]);
+            isDrawing = true;
+            
+            updateModeIndicator();
+            redrawCanvas();
+            
+            // Auto-complete line when 2 points are added
+            if (currentDrawingMode === 'line' && currentPoints.length === 2) {
+                completeCurrentZone();
+            }
+        }
+        
+        function setZoneType(type) {
+            currentZoneType = type;
+            
+            // Update UI
+            document.querySelectorAll('.zone-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            updateModeIndicator();
+        }
+        
+        function setCustomZoneType() {
+            const input = document.getElementById('customTagInput');
+            const customType = input.value.trim();
+            
+            if (customType) {
+                currentZoneType = customType;
+                input.value = '';
+                
+                // Remove active class from preset buttons
+                document.querySelectorAll('.zone-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                updateModeIndicator();
+            }
+        }
+        
+        function setDrawingMode(mode) {
+            currentDrawingMode = mode;
+            
+            // Update UI
+            document.getElementById('polygonBtn').classList.remove('primary');
+            document.getElementById('lineBtn').classList.remove('primary');
+            document.getElementById(mode + 'Btn').classList.add('primary');
+            
+            updateModeIndicator();
+        }
+        
+        function updateModeIndicator() {
+            if (!currentZoneType) {
+                modeIndicator.textContent = 'Select a zone type to start';
+                modeIndicator.style.background = '#f8f9fa';
+                modeIndicator.style.borderColor = '#ddd';
+                modeIndicator.style.color = '#666';
+                return;
+            }
+            
+            let modeText = `Drawing ${currentDrawingMode} for "${currentZoneType}" zone`;
+            
+            if (isDrawing) {
+                const pointsNeeded = currentDrawingMode === 'line' ? 2 : 3;
+                const remaining = Math.max(0, pointsNeeded - currentPoints.length);
+                modeText += ` (${currentPoints.length} points, need ${remaining} more)`;
+            }
+            
+            modeIndicator.textContent = modeText;
+            modeIndicator.style.background = '#e3f2fd';
+            modeIndicator.style.borderColor = '#2196f3';
+            modeIndicator.style.color = '#1976d2';
+        }
+        
+        function completeCurrentZone() {
+            if (!currentZoneType || currentPoints.length === 0) return;
+            
+            const minPoints = currentDrawingMode === 'line' ? 2 : 3;
+            if (currentPoints.length < minPoints) {
+                alert(`Need at least ${minPoints} points for a ${currentDrawingMode}!`);
+                return;
+            }
+            
+            // Create zone object
+            const zone = {
+                type: currentZoneType,
+                mode: currentDrawingMode,
+                points: [...currentPoints],
+                color: zoneColors[currentZoneType] || '#333333',
+                id: 'zone_' + Date.now()
+            };
+            
+            completedZones.push(zone);
+            
+            // Reset current drawing
+            currentPoints = [];
+            isDrawing = false;
+            
+            updateModeIndicator();
+            updateZonesList();
+            generateCode();
+            redrawCanvas();
+        }
+        
+        function undoLastPoint() {
+            if (currentPoints.length > 0) {
+                currentPoints.pop();
+                updateModeIndicator();
+                redrawCanvas();
+            }
+        }
+        
+        function cancelCurrentZone() {
+            currentPoints = [];
+            isDrawing = false;
+            updateModeIndicator();
+            redrawCanvas();
+        }
+        
+        function clearAll() {
+            if (confirm('Clear all zones? This cannot be undone.')) {
+                currentPoints = [];
+                completedZones = [];
+                isDrawing = false;
+                updateModeIndicator();
+                updateZonesList();
+                generateCode();
+                redrawCanvas();
+            }
+        }
+        
+        function deleteZone(zoneId) {
+            completedZones = completedZones.filter(zone => zone.id !== zoneId);
+            updateZonesList();
+            generateCode();
+            redrawCanvas();
+        }
+        
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw completed zones
+            completedZones.forEach(zone => {
+                drawZone(zone);
+            });
+            
+            // Draw current drawing
+            if (currentPoints.length > 0) {
+                const color = zoneColors[currentZoneType] || '#333333';
+                drawCurrentDrawing(color);
+            }
+            
+            // Draw mouse cursor
+            if (mousePos.x > 0 && mousePos.y > 0 && isDrawing) {
+                ctx.beginPath();
+                ctx.arc(mousePos.x, mousePos.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fill();
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+        
+        function drawZone(zone) {
+            if (zone.points.length === 0) return;
+            
+            ctx.strokeStyle = zone.color;
+            ctx.fillStyle = zone.color + '40'; // Add transparency
+            ctx.lineWidth = 3;
+            
+            if (zone.mode === 'line') {
+                // Draw line
+                ctx.beginPath();
+                ctx.moveTo(zone.points[0][0], zone.points[0][1]);
+                ctx.lineTo(zone.points[1][0], zone.points[1][1]);
+                ctx.stroke();
+            } else {
+                // Draw polygon
+                ctx.beginPath();
+                ctx.moveTo(zone.points[0][0], zone.points[0][1]);
+                for (let i = 1; i < zone.points.length; i++) {
+                    ctx.lineTo(zone.points[i][0], zone.points[i][1]);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            // Draw points
+            zone.points.forEach((point, index) => {
+                ctx.beginPath();
+                ctx.arc(point[0], point[1], 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = zone.color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw point number
+                ctx.fillStyle = '#333';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(index + 1, point[0], point[1] - 10);
+            });
+            
+            // Draw zone label
+            if (zone.points.length > 0) {
+                const centerX = zone.points.reduce((sum, p) => sum + p[0], 0) / zone.points.length;
+                const centerY = zone.points.reduce((sum, p) => sum + p[1], 0) / zone.points.length;
+                
+                ctx.fillStyle = zone.color;
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(zone.type.toUpperCase(), centerX, centerY);
+            }
+        }
+        
+        function drawCurrentDrawing(color) {
+            if (currentPoints.length === 0) return;
+            
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color + '20';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            
+            if (currentDrawingMode === 'line' && currentPoints.length >= 2) {
+                // Draw line
+                ctx.beginPath();
+                ctx.moveTo(currentPoints[0][0], currentPoints[0][1]);
+                ctx.lineTo(currentPoints[1][0], currentPoints[1][1]);
+                ctx.stroke();
+            } else if (currentDrawingMode === 'polygon' && currentPoints.length >= 2) {
+                // Draw polygon outline
+                ctx.beginPath();
+                ctx.moveTo(currentPoints[0][0], currentPoints[0][1]);
+                for (let i = 1; i < currentPoints.length; i++) {
+                    ctx.lineTo(currentPoints[i][0], currentPoints[i][1]);
+                }
+                ctx.stroke();
+                
+                // Draw line to mouse position
+                if (mousePos.x > 0 && mousePos.y > 0) {
+                    ctx.lineTo(mousePos.x, mousePos.y);
+                    ctx.stroke();
+                }
+            }
+            
+            ctx.setLineDash([]);
+            
+            // Draw current points
+            currentPoints.forEach((point, index) => {
+                ctx.beginPath();
+                ctx.arc(point[0], point[1], 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+        
+        function updateZonesList() {
+            if (completedZones.length === 0) {
+                zonesList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No zones defined yet</div>';
+                return;
+            }
+            
+            zonesList.innerHTML = completedZones.map(zone => `
+                <div class="zone-item">
+                    <div>
+                        <span class="zone-tag" style="background: ${zone.color};">${zone.type}</span>
+                        <small style="margin-left: 8px; color: #666;">
+                            ${zone.mode} (${zone.points.length} points)
+                        </small>
+                    </div>
+                    <div class="zone-actions">
+                        <button onclick="deleteZone('${zone.id}')" style="background: #dc3545; color: white;">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function generateCode() {
+            if (completedZones.length === 0) {
+                codeOutput.textContent = '# No zones defined yet\nzones = {}';
+                return;
+            }
+            
+            let code = '# Generated boundary definitions\n';
+            code += '# Copy this code for use in your applications\n\n';
+            
+            // Group zones by type
+            const zonesByType = {};
+            completedZones.forEach(zone => {
+                if (!zonesByType[zone.type]) {
+                    zonesByType[zone.type] = [];
+                }
+                zonesByType[zone.type].push(zone);
+            });
+            
+            // Generate Python dictionary
+            code += 'zones = {\n';
+            Object.keys(zonesByType).forEach(type => {
+                const zones = zonesByType[type];
+                if (zones.length === 1) {
+                    code += `    "${type}": ${JSON.stringify(zones[0].points)},\n`;
+                } else {
+                    code += `    "${type}": {\n`;
+                    zones.forEach((zone, index) => {
+                        code += `        "${type}_${index + 1}": ${JSON.stringify(zone.points)},\n`;
+                    });
+                    code += `    },\n`;
+                }
+            });
+            code += '}\n\n';
+            
+            // Add usage examples
+            code += '# Usage examples:\n';
+            code += '# For post-processing configuration:\n';
+            code += '# config.customer_service.customer_areas = zones["queue"]\n';
+            code += '# config.advanced_tracking.boundary_config = { "points": zones["entry"] }\n\n';
+            
+            // Add individual zone coordinates for easy copying
+            code += '# Individual zone coordinates:\n';
+            completedZones.forEach((zone, index) => {
+                code += `# ${zone.type} ${zone.mode} (${zone.points.length} points):\n`;
+                code += `${zone.type}_${index + 1} = ${JSON.stringify(zone.points)}\n`;
+            });
+            
+            codeOutput.textContent = code;
+        }
+        
+        function copyCode() {
+            const text = codeOutput.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.style.background = '#28a745';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy to clipboard. Please copy manually.');
+            });
+        }
+        
+        function saveConfiguration() {
+            const config = {
+                zones: completedZones,
+                metadata: {
+                    created: new Date().toISOString(),
+                    filename: currentFile ? currentFile.name : 'unknown',
+                    tool_version: '1.0'
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'boundary_config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function loadConfiguration() {
+            document.getElementById('configInput').click();
+        }
+        
+        function handleConfigLoad(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    if (config.zones && Array.isArray(config.zones)) {
+                        completedZones = config.zones;
+                        updateZonesList();
+                        generateCode();
+                        redrawCanvas();
+                        alert('Configuration loaded successfully!');
+                    } else {
+                        alert('Invalid configuration file format.');
+                    }
+                } catch (err) {
+                    alert('Error reading configuration file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cancelCurrentZone();
+            } else if (e.key === 'Enter') {
+                completeCurrentZone();
+            } else if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undoLastPoint();
+            }
+        });
+        
+        // Initialize
+        updateModeIndicator();
+        generateCode();
+        setDrawingMode('polygon');
+    </script>
+</body>
+</html>
