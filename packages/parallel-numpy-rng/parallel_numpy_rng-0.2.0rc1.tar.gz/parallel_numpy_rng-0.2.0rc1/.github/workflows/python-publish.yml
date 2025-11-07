@@ -1,0 +1,34 @@
+name: Upload Python Package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+    - name: Build package
+      run: uv build
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v5
+      with:
+        path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/parallel-numpy-rng
+    permissions:
+      id-token: write
+    steps:
+    - uses: actions/download-artifact@v6
+      with:
+        path: dist/
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@v1.13.0
