@@ -1,0 +1,76 @@
+
+include:
+  # -- python -----------------
+  - component: git.ligo.org/computing/gitlab/components/python/sdist@1
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+  - component: git.ligo.org/computing/gitlab/components/python/code-quality@1
+    inputs:
+      analyzer: "ruff"
+      requirements: "-r requirements-lint.txt"
+  - component: git.ligo.org/computing/gitlab/components/python/dependency-scanning@1
+  - component: git.ligo.org/computing/gitlab/components/python/type-checking@1
+  # -- docker -----------------
+  - component: git.ligo.org/computing/gitlab/components/docker/build@1
+    inputs:
+      image_tag: $CI_COMMIT_SHA
+  - component: git.ligo.org/computing/gitlab/components/docker/push@1
+    inputs:
+      pull_image_tag: $CI_COMMIT_SHA
+      push_image_tag: $CI_COMMIT_REF_NAME
+      push_when: "all"
+      tag_latest: false
+    rules:
+      - if: $CI_COMMIT_BRANCH
+      - if: $CI_COMMIT_TAG !~ /^(\d+\.)?(\d+\.)?(\*|\d+)$/
+  - component: git.ligo.org/computing/gitlab/components/docker/push@1
+    inputs:
+      pull_image_tag: $CI_COMMIT_SHA
+      push_image_tag: $CI_COMMIT_TAG
+      push_when: "tags"
+      tag_latest: true
+    rules:
+      # tag latest only on new versions
+      - if: $CI_COMMIT_TAG =~ /^(\d+\.)?(\d+\.)?(\*|\d+)$/
+  # -- docs -------------------
+  - component: git.ligo.org/computing/gitlab/components/mkdocs/build@1
+    inputs:
+      requirements: "-r requirements-docs.txt"
+  - component: git.ligo.org/computing/gitlab/components/mkdocs/pages@1
+    inputs:
+      pages_when: "default"
+
+# -- customisations
+
+# have Docker build depend on wheel
+build:
+  needs:
+    - wheel
+
+docker_push_gitlab:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - when: always
+
+ruff:
+  needs:
+    - requirements
+
+mkdocs:
+  needs:
+    - requirements
+
+# -- requirements
+requirements:
+  stage: build
+  image: python:3.12
+  script:
+    - python -m pip install pipx
+    - pipx ensurepath
+    - source ~/.bashrc
+    - pipx install hatch
+    - hatch dep show requirements --feature docs > requirements-docs.txt
+    - hatch dep show requirements --feature lint > requirements-lint.txt
+  artifacts:
+    paths:
+      - requirements-*.txt
