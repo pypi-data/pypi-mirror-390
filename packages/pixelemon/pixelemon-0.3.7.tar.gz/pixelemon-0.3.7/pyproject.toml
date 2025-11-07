@@ -1,0 +1,63 @@
+[project]
+name = "pixelemon"
+version = "0.3.7"
+description = "Citra's basic image processing package"
+readme = "README.md"
+requires-python = ">=3.9, <3.13"
+license = "MIT"
+authors = [{ name = "Brandon Sexton", email = "brandon@citra.space" }]
+dependencies = ["pydantic", "cedar-solve", "sep", "astropy", "keplemon"]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "pre-commit",
+  "isort",
+  "mypy",
+  "flake8",
+  "flake8-pytest-style",
+  "pixelemon[test]",
+]
+test = ["pytest", "pytest-cov", "mockito"]
+build = ["build"]
+docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-markdown-builder"]
+deploy = ["twine"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.black]
+line-length = 120
+force-exclude = '''
+^/(
+  (
+      \.eggs
+    | \.git
+    | \.pytest_cache
+    | \.tox
+    | dist
+    | data
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+filter_files = true
+line_length = 120
+skip = ["__init__.py"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = [
+  "--cov=pixelemon",
+  "--cov-report=term-missing",
+  "--cov-report=xml",
+  "--cov-branch",
+  "--import-mode=importlib",
+]
+
+[tool.coverage.run]
+omit = ["tests/*", "__init__.py"]
