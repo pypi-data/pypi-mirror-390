@@ -1,0 +1,95 @@
+[project]
+name = "pnpq"
+version = "0.2.0"
+dependencies = [
+    "pyserial>=3.5",
+    "types-pyserial>=3.5.0.20240826",
+    "pint>=0.24.3",
+    "structlog>=24.4.0",
+]
+requires-python = ">= 3.13"
+authors = [
+    { name = "Amin Taherkhani", email = "amin@sfc.wide.ad.jp" },
+    { name = "Andrew Todd", email = "at@auspicacious.org" },
+    { name = "Lars Matsumiya", email = "larsmatsumiya@gmail.com" },
+    { name = "Tom Shen", email = "tomshen@keio.jp" },
+]
+description = "Python library for laboratory devices often used in quantum networking and computing testbeds."
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE.md"]
+keywords = ["optics", "ozoptics", "physics", "quantum", "thorlabs"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Quantum Computing",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+
+[project.urls]
+homepage = "https://github.com/moonshot-nagayama-pj/PnPQ"
+source = "https://github.com/moonshot-nagayama-pj/PnPQ"
+changelog = "https://github.com/moonshot-nagayama-pj/PnPQ/releases"
+releasenotes = "https://github.com/moonshot-nagayama-pj/PnPQ/releases"
+documentation = "https://moonshot-nagayama-pj.github.io/PnPQ/"
+issues = "https://github.com/moonshot-nagayama-pj/PnPQ/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "black>=24.8.0",
+    "cffconvert>=2.0.0",
+    "coverage>=7.6.1",
+    "isort>=5.13.2",
+    "mypy>=1.11.2",
+    "pylint>=3.3.1",
+    "pytest>=8.3.2",
+    "ruff>=0.7.4",
+    "sphinx>=8.2.0",
+    "sphinx-book-theme>=1.1.4",
+    "sphinx-multiversion>=0.2.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pnpq"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "src/pnpq/__init__.py"
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+files = ["."]
+strict = true
+
+[tool.pylint.format]
+max-line-length = "88"
+
+# See https://pylint.pycqa.org/en/latest/user_guide/messages/index.html
+[tool.pylint."messages control"]
+disable = ["raw-checker-failed", "bad-inline-option", "locally-disabled", "file-ignored", "suppressed-message", "deprecated-pragma", "use-symbolic-message-instead", "use-implicit-booleaness-not-comparison-to-string", "use-implicit-booleaness-not-comparison-to-zero", "missing-module-docstring", "missing-class-docstring", "missing-function-docstring", "line-too-long", "duplicate-code", "too-many-instance-attributes", "too-few-public-methods", "too-many-public-methods", "too-many-arguments", "too-many-locals", "too-many-positional-arguments", "fixme"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

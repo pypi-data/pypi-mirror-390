@@ -1,0 +1,34 @@
+# Automatically run semantic checks, linters, and unit tests
+
+name: Code Checks
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+  workflow_call:
+
+jobs:
+  check-codes:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Install uv and enable caching
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+        version: "0.8.13"
+
+    - name: Set up Python with uv
+      run: uv python install
+
+    - name: Install other dependencies
+      run: |
+        ./bin/install-dependencies.bash
+
+    - name: Run check script
+      run: |
+        ./bin/check.bash
