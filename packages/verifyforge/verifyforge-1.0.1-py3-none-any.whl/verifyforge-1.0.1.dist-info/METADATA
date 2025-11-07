@@ -1,0 +1,335 @@
+Metadata-Version: 2.4
+Name: verifyforge
+Version: 1.0.1
+Summary: Official Python SDK for VerifyForge Email Validation API
+Author-email: VerifyForge <contact@verifyforge.com>
+License: MIT
+Project-URL: Homepage, https://verifyforge.com
+Project-URL: Documentation, https://verifyforge.com/api-docs
+Project-URL: Repository, https://github.com/VerifyForge/python-sdk
+Project-URL: Bug Tracker, https://github.com/VerifyForge/python-sdk/issues
+Keywords: email,validation,verification,api,sdk
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Communications :: Email
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.31.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.7.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Requires-Dist: ruff>=0.0.287; extra == "dev"
+Dynamic: license-file
+
+# VerifyForge Python SDK - Email Validation API
+
+[![PyPI version](https://badge.fury.io/py/verifyforge.svg)](https://badge.fury.io/py/verifyforge)
+[![Python Support](https://img.shields.io/pypi/pyversions/verifyforge.svg)](https://pypi.org/project/verifyforge/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Official Python SDK for the [VerifyForge](https://verifyforge.com) Email Validation API.
+
+## Features
+
+- 🔍 **Hybrid Validation** - Syntax, MX records, SMTP verification, and disposable detection
+- ⚡ **Fast & Reliable** - Optimized for speed with smart caching
+- 🚀 **Bulk Processing** - Validate up to 100 emails in a single request
+- 💯 **Type Safe** - Full type hints for better IDE support
+- 🛡️ **Error Handling** - Comprehensive error handling with custom exceptions
+- 🔐 **Secure** - API key authentication
+
+## Installation
+
+```bash
+pip install verifyforge
+```
+
+## Quick Start
+
+```python
+from verifyforge import VerifyForge
+
+# Initialize the client
+client = VerifyForge(api_key="your_api_key_here")
+
+# Validate a single email
+result = client.validate("user@example.com")
+
+if result.data.is_valid:
+    print(f"✓ Email is valid!")
+    print(f"Reachability: {result.data.reachability}")
+else:
+    print(f"✗ Email is invalid")
+
+print(f"Credits remaining: {result.remaining_credits}")
+```
+
+## Usage Examples
+
+### Single Email Validation
+
+```python
+from verifyforge import VerifyForge
+
+client = VerifyForge(api_key="your_api_key")
+
+# Validate an email
+result = client.validate("test@example.com")
+
+# Access validation details
+print(f"Email: {result.data.email}")
+print(f"Valid: {result.data.is_valid}")
+print(f"Disposable: {result.data.disposable}")
+print(f"Role Account: {result.data.role_account}")
+print(f"Free Provider: {result.data.free_provider}")
+print(f"Reachability: {result.data.reachability}")
+
+# Check MX records
+for mx in result.data.mx_records_list:
+    print(f"MX: {mx.exchange} (priority: {mx.priority})")
+
+# SMTP analysis
+smtp = result.data.smtp
+if smtp.connection_successful:
+    print(f"SMTP accepts mail: {smtp.accepts_mail}")
+```
+
+### Bulk Email Validation
+
+```python
+from verifyforge import VerifyForge
+
+client = VerifyForge(api_key="your_api_key")
+
+# Validate multiple emails
+emails = [
+    "user1@example.com",
+    "user2@example.com",
+    "user3@example.com",
+]
+
+result = client.validate_bulk(emails)
+
+# Summary statistics
+print(f"Total validated: {result.summary.total}")
+print(f"Duplicates removed: {result.summary.duplicates_removed}")
+print(f"Credits used: {result.credits_used}")
+
+# Individual results
+for item in result.results:
+    status = "✓" if item.is_valid else "✗"
+    print(f"{status} {item.email} - {item.reachable}")
+```
+
+### Error Handling
+
+```python
+from verifyforge import (
+    VerifyForge,
+    VerifyForgeError,
+    AuthenticationError,
+    InsufficientCreditsError,
+    ValidationError,
+)
+
+client = VerifyForge(api_key="your_api_key")
+
+try:
+    result = client.validate("test@example.com")
+except AuthenticationError:
+    print("Invalid API key")
+except InsufficientCreditsError:
+    print("Not enough credits")
+except ValidationError as e:
+    print(f"Validation error: {e.message}")
+    print(f"Details: {e.details}")
+except VerifyForgeError as e:
+    print(f"API error: {e}")
+```
+
+### Using Context Manager
+
+```python
+from verifyforge import VerifyForge
+
+# Automatically closes the session when done
+with VerifyForge(api_key="your_api_key") as client:
+    result = client.validate("test@example.com")
+    print(f"Valid: {result.data.is_valid}")
+```
+
+### Advanced Configuration
+
+```python
+from verifyforge import VerifyForge
+
+# Custom base URL and timeout
+client = VerifyForge(
+    api_key="your_api_key",
+    base_url="https://custom-domain.com",  # Optional
+    timeout=60,  # Request timeout in seconds
+)
+```
+
+## API Reference
+
+### `VerifyForge`
+
+Main client class for interacting with the VerifyForge API.
+
+#### Constructor
+
+```python
+VerifyForge(api_key: str, base_url: str = "https://verifyforge.com", timeout: int = 30)
+```
+
+**Parameters:**
+- `api_key` (str): Your VerifyForge API key
+- `base_url` (str, optional): Base URL for the API. Defaults to "https://verifyforge.com"
+- `timeout` (int, optional): Request timeout in seconds. Defaults to 30
+
+#### Methods
+
+##### `validate(email: str) -> ValidationResponse`
+
+Validate a single email address.
+
+**Parameters:**
+- `email` (str): Email address to validate
+
+**Returns:**
+- `ValidationResponse`: Complete validation results
+
+**Raises:**
+- `ValidationError`: If email format is invalid
+- `InsufficientCreditsError`: If account has insufficient credits
+- `APIError`: If validation fails
+
+##### `validate_bulk(emails: List[str]) -> BulkValidationResponse`
+
+Validate multiple email addresses (up to 100).
+
+**Parameters:**
+- `emails` (List[str]): List of email addresses to validate
+
+**Returns:**
+- `BulkValidationResponse`: Results for all emails with summary
+
+**Raises:**
+- `ValidationError`: If email list is invalid or exceeds 100 emails
+- `InsufficientCreditsError`: If account has insufficient credits
+- `APIError`: If validation fails
+
+### Response Types
+
+#### `ValidationResponse`
+
+```python
+@dataclass
+class ValidationResponse:
+    success: bool
+    data: ValidationResult
+    credits_used: int
+    remaining_credits: int
+    validation_duration: Optional[int]
+    api_version: Optional[str]
+```
+
+#### `ValidationResult`
+
+```python
+@dataclass
+class ValidationResult:
+    email: str
+    is_valid: bool
+    syntax: SyntaxValidation
+    mx_records_list: List[MXRecord]
+    smtp: SMTPAnalysis
+    disposable: bool
+    role_account: bool
+    free_provider: bool
+    reachability: str  # "safe", "risky", "invalid", "unknown"
+    suggestion: Optional[str]
+    gravatar: Optional[Gravatar]
+```
+
+#### `BulkValidationResponse`
+
+```python
+@dataclass
+class BulkValidationResponse:
+    success: bool
+    results: List[BulkValidationResult]
+    summary: BulkValidationSummary
+    credits_used: int
+    remaining_credits: int
+    duration: Optional[int]
+    api_version: Optional[str]
+```
+
+### Exceptions
+
+All exceptions inherit from `VerifyForgeError`:
+
+- `AuthenticationError`: Invalid API key (401)
+- `InsufficientCreditsError`: Insufficient credits (402)
+- `ValidationError`: Request validation failed (400)
+- `RateLimitError`: Rate limit exceeded (429)
+- `APIError`: General API error (5xx)
+
+## Requirements
+
+- Python 3.8+
+- requests >= 2.31.0
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/VerifyForge/python-sdk.git
+cd python-sdk
+
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run type checking
+mypy verifyforge
+
+# Format code
+black verifyforge
+
+# Lint code
+ruff check verifyforge
+```
+
+## Support
+
+- 📧 Email: contact@verifyforge.com
+- 📚 Documentation: https://verifyforge.com/api-docs
+- 🐛 Bug Reports: https://github.com/VerifyForge/python-sdk/issues
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Links
+
+- [VerifyForge Website](https://verifyforge.com)
+- [API Documentation](https://verifyforge.com/api-docs)
+- [Get API Key](https://verifyforge.com/api-keys)
