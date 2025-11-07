@@ -1,0 +1,36 @@
+"""
+API routes for embedding mesh functionality
+"""
+
+from fastapi import FastAPI
+from starlette.responses import JSONResponse
+from abi_core.common.utils import abi_logging
+
+def attach_embedding_mesh_routes(app: FastAPI):
+    """
+    Attach embedding mesh routes to FastAPI app
+    
+    Args:
+        app: FastAPI application instance
+    """
+    
+    @app.get("/embedding_mesh/health")
+    async def embedding_mesh_health():
+        """Health check for embedding mesh"""
+        return JSONResponse({"status": "ok", "service": "embedding_mesh"})
+    
+    @app.get("/embedding_mesh/stats")
+    async def embedding_mesh_stats():
+        """Get embedding mesh statistics"""
+        from .embeddings_abi import build_agent_card_embeddings, get_embed_model_name
+        
+        df = build_agent_card_embeddings()
+        agent_cards_count = len(df) if df is not None else 0
+        
+        return JSONResponse({
+            "model": get_embed_model_name(),
+            "agentCardsCount": agent_cards_count,
+            "upsertCount": 0  # MVP version doesn't support upserts yet
+        })
+    
+    abi_logging("✅ Embedding mesh routes attached")
