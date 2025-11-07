@@ -1,0 +1,444 @@
+from abc import abstractmethod
+from unittest.case import TestCase
+from amaranth_types import HasElaborate
+import pytest
+from amaranth import *
+from amaranth.sim import *
+
+import random
+import contextlib
+
+from collections import deque
+from typing import Iterable, Callable
+from transactron.core.keys import TransactionsKey
+
+from transactron.testing import TestCaseWithSimulator, TestbenchIO, data_layout
+
+from transactron import *
+from transactron.lib import Adapter, AdapterTrans
+
+from transactron.core import Priority
+from transactron.core.schedulers import trivial_roundrobin_cc_scheduler, eager_deterministic_cc_scheduler
+from transactron.core.manager import TransactionScheduler
+from transactron.testing.test_circuit import SimpleTestCircuit
+from transactron.utils.dependencies import DependencyContext, DependencyManager
+
+
+class TestNames(TestCase):
+    def test_names(self):
+        with DependencyContext(DependencyManager()):
+
+            class T(Elaboratable):
+                def __init__(self):
+                    self._MustUse__silence = True  # type: ignore
+                    Transaction()
+
+            T()
+
+            transactions = DependencyContext.get().get_dependency(TransactionsKey())
+            assert transactions[0].name == "T"
+
+        with DependencyContext(DependencyManager()):
+            t = Transaction(name="x")
+            assert t.name == "x"
+
+            t = Transaction()
+            assert t.name == "t"
+
+            m = Method(name="x")
+            assert m.name == "x"
+
+            m = Method()
+            assert m.name == "m"
+
+
+class TransactionConflictTestCircuit(Elaboratable):
+    def __init__(self, scheduler):
+        self.scheduler = scheduler
+
+    def elaborate(self, platform):
+        m = TModule()
+        tm = TransactronContextElaboratable(m, DependencyContext.get(), TransactionManager(self.scheduler))
+        adapter = Adapter(i=data_layout(32), o=data_layout(32))
+        m.submodules.out = self.out = TestbenchIO(adapter)
+        m.submodules.in1 = self.in1 = TestbenchIO(AdapterTrans.create(adapter.iface))
+        m.submodules.in2 = self.in2 = TestbenchIO(AdapterTrans.create(adapter.iface))
+        return tm
+
+
+@pytest.mark.parametrize(
+    "scheduler",
+    [
+        trivial_roundrobin_cc_scheduler,
+        eager_deterministic_cc_scheduler,
+    ],
+)
+class TestTransactionConflict(TestCaseWithSimulator):
+    def setup_method(self):
+        random.seed(42)
+
+    def make_process(
+        self,
+        io: TestbenchIO,
+        prob: float,
+        src: Iterable[int],
+        tgt: Callable[[int], None],
+        chk: Callable[[int], None],
+    ):
+        async def process(sim):
+            for i in src:
+                while random.random() >= prob:
+                    await sim.tick()
+                tgt(i)
+                r = await io.call(sim, data=i)
+                chk(r["data"])
+
+        return process
+
+    def make_in1_process(self, prob: float):
+        def tgt(x: int):
+            self.out1_expected.append(x)
+
+        def chk(x: int):
+            assert x == self.in_expected.popleft()
+
+        return self.make_process(self.m.in1, prob, self.in1_stream, tgt, chk)
+
+    def make_in2_process(self, prob: float):
+        def tgt(x: int):
+            self.out2_expected.append(x)
+
+        def chk(x: int):
+            assert x == self.in_expected.popleft()
+
+        return self.make_process(self.m.in2, prob, self.in2_stream, tgt, chk)
+
+    def make_out_process(self, prob: float):
+        def tgt(x: int):
+            self.in_expected.append(x)
+
+        def chk(x: int):
+            if self.out1_expected and x == self.out1_expected[0]:
+                self.out1_expected.popleft()
+            elif self.out2_expected and x == self.out2_expected[0]:
+                self.out2_expected.popleft()
+            else:
+                assert False, "%d not found in any of the queues" % x
+
+        return self.make_process(self.m.out, prob, self.out_stream, tgt, chk)
+
+    @pytest.mark.parametrize(
+        "name, prob1, prob2, probout",
+        [
+            ("fullcontention", 1, 1, 1),
+            ("highcontention", 0.5, 0.5, 0.75),
+            ("lowcontention", 0.1, 0.1, 0.5),
+        ],
+    )
+    def test_calls(self, name, scheduler: TransactionScheduler, prob1, prob2, probout):
+        self.in1_stream = range(0, 100)
+        self.in2_stream = range(100, 200)
+        self.out_stream = range(200, 400)
+        self.in_expected = deque()
+        self.out1_expected = deque()
+        self.out2_expected = deque()
+        self.m = TransactionConflictTestCircuit(scheduler)
+
+        with self.run_simulation(self.m, add_transaction_module=False) as sim:
+            sim.add_testbench(self.make_in1_process(prob1))
+            sim.add_testbench(self.make_in2_process(prob2))
+            sim.add_testbench(self.make_out_process(probout))
+
+        assert not self.in_expected
+        assert not self.out1_expected
+        assert not self.out2_expected
+
+
+class SchedulingTestCircuit(Elaboratable):
+    def __init__(self):
+        self.r1 = Signal()
+        self.r2 = Signal()
+        self.t1 = Signal()
+        self.t2 = Signal()
+
+    @abstractmethod
+    def elaborate(self, platform) -> HasElaborate:
+        raise NotImplementedError
+
+
+class PriorityTestCircuit(SchedulingTestCircuit):
+    def __init__(self, priority: Priority, unsatisfiable=False):
+        super().__init__()
+        self.priority = priority
+        self.unsatisfiable = unsatisfiable
+
+    def make_relations(self, t1: Transaction | Method, t2: Transaction | Method):
+        t1.add_conflict(t2, self.priority)
+        if self.unsatisfiable:
+            t2.add_conflict(t1, self.priority)
+
+
+class TransactionPriorityTestCircuit(PriorityTestCircuit):
+    def elaborate(self, platform):
+        m = TModule()
+
+        transaction1 = Transaction()
+        transaction2 = Transaction()
+
+        with transaction1.body(m, ready=self.r1):
+            m.d.comb += self.t1.eq(1)
+
+        with transaction2.body(m, ready=self.r2):
+            m.d.comb += self.t2.eq(1)
+
+        self.make_relations(transaction1, transaction2)
+
+        return m
+
+
+class MethodPriorityTestCircuit(PriorityTestCircuit):
+    def elaborate(self, platform):
+        m = TModule()
+
+        method1 = Method()
+        method2 = Method()
+
+        @def_method(m, method1, ready=self.r1)
+        def _():
+            m.d.comb += self.t1.eq(1)
+
+        @def_method(m, method2, ready=self.r2)
+        def _():
+            m.d.comb += self.t2.eq(1)
+
+        with Transaction().body(m):
+            method1(m)
+
+        with Transaction().body(m):
+            method2(m)
+
+        self.make_relations(method1, method2)
+
+        return m
+
+
+@pytest.mark.parametrize("circuit", [TransactionPriorityTestCircuit, MethodPriorityTestCircuit])
+class TestTransactionPriorities(TestCaseWithSimulator):
+    def setup_method(self):
+        random.seed(42)
+
+    @pytest.mark.parametrize("priority", [Priority.UNDEFINED, Priority.LEFT, Priority.RIGHT])
+    def test_priorities(self, circuit: type[PriorityTestCircuit], priority: Priority):
+        m = circuit(priority)
+
+        async def process(sim):
+            to_do = 5 * [(0, 1), (1, 0), (1, 1)]
+            random.shuffle(to_do)
+            for r1, r2 in to_do:
+                sim.set(m.r1, r1)
+                sim.set(m.r2, r2)
+                _, t1, t2 = await sim.delay(1e-9).sample(m.t1, m.t2)
+                assert t1 != t2
+                if r1 == 1 and r2 == 1:
+                    if priority == Priority.LEFT:
+                        assert t1
+                    if priority == Priority.RIGHT:
+                        assert t2
+
+        with self.run_simulation(m) as sim:
+            sim.add_testbench(process)
+
+    @pytest.mark.parametrize("priority", [Priority.UNDEFINED, Priority.LEFT, Priority.RIGHT])
+    def test_unsatisfiable(self, circuit: type[PriorityTestCircuit], priority: Priority):
+        m = circuit(priority, True)
+
+        import networkx
+
+        if priority != Priority.UNDEFINED:
+            cm = pytest.raises(networkx.NetworkXUnfeasible)
+        else:
+            cm = contextlib.nullcontext()
+
+        with cm:
+            with self.run_simulation(m):
+                pass
+
+
+class UnusedRelationTestCircuit(Elaboratable):
+    def __init__(self):
+        self.method = Method()
+
+    def elaborate(self, platform):
+        m = TModule()
+
+        unused_method = Method()
+
+        @def_method(m, self.method)
+        def _():
+            pass
+
+        @def_method(m, unused_method)
+        def _():
+            pass
+
+        self.method.add_conflict(unused_method)
+
+        return m
+
+
+class TestUnusedRelation(TestCaseWithSimulator):
+    def test_unused_relation(self):
+        m = SimpleTestCircuit(UnusedRelationTestCircuit())
+        with self.run_simulation(m):
+            pass
+
+
+class NestedTransactionsTestCircuit(SchedulingTestCircuit):
+    def elaborate(self, platform):
+        m = TModule()
+
+        with Transaction().body(m, ready=self.r1):
+            m.d.comb += self.t1.eq(1)
+            with Transaction().body(m, ready=self.r2):
+                m.d.comb += self.t2.eq(1)
+
+        return m
+
+
+class NestedMethodsTestCircuit(SchedulingTestCircuit):
+    def elaborate(self, platform):
+        m = TModule()
+
+        method1 = Method()
+        method2 = Method()
+
+        @def_method(m, method1, ready=self.r1)
+        def _():
+            m.d.comb += self.t1.eq(1)
+
+            @def_method(m, method2, ready=self.r2)
+            def _():
+                m.d.comb += self.t2.eq(1)
+
+        with Transaction().body(m):
+            method1(m)
+
+        with Transaction().body(m):
+            method2(m)
+
+        return m
+
+
+@pytest.mark.parametrize("circuit", [NestedTransactionsTestCircuit, NestedMethodsTestCircuit])
+class TestNested(TestCaseWithSimulator):
+    def setup_method(self):
+        random.seed(42)
+
+    def test_scheduling(self, circuit: type[SchedulingTestCircuit]):
+        m = circuit()
+
+        async def process(sim):
+            to_do = 5 * [(0, 1), (1, 0), (1, 1)]
+            random.shuffle(to_do)
+            for r1, r2 in to_do:
+                sim.set(m.r1, r1)
+                sim.set(m.r2, r2)
+                *_, t1, t2 = await sim.tick().sample(m.t1, m.t2)
+                assert t1 == r1
+                assert t2 == r1 * r2
+
+        with self.run_simulation(m) as sim:
+            sim.add_testbench(process)
+
+
+class ScheduleBeforeTestCircuit(SchedulingTestCircuit):
+    def elaborate(self, platform):
+        m = TModule()
+
+        method = Method()
+
+        @def_method(m, method)
+        def _():
+            pass
+
+        with (t1 := Transaction()).body(m, ready=self.r1):
+            method(m)
+            m.d.comb += self.t1.eq(1)
+
+        with (t2 := Transaction()).body(m, ready=self.r2 & t1.run):
+            method(m)
+            m.d.comb += self.t2.eq(1)
+
+        t1.schedule_before(t2)
+
+        return m
+
+
+class TestScheduleBefore(TestCaseWithSimulator):
+    def setup_method(self):
+        random.seed(42)
+
+    def test_schedule_before(self):
+        m = ScheduleBeforeTestCircuit()
+
+        async def process(sim):
+            to_do = 5 * [(0, 1), (1, 0), (1, 1)]
+            random.shuffle(to_do)
+            for r1, r2 in to_do:
+                sim.set(m.r1, r1)
+                sim.set(m.r2, r2)
+                *_, t1, t2 = await sim.tick().sample(m.t1, m.t2)
+                assert t1 == r1
+                assert not t2
+
+        with self.run_simulation(m) as sim:
+            sim.add_testbench(process)
+
+
+class SingleCallerTestCircuit(Elaboratable):
+    def elaborate(self, platform):
+        m = TModule()
+
+        method = Method()
+
+        @def_method(m, method, single_caller=True)
+        def _():
+            pass
+
+        with Transaction().body(m):
+            method(m)
+
+        with Transaction().body(m):
+            method(m)
+
+        return m
+
+
+class TestSingleCaller(TestCaseWithSimulator):
+    def test_single_caller(self):
+        m = SingleCallerTestCircuit()
+
+        with pytest.raises(RuntimeError):
+            with self.run_simulation(m):
+                pass
+
+
+class TransactionOutsideElaborateTestCircuit(Elaboratable):
+    def __init__(self):
+        self.t = Transaction()
+
+    def elaborate(self, platform):
+        m = TModule()
+
+        with self.t.body(m):
+            pass
+
+        return m
+
+
+class TestTransactionOutsideElaborate(TestCaseWithSimulator):
+    def test_transaction_outside_elaborate(self):
+        m = TransactionOutsideElaborateTestCircuit()
+
+        with self.run_simulation(m):
+            pass
