@@ -1,0 +1,192 @@
+# UMA-ASE
+
+UMA-ASE bundles UMA (Universal Model for Atoms (https://huggingface.co/facebook/UMA) machine-learned force-field (MLFF) with the Atomic Simulation Environment (ASE) methods (https://ase-lib.org/). It supports basic single-point energy calculations, geometry optimisation, and vibrational/thermochemical analysis from a single command-line entry point or an optional web GUI service.
+
+## Requirements
+
+The project currently ships and has been validated with Python 3.12. The runtime stack is:
+
+- Python ≥ 3.10 (tested with 3.12)
+- ASE ≥ 3.26.0
+- numpy ≥ 2.2
+- torch ≥ 2.6
+- fairchem-core ≥ 2.10 for UMA checkpoints and calculators
+- flask ≥ 3.0 when you want the optional web UI
+
+Install these packages with:
+
+```bash
+pip install -r requirements.txt
+```
+
+If you build your own environment, make sure `fairchem` is present—geometry optimisations rely on it to compute per-atom reference energies. On Apple Silicon you may also want to limit OpenMP threads when driving torch (e.g. `export OMP_NUM_THREADS=1`) to avoid shared-memory warnings.
+
+## Installation
+
+### Released package
+```bash
+pip install UMA-ASE[server]
+```
+The `server` extra installs the optional GUI web interface. Omit it when you only need the command-line tooling. Afterwards, install FairChem explicitly if your environment does not already ship it:
+
+```bash
+pip install fairchem-core
+```
+FairChem is repidly evolving. Check version changes and compatibility with uma-ase.
+
+### From source
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e ".[server]"
+```
+The editable install registers the `uma-ase` and `uma-ase-server` console scripts for local development.
+
+## Command-line (CLI) usage
+
+
+- **Installed via pip (PyPI, wheel, or editable install)**
+  ```bash
+  # Set up where your local checkpoint UMA MLFF files are located.  
+  export UMA_CUSTOM_CHECKPOINT_DIR=/abs/path/to/checkpoints
+  (include this your .bashrc or .bash_profile conf files).
+
+  # Single run
+  uma-ase -input geometry.xyz -chg 0 -spin 1 -run-type sp
+
+  # Using local checkpoints (optional)
+  uma-ase -input geometry.xyz -chg +1 -run-type sp freqs -temp 300 -press 130000.0
+  ```
+
+- **Working from a cloned repository without installing**
+  ```bash
+  export PYTHONPATH=src
+  python -m uma_ase.py -input geometry.xyz -chg 0 -spin 1 -run-type geoopt
+  ```
+
+The CLI always emits a consolidated log (e.g. `molecule-SP-OPT.log`), a trajectory (`*.traj`), an optimised XYZ (`*-geoopt-OPT.xyz`), and frequency outputs when requested. Run `uma-ase -h` (or `python -m uma_ase.cli -h`) for the full reference.
+
+FairChem’s UMA models can be loaded directly from the official distribution (see the FairChem/UMA docs), or you can download the checkpoint files yourself for extra stability and keep them wherever you prefer. Point the shell environment variable `UMA_CUSTOM_CHECKPOINT_DIR` at your directory so `-mlff-chk uma-s-1p1` and similar shortcuts resolve against your local files.
+If the variable is unset, UMA-ASE looks for checkpoints under `~/.uma_ase/checkpoints`.
+When an XYZ comment line embeds an string and two signed integers (e.g. `https://… -1 2`), UMA-ASE reads them before invoking ASE and uses the first as the default charge and the optional second one as the default spin multiplicity, unless you supplied `-chg`/`-spin` explicitly.
+
+**CLI option summary**
+- `-input` *(required)*: input geometry file readable by ASE, typically `.xyz`. A standard XYZ can omit `-chg`/`-spin` when the second-line comment ends with signed integers (optionally alongside a source URL), e.g.  
+  ```
+  199
+  https://iochem-bd.iciq.es/browse/handle/100/69781 -1 2
+  O  0.0 0.0 0.0
+  H  0.0 0.0 0.96
+  H  0.0 0.75 -0.48
+  C .....
+  ```
+  UMA-ASE reads the charge `-1` and spin `2` before invoking ASE and adopts them as defaults.
+- `-chg` *(default 0)*: total molecular charge; omitted values default to 0 or to the signed integer embedded in the XYZ comment line if present.
+- `-spin` *(default 1)*: spin multiplicity; omitted values default to 1 or to the second signed integer embedded in the XYZ comment line when present.
+- `-run-type` *(default sp)*: workflow steps to run; choose any sequence of `sp`, `geoopt`, `freqs`.
+- `-cpu`: force CPU execution even when CUDA is available (helpful on shared HPC nodes or to avoid GPU startup costs).
+- `-iter` *(default 250)*: maximum geometry optimisation cycles.
+- `-grad` *(default 0.01 eV/Å)*: convergence threshold on the maximum force component.
+- `-optimizer` *(default LBFGS)*: ASE optimiser to use (BFGS, LBFGS, FIRE, BFGSLineSearch, MDMin).
+- `-mlff-chk` *(default uma-s-1p1)*: UMA checkpoint identifier.
+- `-mlff-task` *(default omol)*: UMA task/model name passed to the calculator.
+- `-temp`/`--temperature` *(default 298.15 K)*: vibrational/thermochemistry temperature.
+- `-press`/`--pressure` *(default 101325 Pa)*: vibrational/thermochemistry pressure.
+- `-visualize`: open the geoopt trajectory in ASE’s viewer after completion.
+
+**CLI help (`uma-ase -h`)**
+```text
+usage: uma-ase [-h] -input INPUT [-chg CHG] [-spin SPIN]
+               [-run-type {sp,geoopt,freqs} [{sp,geoopt,freqs} ...]] [-cpu]
+               [-iter ITER] [-grad GRAD] [-optimizer NAME]
+               [-mlff-chk CHECKPOINT] [-mlff-task TASK] [-temp T]
+               [-press P] [-visualize]
+
+Provide the required -input value. Charge defaults to 0 (or the first signed
+integer embedded in the XYZ comment line) and spin defaults to 1 (or the second
+integer when present).
+
+options:
+  -h, --help            show this help message and exit
+  -input INPUT          Input geometry readable by ASE (XYZ comment may append
+                        signed charge/spin metadata).
+  -chg CHG              Molecular charge override (default 0; inferred from
+                        XYZ comment when present).
+  -spin SPIN            Spin multiplicity (default 1; inferred from XYZ comment
+                        when a second integer is present).
+  -run-type {sp,geoopt,freqs} [{sp,geoopt,freqs} ...]
+                        Run type(s) to execute: 'sp', 'geoopt', 'freqs', or
+                        any sequence thereof (default: sp).
+  -cpu                  Force UMA calculations to run on CPU even when CUDA is
+                        available.
+  -iter ITER            Max number of geometry optimization cycles.
+                        Default=250
+  -grad GRAD            Max grad for convergence. Default=0.01 eV/A
+  -optimizer NAME       ASE optimizer (e.g. BFGS, LBFGS, FIRE,
+                        BFGSLineSearch,MDMin). Default='LBFGS'.
+  -mlff-chk CHECKPOINT  UMA checkpoint identifier. Default='uma-s-1p1'.
+  -mlff-task TASK       UMA task/model identifier. Default='omol'.
+  -temp   T             Temperature in Kelvin for vibrational analysis
+                        (default 298.15 K).
+  -press   P            Pressure in Pascals for vibrational analysis (default
+                        101325.0 Pa).
+  -visualize            Open the trajectory of a geoopt run in an interactive
+                        viewer.
+```
+
+## Web interface (optional)
+
+```bash
+uma-ase-server
+```
+then visit <http://127.0.0.1:8000>. The webapp (`UMA-ASE.html`) is bundled with the package and submits jobs to `/api/uma-ase/run`. The backend stores each uploaded geometry in a temporary directory, delegates to the CLI, returns the generated log, and removes temporary files automatically. The page focuses on job submission, showing a live summary of the uploaded structure, and exposing UMA checkpoint/task selectors.
+
+Working directly from the source tree without installing? Prefix the module path:
+
+```bash
+PYTHONPATH=src python -m uma_ase.server
+# or export PYTHONPATH=src once, then:
+python -m uma_ase.server
+```
+
+Each run stores the returned log under `~/.uma_ase/results/` (configurable via `UMA_RESULTS_DIR`), and the interface enables a *Download Log* button once a job finishes.
+
+![uma-ase web interface](./screenshot1.png)
+![uma-ase web interface](./screenshot2.png)
+
+- **Interactive Visualize tab.** The GUI now bundles a JSmol canvas that activates when you switch to the *Visualize* tab. Whatever geometry you upload on *Calculate* is mirrored automatically: charge/spin inputs are kept in sync, the file name appears in both tabs, and the 3‑D model renders as soon as the viewer becomes visible.
+- **Optional local preview.** Use the “Preview without replacing selection” picker on the Visualize panel to inspect a different file without overriding the current job inputs. The label beneath the control shows which file is currently displayed.
+- If you arrive at the UI with the *Visualize* tab already active, the viewer initialises eagerly; otherwise it starts the first time you open the tab, so Chrome/Firefox no longer get stuck on a spinner when the panel is initially hidden.
+
+## Package layout
+
+```
+src/uma_ase/
+├── __init__.py          # Version metadata
+├── __main__.py          # Enables `python -m uma_ase`
+├── cli.py               # Console entry point
+├── server.py            # Flask application (optional)
+├── utils.py             # CLI parser and helper utilities
+├── workflows.py         # Core UMA/ASE workflow orchestration
+└── static/UMA-ASE.html  # Single-page frontend served by the Flask app
+```
+
+## Development workflow
+
+1. Create a virtual environment and install the package in editable mode (`pip install -e .[server]`).
+2. Run unit or integration tests as desired (add your preferred framework).
+3. Build distributions for publishing:
+   ```bash
+   python -m build
+   ```
+4. Upload to a package index (e.g., GitLab Package Registry or PyPI):
+   ```bash
+   python -m twine upload dist/*
+   ```
+
+## License
+
+(c) CC BY This code has been generated by ChatGPT Codex agent under the supervision of Carles Bo.
+ 
