@@ -1,0 +1,254 @@
+import tensorwatchext as tw
+from tensorwatchext import kafka_connector as kc
+from tensorwatchext import pykafka_connector as pyc
+from IPython.display import display
+from ipywidgets import widgets
+import matplotlib.pyplot as plt
+import asyncio
+import time
+
+
+# ----------------------------------------------------------------------
+# STREAM UNIT
+# ----------------------------------------------------------------------
+class StreamUnit:
+    """A single stream + visualization unit connected to a shared connector."""
+
+    def __init__(self, name, expr, client):
+        self.name = name
+        self.expr = expr
+        self.client = client
+        self.streamdata = self.client.create_stream(expr=expr)
+        self.visualizer = None
+
+        # Update control
+        self.default_value = 10
+        self._last_update = time.time()
+        self.update_interval = 0.5  # seconds
+
+        # --- Widgets (persistent references) ---
+        self.out = widgets.Output()
+        self.slider = widgets.IntSlider(value=self.default_value, min=1, max=100, description="Window Size:")
+        self.width_slider = widgets.IntSlider(value=self.default_value, min=1, max=100, description="Window Width:")
+        self.colorpicker = widgets.ColorPicker(value="blue", description="Color")
+        self.dim_button = widgets.Checkbox(value=True, description="Dim History")
+        self.date_button = widgets.Checkbox(value=False, description="Date")
+        self.offset_button = widgets.Checkbox(value=False, description="Offset")
+
+        self.button_reset = widgets.Button(description="Reset")
+        self.button_apply = widgets.Button(
+            description="Please wait",
+            tooltip="Apply changes to this visualization",
+            disabled=True,
+        )
+
+        # Build UI and wire callbacks
+        self._build_ui()
+        self._register_callbacks()
+
+        # Initialize the visualizer once (no duplicate figures)
+        with self.out:
+            try:
+                self.visualizer = tw.Visualizer(
+                    self.streamdata,
+                    vis_type="line",
+                    window_width=int(self.width_slider.value),
+                    window_size=int(self.slider.value),
+                    Date=bool(self.date_button.value),
+                    useOffset=bool(self.offset_button.value),
+                    dim_history=bool(self.dim_button.value),
+                    color=self.colorpicker.value,
+                )
+                self.visualizer.show()
+            except Exception as e:
+                print(f"Visualizer init error for '{self.name}': {e}")
+
+    # ------------------------------------------------------------------
+    # UI setup
+    # ------------------------------------------------------------------
+    def _build_ui(self):
+        left_box = widgets.VBox([self.slider, self.width_slider, self.colorpicker])
+        right_box = widgets.VBox([self.dim_button, self.date_button, self.offset_button])
+        options_box = widgets.HBox([left_box, right_box])
+        self.accordion = widgets.Accordion(children=[options_box])
+        self.accordion.set_title(0, f"{self.name} Options")
+
+        self.ui = widgets.VBox([
+            widgets.HBox([self.button_reset, self.button_apply]),
+            self.accordion,
+            self.out,
+        ])
+
+    def _register_callbacks(self):
+        self.button_reset.on_click(self.reset)
+        self.button_apply.on_click(self.apply_with_debounce)
+        self.slider.observe(self.apply_with_debounce, names="value")
+        self.width_slider.observe(self.apply_with_debounce, names="value")
+        self.colorpicker.observe(self.apply_with_debounce, names="value")
+
+    # ------------------------------------------------------------------
+    # Drawing + updating
+    # ------------------------------------------------------------------
+    def draw(self):
+        display(self.ui)
+
+    def enable_apply_button(self):
+        if self.button_apply.disabled:
+            self.button_apply.disabled = False
+            self.button_apply.description = "Apply"
+            print(f"✅ Apply button enabled for '{self.name}'")
+
+    def apply_with_debounce(self, _=None):
+        now = time.time()
+        if now - self._last_update > self.update_interval:
+            self.update_visualizer()
+            self._last_update = now
+
+    def reset(self, _=None):
+        """Reset UI controls and refresh visualizer."""
+        self.slider.value = self.default_value
+        self.width_slider.value = self.default_value
+        self.colorpicker.value = "blue"
+        self.dim_button.value = True
+        self.date_button.value = False
+        self.offset_button.value = False
+        self.apply_with_debounce()
+
+    async def _show_async(self):
+        """Async-safe visualizer refresh."""
+        with self.out:
+            try:
+                self.out.clear_output(wait=True)
+                self.visualizer.show()
+                plt.show(block=False)
+            except Exception as e:
+                print(f"Visualizer async error for '{self.name}': {e}")
+
+    def update_visualizer(self):
+        """Update visualizer parameters in place."""
+        if not self.visualizer:
+            return
+
+        try:
+            self.visualizer.window_size = int(self.slider.value)
+            self.visualizer.window_width = int(self.width_slider.value)
+            self.visualizer.dim_history = bool(self.dim_button.value)
+            self.visualizer.Date = bool(self.date_button.value)
+            self.visualizer.useOffset = bool(self.offset_button.value)
+            self.visualizer.color = self.colorpicker.value
+
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            if loop.is_running():
+                asyncio.ensure_future(self._show_async())
+            else:
+                loop.run_until_complete(self._show_async())
+        except Exception as e:
+            print(f"Visualizer update error for '{self.name}': {e}")
+
+
+# ----------------------------------------------------------------------
+# TWAPI CONTROLLER
+# ----------------------------------------------------------------------
+class twapi:
+    """Main controller for connector + multiple StreamUnits."""
+
+    def __init__(self):
+        self.client = tw.WatcherClient()
+        self.connector_instance = None
+        self.units = {}
+        self.metrics_label = widgets.Label(value="")
+
+        # internal state
+        self._connector_ready = False
+        self._pending_apply = False
+
+    # --------------------------------------------------------------
+    # Metrics
+    # --------------------------------------------------------------
+    def update_metrics(self, metrics: str):
+        self.metrics_label.value = metrics
+
+    # --------------------------------------------------------------
+    # Connector setup
+    # --------------------------------------------------------------
+    def connector(self, topic, host, conn_type="kafka", **kwargs):
+        """Create or reuse Kafka/PyKafka connector."""
+        if self.connector_instance:
+            print("Connector already exists — reusing it.")
+            return self.connector_instance
+
+        if conn_type == "kafka":
+            self.connector_instance = kc(
+                topic=topic, hosts=host, twapi_instance=self, **kwargs
+            )
+        elif conn_type == "pykafka":
+            self.connector_instance = pyc(
+                topic=topic, hosts=host, twapi_instance=self, **kwargs
+            )
+        else:
+            raise ValueError("Invalid connector type: choose 'kafka' or 'pykafka'")
+
+        print("Connector created.")
+        self._connector_ready = True
+        return self.connector_instance
+
+    # --------------------------------------------------------------
+    # Stream unit management
+    # --------------------------------------------------------------
+    def add_unit(self, name, expr):
+        """Create a new stream/visualizer unit."""
+        if name in self.units:
+            print(f"Unit '{name}' already exists.")
+            return self.units[name]
+
+        unit = StreamUnit(name, expr, self.client)
+        self.units[name] = unit
+        print(f"Stream unit '{name}' added.")
+
+        # handle deferred apply
+        if self._pending_apply:
+            print(f"⚡ Deferred apply triggered on first StreamUnit '{name}'")
+            self._pending_apply = False
+            self.apply_with_debounce()
+        return unit
+
+    def draw(self, name):
+        """Display one stream unit."""
+        if name not in self.units:
+            print(f"Unit '{name}' not found.")
+            return
+        self.units[name].draw()
+
+    def draw_all(self):
+        """Display all stream unit UIs."""
+        all_uis = [unit.ui for unit in self.units.values()]
+        display(widgets.VBox(all_uis))
+
+    # --------------------------------------------------------------
+    # Apply handling
+    # --------------------------------------------------------------
+    def enable_apply_button(self):
+        """Enable apply buttons for all units."""
+        for unit in self.units.values():
+            unit.enable_apply_button()
+        print("✅ All stream units are now interactive.")
+
+    def apply_with_debounce(self, *args, **kwargs):
+        """Called by connectors to refresh units."""
+        if not self.units:
+            print("⏸ Connector requested update before StreamUnits exist — deferring.")
+            self._pending_apply = True
+            return
+
+        for unit in self.units.values():
+            unit.apply_with_debounce()
+
+    def defer_apply(self):
+        """Connector can safely call this to mark apply as pending."""
+        print("🕓 Deferring apply until StreamUnit is initialized.")
+        self._pending_apply = True
