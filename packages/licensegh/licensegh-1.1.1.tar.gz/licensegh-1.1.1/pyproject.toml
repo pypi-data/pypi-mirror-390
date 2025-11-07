@@ -1,0 +1,59 @@
+[project]
+name = "licensegh"
+version = "1.1.1"
+description = "licensegh is a command line tool that generates a license file for a project from the github open source lincese templates"
+authors = [{ name = "Saúl Piña", email = "sauljabin@gmail.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["lincese", "choosealicense", "licensegh"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Operating System :: MacOS",
+    "Operating System :: Unix",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "click>=8",
+    "rich>=14",
+    "gitpython>=3",
+    "pyyaml>=6",
+]
+
+[project.urls]
+homepage = "https://github.com/sauljabin/licensegh"
+repository = "https://github.com/sauljabin/licensegh"
+
+[project.scripts]
+licensegh = "licensegh.cli:main"
+lgh = "licensegh.cli:main"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+black = "*"
+coverage = { extras = ["toml"], version = "*" }
+pre-commit = "*"
+faker = "*"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.coverage.run]
+source = ["licensegh"]
+branch = true
+omit = ["*tests/*", "*scripts/*", "*__init__.py", "licensegh/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = ['if __name__ == "__main__":']
