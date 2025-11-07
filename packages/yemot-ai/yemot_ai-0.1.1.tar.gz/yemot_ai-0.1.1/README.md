@@ -1,0 +1,429 @@
+# yemot-ai 🤖📞
+
+> **חבילת Python לחיבור סוכני AI למערכות ימות המשיח**
+
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-green.svg)](#)
+
+חבילת `yemot-ai` מספקת שכבת אינטגרציה פשוטה וחזקה בין מערכות IVR של **ימות המשיח** לבין **סוכני AI** מתקדמים. החבילה בנויה כעטיפה מעל `yemot-flow` ומאפשרת ליצור בקלות מערכות טלפוניות חכמות עם שיחות AI רציפות.
+
+## ✨ תכונות עיקריות
+
+- 🔄 **ניהול סשנים אוטומטי** - שמירת הקשר השיחה ללא טיפול ידני
+- 🎯 **תמיכה במספר ספקי AI** - Codex CLI, OpenAI API, ועוד
+- 💾 **אחסון גמיש** - זיכרון, JSON מקומי, או Redis
+- 🛡️ **טיפול חכם בשגיאות** - הודעות ידידותיות למשתמש
+- 🔧 **ממשק פשוט** - מתודה אחת לכל הפעולות
+- 📱 **מספר שיחות במקביל** - תמיכה מלאה בריבוי משתמשים
+- 🧪 **ספק מדומה לבדיקות** - MockAI לפיתוח ללא תלויות חיצוניות
+
+## 🚀 התקנה מהירה
+
+```bash
+pip install yemot-ai
+```
+
+או להתקנה עם תלויות פיתוח:
+
+```bash
+pip install yemot-ai[dev]
+```
+
+## 📋 דרישות מוקדמות
+
+### בסיסי
+- Python 3.8+
+- `yemot-flow` (מותקן אוטומטית)
+
+### לשימוש עם Codex CLI
+```bash
+# התקנת Codex CLI (לפי ההוראות של OpenAI)
+# ודאו שהפקודה 'codex' זמינה ב-PATH
+```
+
+### לשימוש עם OpenAI API
+```bash
+pip install openai
+```
+
+### לאחסון ב-Redis
+```bash
+pip install redis
+```
+
+## 🎯 שימוש בסיסי
+
+### דוגמה מהירה
+
+```python
+from flask import Flask, request, Response
+from yemot_flow import Flow
+from yemot_ai import YemotAI, handle_yemot_hangup
+
+app = Flask(__name__)
+flow = Flow()
+
+# יצירת מנהל AI
+ai = YemotAI.create_codex_ai()  # או create_mock_ai() לבדיקות
+
+@flow.get("ai_chat")
+def ai_conversation(call):
+    call_id = call.params.get("ApiCallId")
+    user_text = call.params.get("RecordingText")
+    
+    if not user_text:
+        call.play_message([("text", "דבר אחרי הצפצוף")])
+        call.record(max_seconds=10, silence_timeout=3)
+        return
+    
+    # קבלת תשובה מ-AI (ניהול סשן אוטומטי!)
+    ai_response = ai.reply(call_id, user_text)
+    
+    # השמעת התשובה
+    call.play_message([("text", ai_response)])
+    call.record(max_seconds=10, silence_timeout=3)
+
+@app.route("/yemot", methods=["POST"])
+def yemot_handler():
+    params = request.values.to_dict()
+    xml = flow.handle_request(params)
+    
+    # ניקוי סשנים אוטומטי בסיום שיחה
+    handle_yemot_hangup(ai, params)
+    
+    return Response(xml, mimetype="text/xml")
+
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+
+זהו! עם הקוד הזה יש לך מערכת IVR חכמה ופועלת עם AI.
+
+## 🔧 תצורות מתקדמות
+
+### בחירת ספק AI
+
+```python
+# Codex CLI (ברירת מחדל)
+ai = YemotAI.create_codex_ai()
+
+# OpenAI API
+ai = YemotAI.create_openai_ai(
+    api_key="your-openai-api-key",
+    model="gpt-4"
+)
+
+# ספק מדומה לבדיקות
+ai = YemotAI.create_mock_ai(responses=[
+    "שלום! איך אפשר לעזור?",
+    "מעניין, ספר לי עוד.",
+    "אני מבין את השאלה שלך."
+])
+```
+
+### בחירת אחסון סשנים
+
+```python
+from yemot_ai import MemorySessionStore, JSONSessionStore
+
+# אחסון בזיכרון (ברירת מחדל)
+ai = YemotAI.create_codex_ai(
+    session_store=MemorySessionStore()
+)
+
+# אחסון בקובץ JSON (נשמר בין הפעלות)
+ai = YemotAI.create_codex_ai(
+    session_store=JSONSessionStore("my_sessions.json")
+)
+
+# אחסון ב-Redis (מבוזר)
+from yemot_ai.session_store import RedisSessionStore
+ai = YemotAI.create_codex_ai(
+    session_store=RedisSessionStore()
+)
+```
+
+### יצירה מותאמת אישית
+
+```python
+from yemot_ai import YemotAI
+
+# יצירה עם פרמטרים מותאמים
+ai = YemotAI(
+    provider_type="openai",
+    api_key="your-key",
+    model="gpt-4",
+    session_store=JSONSessionStore("sessions.json")
+)
+
+# או עם ספק מותאם אישית
+from yemot_ai.providers import MockAIProvider
+custom_provider = MockAIProvider(session_store, custom_responses)
+ai = YemotAI(provider=custom_provider)
+```
+
+## 📖 מדריך מפורט
+
+### ניהול שיחות
+
+```python
+ai = YemotAI.create_mock_ai()
+call_id = "unique_call_id_from_yemot"
+
+# התחלת שיחה או המשכה (אוטומטי)
+response = ai.reply(call_id, "שלום, איך אתה?")
+print(response)  # "שלום! איך אפשר לעזור?"
+
+# המשך השיחה (השמירת הקשר אוטומטית)
+response = ai.reply(call_id, "יש לי שאלה על Python")
+print(response)  # "מעניין, ספר לי עוד."
+
+# בדיקת מצב שיחה
+if ai.has_active_conversation(call_id):
+    print("השיחה פעילה")
+
+# סיום מפורש (אופציונלי - קורה אוטומטית בניתוק)
+ai.end_conversation(call_id)
+```
+
+### טיפול בשגיאות
+
+```python
+try:
+    response = ai.reply(call_id, user_text)
+    call.play_message([("text", response)])
+except ValueError as e:
+    # שגיאה בפרמטרים
+    call.play_message([("text", "שגיאה בקלט")])
+except RuntimeError as e:
+    # שגיאה בתקשורת עם AI
+    call.play_message([("text", "בעיה זמנית, נסה שוב")])
+```
+
+### מידע ומעקב
+
+```python
+# מידע על סשן
+info = ai.get_session_info(call_id)
+print(f"ספק: {info['provider_type']}")
+print(f"פעיל: {info['has_active_session']}")
+
+# ניקוי כל הסשנים (תחזוקה)
+ai.clear_all_sessions()
+
+# הצגת סשנים פעילים (אם נתמך)
+if hasattr(ai.session_store, 'get_all_sessions'):
+    sessions = ai.session_store.get_all_sessions()
+    print(f"סשנים פעילים: {len(sessions)}")
+```
+
+## 🌟 דוגמאות מתקדמות
+
+ראה קבצים בתיקיית `examples/`:
+
+- [`flask_basic.py`](examples/flask_basic.py) - דוגמה בסיסית עם Flask
+- [`fastapi_advanced.py`](examples/fastapi_advanced.py) - דוגמה מתקדמת עם FastAPI
+- [`simple_demo.py`](examples/simple_demo.py) - הדגמה ללא תלויות חיצוניות
+
+### הרצת דוגמה
+
+```bash
+# מהתיקיה הראשית של הפרויקט
+cd examples
+python simple_demo.py
+
+# עם Flask (דורש yemot-flow)
+python flask_basic.py
+```
+
+## 🧪 הרצת טסטים
+
+```bash
+# התקנת תלויות בדיקה
+pip install pytest pytest-cov
+
+# הרצת כל הטסטים
+pytest
+
+# הרצה עם כיסוי
+pytest --cov=yemot_ai
+
+# הרצת טסט ספציפי
+pytest tests/test_core.py::TestYemotAI::test_reply_basic
+```
+
+## 📚 תיעוד API
+
+### מחלקה ראשית: `YemotAI`
+
+#### מתודות יצירה
+
+```python
+# יצירה כללית
+YemotAI(provider_type="codex", **kwargs)
+
+# יצירה מהירה
+YemotAI.create_codex_ai(cli_command="codex", session_store=None)
+YemotAI.create_openai_ai(api_key, model="gpt-3.5-turbo", session_store=None) 
+YemotAI.create_mock_ai(responses=None, session_store=None)
+```
+
+#### מתודות עיקריות
+
+| מתודה | תיאור | פרמטרים | החזרה |
+|-------|-------|----------|--------|
+| `reply(call_id, user_text)` | שליחת הודעה וקבלת תשובה | call_id: str, user_text: str | str |
+| `has_active_conversation(call_id)` | בדיקת מצב שיחה | call_id: str | bool |
+| `end_conversation(call_id)` | סיום שיחה | call_id: str | None |
+| `get_session_info(call_id)` | מידע על סשן | call_id: str | Dict |
+| `clear_all_sessions()` | ניקוי כל הסשנים | - | None |
+
+### ספקי AI זמינים
+
+| ספק | מחלקה | תיאור | דרישות |
+|-----|-------|-------|---------|
+| `codex` | `CodexCLIProvider` | Codex CLI של OpenAI | Codex CLI מותקן |
+| `openai` | `OpenAIProvider` | OpenAI API | `pip install openai` |
+| `mock` | `MockAIProvider` | ספק מדומה לבדיקות | אין |
+
+### סוגי אחסון
+
+| סוג | מחלקה | תיאור | מתאים ל |
+|-----|-------|-------|----------|
+| `memory` | `MemorySessionStore` | זיכרון בלבד | פיתוח, שרת יחיד |
+| `json` | `JSONSessionStore` | קובץ JSON מקומי | פיתוח, השרדות נתונים |
+| `redis` | `RedisSessionStore` | Redis DB | פרודקשן, מבוזר |
+
+## ⚙️ הגדרות סביבה
+
+```bash
+# עבור OpenAI
+export OPENAI_API_KEY="your-api-key"
+
+# עבור Redis
+export REDIS_URL="redis://localhost:6379/0"
+
+# הגדרות כלליות
+export AI_PROVIDER="codex"          # codex, openai, mock
+export SESSION_STORE_TYPE="json"    # memory, json, redis
+export SESSION_FILE_PATH="sessions.json"
+export FLOW_TIMEOUT="60000"
+```
+
+## 🚀 פריסה לפרודקשן
+
+### הגדרות מומלצות
+
+```python
+import os
+from yemot_ai import YemotAI, JSONSessionStore
+
+# הגדרות מסביבת המערכת
+ai_provider = os.getenv("AI_PROVIDER", "codex")
+store_type = os.getenv("SESSION_STORE_TYPE", "json")
+
+if store_type == "redis":
+    from yemot_ai.session_store import RedisSessionStore
+    session_store = RedisSessionStore()
+else:
+    session_store = JSONSessionStore(
+        os.getenv("SESSION_FILE_PATH", "sessions.json")
+    )
+
+if ai_provider == "openai":
+    ai = YemotAI.create_openai_ai(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        session_store=session_store
+    )
+else:
+    ai = YemotAI.create_codex_ai(session_store=session_store)
+```
+
+### ביצועים
+
+- **זיכרון**: מהיר ביותר, אבל לא מבוזר
+- **JSON**: טוב לשרת יחיד עם השרדות
+- **Redis**: מומלץ למספר workers או שרתים
+
+### אבטחה
+
+- 🔐 הגן על מפתחות API (משתני סביבה)
+- 🛡️ הגבל גישה לendpoints ניהול (`/admin/*`)
+- ⏰ הגדר timeout מתאים לסביבת הפרודקשן
+- 📝 הפעל לוגים מתאימים
+
+## 🤝 תרומה לפרויקט
+
+אנו מזמינים אתכם לתרום לפרויקט!
+
+### הגדרת סביבת פיתוח
+
+```bash
+# שכפול הפרויקט
+git clone https://github.com/your-username/yemot-ai.git
+cd yemot-ai
+
+# יצירת סביבה וירטואלית
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate   # Windows
+
+# התקנת תלויות פיתוח
+pip install -e ".[dev]"
+
+# הרצת טסטים
+pytest
+
+# בדיקת קוד
+black yemot_ai/
+flake8 yemot_ai/
+```
+
+### הוספת ספק AI חדש
+
+1. צור מחלקה חדשה שיורשת מ-`AIProvider`
+2. מימש את המתודות `start_session` ו-`continue_session`
+3. הוסף לבחירה ב-`YemotAI._create_provider`
+4. כתוב טסטים ב-`tests/`
+
+## 🐛 דיווח על בעיות
+
+נתקלת בבעיה? אנא פתח [issue](https://github.com/your-username/yemot-ai/issues) עם:
+
+- תיאור הבעיה
+- קוד לשחזור
+- הודעת השגיאה המלאה
+- גירסת Python וגירסאות החבילות
+
+## 🔄 מה חדש
+
+### גירסה 0.1.0
+- 🎉 גירסה ראשונית
+- ✅ תמיכה ב-Codex CLI
+- ✅ תמיכה ב-OpenAI API  
+- ✅ ספק מדומה לבדיקות
+- ✅ שלושה סוגי אחסון
+- ✅ אינטגרציה עם yemot-flow
+- ✅ טסטים מקיפים
+
+## 📜 רישיון
+
+פרויקט זה מופץ תחת רישיון MIT. ראה קובץ [LICENSE](LICENSE) לפרטים.
+
+## 🙏 תודות
+
+- צוות **ימות המשיח** על הפלטפורמה המעולה
+- מפתחי **yemot-flow** על הספרייה הנהדרת
+- **OpenAI** על Codex ו-GPT
+- קהילת הפיתוח בישראל 🇮🇱
+
+---
+
+<div align="center">
+
+**עשה בישראל** 🇮🇱 **עם ❤️ לקהילה**
+
+[🌟 תן כוכב לפרויקט](https://github.com/your-username/yemot-ai) | [📚 תיעוד מלא](https://github.com/your-username/yemot-ai/wiki) | [💬 דיונים](https://github.com/your-username/yemot-ai/discussions)
+
+</div>
