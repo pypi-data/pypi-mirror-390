@@ -1,0 +1,37 @@
+on:
+  workflow_call:
+
+env:
+  # https://github.com/pytest-dev/pytest/issues/2042
+  PY_IGNORE_IMPORTMISMATCH: "1"
+  TILED_SINGLE_USER_API_KEY: unknown # ${TILED_SINGLE_USER_API_KEY}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          # Need this to get version number from last tag
+          fetch-depth: 0
+          # Check out example services
+          submodules: true
+
+      - name: Install python packages
+        uses: ./.github/actions/install_requirements
+
+      - name: Compose services
+        uses: hoverkraft-tech/compose-action@3846bcd61da338e9eaaf83e7ed0234a12b099b72 # v2.4.1
+        with:
+          compose-file: "tests/system_tests/compose.yaml"
+
+      - name: Start Blueapi Server
+        env:
+          EPICS_CA_NAME_SERVERS: 127.0.0.1:9064
+          EPICS_PVA_NAME_SERVERS: 127.0.0.1:9075
+        run: blueapi -c ${{ github.workspace }}/tests/system_tests/config.yaml serve &
+
+      - name: Run tests
+        run: tox -e system-test
