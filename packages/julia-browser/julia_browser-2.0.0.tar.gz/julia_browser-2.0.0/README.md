@@ -1,0 +1,383 @@
+# Julia Browser 🌐
+
+A comprehensive Python-based CLI web browser with JavaScript support and modern web compatibility.
+
+Julia Browser transforms command-line web browsing into a dynamic, intelligent experience with comprehensive JavaScript simulation and rendering capabilities.
+
+## Features
+
+- **Enhanced JavaScript Engine**: Mozilla SpiderMonkey integration via PythonMonkey
+- **Modern Web Compatibility**: Full HTML DOM API, CSS Object Model (CSSOM), and modern JavaScript APIs
+- **Interactive CLI Interface**: Rich terminal interface with comprehensive web interaction support
+- **Advanced Navigation**: Back/forward, bookmarks, history, and smart link following
+- **Intelligent Content Processing**: Dynamic content filtering and clean markdown output
+- **Performance Optimizations**: Caching, asynchronous execution, and connection pooling
+- **Real Web Interactions**: Form submission, file uploads, authentication flows
+- **Multiple Output Formats**: Markdown, HTML, and JSON rendering
+- **Responsive Design Detection**: Breakpoint analysis and mobile-first patterns
+- **Web Components Support**: Extracts content from custom elements and Shadow DOM  
+- **CSS Generated Content**: Captures ::before/::after pseudo-element text
+- **Modern Layout Support**: Proper text flow for CSS Grid and Flexbox layouts
+- **Shadow DOM Access**: Accesses encapsulated component content from modern frameworks
+
+## Installation
+
+```bash
+pip install julia-browser
+```
+
+## Quick Start
+
+### Command Line Interface
+
+### Command Line Usage
+
+```bash
+# Browse a website
+julia-browser browse https://example.com
+
+# Start interactive mode
+julia-browser interactive
+
+# Render to different formats
+julia-browser render https://api.github.com --format json
+```
+
+### AI Agent SDK 🤖
+
+Julia Browser includes a clean, simple AI Agent SDK that enables AI systems to control websites exactly like humans do - with direct, intuitive functions that mirror CLI browser commands.
+
+> **Perfect for:** Web automation, AI agents, research workflows, data collection, form automation, and human-like web interactions.
+
+#### Simple Functions - Just Like CLI Commands
+
+```python
+from julia_browser import AgentSDK
+
+# Initialize AI agent
+agent = AgentSDK()
+
+# Open a website (like CLI 'browse' command)
+result = agent.open_website("https://example.com")
+print(f"Opened: {result['title']}")
+
+# List interactive elements (like CLI 'elements' command)
+elements = agent.list_elements()
+print(f"Found {elements['total_clickable']} clickable elements")
+
+# Type into input fields (like CLI 'type' command)
+agent.type_text(1, "search query")
+
+# Click buttons or links (like CLI 'click' command)
+agent.click_element(1)
+
+# Submit forms (like CLI form submission)
+result = agent.submit_form()
+print(f"Form submitted: {result['title']}")
+```
+
+#### Complete AI Agent SDK Functions
+
+**Core Website Functions:**
+- `open_website(url)` - Open any website and get page content
+- `list_elements()` - List all clickable elements and input fields with numbers
+- `get_page_info()` - Get current page title, URL, and full content
+- `search_page(term)` - Search for text within the current page
+
+**Human-like Interactions:**
+- `click_element(number)` - Click buttons or links by their number
+- `type_text(field_number, text)` - Type text into input fields by number
+- `submit_form()` - Submit forms with typed data
+- `follow_link(number)` - Navigate to links by their number
+
+**Page Navigation & Scrolling:**
+- `scroll_down(chunks=1)` - Scroll down to see more content (like browser scrolling)
+- `scroll_up(chunks=1)` - Scroll up to see previous content  
+- `scroll_to_top()` - Jump to the top of the page
+- `scroll_to_bottom()` - Jump to the bottom of the page
+- `get_scroll_info()` - Get current scroll position and page info
+
+**Page Navigation:**
+- `scroll_down(chunks=1)` - Scroll down to see more content
+- `scroll_up(chunks=1)` - Scroll up to see previous content
+- `scroll_to_top()` - Jump to the top of the page
+- `scroll_to_bottom()` - Jump to the bottom of the page
+- `get_scroll_info()` - Get current scroll position and progress
+
+#### Real-World Usage Examples
+
+**1. Simple Web Search:**
+```python
+agent = AgentSDK()
+
+# Open search engine
+agent.open_website("https://duckduckgo.com")
+
+# Type search query into first input field
+agent.type_text(1, "Python programming")
+
+# Submit the form
+result = agent.submit_form()
+print(f"Search results: {result['title']}")
+```
+
+**2. Form Automation:**
+```python
+agent = AgentSDK()
+
+# Open a form page
+agent.open_website("https://httpbin.org/forms/post")
+
+# List all available elements
+elements = agent.list_elements()
+print(f"Found {elements['total_inputs']} input fields")
+
+# Fill form fields by number
+agent.type_text(1, "John Doe")      # First field
+agent.type_text(2, "555-1234")      # Second field
+
+# Submit the completed form
+result = agent.submit_form()
+```
+
+**3. Scrolling Through Long Pages:**
+```python
+agent = AgentSDK()
+
+# Open a documentation site
+agent.open_website("https://api.python.langchain.com/en/latest/langchain_api_reference.html")
+
+# Check scroll info
+info = agent.get_scroll_info()
+print(f"Page has {info['total_elements']} content sections")
+print(f"Currently at {info['progress_percentage']}% of page")
+
+# Scroll down to see more content
+result = agent.scroll_down(2)  # Scroll down 2 chunks
+print(f"Viewing sections {result['visible_range']}")
+
+# Jump to bottom for conclusions/references
+bottom = agent.scroll_to_bottom()
+print("Now viewing the end of the document")
+
+# Go back to top to review
+agent.scroll_to_top()
+```
+
+**4. Website Navigation:**
+```python
+agent = AgentSDK()
+
+# Open website
+agent.open_website("https://example.com")
+
+# List clickable elements
+elements = agent.list_elements()
+for button in elements['buttons']:
+    print(f"Button {button['number']}: {button['text']}")
+
+# Click the first link/button
+result = agent.click_element(1)
+
+# Search current page for specific content
+search = agent.search_page("information")
+print(f"Found '{search['search_term']}' {search['matches_found']} times")
+```
+
+#### AI Agent Response Format
+
+All AI Agent SDK methods return structured dictionaries with consistent formats:
+
+```python
+{
+    'success': True,
+    'page_title': 'Example Domain',
+    'url': 'https://example.com',
+    'markdown': '# Page Content...',
+    'forms': 1,
+    'buttons': 3,
+    'inputs': 5,
+    'links': 12,
+    'matches_found': 2,
+    'error': None
+}
+```
+
+#### Integration with AI Systems
+
+The AI Agent SDK is specifically designed for integration with AI frameworks and automation platforms:
+
+**LangChain Integration:**
+```python
+from julia_browser import AgentSDK
+from langchain.tools import BaseTool
+
+class JuliaBrowserTool(BaseTool):
+    name = "julia_browser"
+    description = "Navigate and interact with websites"
+    
+    def _run(self, url: str) -> str:
+        agent = AgentSDK()
+        result = agent.navigate(url)
+        return result['markdown']
+```
+
+**OpenAI Function Calling:**
+```python
+import openai
+from julia_browser import AgentSDK
+
+def browse_website(url: str):
+    """Browse a website and return its content"""
+    agent = AgentSDK()
+    return agent.navigate(url)
+
+# Register as OpenAI function
+functions = [{
+    "name": "browse_website",
+    "description": "Browse and analyze website content",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "Website URL to browse"}
+        }
+    }
+}]
+```
+
+**Autonomous Agent Workflows:**
+```python
+# Multi-step research workflow
+agent = AgentSDK()
+
+# Step 1: Search for information
+agent.navigate("https://duckduckgo.com")
+agent.fill_input(0, "artificial intelligence trends 2024")
+agent.submit_form()
+
+# Step 2: Follow first result
+agent.follow_link(0)
+
+# Step 3: Extract specific data
+insights = agent.search_page("machine learning")
+print(f"Found {insights['matches_found']} ML references")
+
+# Step 4: Continue to related pages
+elements = agent.get_elements()
+if elements['links'] > 0:
+    agent.follow_link(0)  # Follow related link
+```
+
+#### Why Choose Julia Browser AI Agent SDK?
+
+- **🎯 Human-like Interaction**: Functions mirror exactly how humans browse websites
+- **🔢 Simple Numbering**: All elements are numbered - just click_element(1), type_text(1, "hello")
+- **📊 Clean Responses**: Consistent JSON responses with success/error handling
+- **🌐 Real Websites**: Handles modern sites with JavaScript, forms, and dynamic content
+- **🚀 Zero Setup**: No browser installation or complex configuration needed
+- **⚡ Direct Commands**: Each function does exactly one thing, like CLI commands
+
+## Advanced Features
+
+### Python API
+
+```python
+from julia_browser import BrowserEngine, BrowserSDK
+
+# Initialize browser
+sdk = BrowserSDK()
+
+# Browse a website
+result = sdk.browse_url("https://example.com")
+print(result['markdown'])
+
+# Interactive CLI
+from julia_browser import CLIBrowser
+browser = CLIBrowser()
+browser.start_interactive_mode()
+```
+
+## Interactive Mode Commands
+
+- `browse <url>` - Navigate to a website
+- `elements` - Show all interactive elements (buttons, links, forms)
+- `click <number>` - Click on numbered elements
+- `type <text>` - Type into input fields
+- `submit` - Submit forms
+- `back/forward` - Navigate browser history
+- `bookmark add <name>` - Save bookmarks
+- `help` - Show all commands
+
+## Advanced Features
+
+### JavaScript Support
+- Full ES6+ compatibility with Mozilla SpiderMonkey
+- React, Vue, Angular framework support
+- Real API calls and network requests
+- Modern browser API simulation
+
+### Web Interaction
+- Smart form handling with real submission
+- File upload support
+- Authentication flows and session management
+- Cookie handling and persistent sessions
+
+### Performance
+- Intelligent caching with SQLite backend
+- Asynchronous request handling
+- Connection pooling and optimization
+- Lazy loading for large websites
+
+## Examples
+
+### Browse and Interact
+```bash
+julia-browser interactive
+> browse github.com
+> elements
+> click 1  # Click login button
+> type username myuser
+> type password mypass
+> submit
+```
+
+### API Integration
+```python
+from julia_browser import BrowserSDK
+
+sdk = BrowserSDK()
+
+# Handle JSON APIs
+result = sdk.browse_url("https://api.github.com/users/octocat")
+user_data = result['json_data']
+
+# Process forms
+result = sdk.submit_form("https://httpbin.org/post", {
+    "username": "test",
+    "email": "test@example.com"
+})
+```
+
+## Requirements
+
+- Python 3.8+
+- PythonMonkey (Mozilla SpiderMonkey)
+- Rich (terminal formatting)
+- Click (CLI framework)
+- BeautifulSoup4 (HTML parsing)
+- Requests (HTTP client)
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+Contributions welcome! Please read our contributing guidelines and submit pull requests to our GitHub repository.
+
+## Links
+
+- [Documentation](https://docs.juliabrowser.com)
+- [GitHub Repository](https://github.com/juliabrowser/julia-browser)
+- [Issue Tracker](https://github.com/juliabrowser/julia-browser/issues)
+- [PyPI Package](https://pypi.org/project/julia-browser/)
