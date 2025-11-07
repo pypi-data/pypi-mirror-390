@@ -1,0 +1,103 @@
+name: "Release: Publish to PyPI"
+
+# This workflow publishes to PyPI using trusted publishing (OIDC)
+# Setup: Configure trusted publisher on PyPI with this workflow name
+# See instructions at the bottom of this file
+
+# on:
+#   release:
+#     types: [published]
+
+# Manual trigger for testing
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to publish to'
+        required: true
+        type: choice
+        options:
+          - pypi-test
+          - pypi
+
+permissions:
+  id-token: write  # REQUIRED for trusted publishing
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for setuptools-scm to detect version from tags
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build setuptools-scm
+      
+      - name: Verify version detection
+        run: |
+          DETECTED_VERSION=$(python -m setuptools_scm)
+          echo "Version detected by setuptools-scm: $DETECTED_VERSION"
+          git describe --tags
+      
+      - name: Build package
+        run: |
+          python -m build
+          echo "Built packages:"
+          ls -lh dist/
+      
+      - name: Publish to TestPyPI
+        if: github.event.inputs.environment == 'pypi-test'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+      
+      - name: Publish to PyPI
+        if: github.event.inputs.environment == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+      
+      - name: Success summary
+        run: |
+          echo "## PyPI Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully published to ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.environment }}" == "pypi" ]; then
+            echo "📦 Package available at: https://pypi.org/project/phasor-point-cli/" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "📦 Package available at: https://test.pypi.org/project/phasor-point-cli/" >> $GITHUB_STEP_SUMMARY
+          fi
+
+# Setup Instructions (Trusted Publishing):
+# 
+# 1. Configure Trusted Publisher on PyPI:
+#    - Go to PyPI project settings > Publishing
+#    - Add a new trusted publisher:
+#      - Owner: energinet-ti
+#      - Repository: phasor-point-cli
+#      - Workflow: publish-to-pypi.yml
+#      - Environment: pypi (or pypi-test for TestPyPI)
+# 
+# 2. Test with Manual Trigger:
+#    - Go to Actions > Release: Publish to PyPI
+#    - Click "Run workflow"
+#    - Select "pypi-test" or "pypi" environment
+#    - First successful run will activate the trusted publisher
+# 
+# 3. Enable Automatic Publishing (optional):
+#    - Uncomment the 'on: release' trigger at the top
+#    - Comment out the 'on: workflow_dispatch' trigger
+#    - Future releases will auto-publish
+# 
+# Note: No API tokens needed - uses OpenID Connect (OIDC) authentication
