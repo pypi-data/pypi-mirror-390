@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+  <style type="text/css">
+    :root {
+      --pico-spacing: 0.25rem;
+
+      /* Grid adjustments, see
+      https://css-tricks.com/an-auto-filling-css-grid-with-max-columns/
+      */
+      /**
+       * User input values.
+       */
+      --grid-layout-gap: 10px;
+      --grid-column-count: 1;
+      --grid-item--min-width: 100px;
+
+      /**
+       * Calculated values.
+       */
+      --gap-count: calc(var(--grid-column-count) - 1);
+      --total-gap-width: calc(var(--gap-count) * var(--grid-layout-gap));
+      --grid-item--max-width: calc((100% - var(--total-gap-width)) / var(--grid-column-count));
+    }
+
+    @media (min-width: 576px) {
+      :root {
+        --grid-column-count: 1;
+      }
+    }
+
+    @media (min-width: 768px) {
+      :root {
+        --grid-column-count: 2;
+      }
+    }
+
+    @media (min-width: 992px) {
+      :root {
+        --grid-column-count: 3;
+      }
+    }
+
+    .content {
+      width: 100%;
+    }
+
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(max(var(--grid-item--min-width), var(--grid-item--max-width)), 1fr));
+      grid-gap: var(--grid-layout-gap);
+    }
+  </style>
+{% endblock extra_head %}
+
+
+{% block content %}
+  <h2>{{ numero.name }}</h2>
+  <div class="grid">
+  {% for article in numero.articles %}
+    <article>
+      <header>
+        <h3><a href="{{ base_url }}{{ article.url }}">{{ article.title_f }}</a></h3>
+      </header>
+      {{ article.subtitle_f|markdown }}
+      {% if article.authors %}
+          <footer>
+            <p>
+              {%- for author in article.authors -%}
+                  <em>{{ author.forname }} {{ author.surname }}{%- if not loop.last -%}, {% endif %}</em>
+              {%- endfor -%}
+            </p>
+          </footer>
+      {% endif %}
+    </article>
+  {% endfor %}
+  </div>
+{% endblock content %}
