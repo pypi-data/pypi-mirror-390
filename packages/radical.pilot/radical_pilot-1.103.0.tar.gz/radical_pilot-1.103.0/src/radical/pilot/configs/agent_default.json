@@ -1,0 +1,53 @@
+
+# this is the default agent config which is used if no other config is
+# specified for an agent.  It contains the minimal set of settings required for
+# a functional pilot agent, without any component redundency.
+
+{
+    # agent_0 must always have target 'local' at this point
+    # mode 'shared'   : local node is also used for CUs
+    # mode 'reserved' : local node is reserved for the agent
+    # FIXME: mode is unused
+    "target" : "local",
+    "mode"   : "shared",
+
+    "heartbeat"    : {
+        "interval" :  10.0,
+        "timeout"  : 600.0
+    },
+
+    # Bridges usually run in the main agent
+    #
+    # Bridges can be configured to stall for a certain batch of messages,
+    # releasing them then as bulks of a certain size.  Default for both
+    # stall_hwm and batch_size is 1 (no stalling, no bulking).
+    #
+    "bridges" : {
+        "agent_staging_input_queue"  : {"kind": "queue"},
+        "agent_scheduling_queue"     : {"kind": "queue"},
+        "agent_executing_queue"      : {"kind": "queue"},
+        "agent_staging_output_queue" : {"kind": "queue"},
+        "agent_collecting_queue"     : {"kind": "queue"},
+
+        "raptor_scheduling_queue"    : {"kind": "queue"},
+
+        "agent_unschedule_pubsub"    : {"kind": "pubsub"},
+        "agent_schedule_pubsub"      : {"kind": "pubsub"},
+
+        "control_pubsub"             : {"kind": "pubsub"},
+        "state_pubsub"               : {"kind": "pubsub"},
+
+        "client_pubsub"              : {"kind": "pubsub"},
+        "client_queue"               : {"kind": "queue"}
+
+      # "log_pubsub"                 : {"kind": "pubsub"}
+    },
+
+    "components" : {
+        "agent_staging_input"  : {"count" : 1},
+        "agent_scheduling"     : {"count" : 1},
+        "agent_executing"      : {"count" : 1},
+        "agent_staging_output" : {"count" : 1}
+    }
+}
+

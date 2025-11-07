@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+import sys
+
+import setproctitle    as spt
+import multiprocessing as mp
+
+import radical.utils   as ru
+import radical.pilot   as rp
+
+
+# ------------------------------------------------------------------------------
+#
+def main(sid, reg_addr, uid, ppid, evt):
+    '''
+    This thin wrapper starts a RCT component It expects a single argument:
+    a config to use for the component's configuration.  The config must contain:
+
+      - uid : UID of component instance (unique to the hosting session)
+      - name: name of the component
+      - kind: type of component
+
+    The config will also contain a `cmgr_url` entry which points to the cmgr
+    this component should register with.
+
+    The config file may contain other entries which are passed to the component
+    and are interpreted by the component implementation.
+    '''
+
+    # basic setup: logger and profiler
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd(), level='DEBUG_9')
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
+
+    try:
+        prof.prof('comp_start', uid=uid)
+        prof.disable()
+        wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt)
+
+    finally:
+        prof.enable()
+        prof.prof('comp_stop', uid=uid)
+
+
+# ------------------------------------------------------------------------------
+#
+def wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt):
+
+    spt.setproctitle('rp.%s' % uid)
+
+    # process watcher
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=log)
+    pwatcher.watch(int(ppid))
+    pwatcher.watch(os.getpid())
+
+    reg   = ru.zmq.RegistryClient(url=reg_addr)
+    c_cfg = ru.TypedDict(reg['components.%s.cfg' % uid])
+
+    reg.close()
+
+    # start a non-primary session
+    session = rp.Session(uid=sid, cfg=c_cfg,
+                         _role=rp.Session._DEFAULT, _reg_addr=reg_addr)
+
+    # create the instance and begin to work
+    comp = rp.utils.BaseComponent.create(c_cfg, session)
+    comp.start()
+    evt.set()
+
+    # all is set up - we can sit idle 'til end of time.
+    comp.wait()
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 5:
+        sys.stderr.write(
+                'error: invalid arguments\n'
+                'usage: %s <sid> <reg_addr> <uid> <ppid>\n'
+                         % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
+
+    sid      = sys.argv[1]
+    reg_addr = sys.argv[2]
+    uid      = sys.argv[3]
+    ppid     = sys.argv[4]
+
+    evt      = mp.Event()
+
+    ru.daemonize(main=main, args=[sid, reg_addr, uid, ppid, evt],
+                 stdout='%s.out' % uid, stderr='%s.err' % uid)
+
+    evt.wait(30.0)
+    if not evt.is_set():
+        sys.stderr.write('error: component did not start\n')
+
+    sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+

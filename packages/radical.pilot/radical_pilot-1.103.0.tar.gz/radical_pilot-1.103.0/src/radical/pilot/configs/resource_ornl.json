@@ -1,0 +1,441 @@
+
+{
+    "andes": {
+        "description"                 : "704 compute nodes",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://andes.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://andes.olcf.ornl.gov/"
+            }
+        },
+        "forward_tunnel_endpoint"     : "andes.olcf.ornl.gov",
+        "default_queue"               : "batch",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+            "source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"
+        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 32
+    },
+
+    "andes_gpu": {
+        "description"                 : "9 gpu nodes",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://andes.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://andes.olcf.ornl.gov/"
+            }
+        },
+        "forward_tunnel_endpoint"     : "andes.olcf.ornl.gov",
+        "default_queue"               : "gpu",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["SRUN"],
+                                         "SRUN"  : {}
+                                        },
+        "pre_bootstrap_0"             : [
+            "source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"
+        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 28,
+        "gpus_per_node"               : 2,
+        "system_architecture"         : {"gpu": "k80"}
+    },
+
+    "crusher": {
+        "description"                 : "2 cabinets: (1) 128 compute nodes; (2) 64 compute nodes",
+        "notes"                       : "Requires RSA SecurID and uses prepared local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://crusher.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://crusher.olcf.ornl.gov/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "SLURM",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load cray-python"
+                                        ],
+        "pre_bootstrap_1"             : [
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 8,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "system_architecture"         : {
+                                         "smt"           : 2,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
+    },
+
+    "frontier": {
+        "description"                 : "74 cabinets: 128 compute nodes",
+        "notes"                       : "Requires RSA SecurID and uses prepared local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://frontier.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://frontier.olcf.ornl.gov/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load cray-python"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 8,
+        "system_architecture"         : {
+                                         "smt"           : 2,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [ 0,   8,  16,  24,
+                                                            32,  40,  48,  56,
+                                                            64,  72,  80,  88,
+                                                            96, 104, 112, 120],
+                                         "blocked_gpus"  : []
+                                        }
+    },
+
+    "frontier_flux": {
+        "description"                 : "74 cabinets: 128 compute nodes",
+        "notes"                       : "Requires RSA SecurID and uses prepared local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://frontier.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://frontier.olcf.ornl.gov/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "FLUX",
+        "agent_spawner"               : "FLUX",
+        "launch_methods"              : {
+                                         "order" : ["FLUX"],
+                                         "FLUX"  : {
+                                             "pre_exec_cached": [
+                                                 "module load flux",
+                                                 "module load rocm",
+                                                 "module load craype-accel-amd-gfx90a",
+                                                 "export MPICH_GPU_SUPPORT_ENABLED=1"
+                                             ]}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load flux",
+                                         "module load rocm",
+                                         "module load craype-accel-amd-gfx90a",
+                                         "export MPICH_GPU_SUPPORT_ENABLED=1",
+                                         "module load cray-python"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 8,
+        "system_architecture"         : {
+                                         "smt"           : 1,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [ 0,   8,  16,  24,
+                                                            32,  40,  48,  56],
+                                                          # 64,  72,  80,  88,
+                                                          # 96, 104, 112, 120],
+                                         "blocked_gpus"  : [],
+                                         "n_partitions"  : 1
+                                        }
+    },
+
+    "spock": {
+        "description"                 : "3 cabinets: each containing 12 compute nodes",
+        "notes"                       : "",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://spock.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://spock.olcf.ornl.gov/"
+            }
+        },
+        "default_queue"               : "ecp",
+        "resource_manager"            : "SLURM",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load cray-python"
+                                        ],
+        "pre_bootstrap_1"             : [
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 4,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "system_architecture"         : {
+                                         "smt"           : 2,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
+    },
+
+    "summit": {
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "LSF",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["MPIRUN"],
+                                         "MPIRUN": {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load DefApps-2023",
+                                         "module load gcc/9.1.0",
+                                         "module load python/3.8-anaconda3"
+                                        ],
+        "pre_bootstrap_1"             : [
+                                         "module load DefApps-2023",
+                                         "module load gcc/9.1.0",
+                                         "module load python/3.8-anaconda3",
+                                         "ulimit -u 65536"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 42,
+        "gpus_per_node"               : 6,
+        "numa_domain_map"             : {
+                    "1": {"cores": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13],
+                          "gpus" : [ 0, 1]},
+                    "2": {"cores": [14,15,16,17,18,19,20,21,22,23,24,25,26,27],
+                          "gpus" : [ 2, 3]},
+                    "3": {"cores": [28,29,30,31,32,33,34,35,36,37,38,39,40,41],
+                          "gpus" : [ 4, 5]}
+                                        },
+
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "system_architecture"         : {
+                                         "smt"           : 1,
+                                         "options"       : ["gpumps", "nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        },
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:$LD_LIBRARY_PATH"]
+    },
+
+    "summit_jsrun": {
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "LSF",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["JSRUN"],
+                                         "JSRUN" : {
+                                             "pre_exec_cached": [
+                                               # "module unload xl xalt"
+                                             ]
+                                         },
+                                         "JSRUN_ERF" : {
+                                             "pre_exec": [
+                                                 "[[ -z $(pgrep -u $USER -a jsmd | grep erf) ]] && (eval \"$JSM_ROOT/bin/jsm\" &>/dev/null & disown) || echo 'JSM running'"
+                                             ],
+                                             "pre_exec_cached": [
+                                                 "export JSM_ROOT=/gpfs/alpine/stf007/world-shared/vgv/inbox/jsm_erf/jsm-10.4.0.4/opt/ibm/jsm",
+                                                 "export PATH=$JSM_ROOT/bin:$PATH"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load DefApps-2023",
+                                         "module load gcc/9.1.0",
+                                         "module load python/3.8-anaconda3"
+                                        ],
+        "pre_bootstrap_1"             : [
+                                         "module load DefApps-2023",
+                                         "module load gcc/9.1.0",
+                                         "module load python/3.8-anaconda3",
+                                         "ulimit -u 65536"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 42,
+        "gpus_per_node"               : 6,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "system_architecture"         : {
+                                         "smt"           : 4,
+                                         "options"       : ["gpumps", "nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        },
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:$LD_LIBRARY_PATH"]
+    },
+
+    "summit_interactive": {
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
+        "notes"                       : "interactive job https://docs.olcf.ornl.gov/systems/summit_user_guide.html",
+        "default_schema"              : "interactive",
+        "schemas"                     : {
+            "interactive"             : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "resource_manager"            : "LSF",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["MPIRUN", "JSRUN"],
+                                         "MPIRUN": {},
+                                         "JSRUN" : {
+                                             "pre_exec_cached": [
+                                               # "module unload xl",
+                                               # "module unload xalt"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load DefApps-2023",
+                                         "module load gcc/9.1.0",
+                                         "module load python/3.8-anaconda3"
+                                        ],
+        "pre_bootstrap_1"             : [
+                                         "module load DefApps-2023",
+                                         "module load gcc/9.1.0",
+                                         "module load python/3.8-anaconda3",
+                                         "ulimit -u 65536"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/${LSB_PROJECT_NAME,,}",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 42,
+        "gpus_per_node"               : 6,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
+    },
+
+    "summit_prte": {
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "LSF",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["PRTE", "SSH"],
+                                         # for sub-agent
+                                         "SSH"  : {},
+                                         "PRTE" : {
+                                             "pre_exec_cached": [
+                                                 "module unload xl xalt spectrum-mpi",
+                                                 "module load   DefApps-2023",
+                                                 "module load   gcc/9.1.0",
+                                                 "module load   python/3.8-anaconda3",
+                                                 "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+                                               # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
+                                               # "module load   prrte/master"
+                                                 "module load   prrte/2.0.2"
+                                             ],
+                                             "dvm_count": 1
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module unload xl xalt spectrum-mpi",
+                                         "module load   DefApps-2023",
+                                         "module load   gcc/9.1.0",
+                                         "module load   python/3.8-anaconda3",
+                                         "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+                                         "module load   prrte/2.0.2"
+                                        ],
+        "pre_bootstrap_1"             : [
+                                         "module unload xl xalt spectrum-mpi",
+                                         "module load   DefApps-2023",
+                                         "module load   gcc/9.1.0",
+                                         "module load   python/3.8-anaconda3",
+                                         "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+                                         "module load   prrte/2.0.2",
+                                         "ulimit -u 65536"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 42,
+        "gpus_per_node"               : 6,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "system_architecture"         : {
+                                         "smt"           : 4,
+                                         "options"       : ["gpumps", "nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
+    }
+}
+

@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+import sys
+
+import setproctitle    as spt
+import multiprocessing as mp
+
+import radical.utils   as ru
+
+from radical.pilot.messages import ComponentStartedMessage
+
+
+# ------------------------------------------------------------------------------
+#
+def main(sid, reg_addr, uid, ppid, evt):
+    '''
+    This thin wrapper starts a ZMQ bridge.  It expects a single argument:
+    a config to use for the bridge's configuration.  The config must contain:
+
+      - uid : UID of bridge instance (unique to the hosting session)
+      - name: name of the bridge
+      - kind: type of bridge (`pubsub` or `queue`)
+
+    The config will also contain a `cmgr_url` entry which points to the cmgr
+    this component should register with.
+
+    The config file may contain other entries which are passed to the bridge
+    and are interpreted by the bridge implementation.
+
+    After startup, the bridge's communication endpoint URLs are stored in the
+    sessions registry under `bridges.<bridge_uid>`, in the form (shown for
+    pubsub and queue type bridges):
+
+        {
+          'addr_pub': '$addr_pub',
+          'addr_sub': '$addr_sub'
+        }
+
+        {
+          'addr_put': '$addr_put',
+          'addr_get': '$addr_get'
+        }
+
+    That config is formed so that any publishers, subscribers, putters or
+    getters can obtain the respective bridge addresses automatically.
+    This also holds for command line tools like:
+
+        > radical-pilot-bridge sid reg_addr test_pubsub.0000                 [1]
+        > radical-pilot-sub    sid reg_addr test_pubsub.0000 foo &           [2]
+        > radical-pilot-pub    sid reg_addr test_pubsub.0000 foo bar         [3]
+
+    [1] establishes the pubsub channel 'command'
+    [2] connect to the command channel, subscribe for topic `foo`
+    [3] connect to the command channel, send messages for topic `foo`
+    '''
+
+    # basic setup: logger and profiler
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
+
+    try:
+        prof.prof('bridge_start', uid=uid)
+        prof.disable()
+        wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt)
+
+    finally:
+        prof.enable()
+        prof.prof('bridge_stop', uid=uid)
+
+
+# ------------------------------------------------------------------------------
+#
+def wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt):
+
+    spt.setproctitle('rp.%s' % uid)
+
+    # process watcher
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=log)
+    pwatcher.watch(int(ppid))
+    pwatcher.watch(os.getpid())
+
+    reg   = ru.zmq.RegistryClient(url=reg_addr)
+    b_cfg = ru.TypedDict(reg['bridges.%s.cfg' % uid])
+
+    # create the instance and begin to work
+    bridge = ru.zmq.Bridge.create(uid, cfg=b_cfg)
+
+    reg['bridges.%s.addr_%s' % (uid, bridge.type_in )] = str(bridge.addr_in)
+    reg['bridges.%s.addr_%s' % (uid, bridge.type_out)] = str(bridge.addr_out)
+
+    reg.close()
+    bridge.start()
+    evt.set()
+
+    pipe = ru.zmq.Pipe(mode=ru.zmq.MODE_PUSH, url=b_cfg.cmgr_url)
+    pipe.put(ComponentStartedMessage(uid=uid, pid=os.getpid()))
+
+    # all is set up - we can sit idle 'til end of time.
+    bridge.wait()
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 5:
+        sys.stderr.write(
+                'error: invalid arguments\n'
+                'usage: %s <sid> <reg_addr> <uid> <ppid>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
+
+    sid      = sys.argv[1]
+    reg_addr = sys.argv[2]
+    uid      = sys.argv[3]
+    ppid     = sys.argv[4]
+
+    evt      = mp.Event()
+    ru.daemonize(main=main, args=[sid, reg_addr, uid, ppid, evt],
+                 stdout='%s.out' % uid, stderr='%s.err' % uid)
+
+    evt.wait(5.0)
+    if not evt.is_set():
+        sys.stderr.write('error: bridge startup failed\n')
+    sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+
