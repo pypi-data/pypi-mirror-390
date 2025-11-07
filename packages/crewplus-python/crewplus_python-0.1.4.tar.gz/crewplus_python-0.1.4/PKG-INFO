@@ -1,0 +1,138 @@
+Metadata-Version: 2.3
+Name: crewplus-python
+Version: 0.1.4
+Summary: The official Python SDK for Crewplus, used to interact with Crewplus backend services programmatically.
+License: MIT
+Keywords: crewplus,sdk,opsmateai,agent
+Author: OpsmateAI
+Author-email: contact@opsmate.ai
+Requires-Python: >=3.12,<3.13
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Requires-Dist: pydantic (>=2.5.0,<3.0.0)
+Requires-Dist: requests (>=2.31.0,<3.0.0)
+Project-URL: Homepage, https://www.opsmate.ai/
+Project-URL: Repository, https://github.com/opsmate/crewplus-platform
+Description-Content-Type: text/markdown
+
+# Crewplus Client SDK
+
+`crewplus-client` is the official Python SDK for the Crewplus platform. It provides developers with a concise, friendly, and object-oriented interface to interact with various Crewplus services programmatically.
+
+## ✨ Features
+
+- **Complete API Coverage**: Aims to cover all Crewplus backend API endpoints.
+- **Object-Oriented Design**: Abstracts core resources like knowledge bases, documents, and tasks into Python objects for intuitive interaction.
+- **Automatic Authentication**: After initializing the client, the SDK automatically handles the authentication process for all requests.
+- **Robust Error Handling**: Maps HTTP error codes to specific Python exceptions for easy capturing and handling.
+- **Type Hinting Support**: Data models built on Pydantic provide comprehensive type hints to improve development efficiency.
+
+## 🚀 Quick Start
+
+### 1. Installation
+
+You can install the library from PyPI using pip:
+
+```bash
+pip install crewplus-python
+```
+
+### 2. Basic Usage
+
+The following is a complete example that demonstrates how to use the SDK to create a knowledge base, query it, and then delete it.
+
+```python
+# examples/01_kb_workflow.py
+import os
+import uuid
+import time
+from crewplus_client import CrewPlusClient, ApiException, NotFoundException
+
+def run_kb_workflow():
+    """
+    Demonstrates the complete lifecycle of a knowledge base: Create -> Query -> Delete.
+    """
+    # --- 1. Initialize the Client ---
+    # It's recommended to read the configuration from environment variables to avoid hardcoding.
+    API_HOST = os.environ.get("CREWPLUS_API_HOST")
+    API_KEY = os.environ.get("CREWPLUS_API_KEY")
+
+    if not API_HOST or not API_KEY:
+        print("Error: Please set the CREWPLUS_API_HOST and CREWPLUS_API_KEY environment variables.")
+        print("For example: export CREWPLUS_API_HOST='http://127.0.0.1:9000'")
+        print("     export CREWPLUS_API_KEY='your_api_key_here'")
+        return
+
+    print(f"Client initialized, target host: {API_HOST}")
+    client = CrewPlusClient(host=API_HOST, api_key=API_KEY)
+
+    # --- 2. Prepare Data ---
+    # The coll_name and coll_id of the knowledge base need to be planned according to business requirements.
+    unique_id = str(uuid.uuid4())[:8]
+    kb_coll_name = f"sdk-test-kb-{unique_id}"
+    kb_coll_id = str(uuid.uuid4())
+    
+    # Used to temporarily store the ID of the successfully created knowledge base for later cleanup.
+    created_kb_id = None
+
+    try:
+        # --- 3. Create a New Knowledge Base ---
+        print(f"\n--> Creating knowledge base '{kb_coll_name}'...")
+        new_kb = client.knowledge_bases.create(
+            coll_name=kb_coll_name,
+            coll_id=kb_coll_id,
+            description="This is a test knowledge base created via the SDK"
+        )
+        created_kb_id = new_kb.id
+        print(f"✔️ Knowledge base created successfully! ID: {created_kb_id}, Name: '{new_kb.name}'")
+        
+        # Wait a moment to ensure backend data synchronization.
+        time.sleep(1)
+
+        # --- 4. Fetch the Newly Created Knowledge Base ---
+        print(f"\n--> Fetching knowledge base by ID ({created_kb_id})...")
+        fetched_kb = client.knowledge_bases.get(kb_id=created_kb_id)
+        print(f"✔️ Fetched successfully! Name: '{fetched_kb.name}', Description: '{fetched_kb.description}'")
+
+        # --- 5. Find Knowledge Base by coll_name ---
+        print(f"\n--> Finding knowledge base by coll_name ('{kb_coll_name}')...")
+        found_kb = client.knowledge_bases.find_by_coll_name(coll_name=kb_coll_name)
+        print(f"✔️ Found knowledge base! ID: {found_kb.id}")
+
+        # --- 6. List All Knowledge Bases (for demonstration) ---
+        print("\n--> Listing the top 5 knowledge bases...")
+        kb_list = client.knowledge_bases.list(limit=5)
+        print(f"✔️ Listed {len(kb_list)} knowledge bases:")
+        for kb in kb_list:
+            print(f"  - ID: {kb.id}, Name: {kb.name}")
+
+    except NotFoundException as e:
+        print(f"\n❌ Operation failed: Resource not found. {e}")
+    except ApiException as e:
+        print(f"\n❌ Operation failed: An API error occurred. {e}")
+    except Exception as e:
+        print(f"\n❌ Operation failed: An unknown error occurred. {e}")
+    
+    finally:
+        # --- 7. Clean Up Resources ---
+        if created_kb_id:
+            print(f"\n--> Cleaning up the created knowledge base (ID: {created_kb_id})...")
+            try:
+                client.knowledge_bases.delete(kb_id=created_kb_id)
+                print("✔️ Cleanup successful!")
+            except ApiException as e:
+                print(f"❌ Cleanup failed. {e}")
+
+if __name__ == "__main__":
+    run_kb_workflow()
+```
+
+## Contributing
+
+We welcome contributions of all forms! If you have any questions or suggestions, please feel free to submit an Issue or Pull Request.
+
+## License
+
+This project is open-sourced under the [MIT](LICENSE) license.
+
