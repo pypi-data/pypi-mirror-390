@@ -1,0 +1,367 @@
+Metadata-Version: 2.4
+Name: ai-cost-tracker
+Version: 0.2.0
+Summary: Zero-config OpenAI API cost tracking - just one import and you're done!
+Home-page: https://github.com/dhruvildarji/ai-cost-tracker
+Author: OpenAI Cost Tracker Contributors
+Author-email: 
+License: MIT
+Keywords: openai,cost,tracking,monitoring,api,usage
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Monitoring
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: openai>=1.0.0
+Provides-Extra: email
+Requires-Dist: python-dotenv>=1.0.0; extra == "email"
+Requires-Dist: requests>=2.28.0; extra == "email"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Dynamic: home-page
+Dynamic: requires-python
+
+# AI Cost Tracker
+
+**Zero-config OpenAI API cost tracking - just one import and you're done!**
+
+[![PyPI version](https://badge.fury.io/py/ai-cost-tracker.svg)](https://badge.fury.io/py/ai-cost-tracker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Track all your OpenAI API usage automatically without modifying your existing code. Supports GPT-4, GPT-3.5, DALL-E, Sora, and more.
+
+## ✨ Features
+
+- ✅ **Zero Configuration** - Just one import line
+- ✅ **Automatic Tracking** - No code changes needed
+- ✅ **Multi-Language Support** - Python, Node.js, React, Vue, and more!
+- ✅ **Multi-Key Support** - Track multiple API keys separately
+- ✅ **Real-time Costs** - See costs as they happen
+- ✅ **SQLite Database** - All data stored locally and securely
+- ✅ **CLI Tools** - Easy-to-use command-line interface
+- ✅ **Easy Email Setup** - Interactive wizard with SendGrid/Mailgun support (no passwords!)
+- ✅ **Daily Reports** - Optional email summaries
+
+## 🚀 Quick Start (2 Steps)
+
+### Step 1: Install
+
+```bash
+pip install ai-cost-tracker
+```
+
+### Step 2: Add ONE Line
+
+In your main Python file (the one that runs first):
+
+```python
+import openai_cost_tracker.services.zero_config_tracker
+```
+
+**That's it!** All your OpenAI calls are now automatically tracked.
+
+```python
+# Your existing code works as-is - no changes needed!
+from openai import OpenAI
+
+client = OpenAI()
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+# This call is automatically tracked! ✨
+```
+
+## 📊 View Your Costs
+
+```bash
+# View cost summary
+openai-cost-view
+
+# View last 7 days
+openai-cost-view --days 7
+
+# View by service
+openai-cost-view --service my_service
+
+# Export to JSON
+openai-cost-view --export costs.json
+```
+
+## 📝 Examples
+
+### Flask App
+
+```python
+# app.py
+from flask import Flask
+import openai_cost_tracker.services.zero_config_tracker  # Add this line
+
+app = Flask(__name__)
+from openai import OpenAI
+client = OpenAI()
+
+@app.route('/chat')
+def chat():
+    # Automatically tracked!
+    response = client.chat.completions.create(...)
+    return response
+```
+
+### FastAPI App
+
+```python
+# main.py
+from fastapi import FastAPI
+import openai_cost_tracker.services.zero_config_tracker  # Add this line
+
+app = FastAPI()
+from openai import OpenAI
+client = OpenAI()
+
+@app.post("/chat")
+async def chat():
+    # Automatically tracked!
+    response = await client.chat.completions.create(...)
+    return response
+```
+
+### Python Script
+
+```python
+# my_script.py
+import openai_cost_tracker.services.zero_config_tracker  # Add this line
+
+from openai import OpenAI
+client = OpenAI()
+
+# All calls automatically tracked!
+response = client.chat.completions.create(...)
+```
+
+## 🔧 Advanced Usage
+
+### Manual Tracking (Optional)
+
+If you prefer manual tracking:
+
+```python
+from openai_cost_tracker import get_tracker
+from openai import OpenAI
+
+client = OpenAI()
+tracker = get_tracker()
+
+response = client.chat.completions.create(...)
+usage = response.usage
+
+tracker.log_api_call(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    api_type="chat",
+    model="gpt-4",
+    operation="create",
+    cost=tracker.calculate_chat_cost(
+        model="gpt-4",
+        tokens_input=usage.prompt_tokens,
+        tokens_output=usage.completion_tokens
+    ),
+    tokens_input=usage.prompt_tokens,
+    tokens_output=usage.completion_tokens
+)
+```
+
+### Scan Your Codebase
+
+Find all OpenAI usage in your project:
+
+```bash
+openai-cost-scan
+
+# Scan specific directory
+openai-cost-scan --scan-root /path/to/project
+```
+
+### Daily Email Reports (Easy Setup!)
+
+Set up daily email summaries with our interactive wizard:
+
+```bash
+# Install email support
+pip install "ai-cost-tracker[email]"
+
+# Run the interactive email configuration wizard
+openai-cost-config-email
+```
+
+The wizard supports:
+- **SendGrid** (Recommended - No password needed! Just API key)
+- **Mailgun** (No password needed! Just API key + domain)
+- **Gmail/Outlook** (With helpful step-by-step instructions)
+
+Then start the monitor:
+
+```bash
+openai-cost-monitor
+```
+
+**That's it!** You'll receive daily cost reports automatically.
+
+## 🌍 Multi-Language Support
+
+### Python
+```python
+import openai_cost_tracker.services.zero_config_tracker  # That's it!
+```
+
+### Node.js / Express
+```bash
+npm install ai-cost-tracker
+```
+```javascript
+const { getTracker } = require('ai-cost-tracker');
+const tracker = getTracker();
+await tracker.trackOpenAI(response, 'gpt-4', apiKey);
+```
+
+### React / Next.js
+```bash
+npm install ai-cost-tracker
+```
+```tsx
+import { useCostTracker, CostSummary } from 'ai-cost-tracker/react';
+
+function App() {
+  const { trackOpenAI } = useCostTracker();
+  return <CostSummary days={7} />;
+}
+```
+
+### Other Languages
+See [EXAMPLES.md](EXAMPLES.md) for Ruby, PHP, Go, Vue.js, and more!
+
+## 📦 What Gets Tracked
+
+- **Chat Completions** (GPT-4, GPT-3.5, etc.)
+- **Image Generation** (DALL-E 2, DALL-E 3)
+- **Video Generation** (Sora)
+- **Embeddings**
+- **API Keys** (hashed for privacy)
+- **Service Names** (auto-detected)
+- **Tokens** (input/output)
+- **Costs** (calculated automatically)
+
+## 💾 Data Storage
+
+All data is stored locally in SQLite:
+- **Default location**: `~/.openai_cost_tracker/openai_usage.db`
+- **Custom location**: Set via `CostTracker(db_path="/custom/path")`
+
+## 🔍 CLI Commands
+
+### `openai-cost-view`
+View cost summaries and usage statistics.
+
+```bash
+openai-cost-view [--days N] [--service NAME] [--api-key HASH] [--recent N] [--json] [--export FILE]
+```
+
+### `openai-cost-scan`
+Scan codebase for OpenAI usage.
+
+```bash
+openai-cost-scan [--scan-root PATH] [--output FILE]
+```
+
+### `openai-cost-monitor`
+Run monitoring service with email reports.
+
+```bash
+openai-cost-monitor [--config PATH] [--db-path PATH] [--no-scan]
+```
+
+## 🎯 Pricing Support
+
+Automatically calculates costs based on current OpenAI pricing:
+
+- **GPT-4**: $30/$60 per 1M tokens (input/output)
+- **GPT-4o**: $2.50/$10 per 1M tokens
+- **GPT-3.5-turbo**: $0.50/$1.50 per 1M tokens
+- **DALL-E 3**: $0.04-0.08/image
+- **Sora 2**: $0.015/second
+
+## 🛠️ Configuration
+
+### Environment Variables
+
+Optional environment variables:
+
+```bash
+# Enable verbose output
+export OPENAI_COST_TRACKER_VERBOSE=1
+
+# Custom database location
+export COST_TRACKER_DB=/path/to/openai_usage.db
+```
+
+## 📚 API Reference
+
+### CostTracker
+
+```python
+from openai_cost_tracker import CostTracker, get_tracker
+
+tracker = get_tracker()  # Get global tracker
+# or
+tracker = CostTracker(db_path="/custom/path")  # Custom tracker
+
+# Calculate costs
+cost = tracker.calculate_chat_cost("gpt-4", tokens_input=1000, tokens_output=500)
+image_cost = tracker.calculate_image_cost("dall-e-3", size="1024x1024")
+video_cost = tracker.calculate_video_cost("sora-2", seconds=8)
+
+# Get summary
+summary = tracker.get_usage_summary(days=7)
+```
+
+## 🤝 Contributing
+
+Contributions welcome! Please see our contributing guidelines.
+
+## 📄 License
+
+MIT License - see LICENSE file
+
+## 📚 Documentation
+
+- **[Setup Guide](SETUP_GUIDE.md)** - Complete setup instructions for all languages
+- **[Examples](EXAMPLES.md)** - Code examples for Python, Node.js, React, Vue, Ruby, PHP, Go
+- **[JavaScript SDK](js/README.md)** - Full documentation for npm package
+
+## 🙏 Support
+
+- **Issues**: GitHub Issues
+- **Documentation**: See docs in repository
+- **PyPI**: https://pypi.org/project/ai-cost-tracker/
+- **npm**: Coming soon!
+
+## 📦 Installation
+
+```bash
+pip install ai-cost-tracker
+```
+
+## 🎉 Status
+
+✅ Published to PyPI: https://pypi.org/project/ai-cost-tracker/0.1.0/
+
+---
+
+**Made with ❤️ for developers who want to track their AI costs without the hassle.**
