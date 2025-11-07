@@ -1,0 +1,135 @@
+Metadata-Version: 2.4
+Name: PERSONADRESSsaraivagustavo
+Version: 0.1.1
+Summary: Biblioteca para gerenciamento de pessoas e endereços, utilizando banco de dados em memória com SQLModel.
+Home-page: https://github.com/saraivagustavo/PersonAdressLib
+Author: Gustavo Saraiva Mariano
+Author-email: gsaraivam10@gmail.com
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: sqlmodel
+Requires-Dist: typing_extensions
+Requires-Dist: fastapi
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# PERSONADRESSsaraivagustavo
+
+![PyPI](https://img.shields.io/pypi/v/PERSONADRESSsaraivagustavo)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+Biblioteca para gerenciamento de pessoas e endereços, utilizando banco de dados com SQLModel.
+
+## 📜 Descrição
+
+`PERSONADRESSsaraivagustavo` é uma biblioteca Python que fornece uma arquitetura robusta de serviços (`Service`) e repositórios (`Repository`) para gerenciar entidades como Pessoas e Endereços. Ela é construída com [SQLModel](https://sqlmodel.tiangolo.com/), o que permite fácil interação com o banco de dados e validação de dados em um só lugar.
+
+Esta biblioteca foi projetada para ser facilmente integrada em qualquer aplicação Python, especialmente em APIs web (como FastAPI), fornecendo uma camada de lógica de negócios e acesso a dados limpa e reutilizável.
+
+## ✨ Recursos
+
+* **Modelos SQLModel:** Define modelos de banco de dados claros para `Pessoa` (com relacionamento para Endereços) e `Endereco`.
+* **Arquitetura em Camadas:** Separação clara de responsabilidades com:
+    * **Models:** Modelos de tabela do banco de dados.
+    * **DTOs:** Objetos de Transferência de Dados (`PessoaCreate`, `EnderecoUpdate`, etc.) para validação de entrada e saída.
+    * **Repository:** Camada genérica de acesso a dados (CRUD) para interagir com o banco.
+    * **Service:** Camada de lógica de negócios que utiliza os repositórios.
+* **Pronto para FastAPI:** Inclui utilitários prontos para injeção de dependência (`SessionDep`) e inicialização (`init_db`).
+
+## 📦 Instalação
+
+Você pode instalar a biblioteca diretamente do PyPI:
+
+```bash
+pip install PERSONADRESSsaraivagustavo
+```
+
+A biblioteca requer sqlmodel, typing_extensions e fastapi, que serão instalados automaticamente.
+
+## 🚀 Uso Rápido (Quick Start)
+Aqui está um exemplo básico de como usar a biblioteca para criar uma pessoa e um endereço.
+```bash
+Python
+
+from sqlmodel import Session
+from PALib.database.database import init_db, engine
+from PALib.models.models import Pessoa, Endereco
+from PALib.models.dto import PessoaCreate, EnderecoCreate
+from PALib.repository.base import Repository
+from PALib.service.service import Service
+
+# 1. Inicialize o banco de dados (cria as tabelas)
+# Você só precisa executar isso uma vez na sua aplicação.
+init_db()
+
+# 2. Instancie os Repositórios e Serviços
+pessoa_repo = Repository(Pessoa)
+pessoa_service = Service(pessoa_repo)
+
+endereco_repo = Repository(Endereco)
+endereco_service = Service(endereco_repo)
+
+# 3. Use o serviço para criar uma pessoa
+with Session(engine) as session:
+    try:
+        # Criando uma Pessoa
+        nova_pessoa_data = PessoaCreate(
+            nome="Gustavo Saraiva",
+            idade=20,
+            email="gustavosaraiva@email.com"
+        )
+        
+        pessoa_criada = pessoa_service.create(session, nova_pessoa_data)
+        
+        print(f"Pessoa criada com sucesso!")
+        print(f"ID: {pessoa_criada.id}, Nome: {pessoa_criada.nome}")
+
+        # Criando um Endereço para essa Pessoa
+        novo_endereco_data = EnderecoCreate(
+            logradouro="Rua do Teste",
+            numero=123,
+            estado="ES",
+            cidade="Vila Velha",
+            bairro="TestesPython",
+            id_pessoa=pessoa_criada.id
+        )
+        
+        endereco_criado = endereco_service.create(session, novo_endereco_data)
+        
+        print(f"Endereço criado com sucesso!")
+        print(f"ID: {endereco_criado.id}, Logradouro: {endereco_criado.logradouro}")
+
+        # Listando todas as pessoas
+        todas_as_pessoas = pessoa_service.list(session)
+        print(f"\nTotal de pessoas no banco: {len(todas_as_pessoas)}")
+
+    except Exception as e:
+        print(f"Ocorreu um erro: {e}")
+```
+
+## 🧑‍💻 Autor
+
+**Gustavo Saraiva Mariano**  
+📧 Email: gsaraivam10@gmail.com  
+💻 GitHub: [saraivagustavo](https://github.com/saraivagustavo)
+
+## ⚖️ Licença
+
+Este projeto é licenciado sob a Licença MIT.
