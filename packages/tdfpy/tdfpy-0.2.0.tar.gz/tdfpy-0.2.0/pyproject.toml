@@ -1,0 +1,96 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tdfpy"
+dynamic = ["version"]
+description = "Python package for parsing Bruker timsTOF data with centroiding and noise filtering"
+authors = [
+    {name = "Patrick Garrett", email = "pgarrett@scripps.edu"},
+]
+dependencies = [
+    "numpy",
+    "pandas",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+keywords = ["bruker", "timstof", "mass-spectrometry", "proteomics", "tdf"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "mypy>=1.0",
+    "pylint>=2.0",
+]
+
+[tool.hatch.version]
+path = "src/tdfpy/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tdfpy"]
+artifacts = [
+    "*.dll",
+    "*.so",
+]
+force-include = { "src/tdfpy/libtimsdata.so" = "tdfpy/libtimsdata.so" }
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "tests/",
+    "README.md",
+    "LICENSE",
+    "CHANGLOG.md",
+]
+force-include = { "src/tdfpy/libtimsdata.so" = "src/tdfpy/libtimsdata.so" }
+
+[tool.pylint]
+max-line-length = 120
+fail-under = 9.5
+ignore = 'timsdata.py'
+good-names = ["df"]
+disable = ["too-many-public-methods"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "pandas.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "numpy.*"
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.3",
+]
