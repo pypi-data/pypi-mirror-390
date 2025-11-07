@@ -1,0 +1,82 @@
+Metadata-Version: 2.4
+Name: inatroget
+Version: 0.1.0
+Summary: Lib for getting driver's information
+Author: yannickRafael
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.31
+Requires-Dist: python-dotenv>=1.0
+
+## inatroget
+
+`inatroget` is a small Python library that automates logging into the INATRO portal in Mozambique and extracts the driver license details available on the authenticated dashboard. It is designed to be embedded in other Python projects that need structured access to this information.
+
+### Features
+- Handles the complete login flow to the INATRO virtual desk.
+- Normalizes server-side error responses into consistent error codes/messages.
+- Persists session cookies to reuse across invocations (optional).
+- Parses the INATRO dashboard HTML into a convenient Python dictionary.
+
+### Requirements
+- Python 3.9+
+- Network access to `https://balcaovirtual.inatro.gov.mz`
+- Dependencies listed in `pyproject.toml` / `requirements.txt`
+
+### Installation
+```bash
+pip install -r requirements.txt
+# or, install the library in editable mode
+pip install -e .
+# or
+pip install inatroget==0.1.0
+```
+
+If you prefer to rely solely on the packaged metadata, you can install directly from the project directory:
+```bash
+pip install .
+```
+
+### Configuration
+Create a `.env` file (or export environment variables) with:
+
+```
+COOKIES_FILE_NAME=inatro_cookies.pkl  # optional override of the default path
+```
+
+All other settings (URLs, timeouts, formats) are encapsulated in `inatroget.config.Config`. Override them by subclassing `Config` if needed.
+
+### Usage
+```python
+from inatroget.entry import do_login
+
+result = do_login("12008630", "2003-10-28")
+
+if result["success"]:
+    carta_info = result["data"]
+    print(f"Estado: {carta_info['estado_carta']}")
+else:
+    print(f"[{result['code']}] {result['message']}")
+```
+
+The `do_login` helper returns a dictionary with:
+- `success`: `True` on success, `False` otherwise
+- `data`: parsed driver license information (only present on success)
+- `code`, `message`: standardized error details when `success` is `False`
+
+Session cookies are stored using `inatroget.cookies.save_cookies` to the configured file path so that callers can reuse the session if desired.
+
+### Getting Raw HTML or Parsing Manually
+```python
+import requests
+from inatroget.get_info import get_carta_info_html, extract_carta_info
+
+session = requests.Session()
+# ensure you are already authenticated before calling this
+html = get_carta_info_html(session)
+parsed = extract_carta_info(html)
+```
+
+
+### License
+This project does not yet declare an explicit license. Please contact the author before redistributing or using it in production.
