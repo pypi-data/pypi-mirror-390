@@ -1,0 +1,57 @@
+#!/bin/sh
+
+set -e
+
+export PATH="/mnt/workspace/plugins/plugin_binaries:$PATH"
+if command -v {{binary.name}}; then
+    echo "{{binary.name}} is already installed."
+    return
+fi
+
+echo "Installing {{binary.name}}..."
+mkdir -p {{static_binary_directory}}
+
+ARCH="$(arch)"
+if [ "$ARCH" = "x86_64" ]; then
+    URL="{{amd64_url}}"
+elif [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then
+    URL="{{arm64_url}}"
+else
+    echo "Error: Unsupported architecture '$ARCH'"
+    exit 1
+fi
+
+case "$URL" in
+    *.tar.gz|*.tar.bz2|*.zip)
+        TMP_DIR=$(mktemp -d)
+        trap 'rm -rf "$TMP_DIR"' EXIT
+        
+        ARCHIVE="$TMP_DIR/archive"
+        curl "$URL" -o "$ARCHIVE" -fL
+
+        case "$URL" in
+            *.tar.gz)
+                tar -xzf "$ARCHIVE" -C "$TMP_DIR" || { echo "Error: Failed to extract archive"; exit 1; }
+                ;;
+            *.tar.bz2)
+                tar -xjf "$ARCHIVE" -C "$TMP_DIR" || { echo "Error: Failed to extract archive"; exit 1; }
+                ;;
+            *.zip)
+                unzip -o "$ARCHIVE" -d "$TMP_DIR" || { echo "Error: Failed to extract archive"; exit 1; }
+                ;;
+        esac
+
+        FOUND_BINARY=$(find "$TMP_DIR" -type f -name "{{binary.name}}" | head -n 1)
+        if [ -z "$FOUND_BINARY" ]; then
+            echo "Error: Could not find binary '{{binary.name}}' in extracted archive"
+            exit 1
+        fi
+
+        mv "$FOUND_BINARY" "{{binary_path}}"
+        ;;
+    *)
+        curl "$URL" -o "{{binary_path}}" -fL
+        ;;
+esac
+
+chmod +x "{{binary_path}}"
