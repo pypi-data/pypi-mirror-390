@@ -1,0 +1,248 @@
+"""
+Cost Monitoring Service (standalone version)
+Can be used as a module or standalone script
+"""
+
+import os
+import sys
+import time
+import logging
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional, Dict, Any
+from dotenv import load_dotenv
+
+from .services import get_tracker, OpenAIScanner
+from .services.email_config import EmailConfigManager
+
+logger = logging.getLogger(__name__)
+
+
+class CostMonitor:
+    """Cost monitoring service that sends daily email reports"""
+    
+    def __init__(self, tracker=None, scanner=None, config_dir=None):
+        """Initialize monitor"""
+        self.tracker = tracker or get_tracker()
+        self.scanner = scanner or OpenAIScanner()
+        
+        # Determine config directory
+        if config_dir is None:
+            config_dir = Path.home() / ".openai_cost_tracker"
+            if not os.access(Path.home(), os.W_OK):
+                config_dir = Path.cwd() / ".openai_cost_tracker"
+        
+        self.config_dir = Path(config_dir)
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load environment from config directory if exists
+        env_file = self.config_dir / ".env"
+        if env_file.exists():
+            load_dotenv(env_file)
+        
+        # Also try current directory
+        if Path(".env").exists():
+            load_dotenv(".env")
+        
+        # Initialize email config manager
+        self.email_config = EmailConfigManager(config_dir=self.config_dir)
+        self.report_email = os.getenv("COST_REPORT_EMAIL")
+        self.report_time = os.getenv("COST_REPORT_TIME", "09:00")
+        self.scan_root = os.getenv("OPENAI_SCAN_ROOT")
+        
+        # State file
+        self.state_file = self.config_dir / "monitor_state.json"
+        
+        if not self.report_email:
+            logger.warning("No report email configured. Run: openai-cost-config-email")
+        elif not self.email_config.is_configured():
+            logger.warning("Email provider not configured. Run: openai-cost-config-email")
+    
+    def format_currency(self, amount: float) -> str:
+        """Format currency amount"""
+        return f"${amount:,.4f}"
+    
+    def generate_daily_report(self, days: int = 1) -> str:
+        """Generate daily cost report"""
+        end_date = datetime.utcnow().isoformat()
+        start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        
+        summary = self.tracker.get_usage_summary(
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        total_cost = summary['total_cost_usd']
+        total_calls = summary['total_calls']
+        
+        if total_calls == 0:
+            return f"""OpenAI API Cost Report - {datetime.now().strftime('%Y-%m-%d')}
+
+No API calls recorded in the last {days} day(s).
+
+This is normal if no services have made OpenAI API calls yet.
+"""
+        
+        avg_cost = total_cost / total_calls if total_calls > 0 else 0
+        
+        report = []
+        report.append("=" * 80)
+        report.append(f"💰 OpenAI API Cost Report - {datetime.now().strftime('%Y-%m-%d')}")
+        report.append("=" * 80)
+        report.append("")
+        report.append(f"📊 Period: Last {days} day(s)")
+        report.append(f"📊 Total Cost: {self.format_currency(total_cost)}")
+        report.append(f"📞 Total API Calls: {total_calls:,}")
+        report.append(f"📈 Average Cost per Call: {self.format_currency(avg_cost)}")
+        report.append("")
+        
+        # By Service
+        if summary['by_service']:
+            report.append("📋 COSTS BY SERVICE:")
+            report.append("-" * 80)
+            for service, data in sorted(summary['by_service'].items(), key=lambda x: x[1]['cost'], reverse=True):
+                percentage = (data['cost'] / total_cost * 100) if total_cost > 0 else 0
+                report.append(f"  {service:40s} {self.format_currency(data['cost']):>15s} ({data['calls']:>4d} calls, {percentage:>5.1f}%)")
+            report.append("")
+        
+        # By API Key
+        if summary.get('by_api_key'):
+            report.append("🔑 COSTS BY API KEY:")
+            report.append("-" * 80)
+            for api_key, data in sorted(summary['by_api_key'].items(), key=lambda x: x[1]['cost'], reverse=True):
+                percentage = (data['cost'] / total_cost * 100) if total_cost > 0 else 0
+                services_str = ", ".join(data['services'][:3])
+                if len(data['services']) > 3:
+                    services_str += f" (+{len(data['services'])-3} more)"
+                report.append(f"  Key: {api_key[:16]}...")
+                report.append(f"    Cost: {self.format_currency(data['cost'])} ({data['calls']} calls, {percentage:.1f}%)")
+                report.append(f"    Used by: {services_str}")
+            report.append("")
+        
+        report.append("=" * 80)
+        report.append("Generated by OpenAI Cost Tracker")
+        
+        return "\n".join(report)
+    
+    def send_email(self, subject: str, body: str, to_email: Optional[str] = None) -> bool:
+        """Send email report using configured provider"""
+        if not to_email:
+            to_email = self.report_email
+        
+        if not to_email:
+            logger.error("No recipient email configured")
+            return False
+        
+        if not self.email_config.is_configured():
+            logger.error("Email provider not configured. Run: openai-cost-config-email")
+            return False
+        
+        html_body = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px; }}
+                .container {{ background-color: #ffffff; padding: 20px; border-radius: 5px; border: 1px solid #ddd; }}
+                pre {{ font-family: 'Courier New', monospace; background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #ddd; white-space: pre-wrap; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <pre>{body.replace('<', '&lt;').replace('>', '&gt;')}</pre>
+            </div>
+        </body>
+        </html>
+        """
+        
+        if self.email_config.send_email(to_email, subject, body, html_body):
+            logger.info(f"✅ Daily cost report sent to {to_email}")
+            return True
+        else:
+            logger.error(f"❌ Failed to send email to {to_email}")
+            return False
+    
+    def should_send_report(self) -> bool:
+        """Check if it's time to send daily report"""
+        import json
+        state = {}
+        if self.state_file.exists():
+            try:
+                with open(self.state_file, 'r') as f:
+                    state = json.load(f)
+            except:
+                pass
+        
+        today = datetime.now().date().isoformat()
+        if state.get("last_report_date") != today:
+            report_hour, report_min = map(int, self.report_time.split(':'))
+            now = datetime.now()
+            if now.hour >= report_hour or (now.hour == report_hour and now.minute >= report_min):
+                return True
+        return False
+    
+    def send_daily_report(self) -> bool:
+        """Send daily report if needed"""
+        if not self.should_send_report():
+            return False
+        
+        logger.info("📧 Generating daily cost report...")
+        report = self.generate_daily_report(days=1)
+        subject = f"OpenAI API Cost Report - {datetime.now().strftime('%Y-%m-%d')}"
+        
+        if self.send_email(subject, report):
+            import json
+            state = {"last_report_date": datetime.now().date().isoformat()}
+            with open(self.state_file, 'w') as f:
+                json.dump(state, f)
+            return True
+        return False
+    
+    def run_initial_scan(self):
+        """Run initial scan"""
+        registry = self.scanner.load_registry()
+        if registry is None:
+            logger.info("🔍 Running initial OpenAI usage scan...")
+            try:
+                usages = self.scanner.scan_and_save()
+                logger.info(f"✅ Scan complete: {len(usages)} files found")
+            except Exception as e:
+                logger.error(f"❌ Scan failed: {e}")
+        else:
+            logger.info(f"📋 Using existing registry")
+    
+    def run(self, check_interval: int = 300, run_scan: bool = True):
+        """Run monitoring loop"""
+        logger.info("🚀 Cost monitoring service started")
+        
+        if run_scan:
+            self.run_initial_scan()
+        
+        if self.report_email:
+            logger.info("📧 Sending initial cost report...")
+            report = self.generate_daily_report(days=7)
+            subject = f"OpenAI API Cost Report - Initial Summary"
+            self.send_email(subject, report)
+        
+        while True:
+            try:
+                if self.should_send_report():
+                    self.send_daily_report()
+                
+                summary = self.tracker.get_usage_summary()
+                if summary['total_calls'] > 0:
+                    logger.info(f"💰 Total: {self.format_currency(summary['total_cost_usd'])} ({summary['total_calls']} calls)")
+                
+                time.sleep(check_interval)
+            except KeyboardInterrupt:
+                logger.info("🛑 Stopped")
+                break
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                time.sleep(check_interval)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    monitor = CostMonitor()
+    monitor.run()
+
