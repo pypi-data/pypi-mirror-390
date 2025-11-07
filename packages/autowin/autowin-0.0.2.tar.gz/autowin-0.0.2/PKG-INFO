@@ -1,0 +1,220 @@
+Metadata-Version: 2.3
+Name: autowin
+Version: 0.0.2
+Summary: 一个基于 pywinauto 和 pyautogui 的自用 Windows 自动化库。
+Author: Xiaoqiang
+Author-email: xiaoqiangclub@hotmail.com
+Requires-Python: >=3.10
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: Pillow (>=12.0.0)
+Requires-Dist: httpx (>=0.28.1)
+Requires-Dist: parsel (>=1.10.0)
+Requires-Dist: pyautogui (>=0.9.54)
+Requires-Dist: pynput (>=1.8.1)
+Requires-Dist: pyperclip (>=1.11.0)
+Requires-Dist: pywinauto (>=0.6.9)
+Description-Content-Type: text/markdown
+
+# ✨ AutoWin: 基于 pywinauto 和 pyautogui 的 Windows 自动化库
+
+[![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Poetry](https://img.shields.io/badge/Poetry-Enabled-brightgreen)](https://python-poetry.org/)
+
+## 📝 项目简介
+
+AutoWin 是一个强大且易用的 Windows 自动化库，它封装了 [`pywinauto`](https://pywinauto.readthedocs.io/en/latest/) 和 [`pyautogui`](https://pyautogui.readthedocs.io/en/latest/) 的核心功能，并提供了一套统一、高层的 API。通过 AutoWin，开发者可以轻松实现 Windows 桌面应用程序的自动化操作，包括窗口管理、UI 控件交互、鼠标键盘模拟、屏幕截图与图像识别以及剪贴板操作。
+
+AutoWin 的设计理念是提供一个健壮、可靠且用户友好的自动化解决方案，内置了日志记录、重试机制和完善的错误处理，以应对自动化过程中可能遇到的各种复杂情况。
+
+## 🚀 主要特性
+
+*   **扁平化 API**: 将核心功能提升至顶层，可以直接通过 `autowin.click()`、`autowin.get_window()` 等方式调用，无需关心内部模块结构。
+*   **窗口操作**: 查找、激活、最大化、最小化、恢复、关闭、移动、调整窗口大小。
+*   **控件交互**: 查找、点击按钮、输入文本、选择列表项、操作复选框等。
+*   **鼠标键盘**: 模拟点击、双击、右键、拖拽、滚动、输入文本、按键组合。
+*   **屏幕感知**: 截取屏幕、在屏幕上查找图像并点击。
+*   **剪贴板**: 复制文本到剪贴板，从剪贴板粘贴文本。
+*   **应用管理**: 启动应用程序、打开URL、获取网页标题。
+*   **统一事件监听**: 提供 `start_listening` 和 `stop_listening` 统一接口，用于监听鼠标、键盘事件、剪贴板内容变化和热键。
+*   **健壮性**: 内置可配置的重试机制（支持重试次数、延迟和指数退避），提高操作成功率。
+*   **控件信息**: 提供 `print_control_info` API，用于打印窗口中所有控件的详细标识符，方便UI自动化定位。
+*   **可观测性**: 完善的日志系统，记录自动化脚本的执行过程和关键信息。
+*   **错误处理**: 详细的自定义异常，帮助快速定位和解决问题。
+*   **灵活配置**: 支持通过全局 `settings` 对象调整模块行为（如超时时间、日志级别、重试策略）。
+
+## 📦 安装
+
+您可以通过 `pip` 直接安装 AutoWin：
+
+```bash
+pip install autowin
+```
+
+### 从源代码安装 (使用 Poetry)
+
+如果您希望从源代码安装或进行开发，AutoWin 使用 [Poetry](https://python-poetry.org/) 进行项目管理和依赖安装。请确保您的系统已安装 Poetry。
+
+1.  **克隆仓库**:
+    ```bash
+    git clone https://github.com/your_username/autowin.git
+    cd autowin
+    ```
+
+2.  **安装依赖**:
+    ```bash
+    poetry install
+    ```
+
+3.  **激活虚拟环境**:
+    ```bash
+    poetry shell
+    ```
+
+## 💡 使用示例
+
+以下是一个使用 AutoWin 自动化计算器的示例，展示了其简洁的 API 设计。
+
+```python
+import autowin
+import time
+import logging
+
+# --- 1. 基本配置 ---
+# 您可以按需调整全局设置
+autowin.settings.LOG_LEVEL = logging.INFO
+autowin.settings.DEFAULT_TIMEOUT = 15  # 增加默认超时时间
+
+def calculator_automation():
+    """自动化计算器执行 1 + 2 = 3 的过程。"""
+    try:
+        # --- 2. 启动应用并获取窗口 ---
+        autowin.logger.info("🚀 正在启动计算器...")
+        autowin.start_app(r"C:\Windows\System32\calc.exe", wait_time=2)
+        
+        # 获取计算器窗口
+        calc_window = autowin.get_window(title="计算器")
+        autowin.activate_window(calc_window)
+        autowin.logger.info("✅ 成功获取并激活计算器窗口。")
+
+        # --- 3. 控件交互 ---
+        autowin.logger.info("🖱️ 正在执行计算: 1 + 2 = ?")
+        # 点击 "1"
+        autowin.click_control(autowin.get_control(calc_window, title="一", auto_id="num1Button"))
+        # 点击 "+"
+        autowin.click_control(autowin.get_control(calc_window, title="加", auto_id="plusButton"))
+        # 点击 "2"
+        autowin.click_control(autowin.get_control(calc_window, title="二", auto_id="num2Button"))
+        # 点击 "="
+        autowin.click_control(autowin.get_control(calc_window, title="等于", auto_id="equalButton"))
+        
+        time.sleep(1) # 等待计算结果
+
+        # --- 4. 获取结果并验证 ---
+        result_display = autowin.get_control(calc_window, auto_id="CalculatorResults")
+        result_text = autowin.get_text(result_display)
+        
+        if "3" in result_text:
+            autowin.logger.info(f"✅ 计算结果正确: {result_text.strip()}")
+        else:
+            autowin.logger.error(f"❌ 计算结果错误: {result_text.strip()}")
+
+        # --- 5. 屏幕截图 ---
+        screenshot_path = autowin.take_screenshot("calculator_result.png")
+        autowin.logger.info(f"📸 已将结果截图保存至: {screenshot_path}")
+
+    except autowin.WindowNotFoundError as e:
+        autowin.logger.error(f"❌ 窗口未找到: {e}")
+    except autowin.ControlNotFoundError as e:
+        autowin.logger.error(f"❌ 控件未找到: {e}")
+    except Exception as e:
+        autowin.logger.error(f"❌ 发生未知错误: {e}")
+    finally:
+        # --- 6. 关闭应用 ---
+        try:
+            calc_window = autowin.get_window(title="计算器", timeout=2)
+            if calc_window:
+                autowin.close_window(calc_window)
+                autowin.logger.info("✅ 计算器已关闭。")
+        except autowin.WindowNotFoundError:
+            autowin.logger.warning("⚠️ 计算器窗口已不存在。")
+        
+        autowin.logger.info("--- 自动化流程结束 ---")
+
+def hotkey_listener_example():
+    """展示如何监听热键。"""
+    print("\n--- 热键监听示例 ---")
+    print("按下 Ctrl+Alt+H 触发回调。按 Esc 键停止监听。")
+
+    def on_hotkey_activate():
+        print("🔥 热键 Ctrl+Alt+H 已被按下！")
+
+    # 启动热键监听
+    hotkey_listener = autowin.start_listening(
+        target='hotkey', 
+        hotkey=['ctrl', 'alt', 'h'],
+        on_activate=on_hotkey_activate
+    )
+
+    # 启动一个独立的键盘监听来捕获 Esc 键以停止程序
+    def on_key_press(key):
+        if key == autowin.listener.keyboard.Key.esc:
+            print("🛑 检测到 Esc，正在停止所有监听...")
+            autowin.stop_listening(hotkey_listener)
+            return False # 返回 False 以停止此键盘监听器
+    
+    keyboard_listener = autowin.start_listening(target='keyboard', on_press=on_key_press)
+    
+    # 阻塞主线程直到监听器结束
+    keyboard_listener.join()
+    print("--- 监听结束 ---")
+
+
+if __name__ == "__main__":
+    calculator_automation()
+    hotkey_listener_example()
+```
+
+## 📚 API 文档
+
+随着 API 的扁平化，所有核心功能都可以直接从 `autowin` 模块导入和调用。详细的函数签名和说明请直接参考源代码或使用 `help(autowin)` 查看。
+
+主要的函数包括：
+
+-   **应用与核心**: `start_app`, `connect_app`, `get_current_app`, `set_backend`, `print_control_info`, `get_url_title`
+-   **窗口操作**: `get_window`, `activate_window`, `maximize_window`, `minimize_window`, `restore_window`, `close_window`, `move_window`, `resize_window`, `get_window_info`, `set_topmost`, `remove_topmost`, `is_topmost`
+-   **控件操作**: `get_control`, `click_control`, `set_text`, `get_text`, `select_item`, `is_checked`, `check_control`, `uncheck_control`, `get_control_properties`
+-   **输入操作**: `click`, `double_click`, `right_click`, `move_to`, `drag_to`, `scroll`, `type_text`, `press_key`, `hotkey`
+-   **视觉与截图**: `take_screenshot`, `find_image`, `click_image`, `wait_for_image`, `wait_until_image_disappears`
+-   **剪贴板**: `copy_to_clipboard`, `paste_from_clipboard`
+-   **监听器**: `start_listening`, `stop_listening`
+-   **辅助工具**: `sleep`, `get_mouse_position`, `get_screen_resolution`, `retry`
+-   **配置与异常**: `settings`, `logger`, `AutoWinError`, `WindowNotFoundError`, `ControlNotFoundError`, `ImageNotFoundError`, `ClipboardError`, `AutoWinConfigError`, `AutoWinInputError`
+-   **消息发送**: `send_dingding_message`, `send_dingding_message_async`, `send_wecom_message`, `send_wecom_message_async`
+
+## ️开发与贡献
+
+欢迎通过 Pull Request 贡献代码，或提交 Issue 报告 Bug 和提出新功能建议。
+
+### 代码风格
+
+本项目遵循 [PEP 8](https://www.python.org/dev/peps/pep-0008/) 规范。
+
+## 📄 许可证
+
+本项目采用 MIT 许可证。详见 `LICENSE` 文件。
+
+## ❤️ 鸣谢
+
+*   [pywinauto](https://pywinauto.readthedocs.io/en/latest/): 强大的 Windows GUI 自动化库。
+*   [pyautogui](https://pyautogui.readthedocs.io/en/latest/): 跨平台的 GUI 自动化工具。
+*   [pyperclip](https://pyperclip.readthedocs.io/en/latest/): 跨平台剪贴板模块。
+*   [Pillow](https://python-pillow.org/): Python 图像处理库。
+
+---
+**作者**: Xiaoqiang  
+**微信公众号**: XiaoqiangClub
