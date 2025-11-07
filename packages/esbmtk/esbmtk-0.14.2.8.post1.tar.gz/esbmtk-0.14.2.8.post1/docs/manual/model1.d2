@@ -1,0 +1,51 @@
+m: Model Definition {
+  model: Model {
+    shape: class
+
+    -start: "0 yrs"
+    -stop: "10 kyr"
+    -max_timestep: "1kyr"
+    -elements: "Carbon, Phosphor"
+  }
+  element: ElementProperties {
+    shape: class
+    -name: Carbon
+    -r: isotopic abundance
+    -d_label: d13C
+  }
+
+  species: SpeciesProperties {
+    shape: class
+    -name: CO2
+    weight: 44.0095
+  }
+}
+
+geometry: Geometry Defintion {
+  sb: SurfaceBox {
+    shape: class
+    -volume: "3E16 m**3"
+    -concentration: "0 umol/kg"
+    -species: PO4
+  }
+
+  c: Species2Species {
+    shape: class
+    -source: SurfaceBox
+    -sink: DeebBox
+    -ctype: scale_by_concentration
+  }
+
+  db: DeepBox {
+    shape: class
+    -volume: "3E16 m**3"
+    -concentration: "0 umol/kg"
+    -species: PO4
+  }
+
+  sb -> c
+  c -> db
+}
+
+m.model -> m.ElementProperties -> m.SpeciesProperties
+m -> geometry
