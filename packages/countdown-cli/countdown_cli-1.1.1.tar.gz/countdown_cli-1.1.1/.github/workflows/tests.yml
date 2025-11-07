@@ -1,0 +1,71 @@
+name: Tests
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build-package:
+    name: Build & verify package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: hynek/build-and-inspect-python-package@v2
+        id: baipp
+
+    outputs:
+      python-versions: ${{ steps.baipp.outputs.supported_python_classifiers_json_array }}
+
+  tests:
+    name: Tests on ${{ matrix.python-version }}
+    needs: build-package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJson(needs.build-package.outputs.python-versions) }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pre-built packages
+        uses: actions/download-artifact@v4
+        with:
+          name: Packages
+          path: dist
+      - run: tar xf dist/*.tar.gz --strip-components=1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install nox
+        run: uv tool install nox
+
+      - name: Run tests with nox
+        run: uvx nox --force-color --python=${{ matrix.python-version }} -s tests
+
+      - name: Upload coverage to Codecov (Python 3.12 only)
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+
+  required-checks-pass:
+    name: Ensure everything required is passing for branch protection
+    if: always()
+
+    needs:
+      - tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
