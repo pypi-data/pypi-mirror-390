@@ -1,0 +1,74 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "setuptools_scm>=8"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carconnectivity"
+description = "Library for retrieving information from car connectivity services"
+dynamic = ["version"]
+requires-python = ">=3.9"
+authors = [
+    { name = "Till Steinbach" }
+]
+dependencies = [
+    "argparse",
+    "cryptography",
+    "JSON_minify~=0.3.0",
+    "pytimeparse~=1.1.8",
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries"
+]
+
+[project.optional-dependencies]
+connectors = [
+    'carconnectivity-connector-volkswagen',
+    'carconnectivity-connector-skoda',
+    'carconnectivity-connector-seatcupra',
+    'carconnectivity-connector-tronity',
+]
+plugins = [
+    'carconnectivity-plugin-mqtt',
+    'carconnectivity-plugin-mqtt_homeassistant',
+    'carconnectivity-plugin-abrp',
+    'carconnectivity-plugin-homekit',
+    'carconnectivity-plugin-webui',
+]
+images = [
+    'pillow~=12.0.0',
+    'ascii_magic~=2.7.2'
+
+]
+all = [
+    'carconnectivity[images,connectors,plugins]'
+]
+
+[project.urls]
+
+[project.scripts]
+carconnectivity = "carconnectivity.carconnectivity_base:main"
+allcars = "all_cars:main"
+
+[tool.setuptools_scm]
+write_to = "src/carconnectivity/_version.py"
+
+[tool.pylint.format]
+max-line-length = 160
+ignore-patterns= "_version.py"
+
+[tool.bandit]
+targets = "carconnectivity"
