@@ -1,0 +1,146 @@
+Metadata-Version: 2.3
+Name: logic-plugin-manager
+Version: 1.0.0
+Summary: A utility for parsing and managing plugins in Logic Pro
+Keywords: logic pro,audio plugins,au,plugin manager,music production
+Author: h
+Author-email: h <h@kotikot.com>
+License: # License
+         
+         This project is dual-licensed under the GNU Affero General Public License v3.0
+         (AGPL-3.0) and a Commercial License.
+         
+         ## For Open Source Projects (AGPL-3.0)
+         
+         This program is free software: you can redistribute it and/or modify
+         it under the terms of the GNU Affero General Public License as published by
+         the Free Software Foundation, either version 3 of the License, or
+         (at your option) any later version.
+         
+         This program is distributed in the hope that it will be useful,
+         but WITHOUT ANY WARRANTY; without even the implied warranty of
+         MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+         GNU Affero General Public License for more details.
+         
+         You should have received a copy of the GNU Affero General Public License
+         along with this program. If not, see <https://www.gnu.org/licenses/>.
+         
+         ## For Commercial Projects
+         
+         If you want to use this library in a proprietary/commercial application
+         without complying with the AGPL-3.0 terms (i.e., without releasing your
+         source code), you must obtain a commercial license.
+         
+         See [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) for details.
+         
+         **Contact:** h@kotikot.com
+         
+         ---
+         
+         ## Third-Party Licenses
+         
+         This library depends on third-party packages with their own licenses.
+         See [LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md) for details.
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: Topic :: Multimedia :: Sound/Audio
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
+Classifier: License :: Other/Proprietary License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Operating System :: MacOS
+Classifier: Typing :: Typed
+Requires-Dist: rapidfuzz>=3.14.3 ; extra == 'search'
+Requires-Python: >=3.13
+Project-URL: Commercial License, https://github.com/kotikotprojects/logic-plugin-manager/blob/main/LICENSE-COMMERCIAL.md
+Project-URL: Homepage, https://git.kotikot.com/lib/logic-plugin-manager
+Project-URL: Repository, https://github.com/kotikotprojects/logic-plugin-manager
+Provides-Extra: search
+Description-Content-Type: text/markdown
+
+# Logic Plugin Manager
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
+[![Commercial License](https://img.shields.io/badge/License-Commercial-green.svg)](LICENSE-COMMERCIAL.md)
+[![PyPI version](https://badge.fury.io/py/logic-plugin-manager.svg)](https://pypi.org/project/logic-plugin-manager/)
+[![Python Version](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+
+Programmatic management of Logic Pro audio plugins on macOS.
+
+## Overview
+
+Logic Plugin Manager is a Python library that provides programmatic access to Logic Pro's plugin management system. It enables automated discovery, categorization, and organization of macOS Audio Unit plugins through Logic's internal tag database.
+
+**Key Capabilities:**
+- Automated plugin discovery and indexing
+- Hierarchical category management
+- Advanced search with fuzzy matching
+- Bulk operations on plugin collections
+- Programmatic metadata manipulation
+
+## Requirements
+
+- **Python**: 3.13 or higher
+- **Operating System**: macOS
+- **Dependencies**: None (core functionality), `rapidfuzz>=3.14.3` (optional, for fuzzy search)
+
+## Installation
+
+```bash
+pip install logic-plugin-manager
+```
+
+For fuzzy search functionality:
+```bash
+pip install logic-plugin-manager[search]
+```
+
+## Usage
+
+```python
+from logic_plugin_manager import Logic
+
+# Initialize and discover plugins
+logic = Logic()
+
+# Access plugin collection
+for plugin in logic.plugins.all():
+    print(f"{plugin.full_name} - {plugin.type_name.display_name}")
+
+# Search with scoring
+results = logic.plugins.search("reverb", use_fuzzy=True, max_results=10)
+
+# Category management
+category = logic.introduce_category("Production Tools")
+plugin = logic.plugins.get_by_full_name("fabfilter: pro-q 3")
+plugin.add_to_category(category)
+```
+
+## Architecture
+
+The library is organized into three primary modules:
+
+- **`components`**: Audio Unit component and bundle parsing
+- **`logic`**: High-level plugin management interface
+- **`tags`**: Category system and tag database operations
+
+## Documentation
+
+Full documentation available at: https://logic-plugin-manager.readthedocs.io
+
+## License
+
+This project is dual-licensed:
+
+**Open Source (AGPL-3.0)**: Free for open source projects. See [LICENSE.md](LICENSE.md).
+
+**Commercial License**: Required for closed-source or commercial applications. See [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).
+
+Contact: h@kotikot.com
+
+## Links
+
+- **Repository**: https://github.com/kotikotprojects/logic-plugin-manager
+- **PyPI**: https://pypi.org/project/logic-plugin-manager/
+- **Documentation**: https://logic-plugin-manager.readthedocs.io
