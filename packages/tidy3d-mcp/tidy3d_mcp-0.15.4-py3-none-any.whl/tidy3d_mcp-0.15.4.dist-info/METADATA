@@ -1,0 +1,47 @@
+Metadata-Version: 2.3
+Name: tidy3d-mcp
+Version: 0.15.4
+Summary: Local stdio FastMCP server for Tidy3D
+Author: Flexcompute
+License: Proprietary
+Requires-Dist: fastmcp>=2.12.3
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+
+# Tidy3D MCP
+
+A small local MCP server that lets your IDE or AI assistant validate Tidy3D simulations and control the in-editor 3D viewer (rotate, toggle structures, take screenshots).
+
+## What You Need
+
+- A Tidy3D API key (from your Tidy3D account).
+- The Tidy3D extension for your IDE:
+  - Visual Studio Marketplace: https://marketplace.visualstudio.com/items?itemName=Flexcompute.tidy3d
+  - Open VSX Registry: https://open-vsx.org/extension/Flexcompute/tidy3d
+
+## Typical Use
+
+- In VS Code or Cursor, install the Tidy3D extension. It automatically registers and runs this MCP server. When prompted, enter your API key. You can then ask your assistant to "validate my Tidy3D simulation" or "capture a screenshot," and the viewer responds inside the editor.
+
+## Manual Use (Advanced Hosts)
+
+- If your MCP host expects an stdio command, run:
+
+```bash
+tidy3d-mcp --api-key YOUR_TIDY3D_API_KEY
+```
+
+- Add `--enable-viewer` to expose viewer controls (rotate, visibility, capture).
+
+## Available Tools
+
+- `validate_simulation(file?, symbol?, index?, viewer_id?)` — Validate or refresh a simulation; returns status, warnings, and a reusable `viewer_id`.
+- `rotate_viewer(viewer_id, direction)` — Align to `TOP|BOTTOM|LEFT|RIGHT|FRONT|BACK`.
+- `show_structures(viewer_id, visibility[])` — Show/hide structures by boolean flags.
+- `capture(viewer_id)` — Return a screenshot image.
+
+## Troubleshooting
+
+- Assistant can’t control the viewer: install/enable the Tidy3D extension and verify your API key.
+- Viewer tools missing when running manually: include `--enable-viewer`.
+- Still stuck: re-run the extension’s setup command in your IDE and confirm network access.
