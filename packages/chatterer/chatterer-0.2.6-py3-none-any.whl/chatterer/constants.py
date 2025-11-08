@@ -1,0 +1,5 @@
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5"
+DEFAULT_GOOGLE_MODEL = "gemini-2.5-flash"
+DEFAULT_OPENAI_MODEL = "gpt-5-mini"
+DEFAULT_OPENROUTER_MODEL = "z-ai/glm-4.6"
+DEFAULT_XAI_MODEL = "grok-4-fast-non-reasoning"
