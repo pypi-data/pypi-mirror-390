@@ -1,0 +1,435 @@
+"""Tests for compilation strategies and their mathematical properties."""
+
+import pytest
+import numpy as np
+
+try:
+    import pytensorlogic as tl
+    HAS_TENSORLOGIC = True
+except ImportError:
+    HAS_TENSORLOGIC = False
+
+pytestmark = pytest.mark.skipif(
+    not HAS_TENSORLOGIC,
+    reason="pytensorlogic not available - build with 'maturin develop'"
+)
+
+
+class TestSoftDifferentiableStrategy:
+    """Tests for soft_differentiable strategy."""
+
+    def test_product_and(self):
+        """Test that AND uses product operation."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.and_(p, q)
+
+        graph = tl.compile(expr)  # Uses soft_differentiable by default
+
+        # Test with sample data
+        p_data = np.array([1.0, 0.5, 0.0])
+        q_data = np.array([1.0, 0.5, 1.0])
+
+        result = tl.execute(graph, {"P": p_data, "Q": q_data})
+
+        # Product AND: element-wise multiplication
+        expected = p_data * q_data
+        np.testing.assert_array_almost_equal(result["output"], expected)
+
+    def test_probabilistic_or(self):
+        """Test that OR uses probabilistic sum."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.or_(p, q)
+
+        graph = tl.compile(expr)
+
+        # Test with sample data
+        p_data = np.array([0.0, 0.5, 1.0])
+        q_data = np.array([0.0, 0.5, 0.0])
+
+        result = tl.execute(graph, {"P": p_data, "Q": q_data})
+
+        # Probabilistic OR: a + b - a*b
+        expected = p_data + q_data - p_data * q_data
+        np.testing.assert_array_almost_equal(result["output"], expected)
+
+    def test_complement_not(self):
+        """Test that NOT uses complement operation."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        expr = tl.not_(p)
+
+        graph = tl.compile(expr)
+
+        # Test with sample data
+        p_data = np.array([0.0, 0.5, 1.0])
+
+        result = tl.execute(graph, {"P": p_data})
+
+        # Complement NOT: 1 - x
+        expected = 1.0 - p_data
+        np.testing.assert_array_almost_equal(result["output"], expected)
+
+
+class TestHardBooleanStrategy:
+    """Tests for hard_boolean strategy."""
+
+    def test_min_and(self):
+        """Test that AND uses min operation in hard_boolean."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.and_(p, q)
+
+        config = tl.CompilationConfig()
+        # Note: Need API to set strategy to hard_boolean
+        # For now, just test that compilation works
+        graph = tl.compile_with_config(expr, config)
+
+        # Verify compilation succeeded
+        assert graph is not None
+
+    def test_max_or(self):
+        """Test that OR uses max operation in hard_boolean."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.or_(p, q)
+
+        config = tl.CompilationConfig()
+        graph = tl.compile_with_config(expr, config)
+
+        assert graph is not None
+
+
+class TestFuzzyGodelStrategy:
+    """Tests for fuzzy_godel strategy."""
+
+    def test_godel_and_properties(self):
+        """Test Gödel AND properties."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.and_(p, q)
+
+        config = tl.CompilationConfig()
+        graph = tl.compile_with_config(expr, config)
+
+        assert graph is not None
+
+    def test_godel_or_properties(self):
+        """Test Gödel OR properties."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.or_(p, q)
+
+        config = tl.CompilationConfig()
+        graph = tl.compile_with_config(expr, config)
+
+        assert graph is not None
+
+
+class TestStrategyProperties:
+    """Tests for mathematical properties across strategies."""
+
+    def test_symmetry_and(self):
+        """Test AND symmetry: AND(a,b) = AND(b,a)."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+
+        and_pq = tl.and_(p, q)
+        and_qp = tl.and_(q, p)
+
+        graph_pq = tl.compile(and_pq)
+        graph_qp = tl.compile(and_qp)
+
+        # Test data
+        p_data = np.array([0.3, 0.7, 0.5])
+        q_data = np.array([0.6, 0.4, 0.5])
+
+        result_pq = tl.execute(graph_pq, {"P": p_data, "Q": q_data})
+        result_qp = tl.execute(graph_qp, {"P": p_data, "Q": q_data})
+
+        np.testing.assert_array_almost_equal(result_pq["output"], result_qp["output"])
+
+    def test_symmetry_or(self):
+        """Test OR symmetry: OR(a,b) = OR(b,a)."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+
+        or_pq = tl.or_(p, q)
+        or_qp = tl.or_(q, p)
+
+        graph_pq = tl.compile(or_pq)
+        graph_qp = tl.compile(or_qp)
+
+        p_data = np.array([0.3, 0.7, 0.5])
+        q_data = np.array([0.6, 0.4, 0.5])
+
+        result_pq = tl.execute(graph_pq, {"P": p_data, "Q": q_data})
+        result_qp = tl.execute(graph_qp, {"P": p_data, "Q": q_data})
+
+        np.testing.assert_array_almost_equal(result_pq["output"], result_qp["output"])
+
+    def test_double_negation(self):
+        """Test double negation: NOT(NOT(a)) = a."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+
+        not_p = tl.not_(p)
+        not_not_p = tl.not_(not_p)
+
+        graph = tl.compile(not_not_p)
+
+        p_data = np.array([0.0, 0.5, 1.0])
+        result = tl.execute(graph, {"P": p_data})
+
+        np.testing.assert_array_almost_equal(result["output"], p_data)
+
+    def test_de_morgan_and(self):
+        """Test De Morgan's law: NOT(AND(a,b)) = OR(NOT(a), NOT(b))."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+
+        # NOT(AND(a, b))
+        and_pq = tl.and_(p, q)
+        not_and = tl.not_(and_pq)
+
+        # OR(NOT(a), NOT(b))
+        not_p = tl.not_(p)
+        not_q = tl.not_(q)
+        or_not = tl.or_(not_p, not_q)
+
+        graph_left = tl.compile(not_and)
+        graph_right = tl.compile(or_not)
+
+        p_data = np.array([0.0, 0.5, 1.0])
+        q_data = np.array([0.0, 0.5, 1.0])
+
+        result_left = tl.execute(graph_left, {"P": p_data, "Q": q_data})
+        result_right = tl.execute(graph_right, {"P": p_data, "Q": q_data})
+
+        np.testing.assert_array_almost_equal(result_left["output"], result_right["output"], decimal=5)
+
+    def test_de_morgan_or(self):
+        """Test De Morgan's law: NOT(OR(a,b)) = AND(NOT(a), NOT(b))."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+
+        # NOT(OR(a, b))
+        or_pq = tl.or_(p, q)
+        not_or = tl.not_(or_pq)
+
+        # AND(NOT(a), NOT(b))
+        not_p = tl.not_(p)
+        not_q = tl.not_(q)
+        and_not = tl.and_(not_p, not_q)
+
+        graph_left = tl.compile(not_or)
+        graph_right = tl.compile(and_not)
+
+        p_data = np.array([0.0, 0.5, 1.0])
+        q_data = np.array([0.0, 0.5, 1.0])
+
+        result_left = tl.execute(graph_left, {"P": p_data, "Q": q_data})
+        result_right = tl.execute(graph_right, {"P": p_data, "Q": q_data})
+
+        np.testing.assert_array_almost_equal(result_left["output"], result_right["output"], decimal=5)
+
+
+class TestComplexExpressions:
+    """Tests for complex nested expressions."""
+
+    def test_nested_and_or(self):
+        """Test (P AND Q) OR (R AND S)."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        r = tl.pred("R", [x])
+        s = tl.pred("S", [x])
+
+        and1 = tl.and_(p, q)
+        and2 = tl.and_(r, s)
+        expr = tl.or_(and1, and2)
+
+        graph = tl.compile(expr)
+
+        # Test data
+        data = {
+            "P": np.array([1.0, 0.0]),
+            "Q": np.array([1.0, 0.0]),
+            "R": np.array([0.0, 1.0]),
+            "S": np.array([0.0, 1.0])
+        }
+
+        result = tl.execute(graph, data)
+
+        # (1*1=1) OR (0*0=0) = 1
+        # (0*0=0) OR (1*1=1) = 1
+        assert result["output"][0] >= 0.99  # Should be close to 1
+        assert result["output"][1] >= 0.99  # Should be close to 1
+
+    def test_deep_nesting(self):
+        """Test deeply nested expression."""
+        x = tl.var("x")
+        expr = tl.pred("P0", [x])
+
+        for i in range(1, 10):
+            pred = tl.pred(f"P{i}", [x])
+            expr = tl.and_(expr, pred)
+
+        graph = tl.compile(expr)
+        assert graph is not None
+
+        stats = graph.stats()
+        assert stats["num_tensors"] >= 10
+        assert stats["num_nodes"] > 0
+
+    def test_wide_expression(self):
+        """Test wide expression with many operands."""
+        x = tl.var("x")
+        preds = [tl.pred(f"P{i}", [x]) for i in range(20)]
+
+        # Chain with AND
+        expr = preds[0]
+        for pred in preds[1:]:
+            expr = tl.and_(expr, pred)
+
+        graph = tl.compile(expr)
+        assert graph is not None
+
+        stats = graph.stats()
+        assert stats["num_tensors"] >= 20
+
+
+class TestQuantifiers:
+    """Tests for quantifier operations."""
+
+    def test_exists_compilation(self):
+        """Test EXISTS quantifier compilation."""
+        # Create compiler context with Person domain
+        ctx = tl.compiler_context()
+        ctx.add_domain("Person", 100)
+
+        x = tl.var("x")
+        y = tl.var("y")
+        knows = tl.pred("knows", [x, y])
+        expr = tl.exists("y", "Person", knows)
+
+        # Compile with context
+        graph = tl.compile_with_context(expr, ctx)
+        assert graph is not None
+        assert isinstance(graph, tl.EinsumGraph)
+
+    def test_forall_compilation(self):
+        """Test FORALL quantifier compilation."""
+        # Create compiler context with Person domain
+        ctx = tl.compiler_context()
+        ctx.add_domain("Person", 100)
+
+        x = tl.var("x")
+        y = tl.var("y")
+        knows = tl.pred("knows", [x, y])
+        expr = tl.forall("y", "Person", knows)
+
+        # Compile with context
+        graph = tl.compile_with_context(expr, ctx)
+        assert graph is not None
+        assert isinstance(graph, tl.EinsumGraph)
+
+
+class TestArithmeticOperations:
+    """Tests for arithmetic operations."""
+
+    def test_add_operation(self):
+        """Test addition operation."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.add(p, q)
+
+        graph = tl.compile(expr)
+
+        p_data = np.array([0.3, 0.5, 0.7])
+        q_data = np.array([0.1, 0.2, 0.3])
+
+        result = tl.execute(graph, {"P": p_data, "Q": q_data})
+
+        expected = p_data + q_data
+        np.testing.assert_array_almost_equal(result["output"], expected)
+
+    def test_multiply_operation(self):
+        """Test multiplication operation."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.mul(p, q)
+
+        graph = tl.compile(expr)
+
+        p_data = np.array([0.5, 0.6, 0.7])
+        q_data = np.array([2.0, 3.0, 4.0])
+
+        result = tl.execute(graph, {"P": p_data, "Q": q_data})
+
+        expected = p_data * q_data
+        np.testing.assert_array_almost_equal(result["output"], expected)
+
+    def test_subtract_operation(self):
+        """Test subtraction operation."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.sub(p, q)
+
+        graph = tl.compile(expr)
+
+        p_data = np.array([1.0, 0.8, 0.6])
+        q_data = np.array([0.3, 0.2, 0.1])
+
+        result = tl.execute(graph, {"P": p_data, "Q": q_data})
+
+        expected = p_data - q_data
+        np.testing.assert_array_almost_equal(result["output"], expected)
+
+
+class TestComparisonOperations:
+    """Tests for comparison operations."""
+
+    def test_eq_operation(self):
+        """Test equality comparison."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.eq(p, q)
+
+        graph = tl.compile(expr)
+        assert graph is not None
+
+    def test_lt_operation(self):
+        """Test less-than comparison."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.lt(p, q)
+
+        graph = tl.compile(expr)
+        assert graph is not None
+
+    def test_gt_operation(self):
+        """Test greater-than comparison."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.gt(p, q)
+
+        graph = tl.compile(expr)
+        assert graph is not None

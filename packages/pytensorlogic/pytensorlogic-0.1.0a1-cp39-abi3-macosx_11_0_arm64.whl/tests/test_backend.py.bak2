@@ -1,0 +1,342 @@
+"""
+Backend selection and capability query tests.
+
+Tests the Backend enum, BackendCapabilities class, and related functions.
+"""
+
+import pytest
+import numpy as np
+
+try:
+    import tensorlogic_py as tl
+except ImportError:
+    pytest.skip("tensorlogic_py not installed, run 'maturin develop' first", allow_module_level=True)
+
+
+class TestBackendEnum:
+    """Test the Backend enumeration"""
+
+    def test_backend_constants_exist(self):
+        """Test that Backend constants are accessible"""
+        assert hasattr(tl, 'Backend')
+        # Check class attributes exist
+        backend_cls = tl.Backend
+        assert hasattr(backend_cls, 'AUTO')
+        assert hasattr(backend_cls, 'SCIRS2_CPU')
+        assert hasattr(backend_cls, 'SCIRS2_GPU')
+
+    def test_backend_str_representation(self):
+        """Test string representation of backends"""
+        assert str(tl.Backend.AUTO) == "Auto"
+        assert str(tl.Backend.SCIRS2_CPU) == "SciRS2CPU"
+        assert str(tl.Backend.SCIRS2_GPU) == "SciRS2GPU"
+
+    def test_backend_repr(self):
+        """Test repr representation of backends"""
+        assert "Auto" in repr(tl.Backend.AUTO)
+        assert "SciRS2CPU" in repr(tl.Backend.SCIRS2_CPU)
+        assert "SciRS2GPU" in repr(tl.Backend.SCIRS2_GPU)
+
+
+class TestBackendAvailability:
+    """Test backend availability detection"""
+
+    def test_list_available_backends(self):
+        """Test listing all available backends"""
+        backends = tl.list_available_backends()
+
+        assert isinstance(backends, dict)
+        assert 'Auto' in backends
+        assert 'SciRS2CPU' in backends
+        assert 'SciRS2GPU' in backends
+
+        # Auto and CPU should always be available
+        assert backends['Auto'] is True
+        assert backends['SciRS2CPU'] is True
+
+        # GPU may or may not be available depending on build
+        assert isinstance(backends['SciRS2GPU'], bool)
+
+    def test_get_default_backend(self):
+        """Test getting the default backend"""
+        default = tl.get_default_backend()
+        assert default == tl.Backend.SCIRS2_CPU
+
+
+class TestBackendCapabilities:
+    """Test backend capability queries"""
+
+    def test_get_cpu_capabilities(self):
+        """Test getting CPU backend capabilities"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+
+        assert isinstance(caps, tl.BackendCapabilities)
+        assert caps.name == "SciRS2 Backend"
+        assert len(caps.version) > 0
+
+        # Check devices
+        devices = caps.devices
+        assert isinstance(devices, list)
+        assert "CPU" in devices
+
+        # Check data types
+        dtypes = caps.dtypes
+        assert isinstance(dtypes, list)
+        assert "f64" in dtypes
+        assert "f32" in dtypes
+
+        # Check features
+        features = caps.features
+        assert isinstance(features, list)
+        assert "Autodiff" in features
+        assert "BatchExecution" in features
+
+        # Check max dims
+        assert caps.max_dims > 0
+
+    def test_get_auto_capabilities(self):
+        """Test getting Auto backend capabilities (defaults to CPU)"""
+        caps = tl.get_backend_capabilities(tl.Backend.AUTO)
+        assert isinstance(caps, tl.BackendCapabilities)
+        assert caps.name == "SciRS2 Backend"
+
+    def test_get_capabilities_default(self):
+        """Test getting capabilities without specifying backend"""
+        caps = tl.get_backend_capabilities()
+        assert isinstance(caps, tl.BackendCapabilities)
+
+    def test_supports_device(self):
+        """Test device support queries"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+
+        assert caps.supports_device("CPU") is True
+        assert caps.supports_device("cpu") is True  # Case insensitive
+        # GPU support depends on backend
+        assert isinstance(caps.supports_device("GPU"), bool)
+
+    def test_supports_dtype(self):
+        """Test data type support queries"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+
+        assert caps.supports_dtype("f64") is True
+        assert caps.supports_dtype("f32") is True
+        assert caps.supports_dtype("F64") is True  # Case insensitive
+        assert caps.supports_dtype("nonexistent") is False
+
+    def test_supports_feature(self):
+        """Test feature support queries"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+
+        assert caps.supports_feature("Autodiff") is True
+        assert caps.supports_feature("BatchExecution") is True
+        assert caps.supports_feature("NonExistentFeature") is False
+
+    def test_capabilities_summary(self):
+        """Test capabilities summary string"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+        summary = caps.summary()
+
+        assert isinstance(summary, str)
+        assert "SciRS2 Backend" in summary
+        assert "CPU" in summary
+        assert "Autodiff" in summary
+
+    def test_capabilities_to_dict(self):
+        """Test converting capabilities to dictionary"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+        caps_dict = caps.to_dict()
+
+        assert isinstance(caps_dict, dict)
+        assert 'name' in caps_dict
+        assert 'version' in caps_dict
+        assert 'devices' in caps_dict
+        assert 'dtypes' in caps_dict
+        assert 'features' in caps_dict
+        assert 'max_dims' in caps_dict
+
+        assert caps_dict['name'] == "SciRS2 Backend"
+        assert isinstance(caps_dict['devices'], list)
+        assert isinstance(caps_dict['features'], list)
+
+    def test_capabilities_str(self):
+        """Test __str__ method of capabilities"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+        str_repr = str(caps)
+
+        assert "SciRS2 Backend" in str_repr
+        assert "v" in str_repr  # Version separator
+
+    def test_capabilities_repr(self):
+        """Test __repr__ method of capabilities"""
+        caps = tl.get_backend_capabilities(tl.Backend.SCIRS2_CPU)
+        repr_str = repr(caps)
+
+        assert "BackendCapabilities" in repr_str
+        assert "name='SciRS2 Backend'" in repr_str
+
+
+class TestSystemInfo:
+    """Test system information queries"""
+
+    def test_get_system_info(self):
+        """Test getting comprehensive system information"""
+        info = tl.get_system_info()
+
+        assert isinstance(info, dict)
+
+        # Version information
+        assert 'tensorlogic_version' in info
+        assert 'rust_version' in info
+
+        # Backend information
+        assert 'default_backend' in info
+        assert 'backend_version' in info
+        assert info['default_backend'] == "SciRS2 Backend"
+
+        # Available backends
+        assert 'available_backends' in info
+        backends = info['available_backends']
+        assert isinstance(backends, dict)
+        assert backends['Auto'] is True
+        assert backends['SciRS2CPU'] is True
+
+        # CPU capabilities
+        assert 'cpu_capabilities' in info
+        cpu_caps = info['cpu_capabilities']
+        assert isinstance(cpu_caps, dict)
+        assert 'devices' in cpu_caps
+        assert 'dtypes' in cpu_caps
+        assert 'features' in cpu_caps
+        assert 'max_dims' in cpu_caps
+
+
+class TestExecutionWithBackend:
+    """Test execution with backend selection"""
+
+    def test_execute_default_backend(self):
+        """Test execution with default backend"""
+        # Create simple expression: P(x)
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+
+        # Compile
+        graph = tl.compile(p)
+
+        # Execute with default backend (no backend parameter)
+        p_data = np.array([0.8, 0.9, 0.7])
+        result = tl.execute(graph, {"P": p_data})
+
+        assert isinstance(result, dict)
+        assert "output" in result
+        np.testing.assert_array_almost_equal(result["output"], p_data)
+
+    def test_execute_explicit_cpu_backend(self):
+        """Test execution with explicit CPU backend"""
+        # Create simple expression: AND(P(x), Q(x))
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.and_expr(p, q)
+
+        # Compile
+        graph = tl.compile(expr)
+
+        # Execute with explicit CPU backend
+        p_data = np.array([0.8, 0.9, 0.7])
+        q_data = np.array([0.6, 0.8, 0.9])
+        result = tl.execute(graph, {"P": p_data, "Q": q_data}, backend=tl.Backend.SCIRS2_CPU)
+
+        assert isinstance(result, dict)
+        assert "output" in result
+
+    def test_execute_auto_backend(self):
+        """Test execution with Auto backend"""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+
+        graph = tl.compile(p)
+
+        p_data = np.array([0.8, 0.9, 0.7])
+        result = tl.execute(graph, {"P": p_data}, backend=tl.Backend.AUTO)
+
+        assert isinstance(result, dict)
+        assert "output" in result
+        np.testing.assert_array_almost_equal(result["output"], p_data)
+
+    def test_execute_gpu_backend_error(self):
+        """Test that GPU backend raises appropriate error when not implemented"""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+
+        graph = tl.compile(p)
+
+        p_data = np.array([0.8, 0.9, 0.7])
+
+        with pytest.raises(RuntimeError, match="GPU backend is not yet implemented"):
+            tl.execute(graph, {"P": p_data}, backend=tl.Backend.SCIRS2_GPU)
+
+
+class TestBackendIntegration:
+    """Integration tests for backend selection"""
+
+    def test_backend_workflow(self):
+        """Test complete workflow with backend queries and execution"""
+        # 1. Check available backends
+        backends = tl.list_available_backends()
+        assert backends['SciRS2CPU'] is True
+
+        # 2. Get default backend
+        default = tl.get_default_backend()
+        assert default == tl.Backend.SCIRS2_CPU
+
+        # 3. Query capabilities
+        caps = tl.get_backend_capabilities(default)
+        assert caps.supports_device("CPU")
+        assert caps.supports_dtype("f64")
+        assert caps.supports_feature("Autodiff")
+
+        # 4. Execute with selected backend
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        graph = tl.compile(p)
+
+        p_data = np.array([0.8, 0.9, 0.7])
+        result = tl.execute(graph, {"P": p_data}, backend=default)
+
+        assert "output" in result
+
+    def test_system_info_integration(self):
+        """Test system info provides useful information"""
+        info = tl.get_system_info()
+
+        # Should have version info
+        assert len(info['tensorlogic_version']) > 0
+
+        # Should list CPU backend as available
+        assert info['available_backends']['SciRS2CPU'] is True
+
+        # CPU capabilities should include expected features
+        cpu_caps = info['cpu_capabilities']
+        assert 'CPU' in cpu_caps['devices']
+        assert 'f64' in cpu_caps['dtypes']
+        assert 'Autodiff' in cpu_caps['features']
+
+
+class TestBackendErrorHandling:
+    """Test error handling for backend operations"""
+
+    def test_unavailable_backend_error(self):
+        """Test error when trying to use unavailable backend"""
+        # GPU is currently not available
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        graph = tl.compile(p)
+
+        p_data = np.array([0.8, 0.9, 0.7])
+
+        with pytest.raises(RuntimeError):
+            tl.execute(graph, {"P": p_data}, backend=tl.Backend.SCIRS2_GPU)
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

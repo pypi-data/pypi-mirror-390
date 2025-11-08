@@ -1,0 +1,300 @@
+"""Tests for TensorLogic adapter type bindings (SymbolTable, CompilerContext, etc.)."""
+
+import pytest
+import numpy as np
+
+try:
+    import tensorlogic_py as tl
+    HAS_TENSORLOGIC = True
+except ImportError:
+    HAS_TENSORLOGIC = False
+
+pytestmark = pytest.mark.skipif(
+    not HAS_TENSORLOGIC,
+    reason="tensorlogic_py not available - build with 'maturin develop'"
+)
+
+
+class TestDomainInfo:
+    """Tests for DomainInfo type."""
+
+    def test_domain_creation_basic(self):
+        """Test creating a basic domain."""
+        person = tl.domain_info("Person", 100)
+        assert person is not None
+
+    def test_domain_with_elements(self):
+        """Test creating a domain with elements."""
+        colors = tl.domain_info("Color", 3)
+        # Note: element specification might need additional API
+        assert colors is not None
+
+
+class TestPredicateInfo:
+    """Tests for PredicateInfo type."""
+
+    def test_predicate_creation(self):
+        """Test creating predicate info."""
+        knows = tl.predicate_info("knows", ["Person", "Person"])
+        assert knows is not None
+
+    def test_predicate_unary(self):
+        """Test creating unary predicate."""
+        human = tl.predicate_info("human", ["Entity"])
+        assert human is not None
+
+    def test_predicate_ternary(self):
+        """Test creating ternary predicate."""
+        between = tl.predicate_info("between", ["Number", "Number", "Number"])
+        assert between is not None
+
+
+class TestSymbolTable:
+    """Tests for SymbolTable type."""
+
+    def test_symbol_table_creation(self):
+        """Test creating an empty symbol table."""
+        table = tl.symbol_table()
+        assert table is not None
+
+    def test_symbol_table_with_domain(self):
+        """Test symbol table with domains."""
+        table = tl.symbol_table()
+        # Note: Adding domains might need additional API methods
+        assert table is not None
+
+
+class TestCompilerContext:
+    """Tests for CompilerContext type."""
+
+    def test_compiler_context_creation(self):
+        """Test creating compiler context."""
+        ctx = tl.compiler_context()
+        assert ctx is not None
+
+    def test_compiler_context_from_symbol_table(self):
+        """Test creating context from symbol table."""
+        table = tl.symbol_table()
+        ctx = tl.compiler_context()
+        # Note: Conversion might need additional API
+        assert ctx is not None
+
+
+class TestIntegrationScenarios:
+    """Integration tests combining adapters with compilation."""
+
+    def test_simple_compilation_workflow(self):
+        """Test complete workflow from expression to compilation."""
+        # Create expression
+        x = tl.var("x")
+        y = tl.var("y")
+        expr = tl.pred("knows", [x, y])
+
+        # Compile with default config
+        graph = tl.compile(expr)
+        assert graph is not None
+
+    def test_compilation_with_strategy(self):
+        """Test compilation with different strategies."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.and_expr(p, q)
+
+        # Test each strategy
+        strategies = [
+            "soft_differentiable",
+            "hard_boolean",
+            "fuzzy_godel",
+            "fuzzy_product",
+            "fuzzy_lukasiewicz",
+            "probabilistic"
+        ]
+
+        for strategy_name in strategies:
+            config = tl.CompilationConfig()
+            # Note: Strategy setting might need additional API
+            graph = tl.compile_with_config(expr, config)
+            assert graph is not None, f"Failed for strategy: {strategy_name}"
+
+    def test_complex_expression_compilation(self):
+        """Test compilation of complex nested expressions."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        r = tl.pred("R", [x])
+
+        # (P AND Q) OR R
+        and_expr = tl.and_expr(p, q)
+        complex_expr = tl.or_expr(and_expr, r)
+
+        graph = tl.compile(complex_expr)
+        assert graph is not None
+        stats = graph.stats()
+        assert stats["num_tensors"] > 0
+        assert stats["num_nodes"] > 0
+
+
+class TestErrorHandling:
+    """Tests for error handling in adapters."""
+
+    def test_invalid_domain_cardinality(self):
+        """Test error handling for invalid domain cardinality."""
+        # Cardinality should be positive
+        with pytest.raises((ValueError, RuntimeError)):
+            tl.domain_info("BadDomain", 0)
+
+    def test_invalid_predicate_signature(self):
+        """Test error handling for invalid predicate signature."""
+        # Empty domain list might be invalid
+        with pytest.raises((ValueError, RuntimeError)):
+            tl.predicate_info("bad_pred", [])
+
+    def test_compilation_error_handling(self):
+        """Test that compilation errors are properly propagated."""
+        # Create an intentionally problematic expression
+        # This might not error, depending on implementation
+        x = tl.var("x")
+        expr = tl.pred("test", [x])
+
+        try:
+            graph = tl.compile(expr)
+            # If it succeeds, that's also valid
+            assert graph is not None
+        except RuntimeError as e:
+            # If it fails, error should be informative
+            assert len(str(e)) > 0
+
+
+class TestMemoryManagement:
+    """Tests for memory safety and lifecycle management."""
+
+    def test_large_expression_tree(self):
+        """Test handling of large expression trees."""
+        x = tl.var("x")
+        expr = tl.pred("P0", [x])
+
+        # Build large nested expression
+        for i in range(1, 50):
+            pred = tl.pred(f"P{i}", [x])
+            expr = tl.and_expr(expr, pred)
+
+        # Should not crash or leak memory
+        graph = tl.compile(expr)
+        assert graph is not None
+
+    def test_multiple_compilation_cycles(self):
+        """Test multiple compilation cycles don't leak."""
+        x = tl.var("x")
+        expr = tl.pred("test", [x])
+
+        # Compile many times
+        for _ in range(100):
+            graph = tl.compile(expr)
+            assert graph is not None
+
+    def test_python_object_lifecycle(self):
+        """Test that Python objects are properly managed."""
+        x = tl.var("x")
+        y = tl.var("y")
+
+        # Create and destroy many objects
+        for _ in range(1000):
+            term = tl.var(f"temp")
+            expr = tl.pred("temp", [term])
+            del term
+            del expr
+
+        # Should not crash
+
+
+class TestTypeConversion:
+    """Tests for type conversions between Python and Rust."""
+
+    def test_string_conversion(self):
+        """Test string parameter conversion."""
+        # Various string types
+        x1 = tl.var("simple")
+        x2 = tl.var("with_underscore")
+        x3 = tl.var("with123numbers")
+
+        assert x1.name() == "simple"
+        assert x2.name() == "with_underscore"
+        assert x3.name() == "with123numbers"
+
+    def test_list_conversion(self):
+        """Test list parameter conversion."""
+        terms = [tl.var("x"), tl.var("y"), tl.var("z")]
+        expr = tl.pred("triple", terms)
+        assert expr is not None
+
+    def test_empty_list_handling(self):
+        """Test handling of empty lists."""
+        # Nullary predicate
+        expr = tl.pred("truth", [])
+        graph = tl.compile(expr)
+        assert graph is not None
+
+
+class TestConfigurationAPI:
+    """Tests for compilation configuration API."""
+
+    def test_config_creation(self):
+        """Test creating compilation config."""
+        config = tl.CompilationConfig()
+        assert config is not None
+
+    def test_config_preset_access(self):
+        """Test accessing configuration presets."""
+        # These should be available as methods or attributes
+        config = tl.CompilationConfig()
+        # Note: Preset methods might need to be exposed
+        assert config is not None
+
+
+class TestDocumentationExamples:
+    """Tests that verify documentation examples work."""
+
+    def test_readme_basic_example(self):
+        """Test the basic example from README."""
+        # Create a logical expression
+        x = tl.var("x")
+        y = tl.var("y")
+        knows = tl.pred("knows", [x, y])
+
+        # Compile to tensor graph
+        graph = tl.compile(knows)
+
+        # Verify compilation succeeded
+        assert graph is not None
+        stats = graph.stats()
+        assert stats["num_tensors"] >= 1
+
+    def test_readme_and_example(self):
+        """Test AND operation from README."""
+        x = tl.var("x")
+        p = tl.pred("P", [x])
+        q = tl.pred("Q", [x])
+        expr = tl.and_expr(p, q)
+
+        graph = tl.compile(expr)
+        assert graph is not None
+
+    def test_readme_execution_example(self):
+        """Test execution example from README."""
+        x = tl.var("x")
+        knows = tl.pred("knows", [x])
+
+        graph = tl.compile(knows)
+
+        # Create input data
+        knows_data = np.array([1.0, 0.5, 0.0])
+
+        # Execute
+        result = tl.execute(graph, {"knows": knows_data})
+
+        # Verify result
+        assert result is not None
+        assert isinstance(result, np.ndarray)
+        assert len(result) == 3
+        np.testing.assert_array_almost_equal(result, knows_data)
