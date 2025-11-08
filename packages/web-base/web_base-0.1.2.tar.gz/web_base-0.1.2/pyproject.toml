@@ -1,0 +1,99 @@
+[project]
+name = "web-base"
+version = "0.1.2"
+description = "Base para manipulação web com selenium."
+authors = [{name = "MatheusLPolidoro", email = "mattpolidoro4@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "selenium==4.35.0"
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[build-system]
+requires = ["setuptools>=61.0,<70"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff.lint]
+preview = true
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+ 
+[tool.ruff.format]
+preview = true
+quote-style = 'single'
+ 
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = '-p no:warnings'
+ 
+[tool.taskipy.tasks]
+fix = "ruff check . --fix"
+lint = "ruff check . --diff"
+format = "ruff format ."
+test = "pytest . --cov=web_base -vv -s -x"
+post_test = "coverage html"
+
+[tool.towncrier]
+package = "web_base"
+package_dir = "."
+filename = "CHANGELOG.md"
+directory = "changelogs.d"
+underlines = ["=", "-", "~"]
+title_format = "Versão {version} ({project_date})"
+issue_format = "[#{issue}](https://github.com/clk-migration/web-base/issues/{issue})"
+ 
+[[tool.towncrier.type]]
+directory = "breaking"
+name = ":warning: MUDANÇAS QUEBRADAS"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "feature"
+name = ":zap: NOVAS FUNCIONALIDADES"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "enhancement"
+name = ":rocket: OTIMIZAÇÕES"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "fix"
+name = ":bug: CORREÇÕES"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "deprecation"
+name = ":wastebasket: OBSOLETOS"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "security"
+name = ":shield: SEGURANÇA"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "docs"
+name = ":open_file_folder: DOCUMENTAÇÃO"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "tests"
+name = ":test_tube: TESTES"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "infra"
+name = ":classical_building: INFRAESTRUTURA"
+showcontent = true
+ 
+[[tool.towncrier.type]]
+directory = "chore"
+name = ":broom: LIMPEZA"
+showcontent = true
