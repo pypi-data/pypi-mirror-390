@@ -1,0 +1,44 @@
+{# Daily PSTN bot entry point (both dial-in and dial-out) #}
+    try:
+        request = AgentRequest.model_validate(runner_args.body)
+
+{% if 'daily_pstn_dialin' in transports %}
+        daily_dialin_settings = DailyDialinSettings(
+            call_id=request.call_id, call_domain=request.call_domain
+        )
+
+{% endif %}
+
+        transport = DailyTransport(
+            request.room_url,
+            request.token,
+            "Daily PSTN Bot",
+            params=DailyParams(
+{% if 'daily_pstn_dialin' in transports %}
+                dialin_settings=daily_dialin_settings,
+{% endif %}
+                audio_in_enabled=True,
+                {% if enable_krisp %}
+                audio_in_filter=krisp_filter,
+                {% endif %}
+                audio_out_enabled=True,
+                {% if smart_turn %}
+                vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
+                turn_analyzer=LocalSmartTurnAnalyzerV3(),
+                {% else %}
+                vad_analyzer=SileroVADAnalyzer(),
+                {% endif %}
+            ),
+        )
+
+{% if 'daily_pstn_dialout' in transports %}
+        await run_bot(transport, request.dialout_settings)
+{% else %}
+        await run_bot(transport)
+{% endif %}
+
+    except Exception as e:
+        logger.error(f"Error running bot: {e}")
+        raise e
+
+
