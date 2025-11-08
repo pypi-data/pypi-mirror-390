@@ -1,0 +1,56 @@
+"""
+Kookaburra Optimization Algorithm (KOA)
+======================================
+
+Kookaburra Optimization Algorithm inspired by the hunting and
+territorial behavior of kookaburra birds.
+"""
+
+import numpy as np
+from ..base import BaseOptimizer
+
+
+class KookaburraOptimization(BaseOptimizer):
+    """Kookaburra Optimization Algorithm (KOA)"""
+    
+    def __init__(self, population_size=30, max_iterations=100):
+        super().__init__(population_size, max_iterations)
+        self.algorithm_name = "Kookaburra Optimization Algorithm"
+        self.aliases = ["koa", "kookaburra", "kookaburra_optimization"]
+    
+    def _optimize(self, objective_function, bounds, dimension):
+        population = np.random.uniform(bounds[0], bounds[1], (self.population_size, dimension))
+        fitness = np.array([objective_function(ind) for ind in population])
+        
+        best_idx = np.argmin(fitness)
+        best_position = population[best_idx].copy()
+        best_fitness = fitness[best_idx]
+        
+        global_fitness = [best_fitness]
+        local_fitness = [fitness.copy()]
+        local_positions = [population.copy()]
+        
+        for iteration in range(self.max_iterations):
+            for i in range(self.population_size):
+                r = np.random.random()
+                if r < 0.5:
+                    # Hunting behavior
+                    k = np.random.randint(0, self.population_size)
+                    population[i] = population[i] + np.random.random() * (best_position - population[k])
+                else:
+                    # Territorial behavior
+                    population[i] = best_position + np.random.randn(dimension) * (bounds[1] - bounds[0]) * 0.1
+                
+                population[i] = np.clip(population[i], bounds[0], bounds[1])
+            
+            fitness = np.array([objective_function(ind) for ind in population])
+            current_best_idx = np.argmin(fitness)
+            if fitness[current_best_idx] < best_fitness:
+                best_position = population[current_best_idx].copy()
+                best_fitness = fitness[current_best_idx]
+            
+            global_fitness.append(best_fitness)
+            local_fitness.append(fitness.copy())
+            local_positions.append(population.copy())
+        
+        return best_position, best_fitness, global_fitness, local_fitness, local_positions
