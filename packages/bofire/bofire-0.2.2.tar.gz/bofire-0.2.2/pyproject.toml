@@ -1,0 +1,144 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm[toml]", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bofire"
+description = ""
+dynamic = ["version"]
+authors = []
+license = {text = "BSD-3"}
+urls = {homepage = "https://github.com/experimental-design/bofire"}
+keywords = ["Bayesian optimization", "Multi-objective optimization", "Experimental design"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+]
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10.0"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pydantic>=2.5",
+    "scipy>=1.7",
+    "typing-extensions",
+    "formulaic==1.0.1",
+]
+
+[project.optional-dependencies]
+optimization = [
+    "botorch>=0.14.0",
+    "numpy",
+    "multiprocess",
+    "plotly",
+    "formulaic>=1.0.1,<1.1",
+    "cloudpickle>=2.0.0",
+    "sympy>=1.12",
+    "cvxpy[CLARABEL,SCIP]",
+    "scikit-learn>=1.0.0,<1.6",
+    "pymoo>=0.6.0",
+    "shap>=0.48.0",
+]
+entmoot = ["entmoot>=2.0.6", "pyomo<=6.9.4"]
+xgb = ["xgboost>=1.7.5"]
+cheminfo = ["rdkit>=2023.3.2", "scikit-learn>=1.0.0,<1.6", "mordred>=1.2.0"]
+tests = [
+    "pytest",
+    "pytest-cov",
+    "papermill",
+]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocs-jupyter",
+    "mkdocstrings>=0.18",
+    "mkdocstrings-python",
+    "mike",
+]
+tutorials = ["jupyter", "matplotlib", "seaborn"]
+all = [
+    "botorch<=0.14.0",
+    "numpy",
+    "multiprocess",
+    "plotly",
+    "formulaic==1.0.1",
+    "cloudpickle>=2.0.0",
+    "sympy>=1.12",
+    "cvxpy[CLARABEL,SCIP]",
+    "scikit-learn>=1.0.0,<1.6",
+    "entmoot>=2.0.6",
+    "xgboost>=1.7.5",
+    "rdkit>=2023.3.2",
+    "mordred>=1.2.0",
+    "mopti",
+    "pytest",
+    "pytest-cov",
+    "papermill",
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocs-jupyter",
+    "mkdocstrings>=0.18",
+    "mkdocstrings-python-legacy",
+    "mike",
+    "jupyter",
+    "matplotlib",
+    "seaborn",
+    "pymoo>=0.6.0",
+    "shap>=0.48.0",
+]
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools_scm]
+local_scheme = "node-and-date"
+write_to = "./bofire/version.py"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+output-format = "concise"
+
+[tool.ruff.lint]
+select = ["B", "C", "E", "F", "W", "I"]
+ignore = [
+    "E501",  # don't enforce for comments and docstrings
+    "B017",  # required for tests
+    "B027",  # required for optional _tell method
+    "B028",
+    "B904",
+    "B905",
+]
+isort.split-on-trailing-comma = false
+isort.lines-after-imports = 2
+isort.known-first-party = ["bofire"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 19
+
+[tool.ruff.lint.per-file-ignores]
+"bofire/surrogates/api.py" = ["F401"]
+"bofire/data_models/priors/api.py" = ["F401"]
+"bofire/priors/api.py" = ["F401"]
+"bofire/utils/annotated.py" = ["F401"]
+"bofire/data_models/outlier_detection/api.py" = ["F401"]
+"bofire/outlier_detection/api.py" = ["F401"]
+"tests/bofire/data_models/specs/api.py" = ["F401"]
+"bofire/data_models/api.py" = ["F401"]
+"bofire/data_models/surrogates/api.py" = ["F401"]
+"bofire/benchmarks/api.py" = ["F401"]
+"bofire/runners/api.py" = ["F401"]
+"bofire/strategies/mapper.py" = ["F401"]
+"bofire/strategies/api.py" = ["F401"]
+"bofire/data_models/features/api.py" = ["F401"]
+"bofire/data_models/strategies/api.py" = ["F401"]
+"bofire/data_models/dataframes/api.py" = ["F401"]
+"bofire/plot/api.py" = ["F401"]
+
+[tool.pyright]
+include = ["bofire"]
+exclude = ["bofire/version.py"]
