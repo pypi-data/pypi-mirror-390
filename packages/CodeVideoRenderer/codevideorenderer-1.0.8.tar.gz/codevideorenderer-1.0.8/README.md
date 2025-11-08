@@ -1,0 +1,58 @@
+<p align=center>
+  <img src="https://github.com/ZhuChongjing/CodeVideoRenderer/blob/main/README_files/logo.jpg" width="200" alt="CodeVideoRenderer"/>
+</p>
+
+<p align=center>
+  <strong>
+    <i>A Python library for rendering code videos</i>
+  </strong>
+</p>
+
+<p align="center">
+    <a href="https://github.com/ZhuChongjing/CodeVideoRenderer/stargazers">
+    <img src="https://img.shields.io/github/stars/ZhuChongjing/CodeVideoRenderer?style=flat-square&logo=GitHub"></a>
+    <a href="https://github.com/ZhuChongjing/CodeVideoRenderer/network/members">
+    <img src="https://img.shields.io/github/forks/ZhuChongjing/CodeVideoRenderer?style=flat-square&logo=GitHub"></a>
+    <a href="https://github.com/ZhuChongjing/CodeVideoRenderer/watchers">
+    <img src="https://img.shields.io/github/watchers/ZhuChongjing/CodeVideoRenderer?style=flat-square&logo=GitHub"></a>
+    <a href="https://github.com/ZhuChongjing/CodeVideoRenderer/issues">
+    <img src="https://img.shields.io/github/issues/ZhuChongjing/CodeVideoRenderer.svg?style=flat-square&logo=GitHub"></a>
+</p>
+
+---
+
+Latest version: `v1.0.8`
+
+Python version requirements: `>=3.9`
+
+Python dependency library: `manim>=0.17.0`
+
+Third-party software dependency: [<img src="https://github.com/ZhuChongjing/CodeVideoRenderer/blob/main/README_files/FFmpeg.png" width="80" align="center" alt="FFmpeg"/>](https://ffmpeg.org//) [<img src="https://github.com/ZhuChongjing/CodeVideoRenderer/blob/main/README_files/MikTex.png" width="30" align="center" alt="MikTex"/>](https://miktex.org/download)
+
+--- 
+
+If you encounter any issues, please send an email to [my email address](mailto:zhuchongjing_pypi@163.com). We welcome bug feedback, and we will fix them as soon as possible.
+
+This library is used to generate videos of input code, with the camera following the cursor movement.
+
+Command Line Installation:
+
+```bash
+pip install CodeVideoRenderer
+```
+
+**Example**
+
+```python
+from CodeVideoRenderer import *
+video = CameraFollowCursorCV(code_string="print('Hello World!')", language='python')
+video.render()
+```
+
+For more information: [CodeVideoRenderer on GitHub](https://github.com/ZhuChongjing/CodeVideoRenderer)
+
+
+
+
+
+
