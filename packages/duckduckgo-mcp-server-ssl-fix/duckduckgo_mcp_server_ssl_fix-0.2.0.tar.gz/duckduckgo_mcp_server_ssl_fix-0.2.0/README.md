@@ -1,0 +1,243 @@
+# DuckDuckGo Search MCP Server (SSL-Fix Edition)
+
+A Model Context Protocol (MCP) server that provides web search capabilities through DuckDuckGo, with additional features for content fetching and parsing. **This fork includes configurable SSL verification for corporate proxy environments.**
+
+## Features
+
+- **Web Search**: Search DuckDuckGo with advanced rate limiting and result formatting
+- **Content Fetching**: Retrieve and parse webpage content with intelligent text extraction
+- **Rate Limiting**: Built-in protection against rate limits for both search and content fetching
+- **Error Handling**: Comprehensive error handling and logging
+- **LLM-Friendly Output**: Results formatted specifically for large language model consumption
+- **🆕 Configurable SSL Verification**: Works in corporate environments with SSL inspection/proxies
+
+## Installation
+
+### Installing via `uv`
+
+Install directly from PyPI using `uv`:
+
+```bash
+uv pip install duckduckgo-mcp-server-ssl-fix
+```
+
+### Installing via `pip`
+
+```bash
+pip install duckduckgo-mcp-server-ssl-fix
+```
+
+## Configuration
+
+### SSL Verification Settings
+
+This package supports configurable SSL verification through environment variables:
+
+#### Option 1: Disable SSL Verification (for corporate proxies)
+
+```bash
+export DDG_DISABLE_SSL_VERIFY=true
+```
+
+⚠️ **Security Note**: Only disable SSL verification in trusted corporate environments with SSL inspection.
+
+#### Option 2: Use Custom Certificate
+
+```bash
+export DDG_SSL_CERT_PATH=/path/to/your/corporate/cert.pem
+```
+
+#### Option 3: Default (Secure)
+
+If neither environment variable is set, standard SSL verification is used.
+
+## Usage
+
+### Running with Claude Code
+
+Add to your Claude Code MCP configuration:
+
+**macOS/Linux**: `~/.config/claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+    "mcpServers": {
+        "ddg-search": {
+            "command": "uvx",
+            "args": ["duckduckgo-mcp-server-ssl-fix"],
+            "env": {
+                "DDG_DISABLE_SSL_VERIFY": "true"
+            }
+        }
+    }
+}
+```
+
+**For Claude Code CLI configuration**, create/edit `~/.config/claude-code/settings.json`:
+
+```json
+{
+    "mcpServers": {
+        "duckduckgo": {
+            "command": "uvx",
+            "args": ["duckduckgo-mcp-server-ssl-fix"],
+            "env": {
+                "DDG_DISABLE_SSL_VERIFY": "true"
+            }
+        }
+    }
+}
+```
+
+### Running with Claude Desktop
+
+1. Download [Claude Desktop](https://claude.ai/download)
+2. Create or edit your Claude Desktop configuration:
+   - On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - On Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add the following configuration:
+
+```json
+{
+    "mcpServers": {
+        "ddg-search": {
+            "command": "uvx",
+            "args": ["duckduckgo-mcp-server-ssl-fix"],
+            "env": {
+                "DDG_DISABLE_SSL_VERIFY": "true"
+            }
+        }
+    }
+}
+```
+
+3. Restart Claude Desktop
+
+### Testing the Package
+
+You can test the package directly:
+
+```bash
+# Test with SSL verification disabled
+DDG_DISABLE_SSL_VERIFY=true uvx duckduckgo-mcp-server-ssl-fix
+
+# Test with custom certificate
+DDG_SSL_CERT_PATH=/path/to/cert.pem uvx duckduckgo-mcp-server-ssl-fix
+
+# Test with default SSL verification
+uvx duckduckgo-mcp-server-ssl-fix
+```
+
+## Available Tools
+
+### 1. Search Tool
+
+```python
+async def search(query: str, max_results: int = 10) -> str
+```
+
+Performs a web search on DuckDuckGo and returns formatted results.
+
+**Parameters:**
+- `query`: Search query string
+- `max_results`: Maximum number of results to return (default: 10)
+
+**Returns:**
+Formatted string containing search results with titles, URLs, and snippets.
+
+### 2. Content Fetching Tool
+
+```python
+async def fetch_content(url: str) -> str
+```
+
+Fetches and parses content from a webpage.
+
+**Parameters:**
+- `url`: The webpage URL to fetch content from
+
+**Returns:**
+Cleaned and formatted text content from the webpage.
+
+## Features in Detail
+
+### Rate Limiting
+
+- Search: Limited to 30 requests per minute
+- Content Fetching: Limited to 20 requests per minute
+- Automatic queue management and wait times
+
+### Result Processing
+
+- Removes ads and irrelevant content
+- Cleans up DuckDuckGo redirect URLs
+- Formats results for optimal LLM consumption
+- Truncates long content appropriately
+
+### Error Handling
+
+- Comprehensive error catching and reporting
+- Detailed logging through MCP context
+- Graceful degradation on rate limits or timeouts
+
+### SSL Configuration
+
+Three modes of operation:
+
+1. **Secure (Default)**: Full SSL verification using system certificates
+2. **Custom Certificate**: Specify your organization's root certificate
+3. **Disabled Verification**: For corporate proxies with SSL inspection (less secure)
+
+## Troubleshooting
+
+### SSL Certificate Errors
+
+If you see errors like:
+```
+[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed
+```
+
+This typically means you're behind a corporate proxy with SSL inspection. Solutions:
+
+1. **Disable SSL Verification** (quick fix):
+   ```bash
+   export DDG_DISABLE_SSL_VERIFY=true
+   ```
+
+2. **Use Corporate Certificate** (more secure):
+   ```bash
+   export DDG_SSL_CERT_PATH=/path/to/corporate/cert.pem
+   ```
+
+3. **Export Certificate from Browser**:
+   - Open your browser's certificate manager
+   - Find your organization's root certificate
+   - Export as PEM format
+   - Use the path with `DDG_SSL_CERT_PATH`
+
+## Differences from Original
+
+This fork adds:
+- Configurable SSL verification via environment variables
+- Support for custom SSL certificates
+- Corporate proxy-friendly defaults
+- Enhanced documentation for SSL issues
+
+## Contributing
+
+Issues and pull requests are welcome! Some areas for potential improvement:
+
+- Additional search parameters (region, language, etc.)
+- Enhanced content parsing options
+- Caching layer for frequently accessed content
+- Additional rate limiting strategies
+
+## License
+
+This project is licensed under the MIT License.
+
+## Credits
+
+Based on the original [duckduckgo-mcp-server](https://github.com/nickclyde/duckduckgo-mcp-server) by Nick Clyde.
