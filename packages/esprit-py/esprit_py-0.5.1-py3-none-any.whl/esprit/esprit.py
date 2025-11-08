@@ -1,0 +1,66 @@
+import requests
+from .auth import Auth
+from .grade import Grade
+from .absence import Absence
+from .time_schedule import TimeSchedule
+from .credit import Credit
+from .utils import Utils
+# from .exceptions import EspritException #TODO
+
+
+class Esprit:
+    def __init__(self, driver_path=None, driver=None, debug=False, headless=True):
+        self.auth = Auth(driver_path, driver, debug, headless)
+        # Use the same session from Auth to maintain cookies
+        self.session = self.auth.session
+        self.grade_scrape = Grade(self.session)
+        self.absence_scrape = Absence(self.session)
+        self.time_schedule_scrape = TimeSchedule(self.session)
+        self.credit = Credit(self.session)
+        self.utils = Utils(self.session)
+
+    def login(self, username, password):
+        cookies = self.auth.login(username, password)
+        # Session is already updated in Auth, so we just need to check if login was successful
+        if cookies is None:
+            return False
+        return True
+    
+    def logout(self):
+        """
+        Logout from the ESPRIT website.
+        
+        Returns:
+            bool: True if logout was successful, False otherwise.
+        """
+        return self.auth.logout()
+
+    def get_grades(self):
+        return self.grade_scrape.get_grades()
+
+    def calculate_average(self, grades):
+        return self.grade_scrape.calculate_average(grades)
+
+    def get_absences(self):
+        return self.absence_scrape.get_absences()
+
+    def get_table_schedules(self):
+        return self.time_schedule_scrape.get_table_schedules()
+
+    def get_last_week_schedule(self):
+        return self.time_schedule_scrape.get_last_week_schedule()
+
+    def download_files(self, schedule, download_path):
+        return self.time_schedule_scrape.download_files(schedule, download_path)
+
+    def get_class_week_schedule(self, file_path, class_name, result_path):
+        return self.time_schedule_scrape.get_class_week_schedule(file_path, class_name, result_path)
+
+    def get_credits(self):
+        return self.credit.get_credits()
+
+    def get_student_name(self):
+        return self.utils.get_student_name()
+
+    def get_student_class(self):
+        return self.utils.get_student_class()
