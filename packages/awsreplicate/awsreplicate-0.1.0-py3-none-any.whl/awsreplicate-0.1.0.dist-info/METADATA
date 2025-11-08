@@ -1,0 +1,104 @@
+Metadata-Version: 2.4
+Name: awsreplicate
+Version: 0.1.0
+Summary: Lightweight SDK for cross-region data replication in AWS
+Author-email: Your Name <your.email@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/awsreplicate
+Project-URL: Documentation, https://github.com/yourusername/awsreplicate#readme
+Project-URL: Repository, https://github.com/yourusername/awsreplicate
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: boto3>=1.28.0
+Requires-Dist: aioboto3>=12.0.0
+Requires-Dist: tenacity>=8.2.0
+Requires-Dist: smart-open>=6.4.0
+Requires-Dist: structlog>=23.1.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: moto[dynamodb,s3]>=4.2.0; extra == "dev"
+Requires-Dist: black>=23.7.0; extra == "dev"
+Requires-Dist: ruff>=0.0.285; extra == "dev"
+
+# AWS Replicate
+
+A lightweight Python SDK for cross-region data replication in AWS.
+
+## Features
+
+- Async S3 bucket replication using `aioboto3`
+- DynamoDB table replication between regions
+- Concurrent operations with configurable limits
+- Automatic retry logic with exponential backoff
+- Structured logging with `structlog`
+- Comprehensive test coverage with `moto`
+
+## Installation
+
+```bash
+pip install awsreplicate
+```
+
+For development:
+
+```bash
+pip install awsreplicate[dev]
+```
+
+## Quick Start
+
+```python
+import asyncio
+from awsreplicate import AWSConfig, S3Replicator
+
+async def main():
+    # Configure AWS
+    config = AWSConfig()
+    
+    # Create replicator
+    replicator = S3Replicator(
+        config=config,
+        source_region="us-east-1",
+        target_region="us-west-1",
+        max_concurrent=20
+    )
+    
+    # Replicate bucket
+    result = await replicator.replicate_bucket(
+        source_bucket="my-source-bucket",
+        target_bucket="my-target-bucket"
+    )
+    
+    print(f"Replicated {result['successful']} objects")
+
+asyncio.run(main())
+```
+
+## Development
+
+```bash
+# Install in development mode
+pip install -e .[dev]
+
+# Run tests
+pytest
+
+# Format code
+black awsreplicate tests
+
+# Lint
+ruff check awsreplicate tests
+```
+
+## License
+
+MIT License
