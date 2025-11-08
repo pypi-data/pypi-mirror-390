@@ -1,0 +1,905 @@
+"""
+Author: Wenyu Ouyang
+Date: 2024-04-08 18:15:48
+LastEditTime: 2025-07-13 16:25:31
+LastEditors: Wenyu Ouyang
+Description: HydroDL model class
+FilePath: \torchhydro\torchhydro\trainers\deep_hydro.py
+Copyright (c) 2024-2024 Wenyu Ouyang. All rights reserved.
+"""
+
+import bisect
+import copy
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from typing import Dict, Tuple
+
+import numpy as np
+import xarray as xr
+import torch
+from torch.optim.lr_scheduler import *
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from torchhydro.configs.config import update_nested_dict
+from torchhydro.datasets.data_dict import datasets_dict
+from torchhydro.datasets.data_sets import BaseDataset
+from torchhydro.datasets.sampler import (
+    fl_sample_basin,
+    fl_sample_region,
+    data_sampler_dict,
+)
+from torchhydro.models.model_dict_function import (
+    pytorch_criterion_dict,
+    pytorch_model_dict,
+    pytorch_opt_dict,
+)
+from torchhydro.trainers.train_logger import TrainLogger
+from torchhydro.trainers.train_utils import (
+    EarlyStopper,
+    average_weights,
+    evaluate_validation,
+    compute_validation,
+    model_infer,
+    read_pth_from_model_loader,
+    torch_single_train,
+    get_preds_to_be_eval,
+    varied_length_collate_fn,
+    gnn_collate_fn,
+)
+from torchhydro.trainers.fabric_wrapper import create_fabric_wrapper
+
+
+class DeepHydroInterface(ABC):
+    """
+    An abstract class used to handle different configurations
+    of hydrological deep learning models + hyperparams for training, test, and predict functions.
+    This class assumes that data is already split into test train and validation at this point.
+    """
+
+    def __init__(self, cfgs: Dict):
+        """
+        Parameters
+        ----------
+        cfgs
+            configs for initializing DeepHydro
+        """
+
+        self._cfgs = cfgs
+
+    @property
+    def cfgs(self):
+        """all configs"""
+        return self._cfgs
+
+    @property
+    def weight_path(self):
+        """weight path"""
+        return self._cfgs["model_cfgs"]["weight_path"]
+
+    @weight_path.setter
+    def weight_path(self, weight_path):
+        self._cfgs["model_cfgs"]["weight_path"] = weight_path
+
+    @abstractmethod
+    def load_model(self, mode="train") -> object:
+        """Get a Hydro DL model"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def make_dataset(self, is_tra_val_te: str) -> object:
+        """
+        Initializes a pytorch dataset.
+
+        Parameters
+        ----------
+        is_tra_val_te
+            train or valid or test
+
+        Returns
+        -------
+        object
+            a dataset class loading data from data source
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def model_train(self):
+        """
+        Train the model
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def model_evaluate(self):
+        """
+        Evaluate the model
+        """
+        raise NotImplementedError
+
+
+class DeepHydro(DeepHydroInterface):
+    """
+    The Base Trainer class for Hydrological Deep Learning models
+    """
+
+    def __init__(
+        self,
+        cfgs: Dict,
+        pre_model=None,
+    ):
+        """
+        Parameters
+        ----------
+        cfgs
+            configs for the model
+        pre_model
+            a pre-trained model, if it is not None,
+            we will use its weights to initialize this model
+            by default None
+        """
+        super().__init__(cfgs)
+        # Initialize fabric based on configuration
+        self.fabric = create_fabric_wrapper(cfgs.get("training_cfgs", {}))
+        self.pre_model = pre_model
+        self.model = self.fabric.setup_module(self.load_model())
+        if cfgs["training_cfgs"]["train_mode"]:
+            self.traindataset = self.make_dataset("train")
+            if cfgs["data_cfgs"]["t_range_valid"] is not None:
+                self.validdataset = self.make_dataset("valid")
+        self.testdataset: BaseDataset = self.make_dataset("test")
+
+    @property
+    def device(self):
+        """Get the device from fabric wrapper"""
+        return self.fabric._device
+
+    def load_model(self, mode="train"):
+        """
+        Load a time series forecast model in pytorch_model_dict in model_dict_function.py
+
+        Returns
+        -------
+        object
+            model in pytorch_model_dict in model_dict_function.py
+        """
+        if mode == "infer":
+            if self.weight_path is None or self.cfgs["model_cfgs"]["continue_train"]:
+                # if no weight path is provided
+                # or weight file is provided but continue train again,
+                # we will use the trained model in the new case_dir directory
+                self.weight_path = self._get_trained_model()
+        elif mode != "train":
+            raise ValueError("Invalid mode; must be 'train' or 'infer'")
+        model_cfgs = self.cfgs["model_cfgs"]
+        model_name = model_cfgs["model_name"]
+        if model_name not in pytorch_model_dict:
+            raise NotImplementedError(
+                f"Error the model {model_name} was not found in the model dict. Please add it."
+            )
+        if self.pre_model is not None:
+            return self._load_pretrain_model()
+        elif self.weight_path is not None:
+            return self._load_model_from_pth()
+        else:
+            return pytorch_model_dict[model_name](**model_cfgs["model_hyperparam"])
+
+    def _load_pretrain_model(self):
+        """load a pretrained model as the initial model"""
+        return self.pre_model
+
+    def _load_model_from_pth(self):
+        weight_path = self.weight_path
+        model_cfgs = self.cfgs["model_cfgs"]
+        model_name = model_cfgs["model_name"]
+        model = pytorch_model_dict[model_name](**model_cfgs["model_hyperparam"])
+        checkpoint = torch.load(weight_path, map_location=self.device)
+        model.load_state_dict(checkpoint)
+        print("Weights sucessfully loaded")
+        return model
+
+    def make_dataset(self, is_tra_val_te: str):
+        """
+        Initializes a pytorch dataset.
+
+        Parameters
+        ----------
+        is_tra_val_te
+            train or valid or test
+
+        Returns
+        -------
+        object
+            an object initializing from class in datasets_dict in data_dict.py
+        """
+        data_cfgs = self.cfgs["data_cfgs"]
+        dataset_name = data_cfgs["dataset"]
+
+        if dataset_name in list(datasets_dict.keys()):
+            dataset = datasets_dict[dataset_name](self.cfgs, is_tra_val_te)
+        else:
+            raise NotImplementedError(
+                f"Error the dataset {str(dataset_name)} was not found in the dataset dict. Please add it."
+            )
+        return dataset
+
+    def model_train(self) -> None:
+        """train a hydrological DL model"""
+        # A dictionary of the necessary parameters for training
+        training_cfgs = self.cfgs["training_cfgs"]
+        # The file path to load model weights from; defaults to "model_save"
+        model_filepath = self.cfgs["data_cfgs"]["case_dir"]
+        data_cfgs = self.cfgs["data_cfgs"]
+        es = None
+        if training_cfgs["early_stopping"]:
+            es = EarlyStopper(training_cfgs["patience"])
+        criterion = self._get_loss_func(training_cfgs)
+        opt = self._get_optimizer(training_cfgs)
+        scheduler = self._get_scheduler(training_cfgs, opt)
+        max_epochs = training_cfgs["epochs"]
+        start_epoch = training_cfgs["start_epoch"]
+        # use PyTorch's DataLoader to load the data into batches in each epoch
+        data_loader, validation_data_loader = self._get_dataloader(
+            training_cfgs, data_cfgs
+        )
+        logger = TrainLogger(model_filepath, self.cfgs, opt)
+        for epoch in range(start_epoch, max_epochs + 1):
+            with logger.log_epoch_train(epoch) as train_logs:
+                total_loss, n_iter_ep = torch_single_train(
+                    self.model,
+                    opt,
+                    criterion,
+                    data_loader,
+                    device=self.device,
+                    which_first_tensor=training_cfgs["which_first_tensor"],
+                )
+                train_logs["train_loss"] = total_loss
+                train_logs["model"] = self.model
+
+            valid_loss = None
+            valid_metrics = None
+            if data_cfgs["t_range_valid"] is not None:
+                with logger.log_epoch_valid(epoch) as valid_logs:
+                    valid_loss, valid_metrics = self._1epoch_valid(
+                        training_cfgs, criterion, validation_data_loader, valid_logs
+                    )
+
+            self._scheduler_step(training_cfgs, scheduler, valid_loss)
+            logger.save_session_param(
+                epoch, total_loss, n_iter_ep, valid_loss, valid_metrics
+            )
+            logger.save_model_and_params(self.model, epoch, self.cfgs)
+            if es and not es.check_loss(
+                self.model,
+                valid_loss,
+                self.cfgs["data_cfgs"]["case_dir"],
+            ):
+                print("Stopping model now")
+                break
+        # logger.plot_model_structure(self.model)
+        logger.tb.close()
+
+        # return the trained model weights and bias and the epoch loss
+        return self.model.state_dict(), sum(logger.epoch_loss) / len(logger.epoch_loss)
+
+    def _get_scheduler(self, training_cfgs, opt):
+        lr_scheduler_cfg = training_cfgs["lr_scheduler"]
+
+        if "lr" in lr_scheduler_cfg and "lr_factor" not in lr_scheduler_cfg:
+            scheduler = LambdaLR(opt, lr_lambda=lambda epoch: 1.0)
+        elif isinstance(lr_scheduler_cfg, dict) and all(
+            isinstance(epoch, int) for epoch in lr_scheduler_cfg
+        ):
+            # piecewise constant learning rate
+            epochs = sorted(lr_scheduler_cfg.keys())
+            values = [lr_scheduler_cfg[e] for e in epochs]
+
+            def lr_lambda(epoch):
+                idx = bisect.bisect_right(epochs, epoch) - 1
+                return 1.0 if idx < 0 else values[idx]
+
+            scheduler = LambdaLR(opt, lr_lambda=lr_lambda)
+        elif "lr_factor" in lr_scheduler_cfg and "lr_patience" not in lr_scheduler_cfg:
+            scheduler = ExponentialLR(opt, gamma=lr_scheduler_cfg["lr_factor"])
+        elif "lr_factor" in lr_scheduler_cfg:
+            scheduler = ReduceLROnPlateau(
+                opt,
+                mode="min",
+                factor=lr_scheduler_cfg["lr_factor"],
+                patience=lr_scheduler_cfg["lr_patience"],
+            )
+        else:
+            raise ValueError("Invalid lr_scheduler configuration")
+
+        return scheduler
+
+    def _scheduler_step(self, training_cfgs, scheduler, valid_loss):
+        lr_scheduler_cfg = training_cfgs["lr_scheduler"]
+        required_keys = {"lr_factor", "lr_patience"}
+        if required_keys.issubset(lr_scheduler_cfg.keys()):
+            scheduler.step(valid_loss)
+        else:
+            scheduler.step()
+
+    def _1epoch_valid(
+        self, training_cfgs, criterion, validation_data_loader, valid_logs
+    ):
+        valid_obss_np, valid_preds_np, valid_loss = compute_validation(
+            self.model,
+            criterion,
+            validation_data_loader,
+            device=self.device,
+            which_first_tensor=training_cfgs["which_first_tensor"],
+        )
+        valid_logs["valid_loss"] = valid_loss
+        if (
+            self.cfgs["training_cfgs"]["valid_batch_mode"] == "test"
+            and self.cfgs["training_cfgs"]["calc_metrics"]
+        ):
+            # NOTE: Now we only evaluate the metrics for test-mode validation
+            target_col = self.cfgs["data_cfgs"]["target_cols"]
+            valid_metrics = evaluate_validation(
+                validation_data_loader,
+                valid_preds_np,
+                valid_obss_np,
+                self.cfgs["evaluation_cfgs"],
+                target_col,
+            )
+            valid_logs["valid_metrics"] = valid_metrics
+            return valid_loss, valid_metrics
+        return valid_loss, None
+
+    def _get_trained_model(self):
+        model_loader = self.cfgs["evaluation_cfgs"]["model_loader"]
+        model_pth_dir = self.cfgs["data_cfgs"]["case_dir"]
+        return read_pth_from_model_loader(model_loader, model_pth_dir)
+
+    def model_evaluate(self) -> Tuple[Dict, np.array, np.array]:
+        """
+        A function to evaluate a model, called at end of training.
+
+        Returns
+        -------
+        tuple[dict, np.array, np.array]
+            eval_log, denormalized predictions and observations
+        """
+        self.model = self.load_model(mode="infer").to(self.device)
+        preds_xr, obss_xr = self.inference()
+        return preds_xr, obss_xr
+
+    def inference(self) -> Tuple[xr.Dataset, xr.Dataset]:
+        """infer using trained model and unnormalized results"""
+        data_cfgs = self.cfgs["data_cfgs"]
+        training_cfgs = self.cfgs["training_cfgs"]
+        test_dataloader = self._get_dataloader(training_cfgs, data_cfgs, mode="infer")
+        seq_first = training_cfgs["which_first_tensor"] == "sequence"
+        self.model.eval()
+        # here the batch is just an index of lookup table, so any batch size could be chosen
+        test_preds = []
+        obss = []
+        with torch.no_grad():
+            test_preds = []
+            obss = []
+            for i, batch in enumerate(
+                tqdm(test_dataloader, desc="Model inference", unit="batch")
+            ):
+                ys, pred = model_infer(
+                    seq_first,
+                    self.device,
+                    self.model,
+                    batch,
+                    variable_length_cfgs=None,
+                    return_key=(
+                        self.cfgs.get("evaluation_cfgs", {})
+                        .get("evaluator", {})
+                        .get("return_key", None)
+                    )
+
+                )
+
+                test_preds.append(pred.cpu())
+                obss.append(ys.cpu())
+                if i % 100 == 0:
+                    torch.cuda.empty_cache()
+            pred = torch.cat(test_preds, dim=0).numpy()  # 在最后转换为numpy
+            obs = torch.cat(obss, dim=0).numpy()  # 在最后转换为numpy
+        if pred.ndim == 2:
+            # TODO: check
+            # the ndim is 2 meaning we use an Nto1 mode
+            # as lookup table is (basin 1's all time length, basin 2's all time length, ...)
+            # params of reshape should be (basin size, time length)
+            pred = pred.flatten().reshape(test_dataloader.test_data.y.shape[0], -1, 1)
+            obs = obs.flatten().reshape(test_dataloader.test_data.y.shape[0], -1, 1)
+        evaluation_cfgs = self.cfgs["evaluation_cfgs"]
+        obs_xr, pred_xr = get_preds_to_be_eval(
+            test_dataloader,
+            evaluation_cfgs,
+            pred,
+            obs,
+        )
+        return pred_xr, obs_xr
+
+    def _get_optimizer(self, training_cfgs):
+        params_in_opt = self.model.parameters()
+        return pytorch_opt_dict[training_cfgs["optimizer"]](
+            params_in_opt, **training_cfgs["optim_params"]
+        )
+
+    def _get_loss_func(self, training_cfgs):
+        criterion_init_params = {}
+        if "criterion_params" in training_cfgs:
+            loss_param = training_cfgs["criterion_params"]
+            if loss_param is not None:
+                for key in loss_param.keys():
+                    if key == "loss_funcs":
+                        criterion_init_params[key] = pytorch_criterion_dict[
+                            loss_param[key]
+                        ]()
+                    else:
+                        criterion_init_params[key] = loss_param[key]
+        return pytorch_criterion_dict[training_cfgs["criterion"]](
+            **criterion_init_params
+        )
+
+    def _flood_event_collate_fn(self, batch):
+        """自定义的洪水事件 collate 函数，确保所有样本长度一致"""
+
+        # 找到这个批次中最长的序列长度
+        max_len = max(tensor_data[0].shape[0] for tensor_data in batch)
+
+        # 调整所有样本到相同长度
+        processed_batch = []
+        for tensor_data in batch:
+            # 获取x和y（假设tensor_data[0]是x，tensor_data[1]是y）
+            x = tensor_data[0]
+            y = tensor_data[1] if len(tensor_data) > 1 else None
+
+            current_len = x.shape[0]
+            if current_len < max_len:
+                # 使用最后一个值填充x
+                padding_x = x[-1:].repeat(max_len - current_len, 1)
+                padded_x = torch.cat([x, padding_x], dim=0)
+
+                # 如果有y，也进行填充
+                if y is not None:
+                    padding_y = y[-1:].repeat(max_len - current_len, 1)
+                    padded_y = torch.cat([y, padding_y], dim=0)
+                else:
+                    padded_y = None
+            else:
+                # 如果更长则截断
+                padded_x = x[:max_len]
+                padded_y = y[:max_len] if y is not None else None
+
+            if padded_y is not None:
+                processed_batch.append((padded_x, padded_y))
+            else:
+                processed_batch.append(padded_x)
+
+        # 根据数据结构返回堆叠后的结果
+        if len(processed_batch) > 0 and isinstance(processed_batch[0], tuple):
+            return (
+                torch.stack([x for x, _ in processed_batch], 0),
+                torch.stack([y for _, y in processed_batch], 0)
+            )
+        else:
+            return torch.stack(processed_batch, 0)
+
+    def _get_dataloader(self, training_cfgs, data_cfgs, mode="train"):
+        if mode == "infer":
+            _collate_fn = None
+            # Use GNN collate function for GNN datasets in inference mode
+            if hasattr(self.testdataset, '__class__') and 'GNN' in self.testdataset.__class__.__name__:
+                _collate_fn = gnn_collate_fn
+            # 使用自定义的 collate 函数处理 FloodEventDataset
+            elif hasattr(self.testdataset, '__class__') and 'FloodEvent' in self.testdataset.__class__.__name__:
+                _collate_fn = self._flood_event_collate_fn
+            return DataLoader(
+                self.testdataset,
+                batch_size=training_cfgs["batch_size"],
+                shuffle=False,
+                sampler=None,
+                batch_sampler=None,
+                drop_last=False,
+                timeout=0,
+                worker_init_fn=None,
+                collate_fn=_collate_fn,
+            )
+        worker_num = 0
+        pin_memory = False
+        if "num_workers" in training_cfgs:
+            worker_num = training_cfgs["num_workers"]
+            print(f"using {str(worker_num)} workers")
+        if "pin_memory" in training_cfgs:
+            pin_memory = training_cfgs["pin_memory"]
+            print(f"Pin memory set to {str(pin_memory)}")
+        sampler = self._get_sampler(data_cfgs, training_cfgs, self.traindataset)
+        _collate_fn = None
+        if training_cfgs["variable_length_cfgs"]["use_variable_length"]:
+            _collate_fn = varied_length_collate_fn
+        # Use GNN collate function for GNN datasets
+        elif hasattr(self.traindataset, '__class__') and 'GNN' in self.traindataset.__class__.__name__:
+            _collate_fn = gnn_collate_fn
+        data_loader = DataLoader(
+            self.traindataset,
+            batch_size=training_cfgs["batch_size"],
+            shuffle=(sampler is None),
+            sampler=sampler,
+            num_workers=worker_num,
+            pin_memory=pin_memory,
+            timeout=0,
+            collate_fn=_collate_fn,
+        )
+        if data_cfgs["t_range_valid"] is not None:
+            # Use the same collate function for validation dataset
+            _val_collate_fn = None
+            if training_cfgs["variable_length_cfgs"]["use_variable_length"]:
+                _val_collate_fn = varied_length_collate_fn
+            elif hasattr(self.validdataset, '__class__') and 'GNN' in self.validdataset.__class__.__name__:
+                _val_collate_fn = gnn_collate_fn
+
+            validation_data_loader = DataLoader(
+                self.validdataset,
+                batch_size=training_cfgs["batch_size"],
+                shuffle=False,
+                num_workers=worker_num,
+                pin_memory=pin_memory,
+                timeout=0,
+                collate_fn=_val_collate_fn,
+            )
+            return data_loader, validation_data_loader
+
+        return data_loader, None
+
+    def _get_sampler(self, data_cfgs, training_cfgs, train_dataset):
+        """
+        return data sampler based on the provided configuration and training dataset.
+
+        Parameters
+        ----------
+        data_cfgs : dict
+            Configuration dictionary containing parameters for data sampling. Expected keys are:
+            - "sampler": dict, containing:
+            - "name": str, name of the sampler to use.
+            - "sampler_hyperparam": dict, optional hyperparameters for the sampler.
+        training_cfgs: dict
+            Configuration dictionary containing parameters for training. Expected keys are:
+            - "batch_size": int, size of each batch.
+        train_dataset : Dataset
+            The training dataset object which contains the data to be sampled. Expected attributes are:
+            - ngrid: int, number of grids in the dataset.
+            - nt: int, number of time steps in the dataset.
+            - rho: int, length of the input sequence.
+            - warmup_length: int, length of the warmup period.
+            - horizon: int, length of the forecast horizon.
+
+        Returns
+        -------
+        sampler_class
+            An instance of the specified sampler class, initialized with the provided dataset and hyperparameters.
+
+        Raises
+        ------
+        NotImplementedError
+            If the specified sampler name is not found in the `data_sampler_dict`.
+        """
+        if data_cfgs["sampler"] is None:
+            return None
+        batch_size = training_cfgs["batch_size"]
+        rho = train_dataset.rho
+        warmup_length = train_dataset.warmup_length
+        horizon = train_dataset.horizon
+        ngrid = train_dataset.ngrid
+        nt = train_dataset.nt
+        sampler_name = data_cfgs["sampler"]
+        if sampler_name not in data_sampler_dict:
+            raise NotImplementedError(f"Sampler {sampler_name} not implemented yet")
+        sampler_class = data_sampler_dict[sampler_name]
+        sampler_hyperparam = {}
+        if sampler_name == "KuaiSampler":
+            sampler_hyperparam |= {
+                "batch_size": batch_size,
+                "warmup_length": warmup_length,
+                "rho_horizon": rho + horizon,
+                "ngrid": ngrid,
+                "nt": nt,
+            }
+        elif sampler_name == "WindowLenBatchSampler":
+            sampler_hyperparam |= {
+                "batch_size": batch_size,
+            }
+
+        return sampler_class(train_dataset, **sampler_hyperparam)
+
+
+class FedLearnHydro(DeepHydro):
+    """Federated Learning Hydrological DL model"""
+
+    def __init__(self, cfgs: Dict):
+        super().__init__(cfgs)
+        # a user group which is a dict where the keys are the user index
+        # and the values are the corresponding data for each of those users
+        train_dataset = self.traindataset
+        fl_hyperparam = self.cfgs["model_cfgs"]["fl_hyperparam"]
+        # sample training data amongst users
+        if fl_hyperparam["fl_sample"] == "basin":
+            # Sample a basin for a user
+            user_groups = fl_sample_basin(train_dataset)
+        elif fl_hyperparam["fl_sample"] == "region":
+            # Sample a region for a user
+            user_groups = fl_sample_region(train_dataset)
+        else:
+            raise NotImplementedError()
+        self.user_groups = user_groups
+
+    @property
+    def num_users(self):
+        """number of users in federated learning"""
+        return len(self.user_groups)
+
+    def model_train(self) -> None:
+        # BUILD MODEL
+        global_model = self.model
+
+        # copy weights
+        global_weights = global_model.state_dict()
+
+        # Training
+        train_loss, train_accuracy = [], []
+        print_every = 2
+
+        training_cfgs = self.cfgs["training_cfgs"]
+        model_cfgs = self.cfgs["model_cfgs"]
+        max_epochs = training_cfgs["epochs"]
+        start_epoch = training_cfgs["start_epoch"]
+        fl_hyperparam = model_cfgs["fl_hyperparam"]
+        # total rounds in a FL system is max_epochs
+        for epoch in tqdm(range(start_epoch, max_epochs + 1)):
+            local_weights, local_losses = [], []
+            print(f"\n | Global Training Round : {epoch} |\n")
+
+            global_model.train()
+            m = max(int(fl_hyperparam["fl_frac"] * self.num_users), 1)
+            # randomly select m users, they will be the clients in this round
+            idxs_users = np.random.choice(range(self.num_users), m, replace=False)
+
+            for idx in idxs_users:
+                # each user will be used to train the model locally
+                # user_gourps[idx] means the idx of dataset for a user
+                user_cfgs = self._get_a_user_cfgs(idx)
+                local_model = DeepHydro(
+                    user_cfgs,
+                    pre_model=copy.deepcopy(global_model),
+                )
+                w, loss = local_model.model_train()
+                local_weights.append(copy.deepcopy(w))
+                local_losses.append(copy.deepcopy(loss))
+
+            # update global weights
+            global_weights = average_weights(local_weights)
+
+            # update global weights
+            global_model.load_state_dict(global_weights)
+
+            loss_avg = sum(local_losses) / len(local_losses)
+            train_loss.append(loss_avg)
+
+            # Calculate avg training accuracy over all users at every epoch
+            list_acc = []
+            global_model.eval()
+            for c in range(self.num_users):
+                one_user_cfg = self._get_a_user_cfgs(c)
+                local_model = DeepHydro(
+                    one_user_cfg,
+                    pre_model=global_model,
+                )
+                acc, _, _ = local_model.model_evaluate()
+                list_acc.append(acc)
+            values = [list(d.values())[0][0] for d in list_acc]
+            filtered_values = [v for v in values if not np.isnan(v)]
+            train_accuracy.append(sum(filtered_values) / len(filtered_values))
+
+            # print global training loss after every 'i' rounds
+            if (epoch + 1) % print_every == 0:
+                print(f" \nAvg Training Stats after {epoch+1} global rounds:")
+                print(f"Training Loss : {np.mean(np.array(train_loss))}")
+                print("Train Accuracy: {:.2f}% \n".format(100 * train_accuracy[-1]))
+
+    def _get_a_user_cfgs(self, idx):
+        """To get a user's configs for local training"""
+        user = self.user_groups[idx]
+
+        # update data_cfgs
+        # Use defaultdict to collect dates for each basin
+        basin_dates = defaultdict(list)
+
+        for _, (basin, time) in user.items():
+            basin_dates[basin].append(time)
+
+        # Initialize a list to store distinct basins
+        basins = []
+
+        # for each basin, we can find its date range
+        date_ranges = {}
+        for basin, times in basin_dates.items():
+            basins.append(basin)
+            date_ranges[basin] = (np.min(times), np.max(times))
+        # get the longest date range
+        longest_date_range = max(date_ranges.values(), key=lambda x: x[1] - x[0])
+        # transform the date range of numpy data into string
+        longest_date_range = [
+            np.datetime_as_string(dt, unit="D") for dt in longest_date_range
+        ]
+        user_cfgs = copy.deepcopy(self.cfgs)
+        # update data_cfgs
+        update_nested_dict(
+            user_cfgs, ["data_cfgs", "t_range_train"], longest_date_range
+        )
+        # for local training in FL, we don't need a validation set
+        update_nested_dict(user_cfgs, ["data_cfgs", "t_range_valid"], None)
+        # for local training in FL, we don't need a test set, but we should set one to avoid error
+        update_nested_dict(user_cfgs, ["data_cfgs", "t_range_test"], longest_date_range)
+        update_nested_dict(user_cfgs, ["data_cfgs", "object_ids"], basins)
+
+        # update training_cfgs
+        # we also need to update some training params for local training from FL settings
+        update_nested_dict(
+            user_cfgs,
+            ["training_cfgs", "epochs"],
+            user_cfgs["model_cfgs"]["fl_hyperparam"]["fl_local_ep"],
+        )
+        update_nested_dict(
+            user_cfgs,
+            ["evaluation_cfgs", "test_epoch"],
+            user_cfgs["model_cfgs"]["fl_hyperparam"]["fl_local_ep"],
+        )
+        # don't need to save model weights for local training
+        update_nested_dict(
+            user_cfgs,
+            ["training_cfgs", "save_epoch"],
+            None,
+        )
+        # there are two settings for batch size in configs, we need to update both of them
+        update_nested_dict(
+            user_cfgs,
+            ["training_cfgs", "batch_size"],
+            user_cfgs["model_cfgs"]["fl_hyperparam"]["fl_local_bs"],
+        )
+        update_nested_dict(
+            user_cfgs,
+            ["data_cfgs", "batch_size"],
+            user_cfgs["model_cfgs"]["fl_hyperparam"]["fl_local_bs"],
+        )
+
+        # update model_cfgs finally
+        # For local model, its model_type is Normal
+        update_nested_dict(user_cfgs, ["model_cfgs", "model_type"], "Normal")
+        update_nested_dict(
+            user_cfgs,
+            ["model_cfgs", "fl_hyperparam"],
+            None,
+        )
+        return user_cfgs
+
+
+class TransLearnHydro(DeepHydro):
+    def __init__(self, cfgs: Dict, pre_model=None):
+        super().__init__(cfgs, pre_model)
+
+    def load_model(self, mode="train"):
+        """Load model for transfer learning"""
+        model_cfgs = self.cfgs["model_cfgs"]
+        if self.weight_path is None and self.pre_model is None:
+            raise NotImplementedError(
+                "For transfer learning, we need a pre-trained model"
+            )
+        if mode == "train":
+            model = super().load_model(mode)
+        elif mode == "infer":
+            self.weight_path = self._get_trained_model()
+            model = self._load_model_from_pth()
+            model.to(self.device)
+        if (
+            "weight_path_add" in model_cfgs
+            and "freeze_params" in model_cfgs["weight_path_add"]
+        ):
+            freeze_params = model_cfgs["weight_path_add"]["freeze_params"]
+            for param in freeze_params:
+                exec(f"model.{param}.requires_grad = False")
+        return model
+
+    def _load_model_from_pth(self):
+        weight_path = self.weight_path
+        model_cfgs = self.cfgs["model_cfgs"]
+        model_name = model_cfgs["model_name"]
+        model = pytorch_model_dict[model_name](**model_cfgs["model_hyperparam"])
+        checkpoint = torch.load(weight_path, map_location=self.device)
+        if "weight_path_add" in model_cfgs:
+            if "excluded_layers" in model_cfgs["weight_path_add"]:
+                # delete some layers from source model if we don't need them
+                excluded_layers = model_cfgs["weight_path_add"]["excluded_layers"]
+                for layer in excluded_layers:
+                    del checkpoint[layer]
+                print("sucessfully deleted layers")
+            else:
+                print("directly loading identically-named layers of source model")
+        model.load_state_dict(checkpoint, strict=False)
+        print("Weights sucessfully loaded")
+        return model
+
+
+class MultiTaskHydro(DeepHydro):
+    def __init__(self, cfgs: Dict, pre_model=None):
+        super().__init__(cfgs, pre_model)
+
+    def _get_optimizer(self, training_cfgs):
+        params_in_opt = self.model.parameters()
+        if training_cfgs["criterion"] == "UncertaintyWeights":
+            # log_var = torch.zeros((1,), requires_grad=True)
+            log_vars = [
+                torch.zeros((1,), requires_grad=True, device=self.device)
+                for _ in range(training_cfgs["multi_targets"])
+            ]
+            params_in_opt = list(self.model.parameters()) + log_vars
+        return pytorch_opt_dict[training_cfgs["optimizer"]](
+            params_in_opt, **training_cfgs["optim_params"]
+        )
+
+    def _get_loss_func(self, training_cfgs):
+        if "criterion_params" in training_cfgs:
+            loss_param = training_cfgs["criterion_params"]
+            if loss_param is not None:
+                criterion_init_params = {
+                    key: (
+                        pytorch_criterion_dict[loss_param[key]]()
+                        if key == "loss_funcs"
+                        else loss_param[key]
+                    )
+                    for key in loss_param.keys()
+                }
+        if training_cfgs["criterion"] == "MultiOutWaterBalanceLoss":
+            # TODO: hard code for streamflow and ET
+            stat_dict = self.traindataset.target_scaler.stat_dict
+            stat_dict_keys = list(stat_dict.keys())
+            q_name = np.intersect1d(
+                [
+                    "usgsFlow",
+                    "streamflow",
+                    "Q",
+                    "qobs",
+                ],
+                stat_dict_keys,
+            )[0]
+            et_name = np.intersect1d(
+                [
+                    "ET",
+                    "LE",
+                    "GPP",
+                    "Ec",
+                    "Es",
+                    "Ei",
+                    "ET_water",
+                    # sum pf ET components in PML V2
+                    "ET_sum",
+                ],
+                stat_dict_keys,
+            )[0]
+            q_mean = self.training.target_scaler.stat_dict[q_name][2]
+            q_std = self.training.target_scaler.stat_dict[q_name][3]
+            et_mean = self.training.target_scaler.stat_dict[et_name][2]
+            et_std = self.training.target_scaler.stat_dict[et_name][3]
+            means = [q_mean, et_mean]
+            stds = [q_std, et_std]
+            criterion_init_params["means"] = means
+            criterion_init_params["stds"] = stds
+        return pytorch_criterion_dict[training_cfgs["criterion"]](
+            **criterion_init_params
+        )
+
+
+model_type_dict = {
+    "Normal": DeepHydro,
+    "FedLearn": FedLearnHydro,
+    "TransLearn": TransLearnHydro,
+    "MTL": MultiTaskHydro,
+}
