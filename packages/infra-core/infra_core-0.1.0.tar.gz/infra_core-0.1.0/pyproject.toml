@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "infra-core"
+version = "0.1.0"
+description = "Shared HTTP, storage, and runtime helpers for automation services."
+requires-python = ">=3.11"
+readme = "README.md"
+license = "MIT"
+authors = [
+  {name = "Infra Core maintainers", email = "infra-core@example.com"}
+]
+maintainers = [
+  {name = "Infra Core maintainers", email = "infra-core@example.com"}
+]
+keywords = ["http", "storage", "azure", "async", "infrastructure"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+dependencies = [
+  "requests>=2.31.0,<3.0",
+  "httpx>=0.27.0,<1.0",
+  "tenacity>=8.2.2,<9.0",
+]
+
+[project.optional-dependencies]
+azure = [
+  "azure-storage-blob>=12.12,<13.0",
+  "azure-identity>=1.17,<2.0",
+]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "pytest-cov>=4.0",
+  "pytest-httpx>=0.30",
+  "respx>=0.20",
+  "mypy>=1.8",
+  "ruff>=0.1",
+  "pre-commit>=3.6",
+  "bump-my-version>=0.26.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["infra_core*"]
+
+[tool.setuptools.package-data]
+infra_core = ["py.typed"]
+
+[project.urls]
+Homepage = "https://github.com/pj-ms/infra-core"
+Repository = "https://github.com/pj-ms/infra-core"
+Issues = "https://github.com/pj-ms/infra-core/issues"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+mypy_path = ["src"]
+
+[[tool.mypy.overrides]]
+module = "azure.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "httpx"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "httpx.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tenacity"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tenacity.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "requests"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "requests.*"
+ignore_missing_imports = true
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+
+[tool.bumpversion]
+current_version = "0.1.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+ignore_missing_files = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = true
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
