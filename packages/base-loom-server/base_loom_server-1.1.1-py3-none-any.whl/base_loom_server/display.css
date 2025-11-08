@@ -1,0 +1,229 @@
+:root, [data-theme="light"] {
+    --page-bg-color: #white;
+    --page-fg-color: black;
+    --text-color: black;
+    --text-color-disabled: #999;
+    --text-color-unused-tab: #666;
+    --button-border-color: white;
+    --button-hover-color: gray;
+    --input-modified-bg-color: pink;
+    --tab-inactive-color: lightgray;
+}
+[data-theme="dark"] {
+    --page-bg-color: #000000cc;
+    --page-fg-color: #cccccc;
+    --text-color: white;
+    --text-color-disabled: #888;
+    --text-color-unused-tab: #ddd;
+    --button-border-color: black;
+    --button-hover-color: darkgray;
+    --input-modified-bg-color:#b229ab;
+    --tab-inactive-color: gray;
+}
+
+body {
+    background-color: var(--page-bg-color);
+    color: var(--page-fg-color);
+    display: flex;
+    flex-direction: column;
+    font-size: calc(12px + 0.5vh + 0.5vw);
+    font-family: "georgia";
+    width: calc(100% - 20px);
+    /* Reduce height on iPad and iPhone, due to tab-related stuff along the bottom.
+
+    Height on devices with pointers is handled by "@media (hover: hover)" below.
+    */
+    height: calc(100vh - 100px);
+}
+
+@media only screen and (min-width: 320px) and (max-width: 480px) and (-webkit-min-device-pixel-ratio: 2) and (orientation: portrait) {
+    #pattern_menu {
+        max-width: 180px;
+    }
+}
+
+button {
+    background-color: transparent;
+    border-color: var(--button-border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    font-size: 80%;
+}
+
+button.direction_do:disabled {
+    border-width: 0;
+    color: var(--text-color);
+}
+
+button.direction_undo {
+    border-style: inset;
+    background-color: red;
+    color: white;
+}
+
+button.direction_undo:disabled {
+    border-width: 0;
+    background-color: red;
+    color: white;
+}
+
+button:disabled {
+    color: var(--text-color-disabled);
+}
+
+/* Prevent persistent hover style on touch screens by only supporting hover style
+   if there is a pointer https://stackoverflow.com/a/2520670
+*/
+@media (hover: hover) {
+    button:hover:enabled {
+        background-color: var(--button-hover-color);
+    }
+    body {
+        height: calc(100vh - 30px);
+    }
+}
+
+/* Style the tab bar mode buttons */
+button.tab_button {
+    background-color: var(--tab-inactive-color);
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    border-style: inset;
+    color: var(--text-color-unused-tab);
+    font-family: "georgia";
+    font-size: 100%;
+}
+
+button.tab_active {
+    background-color: transparent;
+    border-bottom: 0px;
+    border-style: outset;
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+button.tab_active:hover {
+    background-color: transparent;
+}
+
+button.toggle_button {
+    border-radius: 0px;
+}
+
+button.toggle_button:disabled {
+    border: 0px;
+}
+
+canvas {
+    border: 1px solid #000000;
+}
+
+canvas.direction_undo {
+    background-color: pink;
+    border-color: red;
+}
+
+/* Exclude borders and padding from dimensions 
+
+This makes it easier to set the size of contained canvases.
+*/
+div {
+    box-sizing: border-box;
+}
+
+div.canvas-grid {
+    display: grid;
+    flex: 1;
+    gap: 5px;
+    margin: 5px;
+}
+
+div.flex-column {
+    align-items: start;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 5px;
+    justify-content: start;
+    margin-bottom: 5px;
+}
+
+div.flex-row {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 5px;
+    justify-content: start;
+    margin-bottom: 5px;
+}
+
+input[type=text] {
+    background-color: var(--page-bg-color);
+    color: var(--text-color);
+    font-size: 80%;
+}
+
+input[type=text][modified=true] {
+    background-color: var(--input-modified-bg-color);
+}
+
+/* Make the Separate repeats?" checkboxes larger. This is especially important on macOS Safari */
+input[type=checkbox] {
+    width: calc(8px + 0.5vh + 0.5vw);
+    height: calc(8px + 0.5vh + 0.5vw);
+}
+
+select {
+    background-color: var(--page-bg-color);
+    color: var(--text-color);
+    font-size: 90%;
+}
+
+table, th, td {
+    border: 1px solid;
+    border-collapse: collapse;
+    padding-inline: 5px;
+}
+
+#debug_div {
+    margin-right: 10px;
+}
+
+#group_size_label {
+    margin-inline-start: 1em;
+}
+
+#help_link_div {
+    margin-inline-start: 10px;
+}
+
+#mode {
+    margin-bottom: 10px;
+}
+
+#pattern_menu {
+    /* the following doesn't seem to do anything, at least on on macOS Safari */
+    text-overflow: ellipsis;
+}
+
+#pick_color {
+    background-color: rgba(0, 0, 0, 0);
+    border-style: solid;
+    border-width: 1px;
+    flex: 1;
+    height: 12px;
+    margin-right: 10px;
+}
+
+#shafts_canvas {
+    border-width: 0px;
+}
+
+#shafts_canvas_container {
+    flex-direction: row;
+}
+
+#total_pick_number {
+    margin-right: 5px;
+}
