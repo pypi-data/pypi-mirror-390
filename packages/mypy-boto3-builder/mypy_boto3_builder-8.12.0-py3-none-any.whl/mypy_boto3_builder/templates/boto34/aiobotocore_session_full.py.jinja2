@@ -1,0 +1,43 @@
+"""
+Type annotated wrapper for {{ package.library_name }} Session.
+
+{{ copyright }}
+
+Usage::
+
+    ```python
+    from {{ package.name }}.{{ package.library_name }} import get_session
+
+    # Wrapper for {{ package.library_name }}.Session constructor
+    # Returns {{ package.name }}.Session inherited from {{ package.library_name }}.Session
+    session = get_session()
+    session: {{ package.name }}.{{ package.library_name }}.session.Session
+
+    # s3_client is a regular aiobotocore.AioBaseClient
+    # with type annotations only in type checking mode
+    async with session.s3.create_client() as s3_client:
+        s3_client.list_buckets()
+    ```
+"""
+from __future__ import annotations
+
+from typing import Mapping
+from {{ package.library_name }}.session import AioSession
+from {{ package.name }}.{{ package.library_name }}.service_factory import ServiceFactory
+
+{% for service_package in package.service_packages %}
+from {{ service_package.name }}.client import {{ service_package.client.name }}
+{% endfor %}
+
+
+class Session(AioSession):
+{% for service_package in package.service_packages %}
+    @property
+    def {{ package.get_property_name(service_package.service_name) }}(self) -> ServiceFactory[{{ service_package.client.name }}]:
+        return ServiceFactory("{{ service_package.service_name.boto3_name }}", self)
+{% endfor %}
+
+
+
+def get_session(env_vars: Mapping[str, str] | None = None) -> Session:
+    return Session(session_vars=env_vars)
