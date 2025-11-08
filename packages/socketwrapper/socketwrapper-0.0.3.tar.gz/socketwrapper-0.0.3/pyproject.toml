@@ -1,0 +1,166 @@
+[build-system]
+requires = ['setuptools>=68.0', 'wheel']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'socketwrapper'
+description = 'high level socket and pipe wrappers'
+version = '0.0.3'
+requires-python = '>=3.12'
+keywords = ['socket', 'pipe', 'ipc', 'asyncio']
+readme = { file = 'README.md', content-type = 'text/markdown' }
+license = { file = 'LICENSE' }
+classifiers = [
+    'Framework :: AsyncIO',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python :: 3.12',
+    'Topic :: Software Development :: Libraries',
+    'Topic :: System :: Networking',
+    ]
+authors = [
+    { name = 'Felipe A Hernandez' },
+    { email = 'ergoithz@gmail.com' },
+    ]
+dependencies = ['typing-extensions >= 4.6 ; python_version < "3.13"']
+
+[tool.setuptools.package-data]
+socketwrapper = ["py.typed"]
+
+[tool.pyright]
+venvPath = '.'
+venv = '.venv'
+exclude = [
+  '**/.*',
+  '**/__pycache__',
+  ]
+pythonVersion = '3.12'
+
+[project.optional-dependencies]
+msgpack = ['msgpack']
+dev = [
+    'coverage',
+    'msgpack',
+    'ruff',
+    'wheel',
+    'yapf',
+    ]
+
+[project.urls]
+homepage = 'https://gitlab.com/ergoithz/socketwrapper'
+repository = 'https://gitlab.com/ergoithz/socketwrapper'
+issue-tracker = 'https://gitlab.com/ergoithz/socketwrapper/-/issues'
+release-notes = 'https://gitlab.com/ergoithz/socketwrapper/-/releases'
+issue-new = 'https://gitlab.com/ergoithz/socketwrapper/-/issues/new'
+donations = 'https://ko-fi.com/s26me'
+
+[tool.setuptools]
+packages = [
+    'socketwrapper',
+    ]
+zip-safe = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+preview = true
+select = [
+    'F',    # pyflakes
+    'E',    # pycodestyle
+    'W',    # pycodestyle
+    'C90',  # mccabe
+    'I',    # isort
+    'N',    # pep8-naming
+    'D',    # pydocstyle
+    'UP',   # pyupgrade
+    # 'YTT',  # flake8-2020
+    'ANN',  # flake8-annotations
+    'S',    # flake8-bandit
+    'BLE',  # flake8-blind-except
+    # 'FBT',  # flake8-boolean-trap
+    'B',    # flake8-bugbear
+    'A',    # flake8-builtins
+    'COM',  # flake8-commas
+    'C4',   # flake8-comprehensions
+    'DTZ',  # flake8-datetimez
+    'T10',  # flake8-debugger
+    'EM',   # flake8-errmsg
+    # 'EXE',  # flake8-executable
+    'ISC',  # flake8-implicit-str-concat
+    'ICN',  # flake8-import-conventions
+    'G',    # flake8-logging-format
+    # 'INP',  # flake8-no-pep420
+    'PIE',  # flake8-pie
+    'T20',  # flake8-print
+    # 'PT',   # flake8-pytest-style
+    'Q',    # flake8-quotes
+    'RET',  # flake8-return
+    'SIM',  # flake8-simplify
+    'TID',  # flake8-tidy-imports
+    'TCH',  # flake8-type-checking
+    'ARG',  # flake8-unused-arguments
+    'PTH',  # flake8-use-pathlib
+    'ERA',  # eradicate
+    # 'PD',   # pandas-vet
+    'PGH',  # pygrep-hooks
+    'PL',   # pylint
+    'TRY',  # tryceratops
+    'RSE',  # flake8-raise
+    'RUF',  # ruff-specific rules
+    ]
+ignore = [
+    # Allow implicit annotations where they make sense
+    'ANN002',  # annotation missing for *args
+    'ANN003',  # annotation missing for **kwargs
+    'ANN401',  # typing.Any is necessary in some cases
+    # Ignore interface-breaking nonsense
+    'PLR6301',  # unused self method argument
+    # Ignore flake8-commas nonsense
+    'COM818',  # allow unparenthesized tuples
+    # Allow blindly catching exceptions for both ductyping and ExceptionGroup'ing
+    'BLE001',
+    # Allow additional module docstrings
+    'E402',  # module level import not at top of file
+    # Ignore pylint broken nonsense
+    'PLR2004',  # declare every single constant as a variable (WTF!)
+    'PLR0402',  # import namespaces in the same way as properties (WTF!)
+    # Ignore tryceratops nonsense
+    'TRY301',  # raising inside try/except (WTF!)
+    # Just broken
+    'PLC2701',  # buggy, ignores known-first-party: https://github.com/astral-sh/ruff/issues/16694
+    'UP046',  # buggy, ignores typing_extensions not having syntax equivalence
+    'UP047',  # buggy, ignores typing_extensions not having syntax equivalence
+    # Performance impact
+    'SIM105',  # replacing every except/pass with contextlib.suppress
+    # Maintainability
+    'RUF022',  # unordered __all__ for annotated groups
+    ]
+
+[tool.ruff.lint.flake8-errmsg]
+max-string-length = 20
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+known-first-party = [
+    'socketwrapper'
+    ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.per-file-ignores]
+'socketwrapper/protocols.py' = ['D102', 'D105']  # FIXME: document protocols?
+'examples/*.py' = ['D', 'T']  # FIXME: document protocols?
+
+[tool.ruff.lint.pydocstyle]
+convention = 'pep257'
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = 'single'
+multiline-quotes = 'single'
+
+[tool.yapf]
+indent_closing_brackets = true
+join_multiple_lines = false
