@@ -1,0 +1,114 @@
+# Maintainer: Talky Contributors <talky@example.com>
+pkgname=talky
+pkgver=0.5.0
+pkgrel=1
+pkgdesc="System-wide dictation for Linux using Whisper AI"
+arch=('any')
+url="https://github.com/ChrisKalahiki/talky"
+license=('MIT')
+depends=(
+    'python>=3.10'
+    'python-numpy'
+    'python-pillow'
+    'python-yaml'
+    'python-sounddevice'
+    'python-pystray'
+    'python-pynput'
+    'xdotool'
+)
+makedepends=(
+    'python-build'
+    'python-installer'
+    'python-wheel'
+    'python-setuptools'
+)
+optdepends=(
+    'python-pytorch: GPU acceleration with CUDA'
+    'cuda: NVIDIA GPU support'
+    'ydotool: Wayland text injection support'
+    'pipewire: Modern audio stack (recommended)'
+    'pulseaudio: Alternative audio stack'
+)
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}.tar.gz")
+sha256sums=('SKIP')  # Update with actual checksum after first release
+
+prepare() {
+    cd "$srcdir/$pkgname-$pkgver"
+
+    # Generate icons if needed
+    if [ -f scripts/generate_icons.py ]; then
+        python scripts/generate_icons.py || true
+    fi
+}
+
+build() {
+    cd "$srcdir/$pkgname-$pkgver"
+    python -m build --wheel --no-isolation
+}
+
+package() {
+    cd "$srcdir/$pkgname-$pkgver"
+
+    # Install Python package
+    python -m installer --destdir="$pkgdir" dist/*.whl
+
+    # Install desktop file
+    install -Dm644 desktop/talky.desktop \
+        "$pkgdir/usr/share/applications/talky.desktop"
+
+    # Install systemd user service
+    install -Dm644 systemd/talky.service \
+        "$pkgdir/usr/lib/systemd/user/talky.service"
+
+    # Install icons
+    if [ -d icons/hicolor ]; then
+        for size in 16 22 24 32 48 64 128 256; do
+            if [ -f icons/hicolor/${size}x${size}/apps/talky.png ]; then
+                install -Dm644 "icons/hicolor/${size}x${size}/apps/talky.png" \
+                    "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/talky.png"
+            fi
+        done
+    fi
+
+    # Install documentation
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm644 CHANGELOG.md "$pkgdir/usr/share/doc/$pkgname/CHANGELOG.md"
+    install -Dm644 COMPATIBILITY_MATRIX.md "$pkgdir/usr/share/doc/$pkgname/COMPATIBILITY_MATRIX.md"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
+
+post_install() {
+    cat << EOF
+
+==> Talky installed successfully!
+
+To get started:
+  1. Run: talky
+  2. Or launch from application menu: Sound & Video > Talky
+  3. For Wayland users: talky --wayland-setup
+
+Optional setup:
+  - Enable autostart: talky --enable-autostart
+  - Enable systemd service: systemctl --user enable --now talky
+
+For GPU acceleration:
+  - Install python-pytorch and cuda packages
+  - Talky will automatically detect and use CUDA
+
+For Wayland text injection:
+  - Install ydotool: sudo pacman -S ydotool
+  - Run setup checker: talky --wayland-setup
+
+Notes:
+  - faster-whisper will be installed automatically on first run
+  - Models download automatically to ~/.cache/talky/models/
+  - Configuration stored in ~/.config/talky/config.yaml
+
+EOF
+}
+
+post_upgrade() {
+    post_install
+}
+
+# vim:set ts=4 sw=4 et:

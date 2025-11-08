@@ -1,0 +1,30 @@
+[Unit]
+Description=Talky - System-wide dictation for Linux
+Documentation=https://github.com/ChrisKalahiki/talky
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/talky
+Restart=on-failure
+RestartSec=5
+
+# Environment
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
+
+# For Wayland sessions
+Environment="WAYLAND_DISPLAY=wayland-0"
+Environment="XDG_SESSION_TYPE=wayland"
+
+# Resource limits (optional - adjust as needed)
+# MemoryMax=2G
+# CPUQuota=50%
+
+# Security hardening (optional)
+# NoNewPrivileges=true
+# PrivateTmp=true
+
+[Install]
+WantedBy=graphical-session.target

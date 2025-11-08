@@ -1,0 +1,41 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Install Python dependencies that aren't in Debian repos
+        echo "Installing faster-whisper via pip..."
+        pip3 install --no-warn-script-location faster-whisper || true
+
+        # Update icon cache
+        if [ -x /usr/bin/gtk-update-icon-cache ]; then
+            gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+        fi
+
+        # Update desktop database
+        if [ -x /usr/bin/update-desktop-database ]; then
+            update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+        fi
+
+        echo "Talky installed successfully!"
+        echo ""
+        echo "To get started:"
+        echo "  1. Run: talky"
+        echo "  2. Or launch from application menu: AudioVideo > Talky"
+        echo "  3. For Wayland users: talky --wayland-setup"
+        echo ""
+        echo "Enable autostart: talky --enable-autostart"
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

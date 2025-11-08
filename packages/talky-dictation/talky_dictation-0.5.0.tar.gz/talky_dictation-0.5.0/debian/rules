@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system.
+#export DH_VERBOSE = 1
+
+export PYBUILD_NAME=talky
+export PYBUILD_DESTDIR=debian/talky
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install desktop file
+	install -D -m 0644 desktop/talky.desktop \
+		debian/talky/usr/share/applications/talky.desktop
+	# Install systemd user service
+	install -D -m 0644 systemd/talky.service \
+		debian/talky/usr/lib/systemd/user/talky.service
+
+override_dh_auto_test:
+	# Skip tests during package build (they require audio/display)
+	@echo "Skipping tests during package build"
+
+override_dh_python3:
+	dh_python3
+	# Install pip dependencies that aren't packaged
+	# Note: faster-whisper will be installed via pip in postinst
