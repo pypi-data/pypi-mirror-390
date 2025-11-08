@@ -1,0 +1,58 @@
+# CRYSTALWINDOW!!!
+
+A tiny but mighty Pygame framework that gives u a full window system, rendering, and GUI power — all packed into one file.
+No setup pain. No folder chaos. Just import, and there, instant window.
+
+#  Quick Start
+    pip install crystalwindow
+
+
+# How do you make your Own Game with Crystal-Window???
+open a new .py file and then do this:
+
+    from crystalwindow import Window  # <- imports everything from crystalwindow (in this case its Window)
+
+    win = Window(800, 600, "Crystal Demo") # <- Window settup.: Window(width, height, name, icon=MyIcon.ico)
+    win.run() # <- Runs the game
+    win.quit # <- Closes the game (for RAM nd CPU)
+
+
+Thats it. Run it, and boom instant working window.
+
+# Features
+
+*  Built-in window manager
+*  Built-in image n icon loader (with default base64 logo)
+*  File-safe startup (even inside PyInstaller)
+*  Works offline — no extra libs
+*  Minimal and clean syntax
+
+# It has a Default Logo
+
+The file includes a variable named DEFAULT_LOGO_BASE64  a lil encoded PNG used when no icon is found.
+
+Use it like: 
+    Window(800, 600, "My Window", icon=MyIcon.png)
+
+THERE WE GO u can show it, set it as a window icon, or meme it if u want.
+
+# Example Integration
+
+You can use it as part of ur project (like a game, an editor, or a tool):
+
+    from crystalWindow import Window
+
+    win = Window(800, 600, "My Window", icon=MyIcon.png)
+
+    while win.running:
+        win.check_events()
+        win.fill((10, 10, 20)) # <- This makes it so you can fill the screen color
+        win.run()
+        win.quit
+
+# Credits
+
+Made by: CrystalBallyHereXD! 
+Framework: CrystalWindow
+Powered by: Pygame
+License: Free to use, modify, and vibe with
