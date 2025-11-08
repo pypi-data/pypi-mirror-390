@@ -1,0 +1,52 @@
+[project]
+name = "funcnodes-module"
+version = "0.4.1"
+description = ""
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+ "funcnodes>=1.0.0",
+ "licensecheck >=2024.3; python_version >= '3.11' and python_version < '4'",
+ "toml>=0.10.2",
+]
+[[project.authors]]
+name = "Julian Kimmig"
+email = "julian.kimmig@linkdlab.de"
+
+
+[dependency-groups]
+dev = [
+ "pre-commit",
+ "pytest",
+ "vulture",
+ "funcnodes>=1.0.0",
+ "funcnodes-module",
+ "pytest-funcnodes",
+]
+
+[project.license]
+text = "MIT"
+
+[project.scripts]
+funcnodes-module = "funcnodes_module.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+funcnodes-module = { workspace = true }
+
+[tool.vulture]
+min_confidence = 80
+exclude = [ "src/funcnodes_module/template_folder",]
+paths = [ "src/funcnodes_module",]
+
+[tool.ruff]
+exclude = [ "src/funcnodes_module/template_folder/tests/all_nodes_test_base.py", "src/funcnodes_module/template_folder/tests/test_all_nodes.py",]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/funcnodes_module"]
