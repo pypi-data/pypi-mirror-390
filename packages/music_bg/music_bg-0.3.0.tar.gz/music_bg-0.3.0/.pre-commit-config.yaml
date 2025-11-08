@@ -1,0 +1,38 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+      - id: check-ast
+      - id: trailing-whitespace
+      - id: check-toml
+      - id: end-of-file-fixer
+
+  - repo: local
+    hooks:
+      - id: format
+        name: Format with Black
+        entry: uv run ruff format
+        language: system
+        types: [python]
+
+      - id: ruff
+        name: Run ruff lints
+        entry: uv run ruff
+        language: system
+        pass_filenames: false
+        types: [python]
+        args:
+          - "check"
+          - "--fix"
+          - "music_bg"
+
+      - id: mypy
+        name: Validate types with MyPy
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+        types: [python]
+        args:
+          - ./music_bg
