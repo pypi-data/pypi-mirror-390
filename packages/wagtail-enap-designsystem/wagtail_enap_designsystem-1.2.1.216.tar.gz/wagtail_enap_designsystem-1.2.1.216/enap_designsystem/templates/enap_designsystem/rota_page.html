@@ -1,0 +1,548 @@
+{% extends "enap_designsystem/base.html" %}
+{% load static %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block metadata %}
+    {% comment %} <meta name="viewport" content="width=device-width, initial-scale=1.0"> {% endcomment %}
+{% endblock %}
+
+
+{% block title %}
+	<title>{{ page.title }}</title>
+{% endblock %}
+
+{%block govnavbar %}
+    <div style="background-color: #071E41;">
+        <div class="menu">
+            <div class="logo GovBR">
+                <img style="width: 51px; height: 18px;" src="{% static 'enap_designsystem/icons/logo-white.png' %}" alt="Passar pro lado esquerdo" alt="Logo GovBR" height="40">
+            </div>
+            <a href="https://www.gov.br/secom/pt-br/acesso-a-informacao/comunicabr">Comunica BR</a>
+            <div class="separator"></div>
+            <a href="https://www.gov.br/acessoainformacao/pt-br">Acesso à informação</a>
+            <div class="separator"></div>
+            <a href="https://www.gov.br/pt-br/participacao-social/">Participe</a>
+            <div class="separator"></div>
+            <a href="https://www4.planalto.gov.br/legislacao/">Legislação</a>
+            <div class="separator"></div>
+            <a href="https://www.gov.br/pt-br/orgaos-do-governo">Órgãos do Governo</a>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block navbar %}
+    {% if page.navbar %}
+        {% include "enap_designsystem/blocks/navbar/navbar_block.html" with navbar=page.navbar %}
+    {% else %}
+        <p style="color: red;">DEBUG: Nenhuma Navbar foi definida.</p>
+    {% endif %}
+{% endblock %}
+
+{% block body_class %}template-rota-page rota-{{ page.tipo_rota }} rota-redesign{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/acessibilidade_design_refinado.css' %}">
+<link rel="stylesheet" href="{% static 'css/nova-rota-temática.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Skip link para acessibilidade -->
+<a href="#main-content" class="skip-to-content">Pular para o conteúdo principal</a>
+
+<!-- Estrutura principal com sidebar minimalista e conteúdo fluido -->
+<div class="rota-layout">
+
+
+  <!-- Conteúdo principal -->
+  <main class="rota-main" id="main-content">
+
+    
+    <!-- Hero da rota com estilo moderno e visual -->
+    <section class="rota-hero">
+      <div class="rota-hero__background">
+        <div class="rota-hero__gradient"></div>
+        {% if page.imagem_capa %}
+          {% image page.imagem_capa fill-1500x500 as bg_img %}
+          <img src="{{ bg_img.url }}" alt="Imagem de capa" aria-hidden="true" class="rota-hero__img">
+        {% endif %}
+      </div>
+      
+      <div class="rota-hero__content">
+        <div class="rota-hero__icon-wrap">
+          <div class="rota-hero__icon">
+            {% if page.icone %}
+              {% image page.icone width-80 as icon %}
+              <img src="{{ icon.url }}" alt="Icone da página" aria-hidden="true">
+            {% else %}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            {% endif %}
+          </div>
+        </div>
+        
+        <h1 class="rota-hero__title">{{ page.title }}</h1>
+        
+        {% if page.descricao_curta %}
+          <p class="rota-hero__description">{{ page.descricao_curta }}</p>
+        {% endif %}
+        
+        <div class="rota-hero__meta">
+          <div class="rota-hero__stat">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="9" x2="15" y2="9"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <span>{{ page.capsulas_vinculadas.count }} cápsulas</span>
+          </div>
+
+          
+          <div class="rota-hero__stat">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>{{ page.perfil_alvo|default:"Todos os perfis" }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Navegação da página em formato de abas modernas -->
+      <div class="rota-tabs">
+        <nav class="rota-tabs__nav" aria-label="Seções da rota">
+          <a href="#apresentacao" class="rota-tabs__link active">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Apresentação</span>
+          </a>
+          
+          <a href="#por-onde-comecar" class="rota-tabs__link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Por onde começar</span>
+          </a>
+          
+          <a href="#capsulas-essenciais" class="rota-tabs__link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="9" x2="15" y2="9"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <span>Cápsulas essenciais</span>
+          </a>
+          
+          <a href="#materiais-extras" class="rota-tabs__link" >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Materiais extras</span>
+          </a>
+        </nav>
+        
+        <div class="rota-tabs__indicator"></div>
+      </div>
+    </section>
+   
+    
+    <div class="rota-content">
+      <!-- 1. Apresentação da Rota -->
+      <section id="apresentacao" class="rota-section rota-section--active" role="tabpanel" aria-labelledby="apresentacao-titulo" tabindex="-1">
+        <div class="rota-section__header">
+          <h2 id="apresentacao-titulo" class="rota-section__title">
+            <svg class="rota-section__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Apresentação da Rota
+          </h2>
+        </div>
+        
+        <div class="rota-section__content">
+          {{ page.apresentacao|richtext }}
+          
+          <div class="rota-quote">
+            <div class="rota-quote__icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+                <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+              </svg>
+            </div>
+            <blockquote class="rota-quote__text">
+              A acessibilidade é um direito fundamental. Esta rota foi desenvolvida para capacitar profissionais a criarem conteúdos acessíveis para todos.
+            </blockquote>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 2. Por onde começar? -->
+      <section id="por-onde-comecar" class="rota-section" role="tabpanel" aria-labelledby="por-onde-comecar-titulo" tabindex="-1">
+        <div class="rota-section__header">
+          <h2 id="por-onde-comecar-titulo" class="rota-section__title">
+            <svg class="rota-section__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Por onde começar?
+          </h2>
+        </div>
+        
+        <div class="rota-section__content">
+          {{ page.por_onde_comecar|richtext }}
+          
+          <div class="rota-steps">
+            <div class="rota-steps__item">
+              <div class="rota-steps__number">1</div>
+              <div class="rota-steps__content">
+                <h3 class="rota-steps__title">Conheça os princípios</h3>
+                <p class="rota-steps__text">Entenda os princípios fundamentais da acessibilidade digital e como eles impactam diferentes pessoas.</p>
+              </div>
+            </div>
+            
+            <div class="rota-steps__item">
+              <div class="rota-steps__number">2</div>
+              <div class="rota-steps__content">
+                <h3 class="rota-steps__title">Explore as cápsulas essenciais</h3>
+                <p class="rota-steps__text">Conheça as cápsulas de acessibilidade recomendadas para o seu perfil profissional.</p>
+              </div>
+            </div>
+            
+            <div class="rota-steps__item">
+              <div class="rota-steps__number">3</div>
+              <div class="rota-steps__content">
+                <h3 class="rota-steps__title">Aplique os conhecimentos</h3>
+                <p class="rota-steps__text">Utilize o checklist para garantir que suas ações educacionais seguem os padrões de acessibilidade.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 3. Cápsulas essenciais para esta Rota -->
+      <section id="capsulas-essenciais" class="rota-section" role="tabpanel" aria-labelledby="capsulas-essenciais-titulo" tabindex="-1">
+        <div class="rota-section__header rota-section__header--accent">
+          <h2 id="capsulas-essenciais-titulo" class="rota-section__title rota-section__title--light">
+            <svg class="rota-section__icon rota-section__icon--light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="9" x2="15" y2="9"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            Cápsulas essenciais para esta Rota
+          </h2>
+        </div>
+        
+        <div class="rota-section__content">
+          {% if page.texto_capsulas %}
+            <div class="rota-section__intro">
+              {{ page.texto_capsulas|richtext }}
+            </div>
+          {% endif %}
+          
+          <!-- Grade de cápsulas com design contemporâneo -->
+          <div class="rota-capsulas">
+            {% for capsula_item in page.capsulas_vinculadas.all %}
+              {% with capsula=capsula_item.capsula %}
+                <div class="rota-capsula {% if capsula_item.destaque %}rota-capsula--destaque{% endif %}" tabindex="0">
+                  <div class="rota-capsula__header">
+                    {% if capsula.specific.imagem_capa %}
+                      <div class="rota-capsula__image">
+                        {% image capsula.specific.imagem_capa fill-400x200 as img %}
+                        <img src="{{ img.url }}" alt="{{ capsula.title }}">
+                        <div class="rota-capsula__overlay"></div>
+                      </div>
+                    {% else %}
+                      <div class="rota-capsula__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                          <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                      </div>
+                    {% endif %}
+                    
+                    <div class="rota-capsula__labels">
+                      {% if capsula_item.destaque %}
+                        <div class="rota-capsula__ribbon">Destaque</div>
+                      {% endif %}
+                      
+                      {% if capsula.specific.categoria %}
+                        <div class="rota-capsula__category">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                          </svg>
+                          {{ capsula.specific.categoria }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  
+                  <div class="rota-capsula__body">
+                    <h3 class="rota-capsula__title">{{ capsula.title }}</h3>
+                    
+                    <div class="rota-capsula__accessibility-types">
+                      {% if capsula.specific.tipos_deficiencia %}
+                        {% for tipo in capsula.specific.tipos_deficiencia %}
+                          <div class="rota-capsula__type rota-capsula__type--{{ tipo }}">
+                            {% if tipo == 'visual' %}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            {% elif tipo == 'auditiva' %}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 5L6 9H2v6h4l5 4zM15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                              </svg>
+                            {% elif tipo == 'motora' %}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path>
+                                <path d="M13 19l6-6"></path>
+                                <line x1="16" y1="16" x2="19" y2="19"></line>
+                                <path d="M8 2h.01"></path>
+                                <path d="M2 8h.01"></path>
+                                <path d="M16 8h.01"></path>
+                              </svg>
+                            {% elif tipo == 'cognitiva' %}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 18c.9 0 1.64-.72 1.64-1.62 0-.85-.64-1.54-1.46-1.62v-2.58c1.46-.35 2.64-1.61 2.82-3.18h-2.26c-.27 1.18-1.29 2-2.74 2-1.45 0-2.47-.82-2.74-2H5c.18 1.57 1.36 2.83 2.82 3.18v2.58c-.82.08-1.46.77-1.46 1.62 0 .9.74 1.62 1.64 1.62z"></path>
+                                <circle cx="12" cy="10" r="8"></circle>
+                              </svg>
+                            {% endif %}
+                            <span>{{ tipo|capfirst }}</span>
+                          </div>
+                        {% endfor %}
+                      {% endif %}
+                    </div>
+                    
+                    <p class="rota-capsula__description">
+                      {% if capsula_item.texto_contextualizacao %}
+                        {{ capsula_item.texto_contextualizacao }}
+                      {% elif capsula.specific.resumo_card %}
+                        {{ capsula.specific.resumo_card }}
+                      {% elif capsula.specific.o_que_e_resumo %}
+                        {{ capsula.specific.o_que_e_resumo }}
+                      {% elif capsula.specific.descricao_curta %}
+                        {{ capsula.specific.descricao_curta }}
+                      {% endif %}
+                    </p>
+                  </div>
+                  
+                  <div class="rota-capsula__footer">
+                    <a href="{{ capsula.url }}" class="btn large primary">
+                      Acessar cápsula
+                    </a>
+                  </div>
+                </div>
+              {% endwith %}
+            {% empty %}
+              <div class="rota-empty">
+                <div class="rota-empty__icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+                <h3 class="rota-empty__title">Nenhuma cápsula vinculada</h3>
+                <p class="rota-empty__text">Em breve adicionaremos conteúdo para esta rota. Fique atento às atualizações!</p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+      
+      <!-- 4. Materiais extras -->
+      <section id="materiais-extras" class="rota-section" role="tabpanel" aria-labelledby="materiais-extras-titulo" tabindex="-1">
+        <div class="rota-section__header">
+          <h2 id="materiais-extras-titulo" class="rota-section__title">
+            <svg class="rota-section__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            Onde posso aprender mais?
+          </h2>
+        </div>
+        
+        <div class="rota-section__content">
+          {% if page.texto_materiais_extras %}
+            <div class="rota-section__intro">
+              {{ page.texto_materiais_extras|richtext }}
+            </div>
+          {% endif %}
+          
+          <div class="rota-materiais">
+            {% for block in page.materiais_externos %}
+              {% include_block block with extra_classes="rota-material" %}
+            {% empty %}
+              <div class="rota-empty">
+                <div class="rota-empty__icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+                <h3 class="rota-empty__title">Materiais em desenvolvimento</h3>
+                <p class="rota-empty__text">Em breve adicionaremos materiais complementares para esta rota. Fique atento às atualizações!</p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    </div>
+    
+  </main>
+</div>
+
+<!-- Botão flutuante para voltar ao topo -->
+<button type="button" id="back-to-top" class="rota-back-to-top" aria-label="Voltar ao topo">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="18 15 12 9 6 15"></polyline>
+  </svg>
+</button>
+
+<!-- Elemento para anúncios de acessibilidade -->
+<div id="a11y-status" class="visually-hidden" aria-live="polite" role="status"></div>
+{% endblock %}
+
+{% block footer %}
+    {% include "enap_designsystem/includes/footer.html" %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Links de navegação com indicador animado
+    const navLinks = document.querySelectorAll('.rota-tabs__link');
+    const indicator = document.querySelector('.rota-tabs__indicator');
+    const backToTopBtn = document.getElementById('back-to-top');
+    
+    // Inicializar posição do indicador
+    updateIndicator(navLinks[0]);
+    
+    function updateIndicator(activeLink) {
+      if (!activeLink || !indicator) return;
+      
+      const linkRect = activeLink.getBoundingClientRect();
+      const navRect = document.querySelector('.rota-tabs__nav').getBoundingClientRect();
+      
+      // Atualiza posição e largura do indicador
+      indicator.style.left = `${linkRect.left - navRect.left}px`;
+      indicator.style.width = `${linkRect.width}px`;
+    }
+    
+    // Verificar qual seção está visível na viewport
+    function checkVisibleSections() {
+      const sections = document.querySelectorAll('.rota-section');
+      let activeSection = null;
+      
+      sections.forEach(section => {
+        const rect = section.getBoundingClientRect();
+        // Consideramos uma seção visível se o topo dela estiver dentro da viewport
+        // ou se for a primeira seção e estivermos no topo da página
+        if ((rect.top <= 200 && rect.bottom >= 200) || 
+            (section.id === 'apresentacao' && window.pageYOffset < 100)) {
+          activeSection = section;
+        }
+      });
+      
+      if (activeSection) {
+        // Atualiza link ativo com base na seção visível
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${activeSection.id}`) {
+            link.classList.add('active');
+            updateIndicator(link);
+          }
+        });
+      }
+    }
+    
+    // Rolagem suave para as seções ao clicar nos links
+    navLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Remove classe active de todos os links
+        navLinks.forEach(l => l.classList.remove('active'));
+        
+        // Adiciona classe active ao link clicado
+        this.classList.add('active');
+        
+        // Atualiza o indicador
+        updateIndicator(this);
+        
+        // Rolagem suave até a seção
+        const targetId = this.getAttribute('href');
+        const targetSection = document.querySelector(targetId);
+        
+        if (targetSection) {
+          targetSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+          
+          // Atualiza a URL com o hash sem recarregar a página
+          history.pushState(null, null, targetId);
+        }
+      });
+    });
+    
+    // Atualizar indicador ao redimensionar a janela
+    window.addEventListener('resize', function() {
+      const activeLink = document.querySelector('.rota-tabs__link.active');
+      updateIndicator(activeLink);
+    });
+    
+    // Verificar qual seção está visível durante a rolagem
+    window.addEventListener('scroll', function() {
+      checkVisibleSections();
+      
+      // Exibir/ocultar botão "Voltar ao topo"
+      if (window.pageYOffset > 300) {
+        backToTopBtn.classList.add('visible');
+      } else {
+        backToTopBtn.classList.remove('visible');
+      }
+    });
+    
+    backToTopBtn.addEventListener('click', function() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    
+    // Inicializar a verificação de seções visíveis
+    checkVisibleSections();
+    
+    // Ativar seção com base na URL ao carregar a página
+    const hash = window.location.hash || '#apresentacao';
+    if (hash) {
+      const targetLink = document.querySelector(`.rota-tabs__link[href="${hash}"]`);
+      const targetSection = document.querySelector(hash);
+      
+      if (targetLink && targetSection) {
+        // Atualizar link ativo
+        navLinks.forEach(link => link.classList.remove('active'));
+        targetLink.classList.add('active');
+        updateIndicator(targetLink);
+        
+        // Rolar para a seção após um pequeno atraso
+        setTimeout(() => {
+          targetSection.scrollIntoView();
+        }, 100);
+      }
+    }
+  });
+</script>
+{% endblock %}
