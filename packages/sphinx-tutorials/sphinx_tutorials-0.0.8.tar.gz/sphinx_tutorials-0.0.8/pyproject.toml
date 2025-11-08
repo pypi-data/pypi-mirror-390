@@ -1,0 +1,116 @@
+[build-system]
+requires = ["setuptools >= 62", "wheel", "setuptools_scm[toml] >= 6.2"]
+
+[project]
+name = "sphinx_tutorials"
+authors = [{ name = "Bernardo Dionisi", email = "bernardo.dionisi@gmail.com" }]
+description = "Tools for docs in Python"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = [
+    "tools for docs",
+]
+
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "sphinx == 8.2.3",
+    "sphinx-immaterial == 0.13.6",
+    "myst-parser == 4.0.0",
+    "ipykernel == 6.26.0",
+    "sphinx_design",
+    "typing_extensions >= 4.0.0", # v4.0.0 needed for: Self (Python 3.11+) and Literal (Python 3.8+)
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev-test = [
+    "pytest",
+    "pytest-cov[toml]",
+    "pytest-xdist",
+    "pytest-benchmark>=4.0.0",
+]
+dev-typing = [
+    "mypy",
+]
+dev-lint = [
+    "ruff",
+]
+docs = [
+
+]
+
+# https://setuptools.pypa.io/en/latest/userguide/quickstart.html#entry-points-and-automatic-script-creation
+[project.scripts]
+docex = "sphinx_tutorials.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/bernardodionisi/sphinx_tutorials"
+Source = "https://github.com/bernardodionisi/sphinx_tutorials"
+Issues = "https://github.com/bernardodionisi/sphinx_tutorials/issues"
+Documentation = "https://bernardodionisi.github.io/sphinx_tutorials/latest/"
+
+[tool.setuptools_scm]
+write_to = "src/sphinx_tutorials/_version.py"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"sphinx_tutorials.datasets.data" = ["*.csv", "*.parquet", "post/*.csv", "post/*.parquet"]
+
+[tool.distutils.bdist_wheel]
+universal = false
+
+[tool.ruff]
+src = ["src"]
+extend-include = ["*.ipynb"]
+extend-exclude = ["build", "dist", "docs", "src/sphinx_tutorials/_version.py"]
+line-length = 99
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle
+    "F", # Pyflakes
+    "UP", # pyupgrade
+    "I", # isort (import sorting)
+]
+ignore = [
+    "E501", # line length handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+
+[tool.pytest.ini_options]
+minversion = "6.2"
+addopts = "-s --showlocals"
+testpaths = ["tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "@overload",
+    "if TYPE_CHECKING:",
+    "pragma: no cover",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "raise RuntimeError",
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+strict = false
+mypy_path = ["src"]
