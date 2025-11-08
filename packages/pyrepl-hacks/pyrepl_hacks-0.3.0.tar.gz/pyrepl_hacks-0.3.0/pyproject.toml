@@ -1,0 +1,71 @@
+[project]
+name = "pyrepl-hacks"
+version = "0.3.0"
+description = "Hacky extensions and helper functions for the new Python REPL."
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+license = "MIT"
+authors = [
+    {name = "Trey Hunner"}
+]
+keywords = ["repl", "python", "terminal", "keyboard", "shortcuts", "commands"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Shells",
+    "Topic :: Terminals",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Documentation = "https://github.com/treyhunner/pyrepl-hacks#readme"
+Issues = "https://github.com/treyhunner/pyrepl-hacks/issues"
+Source = "https://github.com/treyhunner/pyrepl-hacks"
+
+[dependency-groups]
+test = ["coverage[toml]"]
+lint = ["ruff", "rumdl"]
+typecheck = ["mypy"]
+dev = ["prek"]
+
+[tool.coverage.run]
+source = ["pyrepl_hacks", "tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = [
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "PIE", # flake8-pie
+    "SIM", # flake8-simplify
+    "COM", # flake8-commas
+]
+ignore = [
+    "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.13"
+
+# Ignore missing imports for _pyrepl and _colorize since mypy can't find them
+[[tool.mypy.overrides]]
+module = ["_pyrepl.*", "_colorize"]
+ignore_missing_imports = true
