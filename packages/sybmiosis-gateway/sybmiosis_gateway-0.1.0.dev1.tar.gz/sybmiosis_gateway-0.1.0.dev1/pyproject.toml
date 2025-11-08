@@ -1,0 +1,43 @@
+[project]
+name = "sybmiosis-gateway"
+dynamic = ["version"]
+description = "An open-source AI gateway"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.121.0",
+    "fastapi-healthchecks>=1.1.0",
+    "prometheus-fastapi-instrumentator>=7.1.0",
+    "sqlmodel>=0.0.27",
+    "typer>=0.20.0",
+    "uvicorn>=0.38.0",
+]
+
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Framework :: FastAPI",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13"
+]
+
+[project.scripts]
+symbiosis = "symbiosis.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.14.4",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/symbiosis"]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
