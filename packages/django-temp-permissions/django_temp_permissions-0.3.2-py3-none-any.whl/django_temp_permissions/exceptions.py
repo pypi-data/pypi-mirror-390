@@ -1,0 +1,1 @@
+"""django-temp-permissions exceptions."""
