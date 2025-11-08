@@ -1,0 +1,56 @@
+[project]
+name = "krivaja_calc"
+version = "0.0.0"
+description = "A Python package that demonstrates automated publishing with uv."
+readme = "README.md"
+authors = [
+    { name = "bogoljub", email = "bob.stankovic@gov.ab.ca" }
+]
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["automation", "pypi", "uv", "package", "python"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+
+dependencies = [
+    # add your dependencies here, for example:
+    "requests>=2.31",
+]
+
+[project.urls]
+Homepage = "https://github.com/YOUR_USERNAME/codehackspackage"
+Repository = "https://github.com/YOUR_USERNAME/codehackspackage"
+Issues = "https://github.com/YOUR_USERNAME/codehackspackage/issues"
+
+[project.scripts]
+krivaja-calc = "krivaja_calc:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ----------------------------------------------------
+# uv configuration
+# ----------------------------------------------------
+[tool.uv]
+versioning = "git-tag"  # use git tags for versions (e.g., v0.3.0)
+build-backend = "setuptools.build_meta"
+
+[tool.uv.publish]
+# Pre-publish command to ensure tests pass before upload
+pre-publish = "pytest -q --disable-warnings"
+
+# Default repository (PyPI)
+repository = "https://upload.pypi.org/legacy/"
+
+# Optional: if you want to also publish to TestPyPI easily
+# You can override this with --index-url when running uv publish
+
+# ----------------------------------------------------
+# setuptools configuration (used by uv build)
+# ----------------------------------------------------
+
