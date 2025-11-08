@@ -1,0 +1,519 @@
+"""
+Author Notes: Classes in this module should only be instantiated in Slides class or it's parent class
+and then provided to other classes via composition, not inheritance.
+"""
+import json
+import traitlets
+
+from traitlets import HasTraits, Int, Unicode, Bool, Float, TraitError
+from pathlib import Path
+from inspect import Signature, Parameter
+from IPython.display import Image, SVG
+from ipywidgets.widgets.trait_types import InstanceDict
+
+from ..formatters import fix_ipy_image, code_css, htmlize
+from ..utils import html, today, _clipbox_children, get_clips_dir, set_dir
+from . import intro, styles, _layout_css
+from ..dashlab import disabled
+
+
+class ConfigTraits(HasTraits):
+    def _apply_change(self, change=None): raise NotImplementedError
+        
+    @traitlets.observe(traitlets.All)
+    def _observe(self, change):
+        self._apply_change(change)
+
+    @property
+    def props(self):  
+        return {
+            k : v.props if isinstance(v, ConfigTraits) else v # clean up
+            for k,v in self.trait_values().items()
+        }
+
+    @property
+    def main(self): return Settings._instance
+
+    def __repr__(self): 
+        r = ", ".join(f"{k}={repr(v) if isinstance(v,str) else v.__class__.__name__ if isinstance(v, ConfigTraits) else  v}" for k,v in self.props.items())
+        return f'{self.__class__.__name__}({r})'
+
+    def _set_props(self, **kwargs):
+        self.unobserve_all()
+        try:
+            for key, value in kwargs.items():
+                if not self.has_trait(key):
+                    raise TraitError(f"trait {key!r} does not exits!")
+                self.set_trait(key, value)
+            self._apply_change(None)
+        finally:
+            self.observe(self._observe, names=traitlets.All)
+        return self.main # For method chaining
+    
+def fix_sig(cls):
+    parameters=[Parameter('self', Parameter.POSITIONAL_ONLY), 
+        *[Parameter(key, Parameter.POSITIONAL_OR_KEYWORD, default=value.default_value) for key,value in cls.class_traits().items()]]
+    def set_props(self, **kwargs): return cls._set_props(self, **kwargs) 
+    cls.__call__ = set_props # need new function each time
+    cls.__call__.__signature__ = Signature(parameters) # can only be set over class level
+    return cls
+
+@fix_sig
+class Colors(ConfigTraits):
+    "Set theme colors if theme is set to Custom. Each name will be changed to a CSS vairiable as --[name]-color"
+    fg1 = Unicode('black')
+    fg2 = Unicode('#454545')
+    fg3 = Unicode('#00004d')
+    bg1 = Unicode('white')
+    bg2 = Unicode('whitesmoke')
+    bg3 = Unicode('#e8e8e8')
+    accent  = Unicode('#005090')
+    pointer = Unicode('red')
+
+    def _apply_change(self, change): 
+        if change and self.main._widgets.theme.value == "Custom":  # Trigger theme update only if custom
+            self.main._update_theme({'owner':self.main._widgets.theme}) # This chnage is important to update layout theme as well
+
+@fix_sig
+class StylePerTheme(ConfigTraits):
+    "Pygment code block style for each theme. You mostly need to change for custom and inherit theme."
+    jupyter = Unicode('default')
+    custom  = Unicode('default')
+    light   = Unicode('friendly')
+    dark    = Unicode('stata-dark')
+    material_light = Unicode('manni')
+    material_dark = Unicode('github-dark')
+
+    def _apply_change(self, change): 
+        self.main.code._apply_change(None) # works as validator too, run anyway
+    
+    def reset(self):
+        "Reset all user set code block styles."
+        with self.hold_trait_notifications():
+            for key, value in zip(
+                'inherit custom light dark material_light material_dark'.split(),
+                'default default friendly native perldoc one-dark'.split()
+                ):
+                self.set_trait(key, value)
+            self._apply_change(None)
+
+@fix_sig
+class Code(ConfigTraits):
+    "Set code block styles. background and color may be needed for some styles."
+    style_per_theme = InstanceDict(StylePerTheme, help="A pygment style for each theme.")
+    color       = Unicode(allow_none=True)
+    background  = Unicode(allow_none=True) 
+    hover_color = Unicode("var(--bg3-color)")
+    lineno      = Bool(True)
+
+    def _apply_change(self, change): # need to set somewhere
+        kwargs = {k:v for k,v in self.props.items() if k != 'style_per_theme'}
+        kwargs['style'] = getattr(self.style_per_theme, self.main._widgets.theme.value.lower().replace(' ','_'))
+        self.main._widgets.htmls.hilite.value = code_css(**kwargs)
+
+@fix_sig
+class Theme(ConfigTraits):
+    "Set theme value. colors and code have their own nested traits."
+    value  = Unicode('Jupyter')
+    colors = InstanceDict(Colors)
+
+    def _apply_change(self, change):
+        self.main._update_theme({'owner':self.main._widgets.theme}) # otherwise colors don't apply
+
+    @traitlets.validate('value')
+    def _value(self, proposal):
+        themes = self.main._widgets.theme.options
+        if proposal["value"] not in themes:
+            raise ValueError(f"Theme value expect on the followings: {themes!r}")
+        self.main._widgets.theme.value = proposal["value"] # needs a robust update
+        return proposal["value"]  
+
+@fix_sig
+class Fonts(ConfigTraits):
+    "Set fonts of text and code and size."
+    heading = Unicode("Arial", allow_none=True, help="Heading font")
+    text = Unicode("Roboto", allow_none=True)
+    code = Unicode("Cascadia Code", allow_none=True)
+    size = Int(16, help="Can use any large/small value that CSS supports!")
+
+    def _apply_change(self, change):
+        self.main._update_theme()
+
+    @traitlets.validate('text','code', 'heading')
+    def _fix_font(self, proposal):
+        return ", ".join(repr(t.strip().strip('\"').strip("\'")) for t in proposal["value"].split(','))
+    
+    @traitlets.validate('size')
+    def _change_slider_values(self, proposal):
+        value, slider = proposal["value"], self.main._widgets.sliders.fontsize
+        slider.max = max(value, min(64, slider.max))
+        slider.min = min(value, max(8,slider.min))
+        slider.value = value # Keep values in default [8,64] range when possible
+        return value 
+
+@fix_sig    
+class Footer(ConfigTraits):
+    "Set footer attributes of slides."
+    text = Unicode('IPySlides', help="Set footer text. Can use Markdown")
+    numbering = Bool(True, help="Show/hide slide numbering in footer.")
+    date = Unicode("today", allow_none=True, help="Set date string or use 'today' for current date.")
+    controls = Bool(True, help="Show/hide controls like next/prev buttons and clickers in PDF/export mode.")
+    progress = Bool(True, help="Show/hide progress bar at bottom of slides.")
+    _print_padding = 23 # internal use only
+
+    def _apply_change(self,change):
+        # change is None when called as footer(...), so we update all things together
+        wgts = self.main._widgets
+        wgts.htmls.footer.value = self._to_html() + self.main._get_clickers()
+        wgts._snum.layout.display = "" if self.numbering else "none" # show/hide slide number
+        wgts._progbar.layout.display = "" if self.progress else "none" # show/hide progress bar
+        self._print_padding = 23 if any([self.text, self.date]) else 16 # 16 is same around all sides unless footer needs more
+        wgts.iw._fkws = {"bar": self.progress, "snum": self.numbering, "pad": self._print_padding} # set before sending rescale message
+        wgts.controls.layout.visibility = "visible" if self.controls else "hidden"
+        wgts.iw.msg_tojs = 'RESCALE' # sets padding etc
+
+        if not self.controls:
+            self.main._slides.notify("Navigation controls hidden. But keyboard and edge click is still working!")
+
+    
+    def _to_html(self):
+        style = 'white-space:nowrap;display:inline;margin-block:0;padding-left:8px;'
+        inner = self.text
+        if self.date:
+            inner += (
+                "<span style='white-space:pre'> | </span>" if inner else ""
+            ) + f'{today(fg = "var(--fg2-color)") if self.date == "today" else self.date}'
+        return htmlize(f'<p markdown="1" style="{style}">{inner}</p>') 
+
+@fix_sig
+class Layout(ConfigTraits):
+    "Set layout of slides."
+    centered = Bool(True)
+    yoffset  = Int(None, allow_none=True, help='globally set yoffset to a value in percent')
+    scroll   = Bool(True)
+    width    = Int(100)
+    aspect   = Float(16/9)
+    ncol_refs = Int(2)
+
+    _reflow = False # internal use only
+    _inotes = False # internal use only
+    
+    @traitlets.validate('width','yoffset')
+    def _limit_width(self, proposal):
+        if not proposal["value"] in range(101):
+            raise ValueError("width/yoffset should in range [0,100]")
+        return proposal["value"]
+  
+    def _apply_change(self, change):
+        self.main._update_size(change = None) # will reset theme and send RESCALE message
+
+@fix_sig
+class Toggle(ConfigTraits):
+    "Toggle ON/OFF checks in settings panel."
+    reflow = Bool(False)
+    notes  = Bool(False)
+    toast  = Bool(True)
+    focus  = Bool(True, help="Focus on slide area when a slide is built or rebuilt.")
+    rebuild= Bool(True, help="Auto rebuild markdown slides when an included notebook-scoped variable is updated.")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for trait in self.class_own_traits():
+            if widget := getattr(self.main._widgets.checks, trait, None):
+                traitlets.link((self,trait),(widget, "value"))
+
+    def _apply_change(self, change): pass
+
+class AutoUnicode(Unicode):
+    def validate(self, obj, value):
+        if isinstance(value,(int, float)) and not isinstance(value, bool):
+            value = f"{value}px"
+        elif not isinstance(value, str):
+            raise TraitError(f"The '{self.name}' trait of AutoUnicode instance expected str, int or float, not {type(value)}.")
+        return super().validate(obj, value)
+
+@fix_sig
+class Logo(ConfigTraits):
+    "Set logo for all slides. left and bottom take precedence over right and top respectively."
+    src    = Unicode(allow_none=True)
+    width  = AutoUnicode('60px')
+    top    = AutoUnicode('4px')
+    right  = AutoUnicode('4px')
+    left   = AutoUnicode('', help='take precedence over right')
+    bottom = AutoUnicode('', help='take precedence over top')
+
+    @traitlets.validate('src')
+    def _fix_path(self, proposal):
+        if isinstance(proposal["value"], Path):
+            return str(Path)
+        return proposal["value"]
+
+    def _set_props(self, **kwargs):
+        self.bottom, self.left = '', '' # allow using top, right, otherwise these will take precedence
+        return super()._set_props(**kwargs) # returns settings for chaining
+    
+    def _apply_change(self,change):
+        if not self.src: # give as None, '' etc
+            self.main._widgets.htmls.logo.value = ''
+        elif (image := self.main._resolve_img(self.src, self.width)):
+            self.main._widgets.htmls.logo.value = image 
+            kwargs = {k:v for k,v in self.props.items() if k !='src'}
+
+            if self.bottom: kwargs.pop('top',None)
+            if self.left: kwargs.pop('right', None)
+            kwargs.update(dict(height='max-content', margin='0',padding='0',overflow='hidden'))
+            self.main._widgets.htmls.logo.layout = kwargs # absolute position set in CSS, does not work here
+        
+
+class Settings:
+    """
+    Apply settings to slides programatically. Fewer settings are available as widgets.
+
+    Settings can be nested or individual attributes as set as well. For example:
+    ```python
+    Slides.settings(layout = {"aspect": 16/10}) # Top 
+    Slides.settings.layout(aspect = 16/10) # Individual
+    Slides.settings.layout.aspect = 16/10  # Attribute
+    ```
+    All settings calls including top level returns settings instance to apply method chaining.
+    e.g. code`Slides.settings.layout(aspect = 16/10).footer(text="ABC").logo(...)`.
+    """
+    _instance = None
+    def __init__(self, _instanceSlides, _instanceWidgets):
+        self._slides = _instanceSlides
+        self._widgets = _instanceWidgets
+        self.__class__._instance = self # After _widgets, _slides to enable access
+        self.code   = Code()
+        self.theme  = Theme() # Don't set colors yet
+        self.fonts  = Fonts()
+        self.footer = Footer()
+        self.layout = Layout()
+        self.toggle = Toggle()
+        self.logo   = Logo()
+        
+        self._wslider = self._widgets.sliders.width # Used in multiple places
+        self._tgl_fscreen = self._widgets.toggles.fscreen
+        self._tgl_menu = self._widgets.toggles.menu
+
+        self._widgets.sliders.fontsize.observe(lambda c: self.fonts(size=c.new), names=["value"])
+        self._widgets.theme.observe(lambda c: self.theme(value=c.new), names=["value"])
+        self._widgets.checks.reflow.observe(self._update_theme, names=["value"]) # set reflow through layout._reflow
+        self._widgets.checks.inotes.observe(self._update_theme, names=["value"]) # set inline notes through layout._inotes
+        self._widgets.buttons.info.on_click(self._show_info)
+        self._widgets.buttons.print.on_click(self._print_pdf)
+        self._widgets.buttons.print2.on_click(self._print_pdf)
+        self._widgets.buttons.ksc.on_click(self._show_ksc)
+        self._wslider.observe(self._update_size, names=["value"])
+        self._tgl_fscreen.observe(self._toggle_fullscreen, names=["value"])
+        self._tgl_fscreen.observe(self._on_icon_change, names=["icon"])
+        self._widgets.toggles.laser.observe(self._toggle_laser, names=["value"])
+        self._widgets.toggles.draw.observe(self._toggle_overlay, names=["value"])
+        self._tgl_menu.observe(self._toggle_menu, names = ["value"])
+        self._update_theme({'owner':'layout'})  # Trigger Theme with aspect changed as well
+        self._update_size(change=None)  # Trigger this as well
+        self._widgets.panelbox.right_sidebar.children = _clipbox_children() # Set clipbox children
+
+        self._traits = [key for key, value in self.__dict__.items() if isinstance(value, ConfigTraits)]
+        parameters=[Parameter('self', Parameter.POSITIONAL_ONLY), 
+        *[Parameter(key, Parameter.POSITIONAL_OR_KEYWORD, default=None) for key in self._traits]]
+        type(self).__call__.__signature__ = Signature(parameters) # can only be set over class level
+                                         
+    def __call__(self, **kwargs):
+        "Apply many settings at once! Can apply individual traits in a setting with assignment as well."
+        for key, value in kwargs.items():
+            if not key in self._traits:
+                raise AttributeError(f"Settings has not trait attribute {key!r}")
+            if value and not isinstance(value, dict):
+                raise TypeError(f"{key} expects a dict, got {type(value)}")
+            getattr(self, key)(**value)
+        return self # For chaining
+
+    def __setattr__(self, name: str, value):
+        if not name.startswith('_') and hasattr(self, name):
+            raise AttributeError(f"Can't reset attribute {name!r} on {self!r}")
+        self.__dict__[name] = value
+
+    def _close_quick_menu(self):
+        if self._tgl_menu.value:
+            self._tgl_menu.value = False
+    
+    def _show_ksc(self, btn):
+        self._widgets._push_toast(htmlize(intro.key_combs), timeout=15)
+
+    def _print_pdf(self, btn):
+        with disabled(self._widgets.buttons.print,self._widgets.buttons.print2): # disable both buttons to avoid multiple clicks
+            self._slides.notify("Loading PDF window… <br>Use <code class='info'>Save as PDF</code> to preserve links.", timeout=5)
+            merge_frames = True if btn is self._widgets.buttons.print2 else False
+            
+            # Update frame counts first per slide for js side
+            self._widgets.iw._nfs = {s.number: 1 if merge_frames else s.nf for s in self._slides}
+            
+            # Update frames indices for print
+            parts = {}
+            for slide in self._slides:
+                slide._set_print_css(merge_frames = merge_frames)
+                if slide._fidxs and not merge_frames: # no parts if no frames or merge frames
+                    frms = []
+                    for frm in slide._fidxs:
+                        if isinstance(frm, int):
+                            frms.append({'row': frm - 1, 'col': None})
+                        elif isinstance(frm, tuple):
+                            frms.append({'row': frm[0] - 1, 'col': frm[1]})
+                        elif isinstance(frm , range):
+                            frms.append([*range(getattr(slide, '_frame_top',0)),*frm]) # 
+                        
+                    parts[slide.number] = frms
+                    
+            self._widgets.iw._pfs = parts
+            # Send message to JS to start print
+            self._widgets.iw.msg_tojs = 'PRINT'
+    
+    def _show_info(self, btn):
+        self._widgets.iw.send({
+            "content": html('',[intro.instructions]).value,
+            "timeout": 120000 # 2 minutes
+        })
+
+    def _resolve_img(self, src, width):
+        if isinstance(src, Path):
+            src = str(src)  # important for svg checking below
+        
+        if isinstance(src, str):
+            if "<svg" in src and "</svg>" in src:
+                return src.replace('<svg', f'<svg style="width:{width};height:auto" ') # extra space at end
+            else:
+                if src.startswith("clip:"):
+                    src = self._slides.clips_dir / src[5:] # don't strip it
+                try:
+                    return fix_ipy_image(Image(src, width=width), width=width).value
+                except:
+                    return self._resolve_img(SVG(src)._repr_svg_(), width=width)
+        return ''
+    
+    def _get_clickers(self): # in PDF/export mode
+        if len(self._slides) < 5 or not self.footer.controls:
+            return '' # no clicks for few slides, or when navigation UI is off
+        
+        items = [getattr(item,'_sec_id','') for item in self._slides]
+        imax = len(items) - 1
+        items = [items[int(round(i,0))] for i in [0, imax/4,imax/2, 3*imax/4, imax]]
+        labels = '●●●●●'
+        links = "".join(f'<a href="#{key}" class="clicker">{label}</a>' for (label,key) in zip(labels,items))
+        return f'<div class="click-wrapper print-only"> {links} </div>' 
+
+    def _update_size(self, change):
+        self._widgets.mainbox.layout.height = "{:.1f}vw".format( # 1/10 mm is below usual broweser resolution
+            self._wslider.value / self.layout.aspect
+        )
+        self._widgets.mainbox.layout.width = "{}vw".format(self._wslider.value)
+        self._update_theme({'owner':'layout'})  # change aspect for Linked Output view too
+        self._widgets.iw.msg_tojs = 'RESCALE'
+
+    @property
+    def _colors(self):
+        if self._widgets.theme.value == "Custom" and hasattr(self, 'theme'): # May not be there yet
+            return self.theme.colors.props
+        return styles.theme_colors[self._widgets.theme.value]
+
+    @property
+    def _theme_kws(self):
+        return dict(
+            colors = self._colors,
+            fonts  = self.fonts,
+            layout = self.layout,
+        )
+
+    def _update_theme(self, change=None):
+        # Only update layout CSS if theme changes, not on each call
+        if change and change['owner'] in ('layout',self._widgets.theme): # function called with owner without widget works too much
+            self._widgets.htmls.main.value = html('style',
+                _layout_css.layout_css(self._colors['accent'],self.layout.aspect)
+            ).value
+            
+        # before applying style_css theme, set reflow and inotes
+        self.layout._reflow = self._widgets.checks.reflow.value
+        self.layout._inotes = self._widgets.checks.inotes.value
+        
+        theme_css = styles.style_css(**self._theme_kws)
+        self._widgets.htmls.theme.value = html("style", theme_css).value
+        if self._widgets.checks.notes.value:
+            self._slides.notes.display() # Update notes window if open
+        
+        if self._widgets.theme.value == "Jupyter":
+            msg = "THEME:jupyterlab"
+        else:
+            msg = 'THEME:dark' if "Dark" in self._widgets.theme.value else 'THEME:light'
+        self._widgets.iw.msg_tojs = msg # changes theme of board
+        self.code._apply_change(None) # Update code theme
+
+    def _toggle_fullscreen(self, change):
+        self._widgets.iw.msg_tojs = 'TFS' # goes to js, toggle fullscreen and chnage icon of button
+
+    def _on_icon_change(self, change): # icon will changes when Javscript sends a message
+        if change.new == 'minus':
+            self._wsv = self._wslider.value
+            self._wslider.value = 100
+            self._widgets.mainbox.add_class('FullScreen')
+            self._tgl_fscreen.tooltip = "Exit Fullscreen [F]"
+        else:
+            if hasattr(self, '_wsv'):
+                self._wslider.value = self._wsv  # restore
+            self._widgets.mainbox.remove_class('FullScreen')
+            self._tgl_fscreen.tooltip = "Enter Fullscreen [F]"
+        
+    def _toggle_laser(self, change):
+        tgl = self._widgets.toggles.laser
+        self._widgets.htmls.pointer.active = tgl.value
+        tgl.icon = "minus" if tgl.value else "plus"
+        tgl.tooltip = f"{'Hide' if tgl.value else 'Show'} Laser Pointer [L]"
+        
+    def _toggle_overlay(self, change):
+        tgl = self._widgets.toggles.draw
+        if tgl.value:
+            if self._widgets.theme.value == "Jupyter":
+                self._widgets.iw.msg_tojs = "THEME:jupyterlab" # make like that
+
+            tgl.icon = "minus"
+            tgl.tooltip = "Close Drawing Panel"
+            self._widgets.drawer.layout.height = "100%"
+        else:
+            tgl.icon = "plus"
+            tgl.tooltip = "Open Drawing Panel"
+            self._widgets.drawer.layout.height = "0"
+            self._widgets.mainbox.focus() # it doesn't stay their otherwise
+
+    def _toggle_menu(self, change):
+        if self._tgl_menu.value:
+            self._tgl_menu.icon = 'minus'
+            self._hover_only = 'Hover-Only' in self._tgl_menu._dom_classes
+            self._tgl_menu.remove_class('Hover-Only') # If navigation menu hidden by user
+            self._widgets.quick_menu.layout.height = 'min(200px, calc(100% - 30px))'
+            self._widgets.quick_menu.layout.border = "1px solid var(--bg3-color)"
+        else:
+            self._tgl_menu.icon = 'plus'
+            self._widgets.quick_menu.layout.height = '0'
+            self._widgets.quick_menu.layout.border = "none"
+
+            if hasattr(self, '_hover_only') and self._hover_only:
+                self._tgl_menu.add_class('Hover-Only')
+
+    def load(self, path):
+        "Load settings from a json file. You may need to dump settings and then edit for correct usage."
+        file = Path(path)
+        if file.exists():
+            try:
+                self(**json.loads(file.read_text()))
+            except Exception as e:
+                self._slides.notify(self._slides.error("Exception", str(e)))
+        else:
+            raise FileNotFoundError(f"File {path!r} does not exist!")
+
+    def dump(self, path):
+        "Dump the settings state to a json file. Use it once you have finalized a settings setup of slides."
+        file = Path(path)
+        _req_configs = { 
+            key: getattr(self, key).props 
+            for key in getattr(self,'_traits',[])
+        }
+        with file.open("w") as f: 
+            json.dump(_req_configs, f, indent=4)
