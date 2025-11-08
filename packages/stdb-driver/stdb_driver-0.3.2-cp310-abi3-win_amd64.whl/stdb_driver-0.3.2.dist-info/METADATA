@@ -1,0 +1,99 @@
+Metadata-Version: 2.4
+Name: stdb-driver
+Version: 0.3.2
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Database
+Classifier: Topic :: Database :: Database Engines/Servers
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: GIS
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: Topic :: Software Development
+Requires-Dist: numpy~=2.0 ; extra == 'numpy'
+Requires-Dist: pandas~=2.0 ; extra == 'pandas'
+Requires-Dist: stdb-driver[numpy,pandas] ; extra == 'all'
+Provides-Extra: numpy
+Provides-Extra: pandas
+Provides-Extra: all
+License-File: LICENSE.txt
+Summary: Mireo SpaceTime database connector
+Keywords: mireo,spacetime,database,connector,table,schema,ingest,spatiotemporal
+Author: Mireo
+Maintainer-email: Zvonimir Jurelinac <zvonimir.jurelinac@mireo.com>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+
+# Mireo SpaceTime database remote connector
+
+**stdb-driver** is a Python module for managing remote [Mireo SpaceTime database](https://www.mireo.com/spacetime).
+
+## Features
+
+- Both **blocking** and **asynchronous** modes of operation are available.
+- Supports listing **nodes**; listing, creating and droping **tables**; inserting **rows**; and performing **range queries**.
+- Range query results are convertible to **Python lists**, **NumPy arrays** and **Pandas dataframes**.
+- Requires **CPython 3.10+**.
+- Available for **Linux** (**glibc** 2.17+ and **musl** 1.2+; x86-64) and **Windows** (x86-64).
+
+## Installation
+
+```
+pip install -U stdb-driver -i https://pypi.mireo.local
+```
+
+Conversions to NumPy and Pandas data types require those packages that can be installed as optional dependencies:
+```
+pip install -U stdb-driver[numpy]
+pip install -U stdb-driver[pandas]
+pip install -U stdb-driver[all]
+```
+
+## Example
+
+```
+import stdb_driver
+
+# Connect
+session = stdb_driver.SessionConfig().zk_hosts(<address>).build()
+print(session.status())  # SessionStatus.Connected
+
+# List nodes and tables
+print(session.list_nodes(), session.list_tables())
+
+# Run range query
+RALL = stdb_driver.RANGE_ALL
+res = session.range_query('segment', [[(1, 10000), RALL, RALL, RALL, RALL, RALL, RALL, RALL, RALL]])
+
+# Print column names and their MSQL data types
+print(res.row_type.columns)
+
+# Iterating over rows converts each lazily to a Python list of appropriate Python data types
+for row in res:
+	print(row)
+
+# Query result can be converted to:
+rows = res.to_list()  # Python list of appropriate Python data types
+arr = res.to_numpy()  # NumPy array of appropriate NumPy data types (requires numpy)
+df = res.to_pandas()  # Pandas dataframe of appropriate NumPy/Pandas data types (requires pandas)
+
+# Disconnect
+session.stop()
+print(session.status())  # SessionStatus.Stopped
+```
+
