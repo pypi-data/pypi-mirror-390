@@ -1,0 +1,433 @@
+Metadata-Version: 2.4
+Name: agency-code
+Version: 1.1.0
+Summary: An intelligent AI development assistant powered by Claude with built-in safety architecture
+Author-email: Joseph Pichardo <joeyjoe808@users.noreply.github.com>
+Maintainer-email: Joseph Pichardo <joeyjoe808@users.noreply.github.com>
+License: MIT
+Project-URL: Homepage, https://github.com/joeyjoe808/Agent-C
+Project-URL: Documentation, https://github.com/joeyjoe808/Agent-C/blob/main/ASKME.md
+Project-URL: Repository, https://github.com/joeyjoe808/Agent-C.git
+Project-URL: Issues, https://github.com/joeyjoe808/Agent-C/issues
+Keywords: ai,claude,agent,developer-assistant,cli,anthropic,multi-agent,code-generation,ai-assistant
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Libraries :: Application Frameworks
+Classifier: Environment :: Console
+Requires-Python: <3.14,>=3.13
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: openai-agents[litellm]==0.4.1
+Requires-Dist: litellm>=1.0.0
+Requires-Dist: beautifulsoup4>=4.9.0
+Requires-Dist: python-dotenv>=0.19.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: dulwich>=0.21.6
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Dynamic: license-file
+
+# Agency-Code: AI Developer Agent
+
+**An intelligent AI development assistant powered by Claude with built-in safety architecture.**
+
+> **Forked from**: [VRSEN/Agency-Code](https://github.com/VRSEN/Agency-Code.git)
+> Enhanced with production-ready safety guardrails, auto-termination, and webhook integration.
+
+**Key Features**: Multi-agent system (Coder + Planner) • Timeout monitoring • Runaway detection • WebSearch/WebFetch intelligence • Webhook-ready hooks • 181+ tests
+
+📖 **For detailed documentation, architecture, and integration examples**, see [ASKME.md](ASKME.md)
+
+---
+
+## ⚡ Quick Install (Recommended)
+
+**Requirements**: Python 3.13 (Python 3.14 is not yet supported)
+
+### Windows Installation
+
+```powershell
+# Step 1: Install agency-swarm framework
+python -m pip install git+https://github.com/VRSEN/agency-swarm.git@main
+
+# Step 2: Install agency-code
+python -m pip install agency-code
+
+# Step 3: Create .env file with your API key
+"ANTHROPIC_API_KEY=sk-ant-your_key_here" | Out-File -FilePath .env -Encoding ASCII
+
+# Step 4: Run aria
+aria
+```
+
+### Mac/Linux Installation
+
+```bash
+# Step 1: Install agency-swarm framework
+pip install git+https://github.com/VRSEN/agency-swarm.git@main
+
+# Step 2: Install agency-code
+pip install agency-code
+
+# Step 3: Create .env file with your API key
+echo "ANTHROPIC_API_KEY=sk-ant-your_key_here" > .env
+
+# Step 4: Run aria
+aria
+```
+
+**Get your API key**: https://console.anthropic.com/settings/keys
+
+---
+
+## 🔧 Troubleshooting
+
+### Error: "aria is not recognized" (Windows)
+
+**Problem**: Python Scripts folder is not in PATH.
+
+**Solution 1** - Add to PATH (Recommended):
+```powershell
+# Run in PowerShell (restart terminal after)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Users\YOUR_USERNAME\AppData\Local\Programs\Python\Python313\Scripts", "User")
+```
+
+**Solution 2** - Run with python:
+```powershell
+python -m agency
+```
+
+### Error: "command not found: aria" (Mac/Linux)
+
+**Problem**: pip install directory not in PATH.
+
+**Solution 1** - Add to PATH:
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export PATH="$HOME/.local/bin:$PATH"
+
+# Then reload shell
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+**Solution 2** - Run with python:
+```bash
+python -m agency
+```
+
+### Error: "Fatal error in launcher" or broken pip
+
+**Problem**: pip is pointing to wrong Python installation.
+
+**Solution**: Use `python -m pip` instead:
+```powershell
+# Windows
+python -m pip install agency-code
+
+# Mac/Linux
+python3 -m pip install agency-code
+```
+
+### Error: "ValueError: '3.14' is not a valid PythonVersion"
+
+**Problem**: Python 3.14 is too new - agency-swarm only supports Python 3.13.
+
+**Solution**: Install Python 3.13 from https://www.python.org/downloads/
+
+Then use:
+```powershell
+# Windows - use Python 3.13 specifically
+py -3.13 -m pip install git+https://github.com/VRSEN/agency-swarm.git@main
+py -3.13 -m pip install agency-code
+py -3.13 -m agency
+
+# Mac/Linux - ensure python3.13 is installed
+python3.13 -m pip install git+https://github.com/VRSEN/agency-swarm.git@main
+python3.13 -m pip install agency-code
+python3.13 -m agency
+```
+
+### Error: "Missing Anthropic API Key"
+
+**Problem**: No `.env` file or API key not set.
+
+**Solution**: Create `.env` file in the directory where you run `aria`:
+
+**Windows**:
+```powershell
+"ANTHROPIC_API_KEY=sk-ant-your_actual_key" | Out-File -FilePath .env -Encoding ASCII
+```
+
+**Mac/Linux**:
+```bash
+echo "ANTHROPIC_API_KEY=sk-ant-your_actual_key" > .env
+```
+
+**Alternative** - Set as environment variable:
+```powershell
+# Windows (temporary - current session only)
+$env:ANTHROPIC_API_KEY="sk-ant-your_key"
+
+# Mac/Linux (temporary - current session only)
+export ANTHROPIC_API_KEY="sk-ant-your_key"
+```
+
+---
+
+## 🚀 Manual Installation (Development)
+
+### Prerequisites
+
+- **Python 3.13+**
+- **Git**
+- **Anthropic API Key** ([Get one here](https://console.anthropic.com/))
+
+### Installation
+
+#### **Mac/Linux**
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/joeyjoe808/Agent-C.git
+cd Agent-C
+
+# 2. Create and activate virtual environment
+python3.13 -m venv .venv
+source .venv/bin/activate
+
+# 3. Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Fix Anthropic compatibility (important!)
+pip install git+https://github.com/openai/openai-agents-python.git@main
+```
+
+#### **Windows (PowerShell)**
+
+```powershell
+# 1. Clone the repository
+git clone https://github.com/joeyjoe808/Agent-C.git
+cd Agent-C
+
+# 2. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate.ps1
+
+# 3. Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Fix Anthropic compatibility (important!)
+pip install git+https://github.com/openai/openai-agents-python.git@main
+```
+
+#### **Windows (Command Prompt)**
+
+```cmd
+REM 1. Clone the repository
+git clone https://github.com/joeyjoe808/Agent-C.git
+cd Agent-C
+
+REM 2. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate.bat
+
+REM 3. Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+
+REM 4. Fix Anthropic compatibility (important!)
+pip install git+https://github.com/openai/openai-agents-python.git@main
+```
+
+---
+
+## 🔑 Configuration
+
+### Create `.env` File
+
+The agent looks for a `.env` file in the root directory. Create it with your API key:
+
+**Option 1: Create from scratch**
+
+```bash
+# Create .env file
+echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
+
+# On Windows (PowerShell):
+# "ANTHROPIC_API_KEY=your_api_key_here" | Out-File -FilePath .env -Encoding ASCII
+```
+
+**Option 2: Use example template (if provided)**
+
+```bash
+cp .env.example .env
+nano .env  # or notepad .env on Windows
+```
+
+### `.env` File Contents
+
+```env
+# Required: Your Anthropic API key
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Optional: Enable/disable safety session tracking (default: true)
+USE_SAFE_SESSION=true
+
+# Optional: Model selection (default: claude-haiku-4-5)
+MODEL=anthropic/claude-haiku-4-5-20251001
+```
+
+**Get your API key**: https://console.anthropic.com/settings/keys
+
+---
+
+## ▶️ Run Agency-Code
+
+**If installed via pipx/pip** (Quick Install):
+
+```bash
+# Run from anywhere
+aria
+```
+
+**If installed manually** (Development):
+
+```bash
+# Activate virtual environment (if not already activated)
+source .venv/bin/activate  # Mac/Linux
+# .venv\Scripts\activate     # Windows
+
+# Run the agent
+python agency.py
+# Or use: aria
+
+# On Mac, use sudo if you get permission errors:
+sudo python agency.py
+```
+
+**You'll see:**
+```
+[SafeSession] [OK] Session tracking enabled
+[SafeSession] Session ID: abc123...
+
+User: [Type your request here]
+```
+
+### Example Requests
+
+```
+User: Create a FastAPI hello world app
+User: Fix the bug in database.py line 42
+User: Research best practices for JWT authentication
+User: Help me refactor this function to be more readable
+```
+
+---
+
+## 🛡️ Safety Features
+
+**Built-in Protection:**
+- ✅ **Timeout Monitoring**: 30min session / 5min turn / 2min tool timeouts
+- ✅ **Runaway Detection**: Catches infinite loops (5+ same tool calls)
+- ✅ **Auto-Termination**: Optional auto-kill on timeout/runaway (disabled by default)
+- ✅ **Graceful Cancellation**: Press Ctrl+C to save state and exit cleanly
+
+**Webhook Integration:**
+- ✅ **Hook System**: Triggers on every tool execution and agent handoff
+- ✅ **Perfect for APIs**: Use as backend for your web application
+- ✅ **Real-time Tracking**: Session metrics (tool calls, duration, reasoning steps)
+
+See [ASKME.md](ASKME.md) for webhook integration examples and detailed safety documentation.
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run safety architecture tests (44 tests)
+pytest tests/test_session_metrics.py \
+       tests/test_safe_session.py \
+       tests/test_timeout_monitor.py \
+       tests/test_runaway_detector.py \
+       tests/test_background_monitor.py \
+       tests/test_cancellation.py -v
+```
+
+---
+
+## 📂 Project Structure
+
+```
+Agency-Code/
+├── agency.py                 # Main entry point
+├── .env                      # API keys (you create this)
+├── requirements.txt          # Dependencies
+│
+├── agency_code_agent/        # Coder agent
+├── planner_agent/            # Planner agent
+├── safety/                   # Safety architecture
+├── tools/                    # 14+ tool implementations
+├── shared/                   # Utilities & hooks
+└── tests/                    # 181+ automated tests
+```
+
+---
+
+## 🔗 Links
+
+- **Repository**: https://github.com/joeyjoe808/Agent-C
+- **Issues**: https://github.com/joeyjoe808/Agent-C/issues
+- **Original Fork**: https://github.com/VRSEN/Agency-Code
+- **Agency Swarm**: https://agency-swarm.ai/
+
+---
+
+## 📖 Documentation
+
+**For detailed information**, see [ASKME.md](ASKME.md):
+- Complete feature documentation
+- Webhook integration examples
+- Safety architecture details
+- API integration patterns
+- Demo tasks and examples
+- Architecture diagrams
+
+**For developers**, see [AGENTS.md](AGENTS.md):
+- Repository structure and guidelines
+- Coding style and conventions
+- Testing guidelines
+- Commit and PR guidelines
+
+---
+
+## 🤝 Contributing
+
+Fully open-source - build, refine, and improve as needed!
+
+1. Fork the repository
+2. Create a feature branch
+3. Write tests first (TDD)
+4. Run test suite
+5. Submit pull request
+
+---
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+**Questions?** Open an issue or check [ASKME.md](ASKME.md) for detailed docs!
