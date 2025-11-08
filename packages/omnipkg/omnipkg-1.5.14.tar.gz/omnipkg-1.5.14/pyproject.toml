@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnipkg"
+version = "1.5.14"
+authors = [
+  { name = "1minds3t", email = "1minds3t@proton.me" },
+]
+description = "The Ultimate Python Dependency Resolver. One environment. Infinite packages. Zero conflicts."
+readme = "README.md"
+requires-python = ">=3.7, <3.15"
+license = { text = "AGPL-3.0-only OR LicenseRef-Proprietary" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Environment :: Console",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Software Distribution",
+]
+
+dependencies = [
+    # Use modern packaging for modern Python (3.10+)
+    "packaging>=23.0; python_version >= '3.10'",
+    # Use older packaging on Python 3.9 to match the older safety dependency
+    "packaging<22.0,>=21.0; python_version < '3.10'",
+    "requests>=2.20",
+    "authlib>=1.6.5",
+    "filelock>=3.9",
+    "tomli; python_version < '3.11'",
+    "safety>=3.0; python_version >= '3.10' and python_version < '3.14'",
+    "aiohttp>=3.13.1",
+    "pip-audit>=2.6.0; python_version >= '3.14'",
+    "uv>=0.9.6" 
+]
+
+[project.optional-dependencies]
+full = [
+    "tqdm",
+    "python-magic",
+    "redis>=5.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/1minds3t/omnipkg"
+"Bug Tracker" = "https://github.com/1minds3t/omnipkg/issues"
+PyPi = "https://pypi.org/project/omnipkg/"
+Conda-Forge = "https://anaconda.org/conda-forge/omnipkg"
+Docs = "https://github.com/1minds3t/omnipkg/tree/main/docs"
+
+[project.scripts]
+omnipkg = "omnipkg.cli:main"
+8pkg = "omnipkg.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["omnipkg*", "tests"]
+exclude = [
+    "build*",
+    "dist*",
+    "*.egg-info*"
+]
+
+[tool.setuptools.package-data]
+"omnipkg" = [
+    "locale/**/*.mo",
+]
+"tests" = ["**/*.py"]
+
+[tool.setuptools]
+license-files = ["LICENSE", "COMMERCIAL_LICENSE.md"]
+include-package-data = true
