@@ -1,0 +1,43 @@
+"""
+Type annotated wrapper for {{ package.library_name }} Session.
+
+{{ copyright }}
+
+Usage::
+
+    ```python
+    from {{ package.name }}.{{ package.library_name }} import Session
+
+    # Wrapper for {{ package.library_name }}.Session constructor
+    # Returns {{ package.name }}.Session inherited from {{ package.library_name }}.Session
+    session = Session()
+    session: {{ package.name }}.{{ package.library_name }}.session.Session
+
+    # s3_client is aiobotocore.AioBaseClient
+    # with type annotations only in type checking mode
+    async with session.s3.client() as s3_client:
+        s3_client.list_buckets()
+
+    # s3_resource is aioboto3.AIOBoto3ServiceResource
+    # with type annotations only in type checking mode
+    async with session.s3.resource() as s3_resource:
+        s3_resource.Bucket("bucket").objects.all()
+    ```
+"""
+
+from {{ package.library_name }}.session import Session as Aioboto3Session
+
+{% for service_package in package.service_packages %}
+from {{ package.name }}.{{ package.library_name }}.services.{{ service_package.service_name.import_name }} import {{ service_package.service_name.class_name }}Service
+{% endfor %}
+
+
+class Session(Aioboto3Session):
+{% for service_package in package.service_packages %}
+    @property
+    def {{ package.get_property_name(service_package.service_name) }}(self) -> {{ service_package.service_name.class_name }}Service:
+        """
+        {{ package.library_name }} Session for {{ service_package.service_name.class_name }} service.
+        """
+        return {{ service_package.service_name.class_name }}Service("{{ service_package.service_name.boto3_name }}", self)
+{% endfor %}
