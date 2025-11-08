@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hitoshura25-pypi-workflow-generator"
+description = "Dual-mode tool (MCP server + CLI) for generating GitHub Actions workflows"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Vinayak Menon", email = "vinayakmenon+pypi@users.noreply.github.com"}
+]
+keywords = ["mcp", "github-actions", "pypi", "workflow", "ci-cd", "code-generator"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Build Tools",
+]
+dynamic = ["version"]
+
+dependencies = [
+    "Jinja2>=3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hitoshura25/pypi-workflow-generator"
+Repository = "https://github.com/hitoshura25/pypi-workflow-generator"
+Issues = "https://github.com/hitoshura25/pypi-workflow-generator/issues"
+Documentation = "https://github.com/hitoshura25/pypi-workflow-generator/blob/main/README.md"
+
+[project.scripts]
+hitoshura25-pypi-workflow-generator = "hitoshura25_pypi_workflow_generator.main:main"
+hitoshura25-pypi-workflow-generator-init = "hitoshura25_pypi_workflow_generator.init:main"
+hitoshura25-pypi-release = "hitoshura25_pypi_workflow_generator.create_release:main"
+mcp-hitoshura25-pypi-workflow-generator = "hitoshura25_pypi_workflow_generator.server:main"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hitoshura25_pypi_workflow_generator*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+hitoshura25_pypi_workflow_generator = ["*.j2"]
+
