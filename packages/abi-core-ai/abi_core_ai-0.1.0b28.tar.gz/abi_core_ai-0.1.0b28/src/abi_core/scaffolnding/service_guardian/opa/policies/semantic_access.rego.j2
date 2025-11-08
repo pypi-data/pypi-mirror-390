@@ -1,0 +1,229 @@
+# Semantic Access Policy for {{ project_name }}
+# Domain: {{ domain }}
+# Generated from working abi-core implementation
+
+package abi.semantic_access
+
+import rego.v1
+
+# Default decisions
+default allow := false
+default deny := false
+
+# Trusted agents for {{ project_name }}
+trusted_agents := {
+    "orchestrator",
+    "planner"{% if domain == "finance" %},
+    "compliance_agent",
+    "risk_analyzer",
+    "financial_advisor"{% elif domain == "healthcare" %},
+    "diagnostic_agent",
+    "patient_data_processor",
+    "hipaa_compliance_agent"{% endif %}
+}
+
+# Domain-specific configuration
+{% if domain == "finance" %}
+domain_specific_rules := {
+    "require_compliance_check": true,
+    "audit_all_transactions": true,
+    "max_risk_score": 0.3,
+    "require_encryption": true
+}
+{% elif domain == "healthcare" %}
+domain_specific_rules := {
+    "hipaa_compliance": true,
+    "phi_protection": true,
+    "max_risk_score": 0.2,
+    "audit_patient_access": true
+}
+{% else %}
+domain_specific_rules := {
+    "max_risk_score": 0.5,
+    "basic_audit": true
+}
+{% endif %}
+
+# Agent registration check
+agent_registered if {
+    input.source_agent
+    input.agent_card
+    input.agent_card.id
+}
+
+# Agent status check
+agent_active if {
+    agent_registered
+    input.agent_card.metadata.status == "active"
+}
+
+# Trust level check
+agent_trusted if {
+    agent_registered
+    trusted_agents[input.source_agent]
+}
+
+# Basic allow rule
+allow if {
+    agent_registered
+    agent_active
+    not any_deny_conditions
+}
+
+# Enhanced allow for trusted agents
+allow if {
+    agent_trusted
+    agent_active
+    not critical_deny_conditions
+}
+
+# Deny conditions
+any_deny_conditions if {
+    count(deny) > 0
+}
+
+critical_deny_conditions if {
+    agent_blacklisted
+}
+
+critical_deny_conditions if {
+    agent_inactive
+}
+
+# Specific deny rules
+agent_blacklisted if {
+    input.agent_card.metadata.status == "blacklisted"
+}
+
+agent_inactive if {
+    input.agent_card.metadata.status == "inactive"
+}
+
+rate_limit_exceeded if {
+    input.request_metadata.rate_limit_exceeded == true
+}
+
+invalid_ip if {
+    input.request_metadata.source_ip
+    blocked_ips[input.request_metadata.source_ip]
+}
+
+outside_business_hours if {
+    {% if domain == "finance" %}
+    # Finance: stricter hours (9 AM - 6 PM UTC)
+    hour := time.clock(time.now_ns())[0]
+    hour < 9
+}
+
+outside_business_hours if {
+    hour := time.clock(time.now_ns())[0]
+    hour >= 18
+    {% else %}
+    # General: 24/7 access allowed
+    false
+    {% endif %}
+}
+
+# Blocked IPs (configurable)
+blocked_ips := {
+    "192.168.1.100",  # Example blocked IP
+    "10.0.0.50"       # Another example
+}
+
+# Collect deny reasons
+deny contains "Agent is blacklisted" if agent_blacklisted
+deny contains "Agent is inactive" if agent_inactive
+deny contains "Rate limit exceeded" if rate_limit_exceeded
+deny contains "IP address blocked" if invalid_ip
+deny contains "Outside business hours" if outside_business_hours
+
+# Risk score calculation (multi-dimensional)
+risk_score := calculated_risk if {
+    calculated_risk := (
+        base_risk +
+        trust_risk +
+        temporal_risk +
+        behavioral_risk
+    ) / 4
+}
+
+# Base risk (agent status)
+base_risk := 0.0 if agent_trusted
+base_risk := 0.1 if { agent_active; not agent_trusted }
+base_risk := 0.5 if { agent_registered; not agent_active }
+base_risk := 1.0 if not agent_registered
+
+# Trust risk (based on agent history)
+trust_risk := 0.0 if {
+    agent_trusted
+    input.agent_card.metadata.trust_score >= 0.8
+}
+trust_risk := 0.2 if {
+    input.agent_card.metadata.trust_score >= 0.6
+    input.agent_card.metadata.trust_score < 0.8
+}
+trust_risk := 0.5 if {
+    input.agent_card.metadata.trust_score < 0.6
+}
+trust_risk := 0.1 if not input.agent_card.metadata.trust_score  # Default for missing trust_score
+
+# Temporal risk (time-based)
+temporal_risk := 0.0 if not outside_business_hours
+temporal_risk := 0.3 if outside_business_hours
+
+# Behavioral risk (request patterns)
+behavioral_risk := 0.0 if {
+    input.request_metadata.mcp_method in {"tools/list", "resources/list"}
+}
+behavioral_risk := 0.1 if {
+    input.request_metadata.mcp_method in {"tools/call", "resources/read"}
+}
+behavioral_risk := 0.3 if {
+    input.request_metadata.mcp_method == "admin"
+}
+behavioral_risk := 0.2  # Default for unknown methods
+
+# Remediation suggestions
+remediation_suggestions contains "Register agent in system" if not agent_registered
+remediation_suggestions contains "Activate agent status" if { agent_registered; not agent_active }
+remediation_suggestions contains "Remove from blacklist" if agent_blacklisted
+remediation_suggestions contains "Reduce request rate" if rate_limit_exceeded
+remediation_suggestions contains "Use allowed IP address" if invalid_ip
+remediation_suggestions contains "Retry during business hours" if outside_business_hours
+
+# Audit log with comprehensive information
+audit_log := {
+    "timestamp": time.now_ns(),
+    "project": "{{ project_name }}",
+    "domain": "{{ domain }}",
+    "agent_info": {
+        "source_agent": input.source_agent,
+        "agent_id": input.agent_card.id,
+        "agent_name": input.agent_card.name,
+        "agent_status": input.agent_card.metadata.status,
+        "trust_score": input.agent_card.metadata.trust_score
+    },
+    "request_info": {
+        "mcp_method": input.request_metadata.mcp_method,
+        "mcp_tool": input.request_metadata.mcp_tool,
+        "source_ip": input.request_metadata.source_ip,
+        "user_agent": input.request_metadata.user_agent
+    },
+    "decision": {
+        "allow": allow,
+        "deny_reasons": deny,
+        "risk_score": risk_score,
+        "risk_components": {
+            "base_risk": base_risk,
+            "trust_risk": trust_risk,
+            "temporal_risk": temporal_risk,
+            "behavioral_risk": behavioral_risk
+        }
+    },
+    "policy_info": {
+        "agent_registered": agent_registered,
+        "agent_active": agent_active,
+        "agent_trusted": agent_trusted,
+        "domain_rules": domain_specific_rules
+    }
+}
