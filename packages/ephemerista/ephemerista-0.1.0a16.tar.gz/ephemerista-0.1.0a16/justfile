@@ -1,0 +1,82 @@
+default:
+  just --list
+
+build:
+  uv build --sdist --wheel
+
+docs:
+  uv run --group docs sphinx-build -b html docs docs/_build/html
+
+docs-pdf:
+  uv run --group docs sphinx-build -b latex docs docs/_build/pdf && make -C docs/_build/pdf
+
+docs-ci:
+  uv run --group docs sphinx-build -b html docs public
+
+docs-serve:
+  uv run --group docs sphinx-autobuild --port 0 -b html docs docs/_build/html --watch src
+
+# Run unit tests (excludes expensive benchmarks)
+test-unit *ARGS:
+  uv run pytest -m "not benchmark" {{ARGS}}
+
+# Run unit tests for CI (excludes benchmarks and slow tests)
+test-unit-ci *ARGS:
+  uv run pytest -m "not slow and not benchmark" {{ARGS}}
+
+# Run only benchmark tests (performance tests)
+test-benchmarks *ARGS:
+  uv run pytest -m "benchmark" {{ARGS}}
+
+# Run ALL tests including benchmarks (use with caution - slow!)
+test-all *ARGS:
+  uv run pytest {{ARGS}}
+
+test-examples:
+  uv run pytest --nbmake --nbmake-timeout=3000 examples/*.ipynb
+
+# Default test suite (unit tests + examples, excludes benchmarks)
+test *ARGS: test-unit test-examples
+
+# CI-optimized test suite (fast tests only)
+test-ci *ARGS: test-unit-ci test-examples
+
+test-cov *ARGS:
+  uv run coverage run -m pytest -m "not benchmark" {{ARGS}}
+
+test-cov-ci *ARGS:
+  uv run coverage run -m pytest -m "not slow and not benchmark" {{ARGS}}
+
+default-version := "3.13"
+
+test-release version=default-version:
+  uvx -p {{version}} --with ephemerista --with pytest-benchmark --with orekitdata@git+https://gitlab.orekit.org/orekit/orekit-data.git pytest -m "not slow and not benchmark"
+
+cov-combine:
+  uv run coverage combine
+
+cov-html:
+  uv run coverage html
+
+cov-report:
+  uv run coverage report
+
+cov-xml:
+  uv run coverage xml
+
+cov: test-cov cov-combine cov-html cov-report
+
+cov-ci: test-cov-ci cov-combine cov-xml cov-html cov-report
+
+lint-typing:
+  uv run mypy --install-types --non-interactive src/ephemerista tests
+
+lint-style *ARGS:
+  uv run ruff check {{ARGS}}
+  uv run ruff format --check {{ARGS}}
+
+# FIXME: Enable typing lints once all types are cleaned up
+lint *ARGS: lint-style
+
+fmt *ARGS:
+  uv run ruff format {{ARGS}}

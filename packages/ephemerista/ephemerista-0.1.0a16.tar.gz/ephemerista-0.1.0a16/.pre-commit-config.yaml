@@ -1,0 +1,26 @@
+#!/bin/sh
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+  - repo: local
+    hooks:
+    -   id: hatch fmt
+        name: hatch fmt
+        entry: hatch fmt
+        language: python
+        types: [python]
+  - repo: local
+    hooks:
+      - id: check-sign-off
+        name: check-sign-off
+        language: system
+        entry: 'bash -c "if ! git log -1 --pretty=%B | grep -q \"^Signed-off-by: .\+<.\+\(@\| at \).\+\(\.\| dot \).\+>$\"; then echo \"Error: Missing Signed-off-by in commit message. Please read CONTRIBUTING.md.\"; exit 1; fi"'
+        files: '.*'

@@ -1,0 +1,187 @@
+[project]
+name = "ephemerista"
+version = "0.1.0a16"
+description = "Space mission analysis for telecommunications and satellite constellations"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "AGPL-3.0-or-later" }
+keywords = []
+authors = [
+  { name = "Helge Eichhorn", email = "helge@libre.space" },
+  { name = "Clément Jonglez", email = "clement@jonglez.space" },
+  { name = "Andrei Zisu", email = "matzipan@gmail.com" },
+  { name = "Calum Hervieu", email = "calumjhervieu@gmail.com" },
+  { name = "Victoria Malyshkina", email = "victoria@libre.space" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "geojson-pydantic~=2.0",
+  "itur~=0.4",
+  "jdk4py~=21.0",
+  "lox-space==0.1.0a27",
+  "matplotlib~=3.10",
+  "numpy>=1.16.0",
+  "orekit_jpype~=13.1",
+  "pandas~=2.3",
+  "plotly~=6.3",
+  "pydantic_numpy~=8.0",
+  "pydantic~=2.11",
+  "scipy~=1.16",
+  "geopandas~=1.1",
+  "antimeridian~=0.4",
+  "geojsoncontour~=0.5",
+  "folium~=0.20",
+  "h3~=4.3",
+]
+
+[project.urls]
+Documentation = "https://docs.ephemerista.space"
+Issues = "https://gitlab.com/librespacefoundation/ephemerista/ephemerista-simulator/-/issues"
+Source = "https://gitlab.com/librespacefoundation/ephemerista/ephemerista-simulator"
+
+[build-system]
+requires = ["hatchling", "hatch-build-scripts"]
+build-backend = "hatchling.build"
+
+[[tool.hatch.build.hooks.build-scripts.scripts]]
+out_dir = "src/ephemerista/jars"
+work_dir = "java_additions"
+commands = ["mvn clean package"]
+artifacts = ["../src/ephemerista/jars/ephemeristaJava-0.0.1-SNAPSHOT.jar"]
+
+[dependency-groups]
+dev = [
+  "coverage[toml]>=6.5",
+  "deap",
+  "pytest",
+  "pytest-benchmark",
+  "ipython",
+  "ipykernel",
+  "line-profiler",
+  "nbformat",
+  "nbmake",
+  "pre-commit",
+  "watchfiles",
+  "orekitdata @ git+https://gitlab.orekit.org/orekit/orekit-data.git",
+  "pygal>=3.0.5",
+  "pygaljs>=1.0.2",
+]
+lint = ["mypy>=1.12.0", "ruff>=0.7.1"]
+docs = [
+  "sphinx>=7.2",
+  "myst-parser>=2.0",
+  "furo>=2023.9.10",
+  "sphinx-autodoc-typehints",
+  "autodoc_pydantic",
+  "sphinx-autoapi",
+  "sphinx-autobuild",
+]
+
+[tool.uv]
+default-groups = ["dev", "lint"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+lint.select = [
+  "A",
+  "ARG",
+  "B",
+  "C",
+  "D",
+  "DTZ",
+  "E",
+  "EM",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+lint.ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Ignore checks for possible passwords
+  "S105",
+  "S106",
+  "S107",
+  # Ignore complexity
+  "C901",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  # Avoid conflict with formatter
+  "ISC001",
+]
+lint.unfixable = [
+  # Don't touch unused imports
+  "F401",
+]
+lint.pydocstyle.convention = "numpy"
+lint.pydocstyle.ignore-decorators = ["pydantic.computed_field"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ephemerista"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-builtins]
+builtins-allowed-modules = ["math", "time"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests and notebooks can use magic values, assertions, relative imports, and print statements
+"docs/**/*" = ["PLR2004", "S101", "TID252", "D"]
+"examples/**/*" = ["PLR2004", "S101", "TID252", "D", "PLC0415"]
+"tests/**/*" = ["PLR2004", "S101", "TID252", "D", "T201"]
+"scripts/**/*" = ["PLR2004", "S101", "TID252", "D", "T201", "PLC0415"]
+# Disable PLC0415 for all Jupyter notebooks
+"*.ipynb" = ["PLC0415"]
+
+[tool.coverage.run]
+source_pkgs = ["ephemerista", "tests"]
+branch = true
+parallel = true
+omit = ["src/ephemerista/__about__.py", "tests/*"]
+[tool.coverage.paths]
+ephemerista = ["src/ephemerista", "*/ephemerista/src/ephemerista"]
+tests = ["tests", "*/ephemerista/tests"]
+
+[tool.coverage.report]
+exclude_also = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "@(abc\\.)?abstractmethod",
+]
+
+[tool.pytest.ini_options]
+markers = [
+  "slow: marks tests as slow (deselected by default in CI)",
+  "benchmark: marks tests as benchmarks (performance tests)",
+]
+
+[tool.mypy]
+plugins = ["numpy.typing.mypy_plugin"]
