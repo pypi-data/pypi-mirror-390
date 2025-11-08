@@ -1,0 +1,27 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          cache: pip
+          # `hatch test --all` tests multiple python versions
+          python-version: '3.12'
+
+      - name: Install Hatch 
+        run: pip install hatch
+        
+      - name: Test
+        run: hatch test --parallel --all
