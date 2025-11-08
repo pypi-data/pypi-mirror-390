@@ -1,0 +1,61 @@
+# CoreLogic Finance 🛠️
+
+CoreLogic Finance es una librería modular y altamente confiable para cálculos financieros y de negocios en Python. Su diseño se basa estrictamente en la **Programación Orientada a Objetos (POO)** y el **Desarrollo Guiado por Pruebas (TDD)**, garantizando precisión matemática y robustez ante errores.
+
+## 🎯 Enfoque Arquitectónico
+
+* **Confiabilidad por TDD:** Todos los módulos tienen una cobertura de pruebas superior al 95%, incluyendo validación de **Casos Límite** (ej. balance cero, flujos vacíos).
+* **Encapsulación:** Utiliza atributos privados (`__nombre`) para proteger el estado interno de los cálculos, forzando la interacción a través de interfaces públicas.
+* **Excepciones Personalizadas:** Manejo de errores específicos del dominio de negocio (ej. `TasaInvalidaError`, `FrecuenciaInvalidaError`).
+
+## ⚙️ Instalación
+
+La librería está disponible en PyPI:
+
+```bash
+pip install corelogic-finance
+
+Módulos Clave
+
+Cada módulo de CoreLogic está dedicado a una tarea financiera específica:
+
+* **Amortizacion:** Generación de tablas de pago y cálculo de cuotas fijas de préstamos.
+    * **Enfoque:** Gestión de Deuda.
+    * **Output:** `pandas.DataFrame`.
+* **VPN (Valor Presente Neto):** Cálculo de VPN y Tasa Interna de Retorno (TIR).
+    * **Enfoque:** Evaluación de Proyectos.
+    * **Output:** `float`.
+* **InteresCompuesto:** Proyección de Valor Futuro de Inversiones con capitalización variada.
+    * **Enfoque:** Proyección de Ahorros.
+    * **Output:** `float`.
+* **Depreciacion:** Cálculo de depreciación anual por el método de Línea Recta.
+    * **Enfoque:** Contabilidad de Activos.
+    * **Output:** `float`.
+* **AnalisisRatio:** Cálculo de ratios de liquidez (Corriente y Prueba Ácida).
+    * **Enfoque:** Salud Financiera.
+    * **Output:** `float`.
+
+Uso Rápido (Ejemplo: VPN)
+
+El siguiente ejemplo muestra cómo evaluar un proyecto de inversión utilizando el módulo `VPN` y cómo manejar errores esperados.
+
+```python
+from corelogic import VPN, TasaInvalidaError
+
+# Flujos: Inversión inicial negativa (-1000) seguida de flujos de caja futuros.
+flujos_proyecto = [-1000.0, 300.0, 500.0, 600.0]
+tasa_costo_capital = 0.10 # 10%
+
+try:
+    evaluacion = VPN(tasa_costo_capital, flujos_proyecto)
+    
+    # 1. Calcular el Valor Presente Neto
+    vpn_calculado = evaluacion.calcular_vpn()
+    print(f"VPN del Proyecto: ${vpn_calculado:.2f}")
+
+    # 2. Calcular la Tasa Interna de Retorno (Método de Clase)
+    tir_calculada = VPN.calcular_tir(flujos_proyecto)
+    print(f"TIR del Proyecto: {tir_calculada:.2%}")
+
+except TasaInvalidaError as e:
+    print(f"ERROR: {e}")
