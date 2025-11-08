@@ -1,0 +1,354 @@
+[build-system]
+{%- if cookiecutter.backend == "pdm" %}
+requires = ["pdm-backend>=2.4"]
+build-backend = "pdm.backend"
+{%- elif cookiecutter.backend == "uv" %}
+requires = ["uv_build>=0.7.19"]
+build-backend = "uv_build"
+{%- elif cookiecutter.backend == "maturin" %}
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+{%- elif cookiecutter.backend == "hatch" %}
+{%- if cookiecutter.vcs %}
+requires = ["hatchling>=1.26", "hatch-vcs"]
+{%- else %}
+requires = ["hatchling>=1.26"]
+{%- endif %}
+build-backend = "hatchling.build"
+{%- elif cookiecutter.backend == "setuptools" %}
+{%- if cookiecutter.vcs %}
+requires = ["setuptools>=77", "setuptools_scm[toml]>=7"]
+{%- else %}
+requires = ["setuptools>=77"]
+{%- endif %}
+build-backend = "setuptools.build_meta"
+{%- elif cookiecutter.backend == "flit" %}
+{%- if cookiecutter.vcs %}
+requires = ["flit_scm", "flit_core>=3.11"]
+build-backend = "flit_scm:buildapi"
+{%- else %}
+requires = ["flit_core>=3.11"]
+build-backend = "flit_core.buildapi"
+{%- endif %}
+{%- elif cookiecutter.backend == "pybind11" %}
+{%- if cookiecutter.vcs %}
+requires = ["setuptools>=77", "setuptools_scm[toml]>=7", "pybind11"]
+{%- else %}
+requires = ["setuptools>=77", "pybind11"]
+{%- endif %}
+build-backend = "setuptools.build_meta"
+{%- elif cookiecutter.backend == "skbuild"  %}
+requires = ["pybind11", "scikit-build-core>=0.11"]
+build-backend = "scikit_build_core.build"
+{%- elif cookiecutter.backend == "mesonpy" %}
+requires = ["meson-python>=0.18", "pybind11"]
+build-backend = "mesonpy"
+{%- elif cookiecutter.backend == "poetry" %}
+{%- if cookiecutter.vcs %}
+requires = ["poetry-core>=2.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+{%- else %}
+requires = ["poetry_core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+{%- endif %}
+{%- endif %}
+
+
+[project]
+name = "{{ cookiecutter.project_name }}"
+{%- if cookiecutter.backend in ['maturin', 'mesonpy', 'uv'] or not cookiecutter.vcs and cookiecutter.backend in ['setuptools', 'pybind11', 'skbuild', 'poetry'] %}
+version = "0.1.0"
+{%- endif %}
+authors = [
+  { name = "{{ cookiecutter.full_name }}", email = "{{ cookiecutter.email }}" },
+]
+{%- if cookiecutter.org | lower == "scikit-hep" %}
+maintainers = [
+  { name = "The Scikit-HEP admins", email = "scikit-hep-admins@googlegroups.com" },
+]
+{%- endif %}
+description = "{{ cookiecutter.project_short_description }}"
+readme = "README.md"
+{%- if cookiecutter.backend != 'poetry' %}
+{%- if cookiecutter.license == "BSD" %}
+license = "BSD-3-Clause"
+{%- elif cookiecutter.license == "Apache" %}
+license = "Apache-2.0"
+{%- elif cookiecutter.license == "MIT" %}
+license = "MIT"
+{%- endif %}
+license-files = ["LICENSE"]
+{%- endif %}
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+{%- if cookiecutter.backend == ['poetry'] %}
+{%- if cookiecutter.license == "BSD" %}
+  "License :: OSI Approved :: BSD License",
+{%- elif cookiecutter.license == "Apache" %}
+  "License :: OSI Approved :: Apache Software License",
+{%- elif cookiecutter.license == "MIT" %}
+  "License :: OSI Approved :: MIT License",
+{%- endif %}
+{%- endif %}
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+{%- if cookiecutter.backend not in ['maturin', 'mesonpy', 'uv'] and cookiecutter.vcs or cookiecutter.backend in ['pdm', 'hatch', 'flit'] %}
+dynamic = ["version"]
+{%- endif %}
+dependencies = []
+
+[project.urls]
+Homepage = "{{ cookiecutter.url }}"
+"Bug Tracker" = "{{ cookiecutter.url }}/issues"
+Discussions = "{{ cookiecutter.url }}/discussions"
+Changelog = "{{ cookiecutter.url }}/releases"
+
+
+[dependency-groups]
+test = [
+  "pytest >=6",
+  "pytest-cov >=3",
+]
+dev = [
+  { include-group = "test" },
+]
+{%- if cookiecutter.docs == 'sphinx' %}
+docs = [
+  "sphinx>=7.0",
+  "myst_parser>=0.13",
+  "sphinx_copybutton",
+  "sphinx_autodoc_typehints",
+  "furo>=2023.08.17",
+]
+{%- elif cookiecutter.docs == "mkdocs" %}
+docs = [
+    "markdown>=3.9",
+    "mdx-include>=1.4.2",
+    "mkdocs-material>=9.1.19",
+    "mkdocs>=1.1.2",
+    "mkdocstrings-python>=1.18.2",
+    "pyyaml>=6.0.1",
+]
+{%- endif %}
+
+
+{%- if cookiecutter.backend == "skbuild" %}
+
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+{%- if cookiecutter.vcs %}
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+sdist.include = ["src/{{ cookiecutter.__project_slug }}/_version.py"]
+{%- endif %}
+
+
+{%- elif cookiecutter.backend == "maturin" %}
+
+
+[tool.maturin]
+module-name = "{{ cookiecutter.__project_slug }}._core"
+python-packages = ["{{ cookiecutter.__project_slug }}"]
+python-source = "src"
+sdist-generator = "git"  # default is cargo
+
+{%- elif cookiecutter.backend == "hatch" %}
+
+
+[tool.hatch]
+{%- if not cookiecutter.vcs %}
+version.path = "src/{{ cookiecutter.__project_slug  }}/__init__.py"
+{%- else %}
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/{{ cookiecutter.__project_slug }}/_version.py"
+{%- endif %}
+
+[tool.hatch.envs.default]
+# duplicate for now since hatch doesn't support groups yet
+dependencies = []
+scripts.test = "pytest {args}"
+
+
+{%- elif cookiecutter.backend == "pdm" %}
+{%- if cookiecutter.vcs %}
+
+
+[tool.pdm.version]
+source = "scm"
+write_to = "{{ cookiecutter.__project_slug }}/_version.py"
+write_template = "version = '{}'"
+
+{%- else %}
+
+
+[tool.pdm.version]
+source = "file"
+path = "src/{{ cookiecutter.__project_slug }}/__init__.py"
+
+{%- endif %}
+
+[tool.pdm.dev-dependencies]
+devtest = ["pytest", "pytest-cov"]
+
+{%- elif cookiecutter.backend == "poetry" %}
+{%- if cookiecutter.vcs %}
+[tool.poetry]
+version = "0.0.0"
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = true
+substitution.files = ["src/{{ cookiecutter.__project_slug }}/__init__.py"]
+{%- endif %}
+
+[tool.poetry.group.test.dependencies]
+pytest = ">= 6"
+pytest-cov = ">= 3"
+{%- endif %}
+
+
+{%- if cookiecutter.backend in ["pybind11", "flit", "skbuild", "setuptools"] and cookiecutter.vcs %}
+
+
+[tool.setuptools_scm]
+write_to = "src/{{ cookiecutter.__project_slug }}/_version.py"
+
+{%- endif %}
+
+
+{%- if cookiecutter.__type == "compiled" %}
+
+
+[tool.cibuildwheel]
+test-command = "pytest {project}/tests"
+test-extras = ["test"]
+{%- endif %}
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = [
+  "error",
+]
+log_cli_level = "INFO"
+testpaths = [
+  "tests",
+]
+
+
+[tool.coverage]
+run.source = ["{{ cookiecutter.__project_slug }}"]
+report.exclude_also = [
+  '\.\.\.',
+  'if typing.TYPE_CHECKING:',
+]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.10"
+warn_unused_configs = true
+strict = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+warn_unreachable = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "{{ cookiecutter.__project_slug  }}.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+
+[tool.ruff]
+{%- if cookiecutter.backend == "poetry" %}
+target-version = "py39"
+{%- endif %}
+
+[tool.ruff.lint]
+extend-select = [
+  "ARG",    # flake8-unused-arguments
+  "B",      # flake8-bugbear
+  "BLE",    # flake8-blind-except
+  "C4",     # flake8-comprehensions
+  "DTZ",    # flake8-datetimez
+  "EM",     # flake8-errmsg
+  "EXE",    # flake8-executable
+  "FA",     # flake8-future-annotations
+  "FLY",    # flynt
+  "FURB",   # refurb
+  "G",      # flake8-logging-format
+  "I",      # isort
+  "ICN",    # flake8-import-conventions
+  "ISC",    # flake8-implicit-str-concat
+  "LOG",    # flake8-logging
+  "NPY",    # NumPy specific rules
+  "PD",     # pandas-vet
+  "PERF",   # perflint
+  "PGH",    # pygrep-hooks
+  "PIE",    # flake8-pie
+  "PL",     # pylint
+  "PT",     # flake8-pytest-style
+  "PTH",    # flake8-use-pathlib
+  "PYI",    # flake8-pyi
+  "Q",      # flake8-quotes
+  "RET",    # flake8-return
+  "RSE",    # flake8-raise
+  "RUF",    # Ruff-specific
+  "SIM",    # flake8-simplify
+  "SLOT",   # flake8-slots
+  "T10",    # flake8-debugger
+  "T20",    # flake8-print
+  "TC",     # flake8-type-checking
+  "TRY",    # tryceratops
+  "UP",     # pyupgrade
+  "YTT",    # flake8-2020
+]
+ignore = [
+  "PLR09",    # Too many <...>
+  "PLR2004",  # Magic value used in comparison
+]
+# Uncomment if using a _compat.typing backport
+# typing-modules = ["{{ cookiecutter.__project_slug }}._compat.typing"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20"]
+"noxfile.py" = ["T20"]
+{%- if cookiecutter.docs == "mkdocs" %}
+"docs/examples/**" = ["T20"]
+{%- endif %}
+
+
+[tool.pylint]
+py-version = "3.10"
+ignore-paths = [".*/_version.py"]
+{%- if cookiecutter.__type == "compiled" %}
+extension-pkg-allow-list = ["{{ cookiecutter.__project_slug }}._core"]
+{%- endif %}
+reports.output-format = "colorized"
+similarities.ignore-imports = "yes"
+messages_control.disable = [
+  "design",
+  "fixme",
+  "line-too-long",
+  "missing-module-docstring",
+  "missing-function-docstring",
+  "wrong-import-position",
+]
