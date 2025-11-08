@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  - pull_request
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Min and max versions supported
+        python-version: ['3.10', '3.14']
+    name: Python ${{ matrix.python-version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+
+      - name: Install requirements
+        run: pip install -r admin/requirements/requirements-dev.txt
+
+      - name: Run tests
+        # Test folder(s) configured in `pyproject.toml`
+        run: python -m pytest .

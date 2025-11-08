@@ -1,0 +1,99 @@
+[tool.black]
+line-length = 100
+target-version = ['py312']
+skip-string-normalization = true
+extend-exclude='''
+(
+  \.venv.*
+  | \venv.*
+)
+'''
+
+[tool.isort]
+profile = 'black'
+sections = 'FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER'
+skip_glob = ['**/.venv*', '**/venv*', '/build']
+
+[tool.pytest.ini_options]
+testpaths = ['tests']
+addopts = ['--strict-markers', '-v']
+
+[tool.mypy]
+python_version = '3.12'
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+exclude = [
+    '.venv.*', 'venv.*'
+]
+
+[[tool.mypy.overrides]]
+module = []
+ignore_missing_imports = true
+
+[tool.flake8]
+max-line-length = 100
+# Errors being ignored:
+# E203 is not PEP8 compliant and clashes with black
+# E701,E704 multiple statements on one line (colon)
+#   Conflict with `black`, where empty class definitions (with Ellipsis) are formatted to be in
+#   one line in `black`, ex `class FileUpdateError(Exception): ...`
+# W503 line break before binary operator clashes with black
+# F811 redefinition of unused import happens when importing pytest fixtures in test modules
+extend-ignore = ['E203', 'E266', 'E501', 'W503', 'F811']
+exclude = [
+    '.git', '.github', '__pycache__', '.venv*', 'venv*', 'build', 'dist', 'docs'
+]
+
+[tool.typer-invoke]
+# Paths from where `pyproject.toml` is located (root of project)
+modules = [
+    'admin.build',
+    'admin.lint',
+    'admin.pip',
+    'admin.test',
+    'sample.hello'
+]
+no_args_is_help = true
+add_completion = false
+rich_markup_mode = 'markdown'
+logging_level = 'INFO'
+logging_format = '%(message)s'
+
+[build-system]
+requires = ['flit_core >=3.2,<4']
+build-backend = 'flit_core.buildapi'
+
+[project]
+name = 'typer-invoke'
+version = '0.3.0'
+description = 'Simplified invokation of typer apps from any directory.'
+readme = 'README.md'
+authors = [{name = 'Joao Coelho'}]
+license = {file = 'LICENSE.txt'}
+requires-python = '>=3.10'
+# Keep dependencies synced with `requirements.in`
+dependencies = [
+    'rich',
+    'typer',
+    'tomli;python_version<="3.10"'
+]
+# https://pypi.org/pypi?%3Aaction=list_classifiers
+classifiers = [
+    'License :: OSI Approved :: MIT License',
+    'Framework :: Pytest',
+    'Intended Audience :: Developers',
+    'Programming Language :: Python',
+    'Development Status :: 4 - Beta'
+]
+
+[project.urls]
+Home = 'https://github.com/joaonc/typer-invoke'
+
+[project.scripts]
+inv = 'src.invoke:main'
+
+[tool.flit.module]
+name = 'src'
+directory = '.'

@@ -1,0 +1,29 @@
+name: Linting
+# Linting tools use `pyproject.toml` and `setup.cfg` for config.
+
+on:
+  - pull_request
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install requirements
+        run: pip install -r admin/requirements/requirements-dev.txt
+
+      - name: isort
+        run: isort .
+      - name: black
+        run: black .
+      - name: flake8
+        run: flake8 .
+      - name: mypy
+        run: mypy src && mypy tests
