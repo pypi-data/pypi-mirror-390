@@ -1,0 +1,100 @@
+[tool.poetry]
+name = "fin-infra"
+version = "0.1.15"
+description = "Financial infrastructure toolkit: banking connections, market data, credit, cashflows, and brokerage integrations"
+authors = ["Ali Khatami <aliikhatami94@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{ include = "fin_infra", from = "src" }]
+keywords = ["finance", "banking", "plaid", "brokerage", "markets", "credit", "tax", "cashflow", "fintech", "infra"]
+include = [
+    "src/fin_infra/py.typed",
+    "src/fin_infra/docs/**/*",
+    "src/fin_infra/bundled_docs/**/*"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: FastAPI",
+    "Typing :: Typed"
+]
+
+[tool.poetry.urls]
+Homepage = "https://github.com/your-org/fin-infra"
+Repository = "https://github.com/your-org/fin-infra"
+Issues = "https://github.com/your-org/fin-infra/issues"
+Documentation = "https://github.com/your-org/fin-infra#readme"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+httpx = "^0.28.1"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.10.1"
+python-dotenv = "^1.0.1"
+typing-extensions = "^4.12.2"
+
+# Infra utilities
+tenacity = "^9.0.0"
+cashews = { version = "^7.4.1", extras = ["redis"] }
+loguru = "^0.7.2"
+numpy = "^2.1.3"
+numpy-financial = "^1.0.0"
+# svc-infra = { path = "../svc-infra", develop = true }  # Local dev only - apps using fin-infra should install svc-infra separately
+
+# Provider dependencies (installed by default for easy_* functions)
+yahooquery = "^2.3.7"
+ccxt = "^4.4.26"
+plaid-python = "^25.0.0"
+svc-infra = "^0.1.636"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+pytest-asyncio = "^0.23.8"
+mypy = "^1.11.2"
+ruff = "^0.6.9"
+black = "^24.8.0"
+isort = "^5.13.2"
+flake8 = "^7.1.1"
+pre-commit = "^4.0.0"
+types-requests = "^2.32.0.20241016"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = "-q -m 'not acceptance'"
+markers = [
+    "providers: External provider client tests",
+    "models: Financial domain models tests",
+    "acceptance: Acceptance tests (opt-in)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+no_implicit_optional = false
+install_types = true
+non_interactive = true
+check_untyped_defs = false
+files = "src"
+exclude = '^(\.venv|venv|build|dist|node_modules|tests)/'
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+fin-infra = "fin_infra.__main__:main"
