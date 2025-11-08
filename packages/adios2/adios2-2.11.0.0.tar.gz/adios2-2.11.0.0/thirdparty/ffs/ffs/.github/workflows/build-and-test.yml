@@ -1,0 +1,117 @@
+name: Build and Test
+
+on: 
+  push: 
+    branches: 
+    - master 
+  pull_request: 
+    branches: 
+    - master 
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    # The jobs should run pretty quick; anything over 30m essentially means
+    # someting is stuck somewhere
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    env:
+      GH_YML_JOBNAME: ${{ matrix.os }}-${{ matrix.compiler }}
+      GH_YML_BUILDTYPE: ${{ matrix.buildtype }}
+      GH_YML_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        buildtype: [ release ]
+        os: [ alma10, ubuntu2204, ubuntu2404 ]
+        compiler: [ clang, gcc ]
+        include:
+        - os: alma10
+          container: almalinux:10
+        - os: ubuntu2404
+          container: ubuntu:24.04
+        - os: ubuntu2204
+          container: ubuntu:22.04
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: source
+    - name: Setup
+      run: |
+          . source/scripts/ci/setup/linux.sh
+          source/scripts/ci/setup/install-atl.sh ${{ matrix.buildtype }}
+          source/scripts/ci/setup/install-dill.sh ${{ matrix.buildtype }}
+    - name: Update
+      run: source/scripts/ci/gh-actions/run.sh update
+    - name: Configure
+      run: source/scripts/ci/gh-actions/run.sh configure
+    - name: Build
+      run: source/scripts/ci/gh-actions/run.sh build
+    - name: Test
+      run: source/scripts/ci/gh-actions/run.sh test
+
+  mac_and_windows:
+    # The jobs should run pretty quick; anything over 30m essentially means
+    # something is stuck somewhere
+    timeout-minutes: 30
+    runs-on: ${{ matrix.vm }}
+    env:
+      GH_YML_JOBNAME: ${{ matrix.jobname }}
+      GH_YML_BUILDTYPE: ${{ matrix.buildtype }}
+      GH_YML_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        buildtype: [ release, debug ]
+        jobname: [
+          windows2025-vs2022-clang,
+          windows2022-vs2022-msvc,
+          windows2022-vs2022-msvc-static,
+          macos-clang ]
+        include:
+        - jobname: windows2025-vs2022-clang
+          vm: windows-2025
+        - jobname: windows2022-vs2022-msvc
+          vm: windows-2022
+        - jobname: windows2022-vs2022-msvc-static
+          vm: windows-2022
+        - jobname: macos-clang
+          vm: macos-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: source
+    - name: Setup
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+          . source/scripts/ci/setup/windows.sh
+          source/scripts/ci/setup/install-atl.sh ${{ matrix.buildtype }}
+          source/scripts/ci/setup/install-dill.sh ${{ matrix.buildtype }}
+    - name: Setup
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+          . source/scripts/ci/setup/macos.sh
+          source/scripts/ci/setup/install-atl.sh ${{ matrix.buildtype }}
+          source/scripts/ci/setup/install-dill.sh ${{ matrix.buildtype }}
+    - name: Update
+      run: source/scripts/ci/gh-actions/run.sh update
+    - name: Configure
+      run: source/scripts/ci/gh-actions/run.sh configure
+    - name: Build
+      run: source/scripts/ci/gh-actions/run.sh build
+    - name: Test
+      run: source/scripts/ci/gh-actions/run.sh test
