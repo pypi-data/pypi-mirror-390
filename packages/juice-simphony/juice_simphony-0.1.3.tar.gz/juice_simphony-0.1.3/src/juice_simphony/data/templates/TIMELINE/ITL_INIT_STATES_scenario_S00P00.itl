@@ -1,0 +1,38 @@
+#----------------------------------------------------------------------------------------------------#
+#                                                                                                    #
+#                                       SCENARIO INITIAL STATES                                      #
+#                                                                                                    #
+#----------------------------------------------------------------------------------------------------#
+
+
+# Spacecraft platform initialization (SC6-440)
+# -------------------------------------------
+Init_PM: BATTERY_DOD 0.00                   # Battery DoD
+
+Init_MS: COMS         DST_X_R   NOM         # Antenna X Receiver     - LEGA: Always ON
+Init_MS: COMS         DST2_X_R  NOM         # Antenna X Receiver2    - LEGA: Always ON
+
+Init_mode: RADEM      ON                    # RADEM                  - LEGA always ON,  Remember RADEM belongs to MONITORING but modeled separately take this into account when computing MONITORING power load by adding up the RADEM power.
+
+# Below the units that are net contributors to the JUICE PLATFORM Power.
+
+Init_MS: COMS         XEPC1     OFF         # Antenna X-EPC          - LEGA: Always ON Just two switch offs observed at middle of the scenario, see "CUSTOM LEGA ITL" section below
+Init_MS: COMS         DST_X_T   OFF         # Antenna X Transmitter  - LEGA: Always ON Just two switch offs observed at middle of the scenario, see "CUSTOM LEGA ITL" section below
+
+Init_MS: MONITOR      JMU       OFF         # JMU                    - LEGA by default ON  # TODO: (SC6-440) Consider splitting JMU into JMU1, JMU2, JMC1, and JMC2
+
+Init_MS: AOCS         APME      OFF         # APME                   - LEGA always ON
+Init_MS: AOCS         CPS       OFF         # CPS                    - LEGA always ON
+Init_MS: AOCS         IMU       OFF         # IMU                    - LEGA in NOM
+Init_MS: AOCS         RIU_PROP  OFF         # RIU_PROP               - LEGA OFF at LEGA start
+Init_MS: AOCS         SADE      OFF         # SADE                   - LEGA always ON
+Init_MS: AOCS         STRE      OFF         # STRE                   - LEGA always ON
+Init_MS: AOCS         RW        OFF         # RW                     - LEGA always in MAN for LEGA, targeting averaged RW power load consumption during LEGA.
+
+Init_MS: THERMAL      PF        OFF         #                        - LEGA: Targeting averaged Heaters consumption during LEGA.
+Init_MS: THERMAL      PF_IF     OFF         #                        - LEGA: Targeting averaged Heaters consumption during LEGA.
+Init_MS: THERMAL      SURV      OFF         #                        - LEGA: Targeting averaged Heaters consumption during LEGA.  TODO: (SC6-440) To check if to switch to OFF mode if any payload becomes ON.
+
+Init_MS: CDMS         RIU_CTR   OFF         # RIU Controller         - LEGA: always ON
+Init_MS: CDMS         CDMU      OFF         # CDMU                   - LEGA: in SSMM_OFF mode during LEGA, Targeting averaged CDMU consumption during LEGA
+
