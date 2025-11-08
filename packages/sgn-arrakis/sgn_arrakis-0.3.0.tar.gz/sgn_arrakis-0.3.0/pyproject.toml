@@ -1,0 +1,192 @@
+[build-system]
+requires = [
+    "hatchling",
+    "hatch-vcs",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "sgn-arrakis"
+authors = [
+    { name = "Jameson Graef Rollins", email = "jameson.rollins@ligo.org" },
+]
+description = "Arrakis interfaces for sgn-ts"
+readme = "README.md"
+license = "LGPL-3.0-or-later"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "arrakis >= 0.4.1",
+    "sgn >= 0.4",
+    "sgn-ts >= 0.4",
+]
+
+[project.scripts]
+sgn-arrakis = "sgn_arrakis.__main__:main"
+
+[project.optional-dependencies]
+publish = [
+    "arrakis[publish]",
+]
+test = [
+    "arrakis-server; python_version >= '3.11'",
+    "pytest",
+    "pytest-cov",
+]
+docs = [
+    "mkdocs >= 1.3",
+    "mkdocs-coverage >= 0.2",
+    "mkdocs-gen-files >= 0.3",
+    "mkdocs-literate-nav >= 0.4",
+    "mkdocs-material-igwn",
+    "mkdocs-section-index >= 0.3",
+    "mkdocstrings[python]",
+    "markdown-callouts >= 0.2",
+    "markdown-exec >= 0.5",
+    "toml >= 0.10",
+]
+lint = [
+    "mypy",
+    "mypy-extensions",
+    "pip", # mypy requires pip to install type stubs
+    "ruff",
+]
+dev = [
+    "sgn_arrakis[docs]",
+    "sgn_arrakis[lint]",
+    "sgn_arrakis[test]",
+]
+
+[project.entry-points.sgn_elements]
+ArrakisSource = "sgn_arrakis:ArrakisSource"
+ArrakisSink = "sgn_arrakis:ArrakisSink"
+
+[project.urls]
+Homepage = "https://git.ligo.org/ngdd/sgn_arrakis"
+Repository = "https://git.ligo.org/ngdd/sgn_arrakis.git"
+Issues = "https://git.ligo.org/ngdd/sgn_arrakis/issues"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "sgn_arrakis/_version.py"
+
+[tool.hatch.envs.default]
+features = ["dev"]
+installer = "uv"
+
+[tool.hatch.envs.default.scripts]
+check = "mypy --install-types --non-interactive sgn_arrakis"
+
+[tool.hatch.envs.docs]
+features = ["docs"]
+scripts.build = "mkdocs build --clean --strict"
+scripts.serve = "mkdocs serve"
+
+[tool.hatch.envs.hatch-static-analysis]
+config-path = "none"
+
+[tool.hatch.envs.hatch-test]
+features = ["test"]
+default-args = ["sgn_arrakis/tests"]
+extra-args = ["-ra", "-v", "-s"]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.10", "3.11", "3.12"]
+
+[tool.coverage.run]
+source = ["sgn_arrakis"]
+omit = [
+    "sgn_arrakis/tests/*",
+    "__init__.py",
+    "_version.py",
+]
+
+[tool.coverage.report]
+# print report with one decimal point
+precision = 1
+show_missing = true
+omit = [
+    "sgn_arrakis/tests/*",
+    "__init__.py",
+    "_version.py",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "docs",
+    "build",
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # pyflakes
+    "F",
+    # isort
+    "I",
+    # pep8-naming
+    "N",
+    # flake8-bandit
+    "S",
+    # flake8-blind-except
+    "BLE",
+    # flake8-boolean-trap
+    "FBT",
+    # flake8-bugbear
+    "B",
+    # flake8-builtins
+    "A",
+    # flake8-comprehensions
+    "C4",
+    # flake8-datetimez
+    "DTZ",
+    # flake8-errmsg
+    "EM",
+    # flake8-executable
+    "EXE",
+    # flake8-future-annotations
+    "FA",
+    # flake8-logging
+    "LOG",
+    # flake8-logging-format
+    "G",
+    # flake8-pytest-style
+    "PT",
+    # flake8-return
+    "RET",
+    # flake8-self
+    "SLF",
+    # flake8-simplify
+    "SIM",
+    # flake8-slots
+    "SLOT",
+    # flake8-type-checking
+    "TCH",
+    # tryceratops
+    "TRY",
+    # refurb
+    "FURB",
+    # ruff-specific rules
+    "RUF",
+]
+ignore = [
+    "E203",  # flags whitespace on slicing
+    "S101",  # assert statements
+    "B905",  # strict zip
+    "C414",  # unnecessary double-cast
+    "PT011",  # pytest generic raises
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"sgn_arrakis/tests/conftest.py" = ["E402"]

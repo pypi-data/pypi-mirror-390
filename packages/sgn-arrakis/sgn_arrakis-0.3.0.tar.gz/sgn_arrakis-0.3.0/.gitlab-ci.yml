@@ -1,0 +1,50 @@
+include:
+  # -- python
+  - component: git.ligo.org/computing/gitlab/components/python/sdist@1
+  - component: git.ligo.org/computing/gitlab/components/python/wheel@1
+  - component: git.ligo.org/computing/gitlab/components/python/code-quality@1
+    inputs:
+      analyzer: "ruff"
+      requirements: "-r requirements-lint.txt"
+  - component: git.ligo.org/computing/gitlab/components/python/dependency-scanning@1
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      install_extra: test
+      python_versions:
+        - "3.11"
+        - "3.12"
+        - "3.13"
+  - component: git.ligo.org/computing/gitlab/components/python/test@1
+    inputs:
+      job_name: "python_test_latest"
+      install_extra: test
+      python_versions:
+        - "3.11"
+        - "3.12"
+        - "3.13"
+
+# -- customizations
+ruff:
+  needs:
+    - requirements
+
+# -- latest sgn/arrakis packages
+python_test_latest:
+  before_script:
+    - pip install git+https://git.ligo.org/greg/sgn.git
+    - pip install git+https://git.ligo.org/greg/sgn-ts.git
+    - pip install git+https://git.ligo.org/ngdd/arrakis-python.git
+
+# -- requirements
+requirements:
+  stage: build
+  image: python:3.12
+  script:
+    - python -m pip install pipx
+    - pipx ensurepath
+    - source ~/.bashrc
+    - pipx install hatch
+    - hatch dep show requirements --feature lint > requirements-lint.txt
+  artifacts:
+    paths:
+      - requirements-*.txt
