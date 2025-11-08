@@ -1,0 +1,115 @@
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[project]
+name = "yomitoku-client"
+dynamic = ["version"]
+authors = [{name = "MLism Inc.", email = "support-aws-marketplace@mlism.com"}]
+description = "YomiToku-Client is a Python library for processing SageMaker YomiToku API outputs with format conversion and visualization capabilities."
+readme = "README.md"
+license = "Apache-2.0"
+urls = {Homepage = "https://github.com/MLism-Inc/yomitoku-client", Repository = "https://github.com/MLism-Inc/yomitoku-client", Issues = "https://github.com/MLism-Inc/yomitoku-client/issues"}
+requires-python = ">=3.10,<3.13"
+keywords = ["yomitoku", "sagemaker", "document-analysis", "format-conversion", "visualization"]
+dependencies = [
+    "pandas>=2.1.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.9.2",
+    "requests>=2.28.0",
+    "click>=8.1.0",
+    "lxml>=5.3.0",
+    "PyPDF2>=3.0.0",
+    "pypdfium2>=4.30.0",
+    "opencv-python>=4.8.0",
+    "Pillow>=9.5.0",
+    "reportlab>=4.4.1",
+    "jaconv>=0.4.0",
+    "boto3>=1.26.0",
+]
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "semver"
+format = "{base}"
+
+[tool.uv]
+dev-dependencies = [
+    "json-schema-for-humans>=1.4.1",
+    "mkdocs-codeinclude-plugin>=0.2.1",
+    "mkdocs-include-markdown-plugin>=7.1.6",
+    "mkdocs-material>=9.5.44",
+    "mkdocs-static-i18n",
+    "mkdocs>=1.6.1",
+    "plantuml-markdown",
+    "pygments",
+    "pytest-cov>=5.0.0",
+    "pytest>=8.3.3",
+    "ruff>=0.7.0",
+]
+
+[project.scripts]
+yomitoku-client = "yomitoku_client.cli.cli:main"
+
+[tool.uv.sources]
+yomitoku-client = { workspace = true }
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  "E","F","W","I","UP","B","SIM","ARG","A","C4","DTZ","G","Q","S","BLE","PIE"
+]
+ignore = ["E501","C901","B008", "S101", "BLE001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["yomitoku_client"]
+combine-as-imports = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = lint, py310, py311, py312, docs
+
+[testenv]
+deps = pytest
+commands = 
+    pytest tests
+
+[testenv:format]
+description = Run ruff format
+deps = ruff>=0.7
+commands =
+    ruff format .
+
+[testenv:lint]
+deps = ruff>=0.7
+commands = 
+    ruff check --fix .
+
+[testenv:type]
+description = Run mypy strict type checks
+deps = mypy>=1.10
+commands =
+    mypy src tests --ignore-missing-imports --disallow-untyped-defs
+
+[testenv:docs]
+basepython = python3.12
+deps = 
+    mkdocs-material
+    pygments 
+    plantuml_markdown 
+    mkdocs-include-markdown-plugin
+    mkdocs-static-i18n
+    mkdocs-codeinclude-plugin
+commands = 
+    mkdocs gh-deploy --force
+"""
