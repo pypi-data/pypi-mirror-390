@@ -1,0 +1,2 @@
+from SteamPathFinder.SteamPathFinder import get_game_path as get_game_path
+from SteamPathFinder.SteamPathFinder import get_steam_path as get_steam_path
