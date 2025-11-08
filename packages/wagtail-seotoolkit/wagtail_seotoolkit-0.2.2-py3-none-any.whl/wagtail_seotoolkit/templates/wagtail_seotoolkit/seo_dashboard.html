@@ -1,0 +1,210 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n static wagtailadmin_tags %}
+
+{% block titletag %}{% trans "SEO Dashboard" %}{% endblock %}
+{% block bodyclass %}seo-dashboard{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'wagtail_seotoolkit/css/seo_dashboard.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'wagtail_seotoolkit/css/dev_badge.css' %}">
+    <link rel="stylesheet" href="{% static 'wagtail_seotoolkit/css/email_verification.css' %}">
+    <link rel="stylesheet" href="{% static 'wagtail_seotoolkit/css/subscription_banner.css' %}">
+{% endblock %}
+
+{% block content %}
+    {% trans "SEO Dashboard" as title_str %}
+    {% include "wagtailadmin/shared/header.html" with title=title_str icon="chart-bar" %}
+    
+    {% csrf_token %}
+    
+    <!-- Subscription Badge -->
+    <div id="subscription-status-badge" class="nice-padding" style="padding-bottom: 0;"></div>
+    
+    <!-- Dashboard Message -->
+    <div id="dashboard-message-container" class="nice-padding" style="padding-top: 0; display: none;"></div>
+    
+    <!-- Email Verification Gate -->
+    <div id="verification-gate"></div>
+    
+    <!-- Protected Content -->
+    <div id="protected-content" style="display: none;">
+    <div class="seo-dashboard nice-padding">
+        {% if latest_audit %}
+            <!-- Main Health Score Card -->
+            <div class="seo-dashboard__main-card">
+                <!-- Header Section -->
+                <div class="seo-dashboard__header">
+                    <div class="seo-dashboard__score-section">
+                        <h2 class="seo-dashboard__title">{% trans "SEO Health Score" %}</h2>
+                        <div class="seo-dashboard__score {% if health_score >= 80 %}seo-dashboard__score--good{% elif health_score >= 50 %}seo-dashboard__score--warning{% else %}seo-dashboard__score--critical{% endif %}">
+                            {{ health_score }}/100
+                        </div>
+                        <div class="seo-dashboard__meta">
+                            <div>
+                                <strong>{% trans "Last audit:" %}</strong> 
+                                {{ latest_audit.created_at|timesince }} {% trans "ago" %}
+                            </div>
+                            <div>
+                                <strong>{% trans "Pages analyzed:" %}</strong> 
+                                {{ pages_analyzed }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Issues Breakdown -->
+                    <div class="seo-dashboard__breakdown">
+                        <h3 class="seo-dashboard__breakdown-title">{% trans "Issues Breakdown" %}</h3>
+                        <div class="seo-dashboard__stats">
+                            <div class="seo-dashboard__stat seo-dashboard__stat--critical">
+                                <span class="seo-dashboard__stat-label">{% trans "Critical Issues" %}</span>
+                                <span class="seo-dashboard__stat-value">{{ critical_count }}</span>
+                            </div>
+                            <div class="seo-dashboard__stat seo-dashboard__stat--warning">
+                                <span class="seo-dashboard__stat-label">{% trans "Warnings" %}</span>
+                                <span class="seo-dashboard__stat-value">{{ warnings_count }}</span>
+                            </div>
+                            <div class="seo-dashboard__stat seo-dashboard__stat--info">
+                                <span class="seo-dashboard__stat-label">{% trans "Suggestions" %}</span>
+                                <span class="seo-dashboard__stat-value">{{ suggestions_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="seo-dashboard__divider">
+                
+                <!-- Top Issues -->
+                {% if top_issues %}
+                    <h3 class="seo-dashboard__section-title">{% trans "Top Issues" %}</h3>
+                    <div class="seo-dashboard__issues-list">
+                        {% for issue in top_issues %}
+                            <div class="seo-dashboard__issue-card {% if issue.severity == 3 %}seo-dashboard__issue-card--critical{% elif issue.severity == 2 %}seo-dashboard__issue-card--warning{% else %}seo-dashboard__issue-card--info{% endif %}">
+                                <div class="seo-dashboard__issue-content">
+                                    <div class="seo-dashboard__issue-header">
+                                        <span class="seo-dashboard__issue-label">{{ issue.type|title }}</span>
+                                        {% if issue.requires_dev_fix %}
+                                            <span class="dev-badge dev-badge--dashboard">
+                                                <svg class="dev-badge__icon" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                                                </svg>
+                                                Dev needed
+                                                <span class="dev-badge__tooltip">This issue requires code changes</span>
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if issue.is_bulk_editable %}
+                                        <a href="{% url 'bulk_edit' %}?{% for related_type in issue.related_types %}issue_type={{ related_type }}&{% endfor %}action={{ issue.bulk_edit_action }}" class="seo-dashboard__issue-link">
+                                            <svg class="icon icon-edit" aria-hidden="true"><use href="#icon-edit"></use></svg>
+                                            {% trans "Fix in Bulk Editor" %}
+                                        </a>
+                                    {% endif %}
+                                </div>
+                                <span class="seo-dashboard__issue-count">{{ issue.count }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Action Buttons -->
+                <div class="seo-dashboard__actions">
+                    <a href="{% url 'seo_issues_report' %}" class="button button-primary">
+                        {% trans "View All Issues" %}
+                    </a>
+                    {% if show_audit_button %}
+                        <button id="request-audit-btn" class="button button-secondary" 
+                                {% if has_scheduled_audit or has_running_audit %}disabled{% endif %}>
+                            {% if has_scheduled_audit %}
+                                {% trans "Audit Scheduled..." %}
+                            {% elif has_running_audit %}
+                                {% trans "Audit Running..." %}
+                            {% else %}
+                                {% trans "Request an Audit" %}
+                            {% endif %}
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        {% else %}
+            <!-- No Audit Available -->
+            <div class="seo-dashboard__no-data">
+                <h2 class="seo-dashboard__no-data-title">
+                    {% trans "No SEO audit data available" %}
+                </h2>
+                <p class="seo-dashboard__no-data-text">
+                    {% trans "Run your first SEO audit to see the health score and issues for your site." %}
+                </p>
+                <p class="seo-dashboard__no-data-text">
+                    {% trans "To run an audit, use the following management command:" %}
+                </p>
+                <pre class="seo-dashboard__code">python manage.py seoaudit</pre>
+            </div>
+        {% endif %}
+    </div>
+    </div>
+    <!-- End Protected Content -->
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'wagtail_seotoolkit/js/email_verification.js' %}"></script>
+    <script src="{% static 'wagtail_seotoolkit/js/subscription_status.js' %}"></script>
+    <script src="{% static 'wagtail_seotoolkit/js/dashboard_message.js' %}"></script>
+    <script>
+        // Display subscription status badge using shared module
+        document.addEventListener('DOMContentLoaded', function() {
+            // Only show badge if email is configured
+            const storedEmail = '{{ stored_email }}';
+            if (storedEmail && storedEmail !== 'None') {
+                SubscriptionStatus.displayBadge('subscription-status-badge', {
+                    showManageLink: true,
+                    inline: true
+                });
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const requestBtn = document.getElementById('request-audit-btn');
+            
+            if (requestBtn && !requestBtn.disabled) {
+                requestBtn.addEventListener('click', function() {
+                    // Disable button and show loading state
+                    requestBtn.disabled = true;
+                    requestBtn.textContent = '{% trans "Scheduling..." %}';
+                    
+                    // Get CSRF token
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    
+                    // Make AJAX request
+                    fetch('{% url "request_audit" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            requestBtn.textContent = '{% trans "Audit Scheduled..." %}';
+                            // Optionally show a success message
+                            console.log('Audit scheduled successfully');
+                        } else {
+                            // Re-enable button and show error
+                            requestBtn.disabled = false;
+                            requestBtn.textContent = '{% trans "Request an Audit" %}';
+                            alert('Error: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        // Re-enable button and show error
+                        requestBtn.disabled = false;
+                        requestBtn.textContent = '{% trans "Request an Audit" %}';
+                        alert('Error: ' + error.message);
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock %}
+
