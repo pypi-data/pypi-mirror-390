@@ -1,0 +1,97 @@
+
+[repo]
+kind = "recipe"
+
+[recipe]
+author.name = "Kevin Hester"
+author.email = "kevinh@geeksville.com"
+
+# FIXME-somehow-specify-what-filternames are used to auto detect this recipe can be used?
+# figure out how to support dual duo vs single duo.  Perhaps: the FIRST recipe that matches an auto rule
+# is used for any auto-defected defaults.  If an auto match is found it will be saved in the generated starter
+# project.toml file.
+
+# non OSC people use names like LRGB or SHO
+
+# for dual duo if we see Sii assume they also have HaOiii
+auto.require.filter = ["SiiOiii"]
+# for single duo look for this
+# auto.require.filter = ["HaOiii"]
+auto.require.camera = ["OSC"]
+
+# all sb.toml files can optionally contain a version section.  if version of the running starbash app is out of bounds a warning message will be printed
+# to the user and the file will be ignored for future processing.
+[recipe.require.version]
+min="0.1.0"
+max="4.5.8"
+
+[recipe.stage.light]
+
+description = "Extract OSC dual duo filter Ha, Oiii and Sii channels"
+# disabled = true # FIXME, debugging later stuff
+
+tool.name = "siril"
+
+# Auto find input light frames for the current session
+# Look for files in input repos, finding them by using the "relative" tag they contain
+input.source = "repo"
+input.required = 2    # siril needs at least 2 frames to stack
+input.type = "light" # look in all raw repos, but look only for light files
+
+# Auto find suitable masters of the following type
+input.masters = ["bias", "flat"]
+
+# the base name for our light files
+context.light_base = '''light_s{session["id"]}'''
+
+
+
+script = '''
+    # Create a sequence from the raw light frames, seq file goes to process_dir
+    link {light_base} -out={process_dir}
+    cd {process_dir}
+
+    # Calibrate the light frames using master bias and flat
+    calibrate {light_base} -bias={master["bias"]} -flat={master["flat"]} -cfa -equalize_cfa
+
+    # Remove background gradient on a per-frame basis (generates bkg_pp_light.seq)
+    seqsubsky pp_{light_base} 1
+
+    # FIXME only do this step for duo filters (refactor to share common light processing function)
+    seqextract_HaOIII bkg_pp_{light_base} -resample=ha
+    '''
+
+# temporaries = ["FIXME"]
+
+[recipe.stage.stack]
+
+# FIXME this stage should only be considered if the previous stage in this same array
+# was run.  It must be run inside the same tempdir (so that files from previous stage are available)
+
+# FIXME, eventually we could make it optional to even have a starbash.toml.  If we find an
+# starbash.py we could introspect it for a starbash_config dict.  And look inside that for description
+# "stage", "when" or whatever?
+
+description = "Stack OSC dual duo filter data, with separate Ha, Oiii and Sii channels"
+
+# context.target = "M 27" # FIXME
+# context.targets = "/workspaces/starbash/images/processed" # FIXME, do something smarter
+
+input.source = "recipe" # we will use output files from previous stages in this same recipe as our input
+
+tool.name = "python"
+
+# Based on the following definitions in the stage toml file...
+# FIXME, we should inherit this - most recipes shouldn't have to declare it
+output.dest = "repo" # write to a particular repo
+output.type = "processed" # write output to the special masters repo
+
+# if not specified starbash.py used
+# script-file = "script.py"
+
+# or inline python code instead of that function?
+#script = '''
+#    make_stacked("SiiOiii", "Ha", f"results_00001")
+#    ...
+#    (moved to script.py)
+#    '''
