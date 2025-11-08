@@ -1,0 +1,152 @@
+Metadata-Version: 2.4
+Name: titiler-xarray
+Version: 0.25.0
+Summary: Xarray plugin for TiTiler.
+Project-URL: Homepage, https://developmentseed.org/titiler/
+Project-URL: Documentation, https://developmentseed.org/titiler/
+Project-URL: Issues, https://github.com/developmentseed/titiler/issues
+Project-URL: Source, https://github.com/developmentseed/titiler
+Project-URL: Changelog, https://developmentseed.org/titiler/release-notes/
+Author-email: Vincent Sarago <vincent@developmentseed.com>, Aimee Barciauskas <aimee@developmentseed.com>
+License: MIT
+License-File: LICENSE
+Keywords: HDF,NetCDF,TiTiler,Xarray,Zarr
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: GIS
+Requires-Python: >=3.11
+Requires-Dist: obstore
+Requires-Dist: rio-tiler<8.0,>=7.6.1
+Requires-Dist: rioxarray
+Requires-Dist: titiler-core==0.25.0
+Requires-Dist: xarray
+Requires-Dist: zarr<4.0,>=3.1
+Provides-Extra: fs
+Requires-Dist: aiohttp; extra == 'fs'
+Requires-Dist: fsspec; extra == 'fs'
+Requires-Dist: gcsfs; extra == 'fs'
+Requires-Dist: h5netcdf; extra == 'fs'
+Requires-Dist: requests; extra == 'fs'
+Requires-Dist: s3fs>=2025.2.0; extra == 'fs'
+Provides-Extra: telemetry
+Requires-Dist: opentelemetry-api; extra == 'telemetry'
+Requires-Dist: opentelemetry-exporter-otlp; extra == 'telemetry'
+Requires-Dist: opentelemetry-instrumentation-fastapi; extra == 'telemetry'
+Requires-Dist: opentelemetry-instrumentation-logging; extra == 'telemetry'
+Requires-Dist: opentelemetry-sdk; extra == 'telemetry'
+Description-Content-Type: text/markdown
+
+## titiler.xarray
+
+Adds support for Xarray Dataset (NetCDF/Zarr) in Titiler.
+
+## Installation
+
+```bash
+python -m pip install -U pip
+
+# From Pypi
+python -m pip install "titiler.xarray[full]"
+
+# Or from sources
+git clone https://github.com/developmentseed/titiler.git
+cd titiler && python -m pip install -e src/titiler/core -e "src/titiler/xarray"
+```
+
+#### Installation options
+
+Default installation for `titiler.xarray` DOES NOT include `fsspec` or any storage's specific dependencies (e.g `s3fs`) nor `engine` dependencies (`zarr`, `h5netcdf`). This is to ease the customization and deployment of user's applications. If you want to use the default's dataset reader you will need to at least use the `[minimal]` dependencies (e.g `python -m pip install "titiler.xarray[minimal]"`).
+
+Here is the list of available options:
+
+- **fs**: `h5netcdf`,  `fsspec`, `s3fs`, `aiohttp`, `gcsfs`
+
+#### Dependencies
+
+Titiler.xarray follows [SPEC 0](https://scientific-python.org/specs/spec-0000/), similar to [xarray](https://docs.xarray.dev/en/v2025.09.0/getting-started-guide/installing.html#minimum-dependency-versions).
+
+## How To
+
+```python
+from fastapi import FastAPI
+
+from titiler.xarray.extensions import VariablesExtension
+from titiler.xarray.factory import TilerFactory
+
+app = FastAPI(
+    openapi_url="/api",
+    docs_url="/api.html",
+    description="""Xarray based tiles server for MultiDimensional dataset (Zarr/NetCDF).
+
+---
+
+**Documentation**: <a href="https://developmentseed.org/titiler/" target="_blank">https://developmentseed.org/titiler/</a>
+
+**Source Code**: <a href="https://github.com/developmentseed/titiler" target="_blank">https://github.com/developmentseed/titiler</a>
+
+---
+    """,
+)
+
+md = TilerFactory(
+    router_prefix="/md",
+    extensions=[
+        VariablesExtension(),
+    ],
+)
+app.include_router(md.router, prefix="/md", tags=["Multi Dimensional"])
+```
+
+## Package structure
+
+```
+titiler/
+ └── xarray/
+    ├── tests/                   - Tests suite
+    └── titiler/xarray/          - `xarray` namespace package
+        ├── dependencies.py      - titiler-xarray dependencies
+        ├── extensions.py        - titiler-xarray extensions
+        ├── main.py              - main fastapi application
+        ├── io.py                - titiler-xarray Readers
+        └── factory.py           - endpoints factory
+```
+
+## Custom Dataset Opener
+
+A default Dataset IO is provided within `titiler.xarray.io.Reader` class with only support for Zarr dataset (via xarray+zarr-python). 
+
+For other dataset (e.g NetCDF), you can use `titiler.xarray.io.FsReader` which use the optional dependencies (`fsspec`, `netcdf5`).
+
+```
+python -m pip install "titiler.xarray[fs]"
+```
+
+Example of application with `fsspec` reader:
+
+```python
+from fastapi import FastAPI
+from titiler.xarray.extensions import VariablesExtension
+from titiler.xarray.factory import TilerFactory
+from titiler.xarray.io import FsReader
+
+# Create FastAPI application
+app = FastAPI(openapi_url="/api", docs_url="/api.html")
+
+# Create custom endpoints with the FsReader
+md = TilerFactory(
+    reader=FsReader,
+    router_prefix="/md",
+    extensions=[
+        # we also want to use the simple opener for the Extension
+        VariablesExtension(dataset_opener=xarray.open_dataset),
+    ],
+)
+
+app.include_router(md.router, prefix="/md", tags=["Multi Dimensional"])
+```
