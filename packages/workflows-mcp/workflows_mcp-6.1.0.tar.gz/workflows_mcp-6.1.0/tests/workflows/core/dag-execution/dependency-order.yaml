@@ -1,0 +1,36 @@
+name: dag-execution-dependency-order
+description: Test that blocks execute in correct dependency order
+tags: [test, core, dag, dependencies]
+blocks:
+  - id: step1
+    type: Shell
+    inputs:
+      command: printf "1"
+  - id: step2
+    type: Shell
+    inputs:
+      command: printf "{{blocks.step1.outputs.stdout}}-2"
+    depends_on: [step1]
+  - id: step3
+    type: Shell
+    inputs:
+      command: printf "{{blocks.step2.outputs.stdout}}-3"
+    depends_on: [step2]
+  - id: step4
+    type: Shell
+    inputs:
+      command: printf "{{blocks.step3.outputs.stdout}}-4"
+    depends_on: [step3]
+outputs:
+  step1_output:
+    value: "{{blocks.step1.outputs.stdout}}"
+    type: str
+  step2_output:
+    value: "{{blocks.step2.outputs.stdout}}"
+    type: str
+  step3_output:
+    value: "{{blocks.step3.outputs.stdout}}"
+    type: str
+  step4_output:
+    value: "{{blocks.step4.outputs.stdout}}"
+    type: str

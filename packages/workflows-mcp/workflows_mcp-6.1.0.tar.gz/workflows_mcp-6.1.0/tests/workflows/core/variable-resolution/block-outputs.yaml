@@ -1,0 +1,20 @@
+name: variable-resolution-block-outputs
+description: Test variable resolution from block outputs namespace
+tags: [test, core, variables, blocks]
+blocks:
+  - id: producer
+    type: Shell
+    inputs:
+      command: echo "produced_value"
+  - id: consumer
+    type: Shell
+    inputs:
+      command: 'echo "Consumed: {{blocks.producer.outputs.stdout}}"'
+    depends_on: [producer]
+outputs:
+  producer_output:
+    value: "{{blocks.producer.outputs.stdout}}"
+    type: str
+  consumer_output:
+    value: "{{blocks.consumer.outputs.stdout}}"
+    type: str
