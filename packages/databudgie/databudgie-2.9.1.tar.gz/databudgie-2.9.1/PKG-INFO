@@ -1,0 +1,64 @@
+Metadata-Version: 2.4
+Name: databudgie
+Version: 2.9.1
+Summary: Ergonomic and flexible tool for database backup and restore
+Project-URL: Repository, https://github.com/schireson/databudgie
+Author-email: Andrew Sosa <andrewso@known.is>, Dan Cardin <ddcardin@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: database,etl,postgres,s3,sqlalchemy
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: System :: Archiving :: Backup
+Requires-Python: <4,>=3.8
+Requires-Dist: click>=7.0.0
+Requires-Dist: configly[yaml]>=1.0.0
+Requires-Dist: importlib-metadata; python_version < '3.8'
+Requires-Dist: rich
+Requires-Dist: sqlalchemy>=1.3
+Requires-Dist: strapp[click,sqlalchemy]>=0.2.7
+Requires-Dist: typing-extensions>=3.10.0; python_version < '3.8'
+Provides-Extra: postgres
+Requires-Dist: psycopg[binary]>=3.0; extra == 'postgres'
+Provides-Extra: s3
+Requires-Dist: boto3; extra == 's3'
+Description-Content-Type: text/markdown
+
+# Databudgie
+
+![Github Actions Build](https://github.com/schireson/databudgie/actions/workflows/build.yml/badge.svg)
+[![codecov](https://codecov.io/gh/schireson/databudgie/graph/badge.svg?token=LgwUz062Sl)](https://codecov.io/gh/schireson/databudgie)
+[![Documentation
+Status](https://readthedocs.org/projects/databudgie/badge/?version=latest)](https://databudgie.readthedocs.io)
+
+![](docs/source/_static/databudgie.png)
+
+Databudgie is a CLI & library for database performing targeted backup and
+restore of database tables or arbitrary queries against database tables.
+
+# Usage
+
+A minimal config file might look like:
+
+```yaml
+# databudgie.yml or config.databudgie.yml
+backup:
+  url: postgresql://postgres:postgres@localhost:5432/postgres
+  tables:
+    - name: public.product
+      query: "select * from {table} where store_id > 4"
+      location: s3://my-s3-bucket/databudgie/public.product
+restore:
+  url: postgresql://postgres:postgres@localhost:5432/postgres
+  tables:
+    - name: public.product
+      location: s3://my-s3-bucket/databudgie/public.product
+```
+
+With that config in place, backing up the defined tables (using the specified
+config) is as simple as `databudgie backup`; and restore `databudgie restore`.
+
+## Installation
+
+```bash
+pip install databudgie
+```
