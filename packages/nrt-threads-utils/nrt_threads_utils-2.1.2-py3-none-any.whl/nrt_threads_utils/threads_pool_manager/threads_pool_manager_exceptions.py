@@ -1,0 +1,3 @@
+
+class FullQueueException(Exception):
+    pass
