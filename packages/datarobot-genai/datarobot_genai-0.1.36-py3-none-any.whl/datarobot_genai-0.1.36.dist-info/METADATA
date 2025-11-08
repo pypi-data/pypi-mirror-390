@@ -1,0 +1,138 @@
+Metadata-Version: 2.4
+Name: datarobot-genai
+Version: 0.1.36
+Summary: Generic helpers for GenAI
+Project-URL: Homepage, https://github.com/datarobot-oss/datarobot-genai
+Author: DataRobot, Inc.
+License: Apache-2.0
+License-File: AUTHORS
+License-File: LICENSE
+Requires-Python: <3.13,>=3.10
+Requires-Dist: datarobot-predict>=1.13.2
+Requires-Dist: datarobot>=3.9.1
+Requires-Dist: openai>=1.76.2
+Requires-Dist: pandas>=2.2.3
+Requires-Dist: pyjwt>=2.10.1
+Requires-Dist: pypdf>=6.1.3
+Requires-Dist: ragas>=0.3.8
+Requires-Dist: requests>=2.32.4
+Provides-Extra: crewai
+Requires-Dist: crewai-tools[mcp]>=0.69.0; extra == 'crewai'
+Requires-Dist: crewai>=0.193.2; extra == 'crewai'
+Requires-Dist: opentelemetry-instrumentation-crewai>=0.40.5; extra == 'crewai'
+Requires-Dist: pybase64>=1.4.2; extra == 'crewai'
+Provides-Extra: drmcp
+Requires-Dist: aiohttp-retry>=2.8.3; extra == 'drmcp'
+Requires-Dist: aiohttp>=3.9.0; extra == 'drmcp'
+Requires-Dist: aiosignal>=1.3.1; extra == 'drmcp'
+Requires-Dist: boto3>=1.34.0; extra == 'drmcp'
+Requires-Dist: datarobot-asgi-middleware>=0.2.0; extra == 'drmcp'
+Requires-Dist: fastmcp==2.12.2; extra == 'drmcp'
+Requires-Dist: httpx>=0.28.1; extra == 'drmcp'
+Requires-Dist: opentelemetry-api>=1.22.0; extra == 'drmcp'
+Requires-Dist: opentelemetry-exporter-otlp-proto-http>=1.22.0; extra == 'drmcp'
+Requires-Dist: opentelemetry-exporter-otlp>=1.22.0; extra == 'drmcp'
+Requires-Dist: opentelemetry-instrumentation-aiohttp-client>=0.43b0; extra == 'drmcp'
+Requires-Dist: opentelemetry-instrumentation-httpx>=0.43b0; extra == 'drmcp'
+Requires-Dist: opentelemetry-instrumentation-requests>=0.43b0; extra == 'drmcp'
+Requires-Dist: opentelemetry-sdk>=1.22.0; extra == 'drmcp'
+Requires-Dist: pydantic-settings>=2.1.0; extra == 'drmcp'
+Requires-Dist: pydantic>=2.6.1; extra == 'drmcp'
+Requires-Dist: python-dotenv>=1.1.0; extra == 'drmcp'
+Provides-Extra: langgraph
+Requires-Dist: langchain-mcp-adapters>=0.1.12; extra == 'langgraph'
+Requires-Dist: langgraph-prebuilt>=0.2.3; extra == 'langgraph'
+Requires-Dist: langgraph>=0.4.10; extra == 'langgraph'
+Provides-Extra: llamaindex
+Requires-Dist: llama-index-core<0.14.0,>=0.13.6; extra == 'llamaindex'
+Requires-Dist: llama-index-llms-langchain>=0.6.1; extra == 'llamaindex'
+Requires-Dist: llama-index-llms-litellm>=0.4.1; extra == 'llamaindex'
+Requires-Dist: llama-index-llms-openai>=0.3.38; extra == 'llamaindex'
+Requires-Dist: llama-index<0.14.0,>=0.13.6; extra == 'llamaindex'
+Requires-Dist: opentelemetry-instrumentation-llamaindex>=0.40.5; extra == 'llamaindex'
+Requires-Dist: pypdf>=6.0.0; extra == 'llamaindex'
+Provides-Extra: nat
+Requires-Dist: llama-index-llms-litellm>=0.4.1; extra == 'nat'
+Requires-Dist: nvidia-nat-crewai==1.3.0; (python_version >= '3.11') and extra == 'nat'
+Requires-Dist: nvidia-nat-langchain==1.3.0; (python_version >= '3.11') and extra == 'nat'
+Requires-Dist: nvidia-nat-opentelemetry==1.3.0; (python_version >= '3.11') and extra == 'nat'
+Requires-Dist: nvidia-nat==1.3.0; (python_version >= '3.11') and extra == 'nat'
+Provides-Extra: pydanticai
+Requires-Dist: logfire>=4.6.0; extra == 'pydanticai'
+Requires-Dist: pydantic-ai>=1.0.5; extra == 'pydanticai'
+Description-Content-Type: text/markdown
+
+# datarobot-genai
+Repository for the DataRobot GenAI Library
+
+## Releases (tag-driven)
+
+- Set the release version in `pyproject.toml`.
+- Push a tag `vX.Y.Z` (e.g., `v0.3.0`).
+- CI validates the tag matches `project.version`, builds, and publishes.
+
+### Where releases go
+- PRs: CI publishes dev builds to TestPyPI (`X.Y.Z.dev<run>`), for validation.
+- Tags: CI publishes to PyPI when a `vX.Y.Z` tag is pushed.
+
+### Install from TestPyPI (quick check)
+```bash
+VERSION=X.Y.Z.dev123   # replace with the run number shown in the PR workflow
+pip install --upgrade pip
+pip install -i https://test.pypi.org/simple/ datarobot-genai=="$VERSION"
+python -c "import datarobot_genai as drg; print(drg.__version__)"
+```
+
+### Secrets
+- `TEST_PYPI_API_TOKEN` (username `__token__`)
+- `PYPI_API_TOKEN` (username `__token__`)
+
+## Local development (quick start)
+
+```bash
+# install dev dependencies (uses uv)
+uv sync --all-extras --dev
+
+# activate virtualenv if not auto-activated
+source .venv/bin/activate
+
+# enable git hooks
+pre-commit install
+
+# run unit tests
+make test
+
+# run acceptance tests
+make test-acceptance
+```
+
+Python requirement: >= 3.11,< 3.13
+
+## Optional dependencies (extras)
+
+Install specific integrations only when needed:
+
+```bash
+# CrewAI
+pip install "datarobot-genai[crewai]"
+
+# LangGraph
+pip install "datarobot-genai[langgraph]"
+
+# LlamaIndex
+pip install "datarobot-genai[llamaindex]"
+
+# NVIDIA NAT
+pip install "datarobot-genai[nat]"
+
+# PydanticAI
+pip install "datarobot-genai[pydanticai]"
+
+# DataRobot MCP
+pip install "datarobot-genai[drmcp]"
+
+
+# Combine extras
+pip install "datarobot-genai[crewai,nat]"
+pip install "datarobot-genai[crewai,langgraph,llamaindex,nat,drmcp]"
+```
