@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parquet-converter"
+version = "0.2.1"
+authors = [
+    { name="Sami Adnan", email="sami.adnan@ndph.ox.ac.uk" },
+]
+description = "A tool to convert text files to Parquet format"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas",
+    "numpy",
+    "polars",
+    "rich",
+    "humanize",
+    "python-dotenv",
+    "pyarrow",
+    "pydantic",
+    "pyyaml",
+    "tqdm",
+    "tabulate",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+dev = [
+    "parquet-converter[test]",  # Include test dependencies
+    "pre-commit",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "pandas-stubs",  # Add pandas stubs
+    "types-tqdm",    # Add tqdm stubs
+    # Add any other dev tools here, e.g., typeshed stubs if needed by mypy
+    "types-PyYAML",
+    "types-python-dateutil",
+    "types-tabulate",
+    "types-setuptools",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/sami5001/parquet-converter"
+"Bug Tracker" = "https://github.com/sami5001/parquet-converter/issues"
+
+[project.scripts]
+parquet-converter = "parquet_converter.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["parquet_converter*"]
+
+[tool.pytest.ini_options]
+testpaths = ["parquet_converter/tests"]
+markers = [
+    "performance: marks tests as performance tests (deselect with '-m \"not performance\"')"
+]
+addopts = "--cov=parquet_converter --cov-report=term-missing"
+
+[tool.black]
+line-length = 120
+target-version = ['py38']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 120
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = "E203"
