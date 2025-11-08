@@ -1,0 +1,176 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voyage-embedders-haystack"
+version = "1.8.0"
+description = 'Haystack component to embed strings and Documents using VoyageAI Embedding models.'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+keywords = ["Haystack", "VoyageAI"]
+authors = [{ name = "Ashwin Mathur", email = "" }]
+maintainers = [{ name = "Ashwin Mathur", email = "" }]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "License :: Freely Distributable",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",  
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = ["haystack-ai", "typing_extensions", "numpy", "voyageai>=0.3.5"]
+
+[project.urls]
+Documentation = "https://github.com/awinml/voyage-embedders-haystack#readme"
+Issues = "https://github.com/awinml/voyage-embedders-haystack/issues"
+Source = "https://github.com/awinml/voyage-embedders-haystack"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/haystack_integrations"]
+
+[tool.hatch.envs.default]
+dependencies = ["coverage[toml]>=6.5", "coveralls", "pytest", "datasets"]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = ["- coverage combine", "coverage xml"]
+cov = ["test-cov", "cov-report"]
+example-text-embedder = "python examples/text_embedder_example.py"
+example-doc-embedder = "python examples/document_embedder_example.py"
+example-semantic-search = "python examples/semantic_search_pipeline_example.py"
+example-reranker = "python examples/reranker_example.py"
+test-examples = [
+  "example-text-embedder",
+  "example-doc-embedder",
+  "example-semantic-search",
+  "example-reranker",
+]
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12"]
+
+[tool.hatch.envs.lint]
+detached = true
+dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
+
+[tool.hatch.envs.lint.scripts]
+typing = "mypy --install-types --non-interactive --explicit-package-bases {args:src/ tests}"
+style = ["ruff check {args:.}", "black --check --diff {args:.}"]
+fmt = ["black {args:.}", "ruff check --fix {args:.}", "style"]
+all = ["fmt", "typing"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.black]
+target-version = ["py37"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+target-version = "py37"
+line-length = 120
+lint.select = [
+  "A",
+  "ARG",
+  "B",
+  "C",
+  "DTZ",
+  "E",
+  "EM",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+lint.ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Ignore checks for possible passwords
+  "S105",
+  "S106",
+  "S107",
+  # Ignore complexity
+  "C901",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  # Ignore print statements
+  "T201",
+  # Ignore function call in argument default - for secrets
+  "B008",
+  # Ignore Boolean positionals in function calls
+  "FBT001",
+  "FBT002",
+]
+lint.unfixable = [
+  # Don't touch unused imports
+  "F401",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["voyage_embedders"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252"]
+
+[tool.coverage.run]
+source_pkgs = ["haystack_integrations", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/haystack_integrations/components/embedders/voyage_embedders/__about__.py",
+  "example",
+]
+
+[tool.coverage.paths]
+voyage_embedders = [
+  "src/haystack_integrations/components/embedders/voyage_embedders",
+  "*/voyage_embedders/src/haystack_integrations/components/embedders/voyage_embedders",
+]
+tests = ["tests", "*voyage_embedders/tests"]
+
+[tool.coverage.report]
+omit = ["*/__init__.py"]
+show_missing = true
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-vv"
+markers = ["unit: unit tests", "integration: integration tests"]
+log_cli = true
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["haystack.*", "haystack_integrations.*", "pytest.*"]
+ignore_missing_imports = true

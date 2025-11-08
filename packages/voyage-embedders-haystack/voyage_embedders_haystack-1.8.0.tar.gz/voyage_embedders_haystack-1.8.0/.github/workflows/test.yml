@@ -1,0 +1,74 @@
+name: Test
+
+on:
+  schedule:
+    - cron: "30 1 * * *"
+  push:
+    branches:
+    - main
+  pull_request:
+
+concurrency:
+  group: test-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  FORCE_COLOR: "1"
+  VOYAGE_API_KEY: ${{ secrets.VOYAGEAI_API_KEY }}
+  VOYAGE_TIMEOUT: "6000"
+  VOYAGE_MAX_RETRIES: "10000"
+
+jobs:
+  run:
+    name: Python ${{ matrix.python-version }} on ${{ startsWith(matrix.os, 'macos-') && 'macOS' || startsWith(matrix.os, 'windows-') && 'Windows' || 'Linux' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+    - name: Support longpaths
+      if: matrix.os == 'windows-latest'
+      run: git config --system core.longpaths true
+
+    - uses: actions/checkout@v5
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Hatch
+      run: pip install --upgrade hatch
+
+    - name: Lint
+      if: matrix.python-version == '3.9' && runner.os == 'Linux'
+      run: hatch run lint:all
+
+    - name: Run tests
+      run: hatch run cov
+
+    - name: Run tests-examples
+      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      run: hatch run test-examples
+
+    - name: Coveralls Parallel
+      # We upload only coverage for ubuntu as handling both os
+      # complicates the workflow too much for little to no gain
+      if: matrix.os == 'ubuntu-latest'
+      uses: coverallsapp/github-action@v2
+      with:
+        parallel: true
+
+  upload-coverage:
+    needs: run
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel-finished: true
