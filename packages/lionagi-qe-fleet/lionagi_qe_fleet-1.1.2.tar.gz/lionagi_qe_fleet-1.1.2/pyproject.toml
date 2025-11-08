@@ -1,0 +1,112 @@
+[project]
+name = "lionagi-qe-fleet"
+version = "1.1.2"
+description = "Agentic Quality Engineering Fleet powered by LionAGI - 19 specialized AI agents for comprehensive software testing and quality assurance"
+authors = [
+    { name = "LionAGI QE Fleet Contributors" },
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = [
+    "testing",
+    "quality-engineering",
+    "ai-agents",
+    "test-automation",
+    "lionagi",
+    "agentic-testing",
+    "qa",
+    "test-generation",
+    "coverage-analysis",
+    "quality-assurance"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "lionagi>=0.18.2",
+    "pydantic>=2.8.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.0.0",
+    "hypothesis>=6.100.0",
+    "coverage>=7.0.0",
+    "bandit>=1.7.0",
+    "safety>=3.0.0",
+    "aiohttp>=3.9.0",
+    "python-dotenv>=1.0.0",
+    "asyncpg>=0.29.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lionagi/lionagi-qe-fleet"
+Documentation = "https://github.com/lionagi/lionagi-qe-fleet/tree/main/docs"
+Repository = "https://github.com/lionagi/lionagi-qe-fleet"
+Issues = "https://github.com/lionagi/lionagi-qe-fleet/issues"
+Changelog = "https://github.com/lionagi/lionagi-qe-fleet/blob/main/CHANGELOG.md"
+"Source Code" = "https://github.com/lionagi/lionagi-qe-fleet"
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0.0",
+    "ruff>=0.3.0",
+    "mypy>=1.9.0",
+    "ipython>=8.20.0",
+    "ipykernel>=6.29.0",
+]
+
+performance = [
+    "locust>=2.20.0",
+    "py-spy>=0.3.14",
+]
+
+mcp = [
+    "fastmcp>=0.1.0",
+    "mcp>=0.1.0",
+]
+
+persistence = [
+    "redis>=5.0.0",
+]
+
+all = [
+    "lionagi-qe-fleet[dev]",
+    "lionagi-qe-fleet[performance]",
+    "lionagi-qe-fleet[mcp]",
+    "lionagi-qe-fleet[persistence]",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lionagi_qe"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src/lionagi_qe --cov-report=html --cov-report=term"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
