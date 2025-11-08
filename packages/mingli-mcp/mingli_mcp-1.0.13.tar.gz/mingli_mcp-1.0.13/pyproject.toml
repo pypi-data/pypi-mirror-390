@@ -1,0 +1,121 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mingli-mcp"
+version = "1.0.13"
+description = "命理MCP服务 - 支持紫微斗数、八字等多种命理系统"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "spyfree", email = "srlixin@gmail.com"}
+]
+keywords = ["mcp", "ziwei", "bazi", "fortune", "astrology"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "iztro-py>=0.3.1",
+    "lunar_python>=1.4.7",
+    "bidict>=0.23.0",
+    "colorama>=0.4.6",
+    "python-dateutil>=2.8.0",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+]
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pylint>=2.17.0",
+    "isort>=5.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/spyfree/mingli-mcp"
+Repository = "https://github.com/spyfree/mingli-mcp"
+Documentation = "https://github.com/spyfree/mingli-mcp/blob/main/README.md"
+Issues = "https://github.com/spyfree/mingli-mcp/issues"
+
+[project.scripts]
+mingli-mcp = "mingli_mcp:main"
+
+[tool.setuptools]
+py-modules = ["mingli_mcp", "config"]
+packages = ["systems", "transports", "utils", "core"]
+
+[tool.setuptools.package-data]
+systems = ["bazi/lib/*.py"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | \.mypy_cache
+  | \.pytest_cache
+  | __pycache__
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip = [".venv", "venv", "__pycache__", "build", "dist"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --cov=. --cov-report=term-missing --cov-report=html"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["venv", ".venv", "build", "dist"]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/build/*",
+    "*/dist/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
