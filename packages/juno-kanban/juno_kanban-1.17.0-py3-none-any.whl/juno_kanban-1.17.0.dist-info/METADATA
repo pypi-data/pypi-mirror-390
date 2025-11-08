@@ -1,0 +1,532 @@
+Metadata-Version: 2.4
+Name: juno-kanban
+Version: 1.17.0
+Summary: A shell-based kanban task manager with NDJSON storage and high-performance search
+Home-page: https://github.com/askbudi/feedback-shell
+Author: Juno AI
+Author-email: support@juno.ai
+Project-URL: Bug Reports, https://github.com/askbudi/feedback-shell/issues
+Project-URL: Source, https://github.com/askbudi/feedback-shell
+Project-URL: Documentation, https://github.com/askbudi/feedback-shell#readme
+Keywords: kanban task-manager cli ndjson productivity
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Bug Tracking
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Utilities
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: project-url
+Dynamic: requires-python
+Dynamic: summary
+
+# Juno Kanban - Dead Simple Shell Task Manager
+
+A minimal, fast, and shell-friendly kanban task manager built for developers and LLM workflows. Store tasks in NDJSON format with high-performance search capabilities.
+
+[![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg)](https://pypi.org/project/juno-kanban/)
+[![Python](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Shell](https://img.shields.io/badge/shell-friendly-green.svg)](#shell-integration)
+[![jq](https://img.shields.io/badge/jq-compatible-orange.svg)](#jq-integration)
+
+## Quick Start
+
+```bash
+# Install in development mode
+pip install -e .
+
+# Create your first task
+juno-kanban create "Implement user authentication" --tags backend security
+
+# List recent tasks
+juno-kanban list --limit 5
+
+# Search and filter
+juno-kanban search --status todo --tags backend
+
+# Mark task progress with response
+juno-kanban mark in_progress -ID ABC123 --response "Started OAuth integration"
+
+# Complete with commit hash
+juno-kanban mark done -ID ABC123 --response "Auth completed" --commit abc123def
+```
+
+## Installation
+
+### PyPI (Recommended)
+
+```bash
+pip install juno-kanban
+```
+
+After installation, all three commands are available:
+- `juno-kanban` - Main command name
+- `juno-feedback` - Alias (same functionality)
+- `kanban-juno` - Alternative naming
+
+### Development Mode
+
+```bash
+git clone https://github.com/askbudi/feedback-shell.git
+cd feedback-shell
+pip install -e .
+```
+
+### Requirements
+
+- Python 3.7+
+- No external dependencies (uses Python stdlib only)
+- Optional: `ripgrep` for 10-50x faster search performance
+
+## Core Features
+
+### 🗂️ **NDJSON Storage**
+- Human-readable JSON format (one task per line)
+- Supports code snippets, HTML, and special characters
+- Easily parseable by shell tools and scripts
+
+### 🔍 **High-Performance Search**
+- Ripgrep integration for blazing-fast search across large files
+- Multiple filter conditions (status, tags, commit hash, open tasks)
+- Automatic fallback to Python for portability
+
+### 🏷️ **Flexible Organization**
+- Configurable status workflows (backlog → todo → done)
+- Feature tags for categorization
+- Commit hash linking for git integration
+
+### 🤖 **LLM & Shell Optimized**
+- jq-compatible output for automation
+- Educational error messages with examples
+- Context-aware help text
+- Clean, parseable formats
+
+## Usage Guide
+
+### Creating Tasks
+
+```bash
+# Basic task creation
+juno-kanban create "Fix authentication bug"
+
+# With tags and status
+juno-kanban create "Add user profile page" --status todo --tags frontend ui
+
+# Using --body flag (both formats work)
+juno-kanban create --body "Implement OAuth" --tags security backend
+```
+
+### Searching & Listing
+
+```bash
+# List recent tasks (sorted by last modified)
+juno-kanban list --limit 10
+
+# Search by status
+juno-kanban search --status in_progress
+
+# Search by tags
+juno-kanban search --tags backend --tags security
+
+# Search open tasks (no agent response)
+juno-kanban search --open
+
+# Search recent tasks
+juno-kanban search --recent --limit 5
+
+# Multiple conditions (AND logic)
+juno-kanban search --status todo --tags backend --limit 3
+```
+
+### Updating Tasks
+
+```bash
+# Update status
+juno-kanban update ABC123 --status in_progress
+
+# Add agent response
+juno-kanban update ABC123 --response "Working on OAuth flow"
+
+# Set commit hash
+juno-kanban update ABC123 --commit abc123def
+
+# Update tags
+juno-kanban update ABC123 --tags urgent backend security
+```
+
+### Mark Command (Streamlined Workflow)
+
+```bash
+# Mark with required response
+juno-kanban mark todo -ID ABC123 --response "Ready to start"
+
+# Mark as done with commit (recommended)
+juno-kanban mark done -ID ABC123 --response "Feature completed" --commit abc123
+
+# Mark without commit (shows helpful reminder)
+juno-kanban mark done -ID ABC123 --response "Bug fixed"
+# Output: Consider adding commit hash with --commit flag
+```
+
+### Other Operations
+
+```bash
+# Get specific task
+juno-kanban get ABC123
+
+# Archive task (preserves data, sets status to archive)
+juno-kanban archive ABC123
+
+# Show help
+juno-kanban --help
+juno-kanban COMMAND --help
+```
+
+## Output Formats
+
+### NDJSON (Default)
+```bash
+juno-kanban search --status todo
+```
+```json
+{"id": "ABC123", "status": "todo", "body": "Fix bug", "tags": ["backend"]}
+{"id": "DEF456", "status": "todo", "body": "Add feature", "tags": ["frontend"]}
+```
+
+### JSON (Structured)
+```bash
+juno-kanban --format json search --status todo
+```
+```json
+[
+  {"id": "ABC123", "status": "todo", "body": "Fix bug", "tags": ["backend"]},
+  {"id": "DEF456", "status": "todo", "body": "Add feature", "tags": ["frontend"]}
+]
+```
+
+### XML
+```bash
+juno-kanban --format xml search --status todo
+```
+
+### Table (Human-readable)
+```bash
+juno-kanban --format table search --status todo
+```
+
+## Shell Integration
+
+### jq Compatibility
+
+Perfect integration with `jq` for data processing:
+
+```bash
+# Extract task IDs
+juno-kanban list | jq -r '.id'
+
+# Filter by specific criteria
+juno-kanban list | jq 'select(.status == "todo")'
+
+# Count tasks by status
+juno-kanban list | jq -r '.status' | sort | uniq -c
+
+# Get tasks with specific tags
+juno-kanban list | jq 'select(.feature_tags[]? == "backend")'
+
+# Clean data output (suppress summary)
+juno-kanban list 2>/dev/null | jq '.'
+```
+
+### Automation Examples
+
+```bash
+# Daily standup - get your current work
+juno-kanban search --status in_progress | jq -r '.body'
+
+# Review completed work with commits
+juno-kanban search --status done | jq -r '"✅ \(.body) (\(.commit_hash // "no commit"))"'
+
+# Find urgent tasks
+juno-kanban search --tags urgent | jq -r '"⚠️  \(.body)"'
+
+# Git hook integration
+git log -1 --format="%H" | xargs -I {} juno-kanban search --commit {}
+```
+
+## Configuration
+
+Configuration file: `.juno_task/tasks/config.json`
+
+### Status Workflow
+
+```json
+{
+  "status_values": ["backlog", "todo", "in_progress", "review", "done", "archive"],
+  "default_status": "backlog",
+  "enforce_transitions": true,
+  "allowed_transitions": {
+    "backlog": ["todo", "archive"],
+    "todo": ["in_progress", "archive"],
+    "in_progress": ["review", "done", "archive"],
+    "review": ["todo", "done", "archive"],
+    "done": ["archive"],
+    "archive": []
+  }
+}
+```
+
+### Tag Validation
+
+```json
+{
+  "tag_pattern": "^[a-zA-Z0-9_-]+$",
+  "max_tags_per_task": 10,
+  "allowed_tags": ["frontend", "backend", "security", "urgent", "bug", "feature"]
+}
+```
+
+### Search Settings
+
+```json
+{
+  "storage_file_pattern": "*.ndjson",
+  "storage_base_path": ".juno_task/tasks",
+  "default_limit": 5,
+  "enable_ripgrep": true
+}
+```
+
+## Task Schema
+
+Each task is stored as a JSON object with these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | 6-character alphanumeric ID (e.g., "A1b2C3") |
+| `status` | string | Current status (configurable workflow) |
+| `body` | string | Task description (supports multiline, code, HTML) |
+| `commit_hash` | string\|null | Git commit hash when completed |
+| `agent_response` | string | AI/human response or notes |
+| `created_date` | string | Creation timestamp (YYYY-MM-DD HH:MM:SS) |
+| `last_modified` | string | Last modification timestamp |
+| `feature_tags` | string[] | Categorization tags |
+
+### Example Task
+
+```json
+{
+  "id": "A1b2C3",
+  "status": "done",
+  "body": "Implement OAuth2 authentication flow\n\n```python\n@app.route('/auth')\ndef authenticate():\n    return oauth.redirect()\n```",
+  "commit_hash": "abc123def456",
+  "agent_response": "Implemented OAuth2 with Google provider. Added tests and documentation.",
+  "created_date": "2025-10-22 14:30:00",
+  "last_modified": "2025-10-22 16:45:30",
+  "feature_tags": ["backend", "security", "oauth"]
+}
+```
+
+## Error Handling
+
+### Educational Error Messages
+
+```bash
+# Invalid tag format
+juno-kanban create "Task" --tags "frontend v1"
+```
+```
+Validation error: Invalid tag format: 'frontend v1'
+
+Tags can only contain letters, numbers, underscores (_), and hyphens (-).
+Found: spaces (not allowed)
+
+Correct format examples:
+  --tags backend urgent fix-auth
+  --tags frontend_v1 initial feature
+
+Did you mean: 'frontend_v1'?
+```
+
+### Status Transition Validation
+
+```bash
+# Invalid status transition
+juno-kanban update ABC123 --status done  # (current: backlog)
+```
+```
+Cannot transition from 'backlog' to 'done'.
+Allowed transitions from 'backlog': todo, in_progress, archive
+
+Use: juno-kanban update ABC123 --status todo
+```
+
+## Performance
+
+### Benchmarks
+
+| Operation | Small (100 tasks) | Large (10,000 tasks) | Notes |
+|-----------|-------------------|---------------------|-------|
+| Create task | ~5ms | ~5ms | Constant time |
+| Search by ID | ~10ms | ~15ms | With ripgrep |
+| Search by status | ~20ms | ~50ms | With ripgrep |
+| List recent | ~25ms | ~100ms | Sorted by timestamp |
+
+### Large File Handling
+
+- **Streaming**: Memory-efficient reading of large files
+- **Ripgrep**: 10-50x performance boost for search operations
+- **Split Files**: Automatic discovery across multiple NDJSON files
+- **Indexing**: Fast ID lookups even with thousands of tasks
+
+## Examples
+
+### Development Workflow
+
+```bash
+# Morning planning
+juno-kanban create "Review pull requests" --tags review daily
+juno-kanban create "Fix authentication bug" --tags backend urgent --status todo
+
+# Start working
+juno-kanban mark in_progress -ID ABC123 --response "Investigating auth issue"
+
+# During development
+juno-kanban update ABC123 --response "Found root cause in JWT validation"
+
+# Complete work
+juno-kanban mark done -ID ABC123 --response "Fixed JWT expiry handling" --commit abc123
+
+# End of day review
+juno-kanban search --status done | jq -r '"✅ \(.body)"'
+```
+
+### Team Coordination
+
+```bash
+# See what teammates are working on
+juno-kanban search --status in_progress | jq -r '"👤 \(.body) - \(.agent_response)"'
+
+# Find tasks needing review
+juno-kanban search --status review --tags urgent
+
+# Weekly retrospective
+juno-kanban search --status done | jq 'group_by(.commit_hash) | length'
+```
+
+### Git Integration
+
+```bash
+# Link completed tasks to commits
+git log --oneline | head -5 | while read commit message; do
+  echo "🔗 $commit: $(juno-kanban search --commit $commit | jq -r '.body // "No task linked"')"
+done
+
+# Pre-commit hook: ensure task exists
+if ! juno-kanban search --status in_progress | grep -q "$(git log -1 --format='%s')"; then
+  echo "⚠️  No in-progress task found for this commit"
+fi
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Command not found after installation:**
+```bash
+# Ensure pip installed to correct environment
+which pip
+pip show juno-kanban
+
+# Try reinstalling
+pip install -e . --force-reinstall
+```
+
+**Slow search performance:**
+```bash
+# Install ripgrep for better performance
+brew install ripgrep  # macOS
+apt install ripgrep   # Ubuntu/Debian
+```
+
+**jq parsing errors:**
+```bash
+# Ensure you're using recent version (v1.3.0+)
+juno-kanban --version
+
+# Use stderr redirection if needed
+juno-kanban list 2>/dev/null | jq '.'
+```
+
+**Configuration issues:**
+```bash
+# Check config file location
+ls -la .juno_task/tasks/config.json
+
+# Validate JSON syntax
+cat .juno_task/tasks/config.json | jq '.'
+```
+
+### Getting Help
+
+- **CLI Help**: `juno-kanban --help` or `juno-kanban COMMAND --help`
+- **Issues**: [GitHub Issues](https://github.com/askbudi/feedback-shell/issues)
+- **Examples**: See `.juno_task/specs/` directory for detailed examples
+
+## Contributing
+
+This project is developed using AI-powered workflows with juno-task. To contribute:
+
+1. Check `.juno_task/USER_FEEDBACK.md` for current issues
+2. Use `juno-task feedback` to report bugs or suggestions
+3. Review `.juno_task/plan.md` for development priorities
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Changelog
+
+### v1.3.0 (2025-10-23)
+- 🔧 Fixed jq compatibility by redirecting summary to stderr
+- 📝 Compacted documentation for better token efficiency
+- ✅ All automation workflows now function correctly
+
+### v1.2.0 (2025-10-22)
+- 📦 Added pip installation with dual entry points
+- 🔧 Fixed empty search results messaging
+- 📚 Consistent help across command names
+
+### v1.1.0 (2025-10-22)
+- 🗃️ Replaced delete with archive (data preservation)
+- ⚡ Added mark command for streamlined workflow
+- 📅 Simplified datetime format
+
+### v1.0.1 (2025-10-22)
+- ➕ Added missing CRUD operations
+- 📖 Improved help text and documentation
+- 🏷️ Enhanced tag validation with educational errors
+
+### v1.0.0 (2025-10-22)
+- 🎉 Initial release with full kanban functionality
+- 🔍 High-performance search with ripgrep
+- 🏷️ Flexible tagging and status workflows
+
+---
+
+**Built with ❤️ for developers who live in the terminal**
