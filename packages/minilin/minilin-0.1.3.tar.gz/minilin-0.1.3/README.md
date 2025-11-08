@@ -1,0 +1,242 @@
+# MiniLin Framework
+
+**Learn More with Less** - A universal low-resource deep learning framework
+
+[English](README.md) | [中文](README_cn.md) | [Русский](README_ru.md) | [Français](README_fr.md) | [العربية](README_ar.md)
+
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](https://github.com/alltobebetter/minilin)
+
+## What is MiniLin?
+
+MiniLin is a deep learning framework designed for **low-resource scenarios** where data is scarce and computational resources are limited. It provides an end-to-end automated workflow for text, image, and audio tasks, with built-in optimization for edge device deployment.
+
+### Key Features
+
+- **3-Line Solution**: Complete ML pipeline from data to deployment
+- **Auto Strategy Selection**: Automatically chooses optimal training strategy based on data size
+- **Lightweight Models**: Pre-integrated efficient models (DistilBERT, MobileNet, Wav2Vec2)
+- **Model Compression**: Quantization, pruning, and knowledge distillation
+- **Edge Deployment**: Export to ONNX, PyTorch, TFLite
+- **Multi-Modal Support**: Text, image, and audio tasks
+- **Few-Shot Learning**: LoRA, Adapter, and Prompt Tuning
+- **Data Augmentation**: Back-translation, Mixup, CutMix, SpecAugment
+- **API Deployment**: FastAPI REST API server
+
+## Installation
+
+### Basic Installation
+```bash
+pip install minilin
+```
+
+### With Optional Dependencies
+```bash
+# For vision tasks
+pip install minilin[vision]
+
+# For audio tasks
+pip install minilin[audio]
+
+# For optimization features
+pip install minilin[optimization]
+
+# For deployment
+pip install minilin[deployment]
+
+# Install everything
+pip install minilin[all]
+```
+
+### From Source
+```bash
+git clone https://github.com/alltobebetter/minilin.git
+cd minilin
+pip install -e .
+```
+
+## Quick Start
+
+### Basic Usage (3 lines!)
+```python
+from minilin import AutoPipeline
+
+pipeline = AutoPipeline(task="text_classification", data_path="./data")
+pipeline.train()
+pipeline.deploy(output_path="./model.onnx")
+```
+
+### Advanced Usage
+```python
+from minilin import AutoPipeline
+
+pipeline = AutoPipeline(
+    task="text_classification",
+    data_path="./data",
+    target_device="mobile",
+    max_samples=500,
+    compression_level="high"
+)
+
+analysis = pipeline.analyze_data()
+print(f"Strategy: {analysis['recommended_strategy']}")
+
+pipeline.train(epochs=10, batch_size=16, learning_rate=2e-5)
+
+metrics = pipeline.evaluate()
+print(f"Accuracy: {metrics['accuracy']:.4f}")
+
+pipeline.deploy(output_path="./model.onnx", quantization="int8")
+```
+
+## Advanced Features
+
+### Few-Shot Learning with LoRA
+```python
+from minilin.models import apply_few_shot_method
+
+model = apply_few_shot_method(model, method="lora", r=8, alpha=16)
+pipeline.train(max_samples=50, epochs=20)
+```
+
+### Knowledge Distillation
+```python
+from minilin.optimization import KnowledgeDistiller
+
+distiller = KnowledgeDistiller(
+    teacher_model=large_model,
+    student_model=small_model,
+    temperature=3.0,
+    alpha=0.5
+)
+
+metrics = distiller.distill(train_loader, val_loader, epochs=5)
+```
+
+### Multi-Modal Learning
+```python
+from minilin.models import create_multimodal_model
+
+model = create_multimodal_model(
+    text_model_name="distilbert-base-uncased",
+    image_model_name="mobilenetv3_small_100",
+    audio_model_name="facebook/wav2vec2-base",
+    num_classes=10,
+    fusion_method="attention"
+)
+```
+
+### FastAPI Deployment
+```python
+from minilin.deployment import serve_model
+
+serve_model(
+    model_path="./model.onnx",
+    task="text_classification",
+    host="0.0.0.0",
+    port=8000
+)
+```
+
+## Supported Tasks
+
+### Text Tasks
+- Text Classification
+- Named Entity Recognition (NER)
+- Sentiment Analysis
+
+### Vision Tasks
+- Image Classification
+- Image Augmentation (Mixup, CutMix)
+
+### Audio Tasks
+- Audio Classification
+- Audio Augmentation (SpecAugment)
+
+### Multi-Modal Tasks
+- Text + Image
+- Text + Audio
+- Text + Image + Audio
+
+## Core Modules
+
+### Data Layer
+- **DataAnalyzer**: Automatic data analysis and quality assessment
+- **DataLoader**: Support for JSON, JSONL, CSV, TXT, directory formats
+- **DataAugmenter**: Text augmentation (synonym, insertion, deletion, swap)
+- **BackTranslator**: Back-translation (googletrans, DeepL)
+- **ImageAugmenter**: Image augmentation (Mixup, CutMix, transforms)
+- **AudioAugmenter**: Audio augmentation (noise, shift, speed, SpecAugment)
+
+### Model Layer
+- **ModelZoo**: Pre-integrated lightweight models
+- **Trainer**: Text model trainer with auto hyperparameter tuning
+- **ImageTrainer**: Image model trainer
+- **AudioTrainer**: Audio model trainer
+- **MultiModalModel**: Multi-modal fusion model
+- **Few-Shot Learning**: LoRA, Adapter, Prompt Tuning
+
+### Optimization Layer
+- **Quantizer**: INT8/FP16 quantization
+- **Pruner**: Structured/unstructured pruning
+- **KnowledgeDistiller**: Teacher-Student distillation
+- **ModelCompressor**: Compression orchestration
+
+### Deployment Layer
+- **ModelExporter**: Export to ONNX, PyTorch, TFLite
+- **ModelServer**: FastAPI REST API server
+- **Edge Optimization**: Mobile and embedded device support
+
+## Performance
+
+- **Training Speed**: 2-3x faster than standard training
+- **Model Size**: Compressed to 10-20% of original size
+- **Inference Speed**: Real-time on edge devices (>30 FPS)
+- **Accuracy Loss**: <2% after compression
+
+## Examples
+
+Check out the [examples](examples/) directory:
+
+- [Text Classification](examples/text_classification.py)
+- [Sentiment Analysis](examples/sentiment_analysis.py)
+- [Image Classification](examples/image_classification.py)
+- [Audio Classification](examples/audio_classification.py)
+- [Multi-Modal Learning](examples/multimodal_example.py)
+- [Advanced Features](examples/advanced_features.py)
+
+## Configuration
+
+### Configuration File
+Create `~/.minilin/config.json`:
+```json
+{
+  "translation_api_key": "your-api-key",
+  "huggingface_token": "your-token",
+  "cache_dir": "~/.minilin/cache"
+}
+```
+
+### Environment Variables
+```bash
+export MINILIN_TRANSLATION_API_KEY="your-api-key"
+export MINILIN_HUGGINGFACE_TOKEN="your-token"
+```
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+- **GitHub**: https://github.com/alltobebetter/minilin
+- **Email**: me@supage.eu.org
+
+---
+
+Made with ❤️ by the MiniLin Team
