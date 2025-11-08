@@ -1,0 +1,1057 @@
+import asyncio
+import difflib
+import tempfile
+from pathlib import Path
+from typing import Any, Callable, List, Optional
+
+from rich.text import Text
+from textual import on
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, Vertical
+from textual.reactive import reactive
+from textual.screen import Screen
+from textual.widgets import DataTable, Footer, Header, Input, Select, Static
+
+from rbx.box.schema import ExpectedOutcome
+from rbx.box.solutions import get_full_outcome_markup_verdict
+from rbx.box.tooling.boca.scraper import (
+    BocaDetailedRun,
+    BocaProblem,
+    BocaRun,
+    BocaScraper,
+    get_boca_scraper,
+)
+from rbx.box.ui.widgets.code_box import CodeBox
+from rbx.box.ui.widgets.diff_box import DiffBox
+from rbx.config import get_app_path
+from rbx.grading.steps import Outcome
+
+
+def _format_time(minutes: int) -> str:
+    hours = minutes // 60
+    mins = minutes % 60
+    return f'{hours:02d}:{mins:02d}'
+
+
+class BocaRunsApp(App):
+    CSS_PATH = None
+
+    # Compact layout styling for filters, mode indicator and teams panel
+    CSS = """
+        #left_panel {
+            width: 3fr;
+        }
+        #right_panel {
+            width: 3fr;
+        }
+            #loading_indicator {
+                height: 1;
+                padding: 0 1;
+                margin: 0 1;
+            }
+        #filters {
+            padding: 0 1;
+            margin: 0 1;
+        }
+        #filters_row1 { }
+        #filters_row2 { }
+        #problem_select { width: 24; }
+        #verdict_select { width: 20; }
+        #refresh_label { width: 6; }
+        #refresh_input { width: 12; }
+        #diff_label { width: 4; }
+        #diff_input { width: 10; }
+            #team_input { width: 1fr; }
+        #mode_indicator {
+            height: 1;
+            padding: 0 1;
+            margin: 0 1;
+        }
+        #runs_table { height: 3fr; }
+        """
+
+    mode: reactive[str] = reactive('judged')
+    pending_requests: reactive[int] = reactive(0)
+    verdict_filter: reactive[Optional[str]] = reactive(None)
+    problem_filter: reactive[Optional[str]] = reactive(None)
+    team_filter: reactive[Optional[str]] = reactive(None)
+    refresh_interval: reactive[int] = reactive(30)
+    contest_id: reactive[Optional[str]] = reactive(None)
+
+    def __init__(self, scraper: Optional[BocaScraper] = None):
+        super().__init__()
+        self.scraper = scraper or get_boca_scraper()
+        self._problems: List[BocaProblem] = []
+        self._runs: List[BocaRun] = []
+        self._tmp_dir = Path(tempfile.gettempdir()) / 'rbx_boca_viewer'
+        self._tmp_dir.mkdir(parents=True, exist_ok=True)
+        self._selected_key: Optional[str] = None
+        self._highlighted_key: Optional[str] = None
+        # Background tasks
+        self._refresh_task: Optional[asyncio.Task] = None
+        # Persistent cache
+        self._cache_base: Optional[Path] = None
+        self._runs_dir: Optional[Path] = None
+        self._prefetch_inflight: set[str] = set()
+        # Small diff detection cache: run_key -> is_small_diff
+        self._small_diff_flags: dict[str, bool] = {}
+        # Prioritized scraper executor (serializes calls, honors priority)
+        self.PRIORITY_USER = 0
+        self.PRIORITY_NORMAL = 5
+        self.PRIORITY_PREFETCH = 10
+        self._scraper_queue: 'asyncio.PriorityQueue[tuple[int, int, Callable[..., Any], tuple[Any, ...], dict[str, Any], asyncio.Future]]' = asyncio.PriorityQueue()  # type: ignore[type-arg]
+        self._scraper_seq: int = 0
+        self._scraper_worker_task: Optional[asyncio.Task] = None
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=True)
+        # Global loading indicator (reflects any in-flight network requests)
+        yield Static('', id='loading_indicator')
+        with Horizontal():
+            with Vertical(id='left_panel'):
+                yield Static('', id='mode_indicator')
+                with Vertical(id='filters'):
+                    with Horizontal(id='filters_row1'):
+                        yield Select([], prompt='Problem', id='problem_select')
+                        yield Select([], prompt='Verdict', id='verdict_select')
+                    with Horizontal(id='filters_row2'):
+                        yield Static('Ref:', id='refresh_label')
+                        yield Input(
+                            str(self.refresh_interval),
+                            id='refresh_input',
+                            placeholder='30',
+                        )
+                        yield Static('Δ:', id='diff_label')
+                        yield Input(
+                            str(self.small_diff_threshold),
+                            id='diff_input',
+                            placeholder='5',
+                        )
+                        yield Input(
+                            placeholder='Team filter (substring, case-insensitive)',
+                            id='team_input',
+                        )
+                table = DataTable(id='runs_table')
+                table.add_columns(
+                    'Run',
+                    'Site',
+                    'Problem',
+                    'Verdict',
+                    'Time',
+                    'Status',
+                    'Team',
+                )
+                table.cursor_type = 'row'
+                yield table
+                yield Static('', id='left_spacer')
+            with Vertical(id='right_panel'):
+                # Shows which submission is currently selected
+                yield Static('No run selected.', id='selection_info')
+                self.code_box = CodeBox()
+                yield self.code_box
+        yield Footer()
+
+    async def on_mount(self) -> None:
+        # Prompt for contest id before starting network work
+        try:
+            contest_id = await self.push_screen_wait(_ContestIdScreen())
+        except Exception:
+            contest_id = None
+        if not contest_id or not str(contest_id).strip():
+            # If user cancels or empty, fall back to 'default'
+            contest_id = 'default'
+        self.contest_id = str(contest_id).strip()
+        self._init_cache_paths()
+
+        self.log('on_mount: scheduling login and initial refresh in background')
+        # Run initial login + refresh in background to avoid blocking UI render
+        asyncio.create_task(self._initial_load())
+        self._update_mode_indicator()
+        # Set initial focus to the runs table
+        try:
+            table = self.query_one('#runs_table', DataTable)
+            self.set_focus(table)
+            self.log('on_mount: focus set to runs_table')
+        except Exception:
+            self.log('on_mount: failed to set focus to runs_table')
+        self.log('on_mount: completed')
+        # Start auto-refresh loop
+        self._start_auto_refresh_task()
+        self._start_scraper_worker()
+
+    async def _initial_load(self) -> None:
+        try:
+            await self._ensure_login()
+            await self._refresh_runs()
+        except Exception:
+            # Errors are logged by Textual's default handler; ensure indicator decrements
+            self.log('_initial_load: encountered exception during startup')
+
+    async def _ensure_login(self) -> None:
+        self.log('ensure_login: logging into BOCA via scraper')
+        await self._run_scraper(self.scraper.login, priority=self.PRIORITY_USER)
+        self.log('ensure_login: login complete')
+
+    def _populate_filters(self) -> None:
+        problem_select = self.query_one('#problem_select', Select)
+        verdict_select = self.query_one('#verdict_select', Select)
+
+        problem_values = sorted({r.problem_shortname for r in self._runs})
+        problem_options = [('All', '__all__')] + [
+            (name, name) for name in problem_values
+        ]
+        current_problem_value = getattr(problem_select, 'value', None)
+        problem_select.set_options(problem_options)
+        valid_values = {v for _, v in problem_options}
+        problem_select.value = (
+            current_problem_value
+            if current_problem_value in valid_values
+            else '__all__'
+        )
+
+        verdict_options = [('All', '__all__')] + [
+            (eo.name.replace('_', ' ').title(), eo.name) for eo in ExpectedOutcome
+        ]
+        verdict_select.set_options(verdict_options)
+        verdict_select.value = '__all__'
+
+    async def _refresh_runs(self) -> None:
+        self.log(f'_refresh_runs: fetching runs (mode={self.mode})')
+        only_judged = True if self.mode == 'judged' else False
+        runs = await self._run_scraper(
+            self.scraper.list_runs, only_judged, priority=self.PRIORITY_NORMAL
+        )
+        if self.mode == 'queue':
+            runs = [r for r in runs if (r.outcome is None or r.status != 'judged')]
+        elif self.mode == 'judged':
+            runs = [r for r in runs if r.outcome is not None]
+        else:  # both
+            # Keep all returned runs
+            pass
+        self._runs = runs
+        self.log(f'_refresh_runs: fetched {len(self._runs)} runs')
+        # refresh problem filter based on current runs
+        self._populate_filters()
+        self._reload_table()
+        self._update_mode_indicator()
+        # Prefetch codes for runs not yet cached (non-blocking)
+        asyncio.create_task(self._prefetch_missing_runs())
+        # Compute small-diff markers in background (non-blocking)
+        asyncio.create_task(self._compute_small_diffs())
+
+    def _passes_filters(self, run: BocaRun) -> bool:
+        if self.problem_filter and self.problem_filter != '__all__':
+            if run.problem_shortname != self.problem_filter:
+                return False
+        if self.team_filter:
+            team_name = (run.user or '').strip()
+            if self.team_filter.lower() not in team_name.lower():
+                return False
+        if self.mode in ('judged', 'both'):
+            if self.verdict_filter and self.verdict_filter != '__all__':
+                try:
+                    expected = ExpectedOutcome[self.verdict_filter]
+                except KeyError:
+                    return False
+                if run.outcome is None:
+                    return False
+                if not expected.match(run.outcome):
+                    return False
+        return True
+
+    def _outcome_to_expected(self, outcome: Outcome) -> ExpectedOutcome:
+        if outcome == Outcome.ACCEPTED:
+            return ExpectedOutcome.ACCEPTED
+        if outcome == Outcome.WRONG_ANSWER:
+            return ExpectedOutcome.WRONG_ANSWER
+        if outcome in (Outcome.TIME_LIMIT_EXCEEDED, Outcome.IDLENESS_LIMIT_EXCEEDED):
+            return ExpectedOutcome.TIME_LIMIT_EXCEEDED
+        if outcome == Outcome.MEMORY_LIMIT_EXCEEDED:
+            return ExpectedOutcome.MEMORY_LIMIT_EXCEEDED
+        if outcome == Outcome.RUNTIME_ERROR:
+            return ExpectedOutcome.RUNTIME_ERROR
+        if outcome == Outcome.OUTPUT_LIMIT_EXCEEDED:
+            return ExpectedOutcome.OUTPUT_LIMIT_EXCEEDED
+        if outcome == Outcome.JUDGE_FAILED:
+            return ExpectedOutcome.JUDGE_FAILED
+        # Fallback
+        return ExpectedOutcome.INCORRECT
+
+    def _reload_table(self) -> None:
+        table = self.query_one('#runs_table', DataTable)
+        table.clear()
+        rows_added = 0
+        first_key: Optional[str] = None
+        for run in self._runs:
+            if not self._passes_filters(run):
+                continue
+            if run.outcome is not None:
+                verdict = Text.from_markup(get_full_outcome_markup_verdict(run.outcome))
+            else:
+                verdict = '—'
+            time_s = _format_time(run.time)
+            row_key = f'{run.run_number}:{run.site_number}'
+            self.log(
+                f'_reload_table: add row key={row_key} problem={run.problem_shortname} team={(run.user or "").strip()} verdict={verdict} status={run.status}'
+            )
+            star = ''
+            if run.outcome is not None and run.outcome == Outcome.ACCEPTED:
+                flag = self._small_diff_flags.get(row_key)
+                if flag:
+                    star = '[red]*[/red]'
+            table.add_row(
+                f'{run.run_number}{star}',
+                str(run.site_number),
+                run.problem_shortname,
+                verdict,
+                time_s,
+                run.status,
+                run.user or '',
+                key=row_key,
+            )
+            rows_added += 1
+            if first_key is None:
+                first_key = row_key
+        self.log(f'_reload_table: added {rows_added} rows')
+        if self._highlighted_key is None and first_key is not None:
+            self._highlighted_key = first_key
+
+    # --- Auto-refresh management ---
+    def _cancel_auto_refresh_task(self) -> None:
+        task = self._refresh_task
+        if task is not None and not task.done():
+            task.cancel()
+        self._refresh_task = None
+
+    def _start_auto_refresh_task(self) -> None:
+        self._cancel_auto_refresh_task()
+
+        async def _runner() -> None:
+            while True:
+                try:
+                    await asyncio.sleep(max(1, int(self.refresh_interval)))
+                    await self._refresh_runs()
+                except asyncio.CancelledError:
+                    break
+                except Exception:
+                    # Ignore intermittent failures and keep the loop running
+                    pass
+
+        self._refresh_task = asyncio.create_task(_runner())
+
+    def watch_refresh_interval(self, value: int) -> None:  # called on change
+        # Restart the loop to apply the new interval immediately
+        self._start_auto_refresh_task()
+
+    async def action_toggle_mode(self) -> None:
+        if self.mode == 'judged':
+            self.mode = 'queue'
+        elif self.mode == 'queue':
+            self.mode = 'both'
+        else:
+            self.mode = 'judged'
+        self._update_mode_indicator()
+        await self._refresh_runs()
+
+    BINDINGS = [
+        ('r', 'refresh', 'Refresh'),
+        ('m', 'toggle_mode', 'Toggle mode'),
+        ('d', 'show_diff', 'Last diff'),
+        ('D', 'show_non_ac_diff', 'Last non-AC diff'),
+        ('q', 'quit', 'Quit'),
+    ]
+
+    def _extract_key_str(self, key: object) -> Optional[str]:
+        if key is None:
+            self.log('_extract_key_str: key is None')
+            return None
+        if isinstance(key, str):
+            self.log(f'_extract_key_str: key is str -> {key}')
+            return key
+        # Extract the underlying string from Textual's RowKey wrapper when necessary
+        value = getattr(key, 'value', None)
+        if isinstance(value, str):
+            self.log(f'_extract_key_str: key has .value -> {value}')
+            return value
+        try:
+            # Fallback to string conversion
+            as_str = str(key)
+            if ':' in as_str:
+                self.log(f'_extract_key_str: key fallback str -> {as_str}')
+                return as_str
+            self.log(f'_extract_key_str: key fallback str has no colon -> {as_str}')
+            return None
+        except Exception:
+            self.log('_extract_key_str: exception while converting key to str')
+            return None
+
+    def _run_from_row_key(self, key: object) -> Optional[BocaRun]:
+        key_str = self._extract_key_str(key)
+        if key_str is None or ':' not in key_str:
+            self.log(f'_run_from_row_key: invalid key_str -> {key_str}')
+            return None
+        run_number_str, site_number_str = key_str.split(':', 1)
+        run = next(
+            (
+                r
+                for r in self._runs
+                if str(r.run_number) == run_number_str
+                and str(r.site_number) == site_number_str
+            ),
+            None,
+        )
+        if run is None:
+            self.log(f'_run_from_row_key: no run found for key {key_str}')
+        else:
+            self.log(
+                f'_run_from_row_key: resolved run {run.run_number}-{run.site_number} ({run.problem_shortname})'
+            )
+        return run
+
+    def _update_selection_info(
+        self, run: BocaRun, detailed: Optional[BocaDetailedRun] = None
+    ) -> None:
+        info = []
+        verdict = run.outcome.name if run.outcome is not None else '—'
+        team = (run.user or '').strip()
+        info.append(
+            f'Run {run.run_number}-{run.site_number} | Problem {run.problem_shortname} | Team {team}'
+        )
+        info.append(
+            f'Verdict {verdict} | Time {_format_time(run.time)} | Status {run.status}'
+        )
+        if detailed is not None:
+            info.append(f'File {detailed.filename.name}')
+        self.query_one('#selection_info', Static).update('\n'.join(info))
+
+    def _update_mode_indicator(self) -> None:
+        indicator = self.query_one('#mode_indicator', Static)
+        label = {
+            'judged': 'Judged',
+            'queue': 'Queue',
+            'both': 'Both',
+        }.get(self.mode, self.mode)
+        indicator.update(f'Mode: {label} (press "m" to change)')
+
+    async def action_refresh(self) -> None:
+        await self._refresh_runs()
+
+    def action_quit(self) -> None:
+        self.exit()
+
+    async def action_show_options(self) -> None:
+        # Open options without waiting; handle result in on_screen_dismissed
+        try:
+            self.push_screen(
+                _OptionsScreen(self.refresh_interval, self.small_diff_threshold)
+            )
+        except Exception:
+            return
+
+    def on_screen_dismissed(self, event) -> None:  # type: ignore[override]
+        # Capture result from options modal
+        if isinstance(event.screen, _OptionsScreen):
+            result = getattr(event, 'result', None)
+            self.log(f'on_screen_dismissed: options result={result!r}')
+            if not isinstance(result, dict):
+                return
+            try:
+                new_refresh = int(result.get('refresh_interval', self.refresh_interval))
+                if new_refresh > 0:
+                    self.refresh_interval = new_refresh
+                    self.log(f'on_screen_dismissed: applied refresh={new_refresh}')
+            except Exception:
+                pass
+            try:
+                new_delta = int(
+                    result.get('small_diff_threshold', self.small_diff_threshold)
+                )
+                if new_delta > 0:
+                    self.small_diff_threshold = new_delta
+                    self.log(f'on_screen_dismissed: applied diff={new_delta}')
+            except Exception:
+                pass
+            try:
+                self.notify('Options saved', severity='information')
+            except Exception:
+                pass
+
+    async def action_show_non_ac_diff(self) -> None:
+        await self.action_show_diff(last_non_ac=True)
+
+    async def action_show_diff(self, last_non_ac: bool = False) -> None:
+        # Use currently highlighted row; selection not required
+        key_str = self._highlighted_key
+        if key_str is None:
+            self.notify('Highlight a run first to diff.', severity='error')
+            return
+        run = self._run_from_row_key(key_str)
+        if run is None:
+            self.notify('Could not resolve selected run.', severity='error')
+            return
+
+        team = (run.user or '').strip()
+        problem = run.problem_shortname
+        site_number = run.site_number
+
+        # Find latest previous run according to chosen mode
+        if last_non_ac:
+            prev = self._find_last_non_ac_before(run)
+            if prev is None:
+                self.notify(
+                    'No previous non-AC run found for this team and problem.',
+                    severity='error',
+                )
+                return
+        else:
+            candidates = [
+                r
+                for r in self._runs
+                if r.problem_shortname == problem
+                and (r.user or '').strip() == team
+                and r.site_number == site_number
+                and r.outcome is not None
+                and (
+                    (r.time < run.time)
+                    or (r.time == run.time and r.run_number < run.run_number)
+                )
+            ]
+            if not candidates:
+                self.notify(
+                    'No previous run found for this team and problem.', severity='error'
+                )
+                return
+            prev = max(candidates, key=lambda r: (r.time, r.run_number))
+
+        try:
+            path_current, path_prev = await asyncio.gather(
+                self._ensure_cached_run(
+                    run, is_prefetch=False, priority=self.PRIORITY_USER
+                ),
+                self._ensure_cached_run(
+                    prev, is_prefetch=False, priority=self.PRIORITY_USER
+                ),
+            )
+        except Exception:
+            self.notify('Failed to prepare runs for diff.', severity='error')
+            return
+
+        if path_current is None or path_prev is None:
+            self.notify('Failed to prepare files for diff.', severity='error')
+            return
+
+        self.push_screen(_BocaDifferScreen(path_prev, path_current))
+
+    @on(Select.Changed, '#problem_select')
+    async def _on_problem_changed(self, event: Select.Changed) -> None:
+        value = event.value
+        self.problem_filter = None if value is None else str(value)
+        self._reload_table()
+
+    @on(Input.Changed, '#refresh_input')
+    def _on_refresh_interval_changed(self, event: Input.Changed) -> None:
+        raw = (event.value or '').strip()
+        try:
+            new_value = int(raw)
+            if new_value <= 0:
+                return
+            self.refresh_interval = new_value
+        except ValueError:
+            # Ignore non-integer inputs
+            return
+
+    @on(Select.Changed, '#verdict_select')
+    async def _on_verdict_changed(self, event: Select.Changed) -> None:
+        value = event.value
+        self.verdict_filter = None if value is None else str(value)
+        self._reload_table()
+
+    @on(Input.Changed, '#diff_input')
+    def _on_small_diff_threshold_changed(self, event: Input.Changed) -> None:
+        raw = (event.value or '').strip()
+        try:
+            new_value = int(raw)
+            if new_value <= 0:
+                return
+            self.small_diff_threshold = new_value
+        except ValueError:
+            return
+
+    @on(Input.Changed, '#team_input')
+    def _on_team_filter_changed(self, event: Input.Changed) -> None:
+        raw = (event.value or '').strip()
+        self.team_filter = raw if raw else None
+        self._reload_table()
+
+    # --- Small diff threshold configuration ---
+    small_diff_threshold: reactive[int] = reactive(5)
+
+    def watch_small_diff_threshold(self, value: int) -> None:  # called on change
+        # Recompute markers with new threshold
+        asyncio.create_task(self._compute_small_diffs())
+
+    @on(DataTable.RowSelected, '#runs_table')
+    async def _on_row_selected(self, event: DataTable.RowSelected) -> None:
+        self.log(f'RowSelected: event.row_key={event.row_key!r}')
+        key_str = self._extract_key_str(event.row_key)
+        run = self._run_from_row_key(event.row_key)
+        if run is None:
+            self.log('RowSelected: run is None (ignoring)')
+            return
+        # Remember selection to prevent stale updates
+        self._selected_key = key_str
+        # Show selection info immediately
+        self._update_selection_info(run)
+        self.log(
+            f'RowSelected: retrieving run code for {run.run_number}-{run.site_number}'
+        )
+        # Start background load; do not block the UI
+        asyncio.create_task(self._load_and_display_run(run, key_str))
+
+    async def _load_and_display_run(
+        self, run: BocaRun, expected_key: Optional[str]
+    ) -> None:
+        try:
+            # If already cached, use immediately
+            cached = self._find_cached_run_path(run)
+            if cached is not None:
+                if expected_key is None or self._selected_key == expected_key:
+                    self.code_box.path = cached
+                else:
+                    self.log(
+                        f'_load_and_display_run: discard stale cached expected={expected_key} current={self._selected_key}'
+                    )
+                return
+
+            # Otherwise, ensure cached in background and then display
+            path = await self._ensure_cached_run(
+                run, is_prefetch=False, priority=self.PRIORITY_USER
+            )
+            if path is None:
+                return
+            if expected_key is None or self._selected_key == expected_key:
+                self.code_box.path = path
+            else:
+                self.log(
+                    f'_load_and_display_run: discard stale result expected={expected_key} current={self._selected_key}'
+                )
+        except Exception:
+            self.log('_load_and_display_run: error while retrieving or displaying run')
+
+    @on(DataTable.RowHighlighted, '#runs_table')
+    async def _on_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        # Track highlighted key for diff action
+        self._highlighted_key = self._extract_key_str(event.row_key)
+        await self._on_row_selected(event)  # pyright: ignore[reportArgumentType]
+        self.log(
+            f'RowHighlighted: event.row_key={event.row_key!r} -> highlighted={self._highlighted_key!r}'
+        )
+
+    def _write_temp_code(self, detailed: BocaDetailedRun) -> Path:
+        filename = detailed.filename.name
+        # Ensure unique file per run
+        safe_name = f'{detailed.run_number}-{detailed.site_number}-{filename}'
+        path = self._tmp_dir / safe_name
+        path.write_text(detailed.code)
+        self.log(f'_write_temp_code: wrote code to {path} (len={len(detailed.code)})')
+        return path
+
+    # --- Previous run helpers ---
+    def _find_last_non_ac_before(self, run: BocaRun) -> Optional[BocaRun]:
+        team = (run.user or '').strip()
+        problem = run.problem_shortname
+        site_number = run.site_number
+        candidates = [
+            r
+            for r in self._runs
+            if r.problem_shortname == problem
+            and (r.user or '').strip() == team
+            and r.site_number == site_number
+            and r.outcome is not None
+            # and r.outcome != Outcome.ACCEPTED
+            and (
+                (r.time < run.time)
+                or (r.time == run.time and r.run_number < run.run_number)
+            )
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda r: (r.time, r.run_number))
+
+    # --- Request management & loading indicator ---
+    async def _run_in_thread(
+        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
+        self.pending_requests += 1
+        try:
+            return await asyncio.to_thread(func, *args, **kwargs)
+        finally:
+            self.pending_requests -= 1
+
+    async def _run_scraper(
+        self,
+        func: Callable[..., Any],
+        *args: Any,
+        priority: int = 5,
+        **kwargs: Any,
+    ) -> Any:
+        """Schedule a scraper call with priority; executes serially in a worker."""
+        # Create a future to await result
+        loop = asyncio.get_running_loop()
+        fut: asyncio.Future = loop.create_future()
+        # Use sequence to keep FIFO within same priority
+        self._scraper_seq += 1
+        item = (priority, self._scraper_seq, func, args, kwargs, fut)
+        await self._scraper_queue.put(item)
+        # Ensure worker is running
+        self._start_scraper_worker()
+        return await fut
+
+    def _start_scraper_worker(self) -> None:
+        if (
+            self._scraper_worker_task is not None
+            and not self._scraper_worker_task.done()
+        ):
+            return
+
+        async def _worker() -> None:
+            while True:
+                try:
+                    (
+                        priority,
+                        seq,
+                        func,
+                        args,
+                        kwargs,
+                        fut,
+                    ) = await self._scraper_queue.get()  # type: ignore[misc]
+                except asyncio.CancelledError:
+                    break
+                except Exception:
+                    # Should not happen; continue loop
+                    await asyncio.sleep(0)
+                    continue
+                try:
+                    if not fut.cancelled():
+                        result = await self._run_in_thread(func, *args, **kwargs)
+                        fut.set_result(result)
+                except asyncio.CancelledError:
+                    if not fut.cancelled():
+                        fut.set_exception(asyncio.CancelledError())
+                    break
+                except Exception as exc:
+                    if not fut.cancelled():
+                        fut.set_exception(exc)
+                finally:
+                    self._scraper_queue.task_done()
+
+        self._scraper_worker_task = asyncio.create_task(_worker())
+
+    def _cancel_scraper_worker(self) -> None:
+        task = self._scraper_worker_task
+        if task is not None and not task.done():
+            task.cancel()
+        self._scraper_worker_task = None
+
+    def watch_pending_requests(self, value: int) -> None:  # called on change
+        self._update_loading_indicator()
+
+    def _update_loading_indicator(self) -> None:
+        try:
+            indicator = self.query_one('#loading_indicator', Static)
+        except Exception:
+            return
+        prefetch_count = 0
+        try:
+            prefetch_count = len(self._prefetch_inflight)
+        except Exception:
+            prefetch_count = 0
+        if self.pending_requests > 0:
+            if prefetch_count > 0:
+                indicator.update(f'⏳ Loading… (prefetch {prefetch_count})')
+            else:
+                indicator.update('⏳ Loading…')
+        elif prefetch_count > 0:
+            indicator.update(f'Prefetch in-flight: {prefetch_count}')
+        else:
+            indicator.update('')
+
+    def on_unmount(self) -> None:
+        # Ensure background tasks are stopped cleanly
+        self._cancel_auto_refresh_task()
+        self._cancel_scraper_worker()
+
+    # --- Persistent cache helpers ---
+    def _init_cache_paths(self) -> None:
+        base = get_app_path() / 'boca' / 'contests' / (self.contest_id or 'default')
+        runs_dir = base / 'runs'
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        self._cache_base = base
+        self._runs_dir = runs_dir
+
+    def _run_key(self, run: BocaRun) -> str:
+        return f'{run.run_number}:{run.site_number}'
+
+    def _find_cached_run_path(self, run: BocaRun) -> Optional[Path]:
+        if self._runs_dir is None:
+            return None
+        pattern = f'{run.run_number}-{run.site_number}-*'
+        try:
+            for p in self._runs_dir.glob(pattern):
+                if p.is_file():
+                    return p
+        except Exception:
+            return None
+        return None
+
+    async def _ensure_cached_run(
+        self, run: BocaRun, *, is_prefetch: bool, priority: int
+    ) -> Optional[Path]:
+        # Check existing
+        existing = self._find_cached_run_path(run)
+        if existing is not None:
+            return existing
+        key = self._run_key(run)
+        # Track only prefetch tasks in the inflight set (for UI)
+        if is_prefetch:
+            self._prefetch_inflight.add(key)
+            self._update_loading_indicator()
+        try:
+            detailed: BocaDetailedRun = await self._run_scraper(
+                self.scraper.retrieve_run, run, priority=priority
+            )
+            filename = detailed.filename.name
+            safe_name = f'{detailed.run_number}-{detailed.site_number}-{filename}'
+            if self._runs_dir is None:
+                return None
+            path = self._runs_dir / safe_name
+            path.write_text(detailed.code)
+            self.log(
+                f'_ensure_cached_run: cached code to {path} (len={len(detailed.code)})'
+            )
+            return path
+        except Exception:
+            return None
+        finally:
+            if is_prefetch:
+                self._prefetch_inflight.discard(key)
+                self._update_loading_indicator()
+
+    async def _prefetch_missing_runs(self) -> None:
+        # Sequentially prefetch to honor scraper serialization
+        for run in list(self._runs):
+            try:
+                if self._find_cached_run_path(run) is None:
+                    await self._ensure_cached_run(
+                        run, is_prefetch=True, priority=self.PRIORITY_PREFETCH
+                    )
+            except Exception:
+                # Ignore individual failures
+                pass
+
+    async def _compute_small_diffs(self) -> None:
+        """Compute and cache 'small diff' markers for AC runs.
+        A run is marked if its diff to the last non-AC run for same team/problem/site
+        has changed-line count <= small_diff_threshold.
+        """
+        # Reset flags and recompute for current runs
+        flags: dict[str, bool] = {}
+        threshold = int(self.small_diff_threshold)
+        for run in list(self._runs):
+            try:
+                if run.outcome is None or run.outcome != Outcome.ACCEPTED:
+                    continue
+                prev = self._find_last_non_ac_before(run)
+                if prev is None:
+                    continue
+                # Ensure both are cached (serialize via scraper worker)
+                path_current, path_prev = await asyncio.gather(
+                    self._ensure_cached_run(
+                        run, is_prefetch=True, priority=self.PRIORITY_PREFETCH
+                    ),
+                    self._ensure_cached_run(
+                        prev, is_prefetch=True, priority=self.PRIORITY_PREFETCH
+                    ),
+                )
+                if path_current is None or path_prev is None:
+                    continue
+                try:
+                    a = path_prev.read_text().splitlines()
+                    b = path_current.read_text().splitlines()
+                except Exception:
+                    continue
+                diff_iter = difflib.unified_diff(a, b, lineterm='')
+                changed = 0
+                for line in diff_iter:
+                    if not line:
+                        continue
+                    # Skip headers
+                    if (
+                        line.startswith('---')
+                        or line.startswith('+++')
+                        or line.startswith('@@')
+                    ):
+                        continue
+                    if line[0] == '+' or line[0] == '-':
+                        changed += 1
+                        if changed > threshold:
+                            break
+                key = self._run_key(run)
+                flags[key] = changed <= threshold
+            except Exception:
+                # Ignore per-run compute failures
+                pass
+        # Update cache and refresh table UI
+        self._small_diff_flags = flags
+        try:
+            self._reload_table()
+        except Exception:
+            pass
+
+
+def run_app() -> None:
+    app = BocaRunsApp()
+    app.run()
+
+
+class _BocaDifferScreen(Screen):
+    BINDINGS = [
+        ('q', 'app.pop_screen', 'Quit'),
+    ]
+
+    def __init__(self, path1: Path, path2: Path):
+        super().__init__()
+        self._path1 = path1
+        self._path2 = path2
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Footer()
+        with Vertical():
+            yield DiffBox()
+
+    def on_mount(self) -> None:
+        diff = self.query_one(DiffBox)
+        diff.paths = (self._path1, self._path2)
+
+
+class _ContestIdScreen(Screen):
+    BINDINGS = [
+        ('q', 'app.pop_screen', 'Quit'),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Footer()
+        with Vertical():
+            yield Static('Enter Contest ID (existing data will be reused):')
+            existing = self._list_existing()
+            if existing:
+                yield Static('Existing: ' + ', '.join(existing))
+            yield Input(placeholder='contest-123', id='contest_input')
+
+    def on_mount(self) -> None:
+        try:
+            inp = self.query_one('#contest_input', Input)
+            self.set_focus(inp)
+        except Exception:
+            pass
+
+    def _list_existing(self) -> List[str]:
+        base = get_app_path() / 'boca' / 'contests'
+        if not base.exists():
+            return []
+        try:
+            return [p.name for p in base.iterdir() if p.is_dir()]
+        except Exception:
+            return []
+
+    @on(Input.Submitted, '#contest_input')
+    def _on_submit(self, event: Input.Submitted) -> None:
+        value = (event.value or '').strip()
+        if not value:
+            # Keep screen open until non-empty
+            return
+        self.dismiss(value)
+
+
+class _OptionsScreen(Screen):
+    BINDINGS = [
+        ('enter', 'save', 'Save'),
+        ('escape', 'cancel', 'Cancel'),
+        ('q', 'cancel', 'Quit'),
+    ]
+
+    def __init__(self, refresh_interval: int, small_diff_threshold: int):
+        super().__init__()
+        self._initial_refresh = int(refresh_interval)
+        self._initial_diff = int(small_diff_threshold)
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Footer()
+        with Vertical():
+            yield Static('Options: Set values and press Enter to save')
+            yield Static('Auto refresh period (seconds):')
+            yield Input(value=str(self._initial_refresh), id='opt_refresh_input')
+            yield Static('Delta lines threshold (<= changes):')
+            yield Input(value=str(self._initial_diff), id='opt_diff_input')
+
+    def on_mount(self) -> None:
+        try:
+            inp = self.query_one('#opt_refresh_input', Input)
+            self.set_focus(inp)
+        except Exception:
+            pass
+
+    def _submit(self) -> None:
+        try:
+            refresh_inp = self.query_one('#opt_refresh_input', Input)
+            diff_inp = self.query_one('#opt_diff_input', Input)
+            refresh_raw = (refresh_inp.value or '').strip()
+            diff_raw = (diff_inp.value or '').strip()
+            self.log(
+                f'_OptionsScreen._submit: raw values refresh={refresh_raw!r} diff={diff_raw!r}'
+            )
+        except Exception:
+            self.log('_OptionsScreen._submit: failed to read inputs; dismissing None')
+            self.dismiss(None)
+            return
+        # Fallback to initial values on invalid/empty
+        try:
+            refresh_val = int(refresh_raw) if refresh_raw else self._initial_refresh
+            if refresh_val <= 0:
+                refresh_val = self._initial_refresh
+            self.log(f'_OptionsScreen._submit: parsed refresh={refresh_val}')
+        except Exception:
+            self.log(
+                f'_OptionsScreen._submit: invalid refresh={refresh_raw!r}; using {self._initial_refresh}'
+            )
+            refresh_val = self._initial_refresh
+        try:
+            diff_val = int(diff_raw) if diff_raw else self._initial_diff
+            if diff_val <= 0:
+                diff_val = self._initial_diff
+            self.log(f'_OptionsScreen._submit: parsed diff={diff_val}')
+        except Exception:
+            self.log(
+                f'_OptionsScreen._submit: invalid diff={diff_raw!r}; using {self._initial_diff}'
+            )
+            diff_val = self._initial_diff
+        payload = {'refresh_interval': refresh_val, 'small_diff_threshold': diff_val}
+        self.log(f'_OptionsScreen._submit: dismissing with {payload!r}')
+        self.dismiss(payload)
+
+    @on(Input.Submitted, '#opt_refresh_input')
+    def _on_submit_refresh(self, event: Input.Submitted) -> None:
+        self._submit()
+
+    @on(Input.Submitted, '#opt_diff_input')
+    def _on_submit_diff(self, event: Input.Submitted) -> None:
+        self._submit()
+
+    def action_save(self) -> None:
+        self._submit()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
