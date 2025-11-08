@@ -1,0 +1,71 @@
+[project]
+name = "login-auth-tui"
+version = "0.3"
+description = "TUI for login-auth stuff"
+readme = "README.md"
+authors = [{ name = "Nicholas Hurley" }]
+license = "CC0-1.0"
+requires-python = ">=3.13,<3.14"
+classifiers = []
+dependencies = ["click", "textual>=6.4.0", "pyyaml"]
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[project.urls]
+Homepage = "https://sr.ht/~nwgh/login-auth-tui"
+Changelog = "https://git.sr.ht/~nwgh/login-auth-tui/log"
+Issues = "https://todo.sr.ht/~nwgh/login-auth-tui"
+CI = "https://builds.sr.ht/~nwgh/login-auth-tui"
+
+[project.scripts]
+auth-manage = "login_auth_tui.cli:cli"
+
+[dependency-groups]
+dev = [
+  { include-group = "autoflake" },
+  { include-group = "bandit" },
+  { include-group = "black" },
+  { include-group = "flake8" },
+  { include-group = "installer" },
+  { include-group = "isort" },
+  { include-group = "test" },
+  "pre-commit",
+  "textual-dev",
+]
+autoflake = ["autoflake"]
+bandit = ["bandit", "tomli"]
+black = ["black"]
+flake8 = ["flake8", "flake8-bugbear", "Flake8-pyproject", "pep8-naming"]
+isort = ["isort"]
+installer = ["pyinstaller"]
+test = ["pytest"]
+
+[tool.black]
+line-length = 99
+
+[tool.isort]
+line_length = 99
+profile = "black"
+
+[tool.pytest.ini_options]
+console_output_style = "progress"
+minversion = "7.2.2"
+python_files = "test_*.py"
+addopts = "-vvvv --ignore-glob .venv* --ignore-glob venv*"
+
+[tool.flake8]
+max-line-length = 99
+exclude = [".venv*", "venv*", "typings"]
+extend-ignore = ["E203", "E501"]
+extend-select = ["B950"]
+
+[tool.bandit]
+exclude_dirs = [".venv", "venv", "tests"]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
