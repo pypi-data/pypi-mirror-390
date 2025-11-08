@@ -1,0 +1,98 @@
+A function fitting code utilizing shell-style history. 
+# Press up to get your last fit result as the new fit input. 
+ 
+ Author: dr Andrii Shyichuk, University of Wrocław, 
+ email: andrii.shyichuk@uwr.edu.pl 
+
+  This code is distributed under a Source-Available license.
+  Commercial use requires a separate license. Contact me for details.
+
+
+Copyright (c) 2025 Andrii Shyichuk. All rights reserved.
+
+
+Use as: ffit.py file --option value
+The file must be a two-column experimental curve.
+
+Type ffit.py -h or ffit.py --help for help.
+Type ffit.py -hf or ffit.py --funcs fot function details.
+
+General options:
+  --help,   -h  Print help and exit.
+  --funcs,  -hf  List available functions and exit.
+  --plot,   -p  If set, plot graph after fit completion.
+                Default: False, i.e no plotting.
+  --image,  -i  Save image of fit result.
+  --Plot,   -P  Only plot curves, without fitting; with -g also plots guess.
+  --Image,  -I  Only save image, without fitting; with -g also plots guess.
+  --lgplot, -L  Logarithmic scale for functions and guess plots.
+
+Input data options:
+  --norm,   -n  Normalize input Y to [1,0], default - false.
+  --skip,   -k  Number of points to skip after reading one.
+                Default is 0, i.e. no skipping 
+  --xmax,   -u  Upper bound (x <= xmax) of x axis.
+  --xmin,   -l  Lower bound (x >= xmin) of x axis.
+                * l/u can be a number, e.g. 123,
+                  the limit will be in the units of x, l <= x <= u;
+                * l/u can be a number ended with p, e.q. 123p,
+                  such input will discard l points from the beginnig 
+                  and/or u points from the end of the original data file.
+                The -k skip will be applied after the crop of the data sequence. 
+
+  --fxmax, -fu  Upper bound of a full resolution region, works with --skip only.
+  --fxmin, -fl  Lower bound of a full resolution region, works with --skip only.
+                This options define region where there is no skipping.
+  --x0,    -x0  Set first value of x axis, e.g. -x0 0. 
+  --xmult, -xm  Multiply x values by a constant.
+  --xcol   -xc  Number of column for x data.
+  --ycol   -yc  Number of column for y data.
+
+Formatting options:
+  --digits, -d  Set the displayed significant digits, default: 6
+  --float32, -32  Use float32 for data arrays.
+
+Fitting algorithm options:
+  --verbose, -v Verbosity level of least_squares, 0,1,2. Default 0. 
+  --maxstp, -m  Maximum number of function evaluations.
+  --scale,  -c  If specified, use scale (see scipy.oprimize.lease_squares manual).
+  --step,   -s  Step size for the finite difference approximation of the Jacobian. 
+                The actual step is computed as x * diff_step.
+  --filter, -F  Check for infs/nans, and remove them.
+  --jac,    -j  2- or 3-point Jacobian. Allowed values: 2, 3, 2-point, 3-point
+  --alg,   -a   Minimization algorithm: trf, dogbox, lm.
+  --rnorm  -N   Normalize residual. I.e. minimize (f_fit - f_exp)/f_exp instead of (f_fit - f_exp)
+                  If a float number ( 0 < norm < 1) is given after -N, only the norm fraction of the 
+                  normaized residual will be used,
+                   i.e. norm * (f_fit - f_exp)/f_exp  + (f_fit - f_exp) * (1-norm)
+                  Default norm is 1. 
+  --rcomp  -C   Compress residual. 
+                  If a float number ( 0 < cr < 1) is given after -C, only the cr fraction of the 
+                  compressed residual will be used, i.e. cr * C(f_fit - f_exp)  + (f_fit - f_exp) * (1-cr)
+                  Default compression ratio is 1. 
+  --loss,  -S  Loss function, can be a name or a number:
+                 0  linear (default)
+                 1  soft_l1
+                 2  huber
+                 3  cauchy
+                 4  arctan
+
+External function modules:
+Main function module is ffitfuncs.py. Other modules can be added via
+  --external, -e  Specifies external function module (.py file).
+In-line mode:
+  --guess, -g  Activates in-line mode, a single fitting with the specified guess,
+                e.g. ffit.py file -g f0 v0 v1 f1 v2 v3 ...
+                Default is False, no guess, regular (interactive, not in-line) mode.
+  --save,   -sv  If set, save results file in the in-line mode.
+                Ignored if -g is not specified.
+  --bounds, -b  Bounds, 2x the number of guess variables,
+                upper and lower bound for each var,
+                e.g. -b v1l, v1u, v2l, v2u .... 
+                inf stands for infinity, -inf for minus infinity.
+                Works with -g only.
+
+Generator mode:
+  --gen    -G  Activates generator mode, where curves are created.
+                No input file is read, all fitting options are ignored.
+
