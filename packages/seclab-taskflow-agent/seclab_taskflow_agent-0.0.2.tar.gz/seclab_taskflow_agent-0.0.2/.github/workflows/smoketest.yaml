@@ -1,0 +1,74 @@
+name: Smoke test - run the examples to check for errors
+
+on:
+  issue_comment:
+    types: [created] # Add "smoke test" as a PR comment to trigger this workflow.
+
+# Permissions needed for reacting and adding comments for IssueOps commands
+# See: https://github.com/github/branch-deploy/blob/48285b12b35e47e2dde0c27d2abb33daa846d98b/README.md?plain=1#L189-L197
+permissions:
+  pull-requests: write # Required for commenting on PRs
+  deployments: write # Required for updating deployment statuses
+  contents: write # Required for reading/writing the lock file
+  checks: read # Required for checking if the CI checks have passed in order to deploy the PR
+  statuses: read # Required for checking if all commit statuses are "success" in order to deploy the PR
+
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+    if: github.event.issue.pull_request  # Make sure the comment is on a PR
+    steps:
+      - name: branch-deploy
+        id: branch-deploy
+        uses: github/branch-deploy@48285b12b35e47e2dde0c27d2abb33daa846d98b # v11.0.0
+        with:
+          trigger: "smoke test"
+          reaction: "eyes"
+          stable_branch: "main"
+          update_branch: "disabled"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Checkout the repo
+        uses: actions/checkout@v5
+
+      - name: Checkout the PR
+        env:
+          PR_NUMBER: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr checkout $PR_NUMBER
+
+      - name: Setup Python venv
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install hatch
+
+      - name: Run tests
+        env:
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+          GITHUB_AUTH_HEADER: "Bearer ${{ secrets.GITHUB_TOKEN }}"
+
+        run: |
+          source .venv/bin/activate
+          hatch build
+          hatch run main -p seclab_taskflow_agent.personalities.assistant 'explain modems to me please'
+          hatch run main -p seclab_taskflow_agent.personalities.c_auditer 'explain modems to me please'
+          hatch run main -p examples.personalities.echo 'explain modems to me please'
+          hatch run main -t examples.taskflows.CVE-2023-2283
+          hatch run main -t examples.taskflows.echo
+          hatch run main -t examples.taskflows.example
+          hatch run main -t examples.taskflows.example_globals
+          hatch run main -t examples.taskflows.example_inputs
+          hatch run main -t examples.taskflows.example_large_list_result_iter
+          hatch run main -t examples.taskflows.example_repeat_prompt
+          hatch run main -t examples.taskflows.example_repeat_prompt_async
+          hatch run main -t examples.taskflows.example_repeat_prompt_dictionary
+          hatch run main -t examples.taskflows.example_reusable_prompt
+          hatch run main -t examples.taskflows.example_reusable_taskflows
+          hatch run main -t examples.taskflows.example_triage_taskflow
+          hatch run main -t examples.taskflows.single_step_taskflow
