@@ -1,0 +1,106 @@
+Metadata-Version: 2.4
+Name: tempo-ql
+Version: 0.1.3
+Summary: Toolkit and interactive widget for querying time-series healthcare data
+Author-email: Venkatesh Sivaraman <venkats@cmu.edu>
+License: MIT License
+        
+        Copyright (c) 2025 CMU Data Interaction Group
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+Project-URL: Homepage, https://github.com/cmudig/tempo-ql
+Keywords: AI,machine learning,healthcare,EHR,OMOP,MEDS,data science
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numba>=0.59.0
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: scikit-learn>=1.3.2
+Requires-Dist: tqdm>=4.66.1
+Requires-Dist: lark>=1.1.8
+Requires-Dist: pyarrow>=13.0.0
+Requires-Dist: ipywidgets
+Requires-Dist: anywidget
+Requires-Dist: scipy>=1.11.3
+Requires-Dist: sqlalchemy>=2.0.31
+Requires-Dist: duckdb-engine
+Requires-Dist: google-genai
+Dynamic: license-file
+
+# TempoQL: Standardized Temporal Queries for ML in Healthcare
+
+## Quickstart
+
+You may first want to create a conda environment to install packages in. *Use a Python version between 3.10 and 3.14 for compatibility with TempoQL's dependencies.* Then run:
+
+```bash
+pip install tempo-ql
+```
+
+*We have had issues in the past running the JupyterLab widget with virtualenv - therefore we recommend using conda.*
+
+## Online Examples
+
+There are two examples on Google Colab to show you how TempoQL can be used, both involving the MIMIC-IV dataset but in different data formats:
+
+* [MIMIC-IV Demo Data in OMOP Common Data Model](https://colab.research.google.com/drive/1ttyFJuPUn37b4zXq0PzDxRbL1QBf3x0p?usp=sharing) - uses only non-credentialed data
+* [MIMIC-IV Full Dataset on BigQuery](https://colab.research.google.com/drive/1t2lRa0A0ojBjWhTSY7m7RKiXAZDTOCAp?usp=sharing) - requires credentialed PhysioNet access and a Google Cloud Platform account. Follow the instructions on [this page](https://physionet.org/content/mimiciv/3.1/) to get access.
+
+## Example Usage
+
+The `demo.ipynb` and `demo_mimiciv_full.ipynb` notebooks in the repo (or the Colab examples above) shows how to use the query language using MIMIC-IV in OMOP format. You can run these to explore how TempoQL enables simple, readable and precise queries on EHR data.
+
+You will need a dataset and a dataset specification to start using TempoQL. Then, you can import TempoQL and use it in your Python code like this:
+
+```python
+from tempo_ql import QueryEngine, GenericDataset, formats
+
+db_specification = formats.omop() # also available: mimiciv(), eicu()
+sql_connection_string = "bigquery://my-project" # or "duckdb://my_local_db", etc.
+dataset = GenericDataset(sql_connection_string, db_specification)
+
+query_engine = QueryEngine(dataset)
+# see demo.ipynb for further options, such as configuring a variable store
+
+query_engine.list_data_elements(scope="Measurement") # returns a dataframe of Measurement concepts
+
+query_engine.query("{Temperature Celsius; scope = Measurement}") # retrieves temperature measurements
+```
+
+You can access the interactive query authoring environment in a Jupyter notebook (or VSCode IPython notebook) like so:
+
+```python
+query_engine.interactive(file_path=..., api_key=...)
+```
+
+Both `file_path` and `api_key` are optional. `file_path` allows you to read and
+write queries from a local JSON file, enabling you to persist the queries that you
+create in the interactive session. `api_key` can be a Gemini API key allowing you
+to use LLMs to author, update, explain, and debug queries.
+
+## Dev Notes
+
+**For local install:** clone the repo, cd into it and run `pip install -e .`.
+
+**Running the dev server:** Make sure you have NodeJS version 20 or later. `cd` into the `client` directory, run `npm install`, then `npm run dev`. Then in your call to `QueryEngine.interactive`, set `dev=True`. Now when you change the frontend source code, the widget will automatically update.
+
+If the Vite dev server stops working after you make some changes (it may show a JavaScript error like 'failed to load model'), check that any imports of TypeScript types are prefixed with the word `type`.
