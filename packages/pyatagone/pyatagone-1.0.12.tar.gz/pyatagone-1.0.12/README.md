@@ -1,0 +1,94 @@
+# pyatagone
+
+**a Python interface for the ATAG One Thermostat**
+ 
+## Installation
+`[sudo] pip install pyatagone`
+
+## Usage
+
+### Module
+
+You can import the module as `pyatagone`
+
+### Quick start
+
+```python
+import asyncio
+from pyatagone import AtagOne, AtagConnectException
+
+async def main():
+    client = AtagOne(host="192.168.1.42")  # use async_discover() if you do not know the IP
+
+    try:
+        await client.async_pair_atag()      # confirm the pairing request on the thermostat
+        await client.async_update()         # populate .data/.sensors
+        print(client.current_temp, client.current_setpoint)
+
+        sensors = await client.async_fetch_data()
+        print(f"Room temp: {sensors['room_temp']} °C")
+    except AtagConnectException as exc:
+        print(f"Could not reach thermostat: {exc}")
+
+asyncio.run(main())
+```
+
+### Discovery and pairing
+
+- `AtagOne(host=None, port=10000)` expects the IP address of the thermostat; call `await async_discover()` to let the library broadcast on the LAN and remember the responding host.
+- Call `await async_pair_atag()` once and confirm the pairing request on the ATAG One screen; the client caches the pairing state in memory for the current process.
+
+### Reading live data
+
+- `await async_update()` refreshes every section (report, control, schedules, configuration). After that you can read rich helpers such as `client.current_temp`, `client.current_setpoint`, `client.mode`, `client.heating`, etc.
+- `await async_fetch_data()` returns the merged `dict` of all sensors (report + control + derived values) so you can serialise or expose it directly.
+- Individual sections are available through `.reportdata`, `.controldata`, `.scheduledata`, `.configurationdata`, and `.sensors`.
+
+### Writing values
+
+Most operations are simple helpers that wrap `send_dynamic_change()` behind the scenes:
+
+```python
+await client.async_set_temperature(21.5)     # validates DEFAULT_MIN/MAX_TEMP
+await client.async_ch_mode(2)                # switch preset (manual/auto)
+await client.async_ch_control_mode(1)        # on/off
+await client.async_dhw_temp_setp(60.0)       # domestic hot water
+await client.async_create_vacation(start_epoch, 18.0, duration_seconds)
+await client.async_room_temp_offs(-0.5)      # calibration
+await client.async_summer_eco_mode(1)        # enable summer eco
+```
+
+Refer to `pyatagone/client.py` for the full list of helpers (CH/DHW schedule uploads, vacation control, eco settings, offsets, etc.). Every helper returns `True` when the thermostat acknowledged the update and raises `AtagStatusException` if the unit refused the change.
+
+### Working with schedules
+
+Schedules use the `Schedule` dataclass from `pyatagone.atagonejson`. Each schedule has a `base_temp` plus a 7-day `entries` matrix (day → list of `[seconds_since_midnight, temperature]` pairs). Upload schedules with `async_ch_schedule` or `async_dhw_schedule`.
+
+```python
+from pyatagone import AtagOne
+from pyatagone.atagonejson import Schedule
+
+weekday = [
+    [0, 18.0],          # midnight-06:00
+    [6 * 3600, 21.0],   # wake-up
+    [22 * 3600, 17.0],  # night setback
+]
+weekend = [
+    [0, 20.0],
+]
+schedule = Schedule(base_temp=17.0, entries=[weekday, weekday, weekday, weekday, weekday, weekend, weekend])
+
+await client.async_ch_schedule(schedule)
+```
+
+You can modify the current schedule in-place by editing `client.chscheduledata` / `client.dhwscheduledata` and then calling `async_ch_schedule_base_temp` or `async_dhw_schedule_base_temp`.
+
+### Error handling
+
+Operations raise:
+
+- `AtagConnectException` when the HTTP endpoint cannot be reached or times out.
+- `AtagStatusException` when the thermostat rejects a read/write.
+- `AtagNotPaired` / `AtagInvalidResponse` for malformed or unauthorised exchanges.
+
+Wrap calls in try/except blocks or retry loops as needed in your automation.
