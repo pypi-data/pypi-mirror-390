@@ -1,0 +1,22 @@
+database:
+  name: 'death-splunk'
+  type: 'Splunk'
+  conf:
+    host: 'oslo-splunk.kiko-turtle.ts.net'
+    username: 'hacengine'
+    password: 'Lego-Boneless7-Polymer'
+    timeformat: "%Y-%m-%dT%H:%M:%S.%f%z"
+  preamble:
+    hql: |
+      | extend _hqltimestamp = _time
+  macro:
+    network:
+      hql: |
+        database('json').http('tf11-so-network.json')
+        | unnest _source
+    host:
+      hql: |
+        database('json').http('tf11-so-beats-large.json')
+    all:
+      hql: |
+        union database('json').macro('network'), database('json').macro('host')

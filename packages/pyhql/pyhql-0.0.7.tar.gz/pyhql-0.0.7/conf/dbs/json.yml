@@ -1,0 +1,19 @@
+database:
+  name: 'json'
+  type: 'JSON'
+  conf:
+    local-base: './local-data'
+    http-base: 'https://hql.dev/datasets/'
+  macro:
+    network:
+      hql: |
+        database('json').http('tf11-so-network.json')
+        | unnest _source
+        //| extend _hqltimestamp = todatetime(['@timestamp'])
+    host:
+      hql: |
+        database('json').http('tf11-so-beats-large.json')
+        | extend _hqltimestamp = todatetime(['@timestamp'])
+    all:
+      hql: |
+        union database('json').macro('network'), database('json').macro('host')
