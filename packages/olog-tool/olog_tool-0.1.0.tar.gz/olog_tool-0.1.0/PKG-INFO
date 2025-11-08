@@ -1,0 +1,292 @@
+Metadata-Version: 2.4
+Name: olog-tool
+Version: 0.1.0
+Summary: A command-line tool for backing up, restoring, and generating reports from Olog servers
+Author-email: Andrea Michelotti <andrea.michelotti@lnf.infn.it>
+Maintainer-email: Andrea Michelotti <andrea.michelotti@lnf.infn.it>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/infn-epics/phoebus-services-tools
+Project-URL: Repository, https://github.com/infn-epics/phoebus-services-tools
+Project-URL: Issues, https://github.com/infn-epics/phoebus-services-tools/issues
+Keywords: olog,backup,restore,reports,phoebus,epics
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Utilities
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.31.0
+Requires-Dist: reportlab>=4.0.0
+Dynamic: license-file
+
+# Olog Tool
+
+A command-line tool for backing up, restoring, and generating reports from Olog servers using the Olog REST API.
+
+## Features
+
+- **Backup**: Complete backup of logs and attachments from an Olog server
+- **Restore**: Restore logs and attachments from a backup
+- **Markdown Reports**: Generate Markdown documentation of logs with custom titles
+- **PDF Reports**: Generate PDF reports with logs, metadata, and embedded images with custom titles
+- **HTML Reports**: Generate HTML reports with logs, metadata, and embedded images with custom titles
+
+## Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install olog-tool
+```
+
+### From Source
+
+1. Clone or download this repository
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Or install in development mode:
+
+```bash
+pip install -e .
+```
+
+## Usage
+
+### Basic Syntax
+
+```bash
+olog-tool --url <olog-server-url> [OPTIONS] COMMAND
+```
+
+### Authentication
+
+Use the `--username` and `--password` options for authenticated access:
+
+```bash
+olog-tool --url https://olog.example.com --username myuser --password mypass COMMAND
+```
+
+### Time Range
+
+Use `--start` and `--end` to specify a time range (ISO format):
+
+```bash
+olog-tool --url https://olog.example.com --start 2025-01-01T00:00:00 --end 2025-12-31T23:59:59 COMMAND
+```
+
+## Commands
+
+### Backup
+
+Backup all logs and attachments from the Olog server:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass backup --output ./backup_dir
+```
+
+With time range:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  backup --output ./backup_january
+```
+
+### Restore
+
+Restore logs and attachments from a backup directory:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass restore --input ./backup_dir
+```
+
+**Note**: The restore operation creates new log entries, so the log IDs in the restored server will be different from the original.
+
+### Generate Markdown Report
+
+Create a Markdown document with logs and their metadata:
+
+```bash
+olog-tool --url https://olog.example.com markdown --output report.md
+```
+
+With time range and authentication:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --username user --password pass \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  markdown --output january_report.md
+```
+
+### Generate PDF Report
+
+Create a PDF document with logs and their metadata. Image attachments are automatically embedded in the PDF:
+
+```bash
+olog-tool --url https://olog.example.com pdf --output report.pdf
+```
+
+With time range and authentication:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --username user --password pass \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  pdf --output january_report.pdf
+```
+
+To disable embedding of image attachments (faster, smaller file):
+
+```bash
+olog-tool --url https://olog.example.com pdf --output report.pdf --no-embed
+```
+
+### Generate HTML Report
+
+Create an HTML document with logs and their metadata. Image attachments are automatically embedded as base64:
+
+```bash
+olog-tool --url https://olog.example.com html --output report.html
+```
+
+With time range and authentication:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --username user --password pass \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  html --output january_report.html
+```
+
+To disable embedding of image attachments:
+
+```bash
+olog-tool --url https://olog.example.com html --output report.html --no-embed
+```
+
+## Examples
+
+### Example 1: Monthly Backup
+
+Backup all logs from October 2025:
+
+```bash
+olog-tool \
+  --url https://olog.example.com \
+  --username admin \
+  --password secret \
+  --start 2025-10-01T00:00:00 \
+  --end 2025-10-31T23:59:59 \
+  backup --output ./backup_2025_10
+```
+
+### Example 2: Generate Reports with Custom Titles
+
+Generate Markdown, HTML, and PDF reports for a specific time range with custom titles:
+
+```bash
+# Markdown report with custom title
+olog-tool \
+  --url https://olog.example.com \
+  --start 2025-11-01T00:00:00 \
+  --end 2025-11-07T23:59:59 \
+  --title "Weekly Operations Summary" \
+  markdown --output weekly_report.md
+
+# HTML report with embedded images and custom title
+olog-tool \
+  --url https://olog.example.com \
+  --start 2025-11-01T00:00:00 \
+  --end 2025-11-07T23:59:59 \
+  --title "Beamline Status Report" \
+  html --output weekly_report.html
+
+# PDF report with embedded images and custom title
+olog-tool \
+  --url https://olog.example.com \
+  --start 2025-11-01T00:00:00 \
+  --end 2025-11-07T23:59:59 \
+  --title "Weekly Operations Report" \
+  pdf --output weekly_report.pdf
+```
+
+### Example 3: Complete Backup and Restore
+
+Backup from one server and restore to another:
+
+```bash
+# Backup from production
+olog-tool \
+  --url https://olog-prod.example.com \
+  --username admin \
+  --password prod_pass \
+  backup --output ./prod_backup
+
+# Restore to development
+olog-tool \
+  --url https://olog-dev.example.com \
+  --username admin \
+  --password dev_pass \
+  restore --input ./prod_backup
+```
+
+## Backup Directory Structure
+
+When you create a backup, the following structure is created:
+
+```
+backup_dir/
+├── logs.json              # JSON file with all log metadata
+└── attachments/           # Directory containing attachments
+    ├── 123/               # Directory for log ID 123
+    │   ├── image1.png
+    │   └── data.csv
+    └── 124/               # Directory for log ID 124
+        └── document.pdf
+```
+
+## Requirements
+
+- Python 3.6 or higher
+- requests library
+- reportlab library (for PDF generation)
+
+## API Reference
+
+This tool uses the [Olog REST API](https://olog.readthedocs.io/en/latest/). The main endpoints used are:
+
+- `GET /logs` - Search for logs
+- `GET /logs/{id}` - Get a specific log
+- `GET /logs/attachments/{id}/{filename}` - Download attachment
+- `PUT /logs` - Create a new log
+- `POST /logs/attachments/{id}` - Upload attachment
+
+## Limitations
+
+- The backup/restore process creates new log entries, so log IDs will be different
+- Very large backups may take significant time and disk space
+- PDF generation requires the reportlab library
+- Image embedding in PDF/HTML works for common formats (PNG, JPG, GIF, BMP, SVG)
+- Large images are automatically scaled in PDF to fit the page
+- HTML reports with many embedded images may be large files
+
+## License
+
+This tool is provided as-is for use with Olog servers.
