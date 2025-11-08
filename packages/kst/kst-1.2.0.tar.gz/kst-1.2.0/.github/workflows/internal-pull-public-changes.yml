@@ -1,0 +1,105 @@
+name: Create Internal PR from Public Changes
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_body:
+        description: 'Commit Body'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry Run'
+        required: false
+        type: boolean
+        default: true
+
+  repository_dispatch:
+    types: [pr-merged-public-main]
+
+jobs:
+  pull-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create New Branch
+        id: create_branch
+        run: |
+          new_branch_name="SYS-HOT-public-changes-${{ github.run_number }}"
+          git checkout -b "${new_branch_name}"
+          echo name="${new_branch_name}" >> $GITHUB_OUTPUT
+          echo sha="$(git rev-parse --verify HEAD)" >> $GITHUB_OUTPUT
+          echo "Created new branch: ${new_branch_name}"
+
+      - name: Set Public Repository as Upstream
+        run: git remote add public https://github.com/kandji-inc/kst.git
+
+      - name: Fetch All Remotes
+        run: git fetch --all
+
+      - name: Show New Commits in Public Repository
+        id: check_commits
+        run: |
+          log_out="$(git log --oneline --no-merges --cherry-pick HEAD..public/main)"
+          if [[ -n "${logs}" ]]; then
+            echo $log_out
+            echo "new_commits=true" >> $GITHUB_OUTPUT
+          else:
+            echo "No new commits found in the public repository."
+            echo "new_commits=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare Commit for Public PR
+        if: github.event.action == 'pr-merged-public-main'
+        run: |
+          git config user.name "${{ github.event.client_payload.event.pull_request.merged_by.login }}"
+          git config user.email "${{ github.event.client_payload.event.pull_request.merged_by.email }}"
+
+          cat <<EOF > commit_message.txt
+          Pull changes from kandji-inc/kst - PR #${{ github.event.client_payload.event.pull_request.number }}
+
+          Author: ${{github.event.client_payload.event.pull_request.user.name}} (${{ github.event.client_payload.event.pull_request.user.login }})
+          Title: ${{ github.event.client_payload.event.pull_request.title }}
+          URL: ${{ github.event.client_payload.event.pull_request.html_url }}
+          Diff: ${{ github.event.client_payload.event.pull_request.diff_url }}
+          EOF
+
+      - name: Prepare Commit for Manual Run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "${{ github.triggering_actor }}"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "Pull changes from kandji-inc/kst - Ad Hoc" > commit_message.txt
+          echo "" >> commit_message.txt
+          echo "${{ github.event.inputs.commit_body }}" | fold -s -w 72 >> commit_message.txt
+
+      - name: Output Commit Message
+        run: cat commit_message.txt
+
+      - name: Merge Public Repository Changes
+        run: git merge -v -X theirs --no-ff --allow-unrelated-histories -F commit_message.txt public/main
+
+      - name: Show Merge Diff
+        run: |
+          git diff --stat ${{ steps.create_branch.outputs.sha }}..HEAD
+          echo "::group::Full diff"
+          git diff ${{ steps.create_branch.outputs.sha }}..HEAD
+          echo "::endgroup::"
+
+      - name: Push Changes to Internal Repository
+        if: ${{ steps.check_commits.outputs.new_commits == 'true' && github.event.action == 'pr-merged-public-main' ||  ! inputs.dry_run }}
+        run: git push -u origin ${{ steps.create_branch.outputs.name }}
+
+      - name: Create Pull Request
+        if: ${{ steps.check_commits.outputs.new_commits == 'true' && github.event.action == 'pr-merged-public-main' ||  ! inputs.dry_run }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr create --title '[SYS-HOT] Pull changes from kandji-inc/kst' --label 'public changes' -F commit_message.txt

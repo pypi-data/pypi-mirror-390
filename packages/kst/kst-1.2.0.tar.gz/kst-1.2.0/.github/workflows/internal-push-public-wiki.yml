@@ -1,0 +1,71 @@
+name: Create Push to Public Wiki
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_message:
+        description: 'Update Message'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry Run'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  pull-changes:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: public
+    steps:
+      - name: Checkout Internal Wiki Repository
+        uses: actions/checkout@v4
+        with:
+          repository: kandji-inc/internal-kst.wiki
+          ref: public-stage
+          path: internal
+          fetch-depth: 0
+
+      - name: Checkout Public Wiki Repository
+        uses: actions/checkout@v4
+        with:
+          repository: kandji-inc/kst.wiki
+          path: public
+          fetch-depth: 0
+          ssh-key: ${{ secrets.kst_deploy_key }}
+
+      - name: Add Public Repository as Remote
+        run: |
+          git remote add internal ../internal
+          git fetch --all
+
+      - name: Configure Git User
+        run: |
+          git config user.name "${{ github.triggering_actor }}"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Show Diff
+        id: check_diff
+        run: |
+          git diff --stat HEAD..internal/public-stage
+          echo "::group::Full diff"
+          if git diff --exit-code HEAD..internal/public-stage; then
+            echo "No changes found in the diff."
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_diff=true" >> $GITHUB_OUTPUT
+          fi
+          echo "::endgroup::"
+
+      - name: Merge Wiki Changes from Internal Repository
+        if: ${{ ! inputs.dry_run && steps.check_diff.outputs.has_diff == 'true' }}
+        run: |
+          git merge --squash internal/public-stage
+          git add --all
+          git commit -m "${{ inputs.update_message }}"
+          git push

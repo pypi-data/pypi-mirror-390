@@ -1,0 +1,220 @@
+name: Create Public Release
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_title:
+        description: 'Commit Title'
+        required: true
+        type: string
+      commit_body:
+        description: 'Commit Body'
+        required: false
+        type: string
+      branch-name-prefix:
+        description: 'Branch Name Prefix'
+        required: false
+        type: string
+        default: "public-release"
+      dry_run:
+        description: 'Dry Run'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  prepare-patch:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: public
+    outputs:
+      patch: ${{ steps.generate-diff.outputs.patch }}
+      message: ${{ steps.generate-commit-message.outputs.message }}
+      changed: ${{ steps.check_changes.outputs.changed }}
+      sha: ${{ steps.checkout-public.outputs.commit }}
+    steps:
+      - name: Checkout Internal Repository
+        uses: actions/checkout@v4
+        with:
+          path: internal
+          ref: main
+          fetch-depth: 0
+
+      - name: Checkout Public Repository
+        id: checkout-public
+        uses: actions/checkout@v4
+        with:
+          repository: kandji-inc/kst
+          path: public
+          ref: main
+          fetch-depth: 0
+
+      - name: Add Internal Repository as Remote
+        run: |
+          git remote add internal ../internal
+          git fetch --all
+
+      - name: Check for Missing Public Commits
+        id: check_missing_commits
+        run: |
+          missing_log="$(git log --oneline --no-merges --cherry-pick internal/HEAD..HEAD)"
+          if [[ -n "$missing_log" ]]; then
+            echo "Missing commits found:"
+            echo "$missing_log"
+            echo "Please pull changes from the public repository and merge before releasing."
+            exit 1
+          fi
+
+      - name: Merge Public Repository Changes
+        run: git merge -v -X theirs --squash --allow-unrelated-histories internal/HEAD
+
+      - name: Remove Internal Only Files
+        run: |
+          git rm -f -- .github/workflows/internal-*
+          git rm -f -- .github/CODEOWNERS
+
+      - name: Generate Patch
+        id: generate-diff
+        run: git diff --patch --cached > "${{ github.workspace }}/staged_changes.patch"
+
+
+      - name: Generate Commit Message
+        id: generate-commit-message
+        run: |
+          {
+            echo "${{ inputs.commit_title }}"
+            if [ -n "${{ inputs.commit_body }}" ]; then
+              echo ""
+              echo "${{ inputs.commit_body }}" | fold -s -w 72
+            fi
+          } > "${{ github.workspace }}/commit_message.txt"
+
+      - name: Check Changes
+        id: check_changes
+        run: |
+          if [[ -s "${{ github.workspace }}/staged_changes.patch" ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Save Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: staged-public-release
+          path: |
+            staged_changes.patch
+            commit_message.txt
+          if-no-files-found: error
+          retention-days: 15
+          overwrite: true
+
+      - name: Display Outputs
+        run: |
+          echo "::group::Patch Stats"
+          git apply --stat --allow-empty "${{ github.workspace }}/staged_changes.patch"
+          echo "::endgroup::"
+
+          echo "::group::Full diff"
+          if [[ -s "${{ github.workspace }}/staged_changes.patch" ]]; then
+            cat "${{ github.workspace }}/staged_changes.patch"
+          else
+            echo "No changes found in the diff."
+          fi
+          echo "::endgroup::"
+
+          echo "::group::Commit Message"
+          cat "${{ github.workspace }}/commit_message.txt"
+          echo "::endgroup::"
+
+  apply-changes:
+    runs-on: ubuntu-latest
+    environment: public-kst
+    needs: prepare-patch
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: public
+    if: needs.prepare-patch.outputs.changed == 'true'
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          owner: kandji-inc
+          repositories: kst
+          permission-contents: write
+
+      - name: Checkout Public Repository
+        id: checkout-public
+        uses: actions/checkout@v4
+        with:
+          repository: kandji-inc/kst
+          path: public
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Validate SHA
+        run: |
+          if [[ "${{ steps.checkout-public.outputs.commit }}" != "${{ needs.prepare-patch.outputs.sha }}" ]]; then
+            echo "SHA mismatch: got ${{ steps.checkout-public.outputs.commit }} expected ${{ needs.prepare-patch.outputs.sha }}"
+            exit 1
+          fi
+
+      - name: Restore Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: staged-public-release
+
+      - name: Validate Patch
+        run: git apply --index --check "${{ github.workspace }}/staged_changes.patch"
+
+      - name: Display Patch Stats
+        run: git apply --stat "${{ github.workspace }}/staged_changes.patch"
+
+      - name: Configure Git User
+        run: |
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+      - name: Apply Patch
+        id: apply-patch
+        run: |
+          git apply --index "${{ github.workspace }}/staged_changes.patch"
+          git commit -F ${{ github.workspace }}/commit_message.txt
+          git log -1
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Push Changes to Public Repository
+        if: ${{ ! inputs.dry_run }}
+        run: git push -u origin main
+
+      - name: Send Slack Notification
+        if: ${{ ! inputs.dry_run }}
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            blocks:
+            - type: section
+              text:
+                type: mrkdwn
+                text: "<!subteam^S058GHV71A7> A new commit has been pushed to kandji-inc/kst."
+            - type: section
+              text:
+                type: mrkdwn
+                text: "Commit: <https://github.com/kandji-inc/kst/commit/${{ steps.apply-patch.outputs.sha }}|${{ steps.apply-patch.outputs.sha }}>"
