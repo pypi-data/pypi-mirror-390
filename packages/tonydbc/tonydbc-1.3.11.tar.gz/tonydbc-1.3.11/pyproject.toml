@@ -1,0 +1,122 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "tonydbc"
+version = "1.3.11"
+description = "A high-level database connector for MariaDB"
+readme = "README.md"
+authors = [{ name = "Michael Currie", email = "mcurrie@gmail.com" }]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["mariadb", "database", "connector", "ODBC", "pandas"]
+dependencies = [
+  "iteration_utilities",
+  "python-dotenv",
+  "more-itertools",
+  "jsonschema",
+  "requests",
+  "numpy>=1.23.5",
+  "pandas",
+  "paho-mqtt>=1.6.1",
+  "mariadb",
+  "clipman",
+  "tzlocal",
+  "filelock",
+  "uuid6"
+]
+requires-python = ">=3.10,<4.0"
+
+[project.optional-dependencies]
+dev = [
+  "bumpver",
+  "isort",
+  "pip-tools",
+  "pytest",
+  "mypy>=1.10",
+  "types-pytz",
+  "ruff",
+  "pandas-stubs",
+  "types-pytz",
+  "types-python-dateutil",
+  "types-docker",
+  "twine"
+]
+test = [
+  "pytest>=7.0.0",
+  "testcontainers>=4.0.0",
+  "mariadb>=1.1.0",
+]
+
+[tool.setuptools.package-data]
+tonydbc = ["py.typed"]
+
+[project.urls]
+Homepage = "https://github.com/Fling-Asia/tonydbc"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # Enable error, pyflakes, and warning categories, organize imports
+ignore = ["E501"]  # Ignore line too long errors
+
+[tool.ruff.format]
+quote-style = "double"  # Or "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.11"
+show_error_codes = true
+exclude = ["dist/"]
+mypy_path = ["src"]
+namespace_packages = true
+explicit_package_bases = true
+install_types = true
+non_interactive = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+no_implicit_optional = false
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.bumpver]
+current_version = "1.3.11"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+pre_commit_hook = ""
+post_commit_hook = ""
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'version = "{version}"'
+]
+"README.md" = [
+    'Latest version: {version}'
+]
+"src/tonydbc/__init__.py" = [
+    '__version__ = "{version}"'
+]
