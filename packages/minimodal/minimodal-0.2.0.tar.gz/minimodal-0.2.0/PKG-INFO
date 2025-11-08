@@ -1,0 +1,234 @@
+Metadata-Version: 2.4
+Name: minimodal
+Version: 0.2.0
+Summary: A simple tool to compile and run CUDA kernels on local GPUs or Modal cloud infrastructure, now with MCP server support
+Author-email: Your Name <you@example.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/yourusername/minimodal
+Project-URL: Repository, https://github.com/yourusername/minimodal
+Project-URL: Issues, https://github.com/yourusername/minimodal/issues
+Keywords: cuda,gpu,compilation,kernel,mcp,model-context-protocol
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: System :: Hardware
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click>=8.0.0
+Requires-Dist: modal>=0.60.0
+Requires-Dist: mcp>=1.0.0
+Requires-Dist: starlette>=0.27.0
+Requires-Dist: uvicorn>=0.24.0
+Requires-Dist: anyio>=4.0.0
+Dynamic: license-file
+
+# minimodal
+
+A simple command-line tool to compile and run CUDA kernels on local GPUs or Modal cloud infrastructure, now with MCP (Model Context Protocol) server support.
+
+**Features:**
+- Automatic GPU detection and architecture mapping
+- Seamless fallback to Modal cloud GPUs when local GPU isn't available
+- Support for include directories and custom nvcc flags
+- Works with Modal GPU naming convention (A10G, H100, B200, etc.)
+- MCP server enabling AI agents to compile and run CUDA code
+
+## Installation
+
+```bash
+uv pip install minimodal
+```
+
+Or install from source:
+
+```bash
+cd minimodal
+uv pip install -e .
+```
+
+## Usage
+
+Basic usage (defaults to A10G):
+
+```bash
+minimodal v1.cu
+```
+
+With a specific GPU:
+
+```bash
+minimodal v1.cu --gpu H100
+```
+
+With include directories:
+
+```bash
+minimodal v1.cu --gpu B200 -I ./includes
+```
+
+With execution arguments:
+
+```bash
+minimodal v1.cu --gpu A100 --exec-args "--N 2097152 --warmup 5"
+```
+
+With custom nvcc flags:
+
+```bash
+minimodal kernel.cu --gpu H100 -I ./includes --nvcc-flags "-O3 --ptxas-options=-v"
+```
+
+## Supported GPUs
+
+The tool automatically detects GPU architecture for common GPU models:
+
+- **H100** / **H800** → sm_90
+- **A100** / **A800** → sm_80
+- **A10G** → sm_86
+- **B200** / **B100** → sm_100a
+- **RTX4090** → sm_89
+- **RTX3090** / **RTX3080** → sm_86
+- **V100** → sm_70
+- **T4** → sm_75
+
+You can also specify the architecture directly using `--arch`:
+
+```bash
+minimodal kernel.cu --arch 100a
+```
+
+## Options
+
+- `--gpu`, `-g`: GPU name (e.g., A10G, H100, B200, A100) or architecture (e.g., 100a, 90). Default: A10G
+- `--include-dir`, `-I`: Include directory. Can be specified multiple times.
+- `--exec-args`: Arguments to pass to the compiled CUDA executable.
+- `--arch`: Override architecture. If not specified, inferred from `--gpu`.
+- `--output`, `-o`: Output executable path. If not specified, uses temporary file.
+- `--keep-binary`: Keep the compiled binary after execution.
+- `--nvcc-flags`: Additional flags to pass to nvcc (e.g., '-O3 --ptxas-options=-v').
+
+## MCP Server Usage
+
+The minimodal package includes an MCP (Model Context Protocol) server that enables AI agents to compile and run CUDA kernels. This allows you to use minimodal with tools like Claude Desktop, Cursor, or other MCP-compatible AI assistants.
+
+### Starting the MCP Server
+
+Start the server with stdio transport (default):
+
+```bash
+minimodal-mcp
+```
+
+Start the server with SSE transport (for web clients):
+
+```bash
+minimodal-mcp --transport sse
+```
+
+Start with SSE on a custom port:
+
+```bash
+minimodal-mcp --transport sse --port 9000
+```
+
+### Configuring Claude Desktop
+
+1. Add the following configuration to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "minimodal": {
+      "command": "minimodal-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+2. Restart Claude Desktop
+
+3. The minimodal tools will now be available in your Claude conversations
+
+### Available MCP Tools
+
+The MCP server exposes the following tools:
+
+- **compile_cuda**: Compile and run a CUDA kernel file
+- **list_gpus**: List available local and Modal cloud GPUs
+- **get_gpu_architecture**: Get CUDA architecture for a specific GPU name
+
+### Example MCP Usage
+
+Once configured with an AI assistant, you can use natural language to compile CUDA code:
+
+- "Compile and run the vector_add.cu file on an H100 GPU"
+- "Check what GPUs are available"
+- "What architecture does an A10G GPU use?"
+- "Compile kernel.cu with include directories include/, optimization flags, and keep the binary"
+
+## Requirements
+
+- CUDA toolkit with `nvcc` compiler
+- NVIDIA GPU drivers
+- `nvidia-smi` command-line tool
+- Modal account and API key (for cloud GPU usage)
+
+## Examples
+
+Compile and run a CUDA kernel (defaults to A10G):
+
+```bash
+minimodal v1.cu
+```
+
+Compile and run on a specific GPU:
+
+```bash
+minimodal v1.cu --gpu H100
+```
+
+Compile with multiple include directories:
+
+```bash
+minimodal kernel.cu --gpu B200 -I ./includes -I ./headers
+```
+
+Run with custom arguments:
+
+```bash
+minimodal benchmark.cu --gpu A100 --exec-args "--size 4096 --iterations 100"
+```
+
+## Development
+
+To develop locally:
+
+```bash
+git clone <repository-url>
+cd minimodal
+uv pip install -e .
+```
+
+## Publishing to PyPI
+
+```bash
+# Build distribution
+uv build
+
+# Upload to PyPI
+uv pip install twine
+twine upload dist/*
+```
+
+## License
+
+MIT
+
