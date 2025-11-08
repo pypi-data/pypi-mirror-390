@@ -1,0 +1,87 @@
+[project]
+name = "jsonstat-validator"
+version = "0.4.4"
+description = "A Python validator for the JSON-stat 2.0 standard format, based on Pydantic."
+readme = "README.md"
+authors = [
+    {name = "Ahmed Hassan", email = "ahmedhassan.ahmed@fao.org"},
+]
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+]
+keywords = ["json-stat", "validator", "json", "data-engineering", "pydantic", "python", "fao"]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.11.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pre-commit>=4.3.0",
+    "ruff>=0.13.2",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ahmed-hassan19/jsonstat-validator"
+"Bug Tracker" = "https://github.com/ahmed-hassan19/jsonstat-validator/issues"
+"Documentation" = "https://github.com/ahmed-hassan19/jsonstat-validator#readme"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "samples: marks tests that use JSON-stat sample files",
+]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+# Ruff configuration
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+    "PTH", # flake8-use-pathlib
+]
+ignore = [
+    "E501",  # line too long, handled by ruff format
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["ARG"]  # Allow unused args in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["jsonstat_validator"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
