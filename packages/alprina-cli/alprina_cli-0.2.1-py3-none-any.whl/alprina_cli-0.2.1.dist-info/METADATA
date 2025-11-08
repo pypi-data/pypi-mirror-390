@@ -1,0 +1,358 @@
+Metadata-Version: 2.4
+Name: alprina-cli
+Version: 0.2.1
+Summary: Alprina CLI - AI-powered cybersecurity command-line tool for developers
+Project-URL: Homepage, https://alprina.ai
+Project-URL: Documentation, https://docs.alprina.ai
+Project-URL: Repository, https://github.com/alprina/alprina-cli
+Project-URL: Issues, https://github.com/alprina/alprina-cli/issues
+Author-email: Malte Wagenbach <malte@alprina.com>
+License: Proprietary
+Keywords: ai,cli,devops,scanning,security,vulnerability
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security
+Requires-Python: >=3.10
+Requires-Dist: agent-client-protocol>=0.6.2
+Requires-Dist: aiofiles>=25.1.0
+Requires-Dist: aiohttp>=3.13.2
+Requires-Dist: anthropic>=0.39.0
+Requires-Dist: click>=8.3.0
+Requires-Dist: cryptography>=41.0.0
+Requires-Dist: httpx[socks]>=0.28.1
+Requires-Dist: jinja2>=3.1.2
+Requires-Dist: loguru>=0.7.3
+Requires-Dist: openai>=1.0.0
+Requires-Dist: pathspec>=0.11.2
+Requires-Dist: prompt-toolkit>=3.0.52
+Requires-Dist: pydantic>=2.12.3
+Requires-Dist: pyjwt>=2.8.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pyyaml>=6.0.3
+Requires-Dist: requests>=2.31.0
+Requires-Dist: rich>=14.2.0
+Requires-Dist: stripe>=7.0.0
+Requires-Dist: tenacity>=9.1.2
+Requires-Dist: typer>=0.12.0
+Requires-Dist: weasyprint>=60.0
+Description-Content-Type: text/markdown
+
+# 🛡️ Alprina CLI
+
+**AI-powered cybersecurity command-line tool for developers**
+
+> "Build fast. Guard faster."
+
+Alprina CLI is an independent security platform built from the ground up for modern developer workflows, offering intelligent scanning and AI-powered vulnerability analysis.
+
+## Features
+
+- 💬 **Interactive AI Chat** - Conversational security assistant powered by Claude/GPT
+- 🔍 **Remote & Local Scanning** - Scan APIs, websites, and local codebases
+- 🧠 **AI-Powered Analysis** - Smart vulnerability detection and risk assessment
+- 🛠️ **Automated Mitigation** - Get actionable remediation guidance
+- 📊 **Rich Reporting** - HTML, PDF, and JSON reports
+- 🔐 **Policy-Based Security** - Enforce scope and guardrails
+- 💳 **Usage-Based Billing** - Flexible plans with Stripe integration
+- 🔌 **IDE Integration** - Works with Zed, VSCode via ACP
+
+## Quick Start
+
+### Installation
+
+```bash
+# Install from PyPI
+pip install alprina-cli
+```
+
+### Development Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/alprina/alprina-cli
+cd alprina-cli/cli
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in development mode
+pip install -e .
+```
+
+### Authentication
+
+```bash
+# Login with API key
+alprina auth login --api-key YOUR_API_KEY
+
+# Check authentication status
+alprina auth status
+```
+
+### Basic Usage
+
+```bash
+# Interactive AI chat (NEW!)
+alprina chat
+
+# Scan local code
+alprina scan ./src --profile code-audit
+
+# Scan remote endpoint
+alprina scan https://api.example.com --profile web-recon
+
+# Generate report
+alprina report --format html
+
+# Get mitigation suggestions
+alprina mitigate
+
+# Check billing status
+alprina billing status
+```
+
+### 💬 Chat with Alprina AI
+
+The new interactive chat interface lets you scan, analyze, and fix vulnerabilities conversationally:
+
+```bash
+# Start chat session
+alprina chat
+
+# Chat with scan context
+alprina scan ./src --output results.json
+alprina chat --load results.json
+
+# Use different AI models
+alprina chat --model gpt-4
+alprina chat --model claude-3-opus-20240229
+```
+
+**Chat Examples:**
+
+```
+You: Scan my Python Flask app for SQL injection vulnerabilities
+Alprina: [Performs targeted scan and explains findings]
+
+You: Show me how to fix the issue in login.py
+Alprina: [Provides code examples and step-by-step guidance]
+
+You: Generate a security report
+Alprina: [Creates comprehensive report]
+```
+
+**Special Commands:**
+- `/scan <target>` - Run security scan
+- `/explain <id>` - Explain vulnerability
+- `/fix <id>` - Get mitigation steps
+- `/report` - Generate report
+- `/help` - Show all commands
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `alprina chat` | 💬 Interactive AI security assistant |
+| `alprina auth login` | Authenticate with Alprina |
+| `alprina auth logout` | Logout from Alprina |
+| `alprina auth status` | Check authentication status |
+| `alprina scan <target>` | Run security scan on target |
+| `alprina recon <target>` | Perform reconnaissance |
+| `alprina mitigate` | Get mitigation suggestions |
+| `alprina report` | Generate security report |
+| `alprina policy init` | Initialize policy configuration |
+| `alprina policy test <target>` | Test target against policy |
+| `alprina config --init` | Initialize configuration |
+| `alprina billing status` | View billing and usage |
+| `alprina --acp` | Start ACP mode for IDE integration |
+
+## Configuration
+
+### Policy Configuration
+
+Create `~/.alprina/policy.yml`:
+
+```yaml
+project: "My Project Security Audit"
+
+scope:
+  allow_domains:
+    - "example.com"
+    - "api.example.com"
+
+  allow_cidrs:
+    - "192.168.0.0/16"
+
+  forbid_ports:
+    - 22
+    - 3389
+
+policies:
+  allow_intrusive: false
+  require_terms_ack: true
+  max_concurrent_scans: 5
+
+billing:
+  plan: "free"
+  max_scans_per_day: 10
+```
+
+### Environment Variables
+
+```bash
+# Backend API URL
+export ALPRINA_BACKEND="https://api.alprina.com"
+
+# JWT Secret (for local development)
+export JWT_SECRET_KEY="your-secret-key"
+```
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Install development dependencies
+make dev
+
+# Or manually
+pip install -e ".[dev]"
+```
+
+### Run Tests
+
+```bash
+make test
+
+# Or
+pytest
+```
+
+### Code Formatting
+
+```bash
+make format
+```
+
+### Linting
+
+```bash
+make lint
+```
+
+## Architecture
+
+```
+User
+│
+▼
+┌─────────────────────────────┐
+│ Alprina CLI Shell           │
+│ (Typer + Rich UI)           │
+└──────────────┬──────────────┘
+               │
+    ┌──────────┴──────────┐
+    │                     │
+┌───┴─────┐    ┌─────────┴────┐
+│ Policy  │    │ Auth & Billing│
+│ Layer   │    │ (FastAPI)     │
+└───┬─────┘    └──────────────┘
+    │
+    ▼
+┌─────────────────────────────┐
+│ Alprina Security Engine     │
+│ Recon, Scan, Mitigation     │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Reporting Layer             │
+│ JSONL, HTML, PDF            │
+└─────────────────────────────┘
+```
+
+## Example Workflow
+
+```bash
+# 1. Authenticate
+alprina auth login --api-key test-api-key-123
+
+# 2. Initialize policy
+alprina policy init
+
+# 3. Scan local project
+alprina scan ./my-app --profile code-audit
+
+# 4. Scan remote API
+alprina scan https://api.myapp.com --profile web-recon --safe-only
+
+# 5. Generate report
+alprina report --format html --output report.html
+
+# 6. Get mitigation guidance
+alprina mitigate
+
+# 7. Check usage
+alprina billing status
+```
+
+## Scan Profiles
+
+- **code-audit** - Static analysis of source code
+- **web-recon** - Passive reconnaissance of web targets
+- **vuln-scan** - Active vulnerability scanning (requires policy approval)
+- **secret-detection** - Find hardcoded secrets and credentials
+- **config-audit** - Analyze configuration files
+
+## IDE Integration
+
+### Zed Editor
+
+Add to your Zed assistant configuration:
+
+```json
+{
+  "assistant": {
+    "agents": [
+      {
+        "name": "Alprina",
+        "command": "alprina",
+        "args": ["--acp"]
+      }
+    ]
+  }
+}
+```
+
+### VSCode
+
+Install the Alprina extension (coming soon) or use ACP integration.
+
+## License
+
+Copyright © 2025 Alprina
+All rights reserved. Licensed under a proprietary commercial license.
+
+## Support
+
+- Documentation: https://docs.alprina.com
+- Issues: https://github.com/alprina/alprina-cli/issues
+- Email: support@alprina.com
+
+## Roadmap
+
+- [x] Independent security engine implementation
+- [x] Stripe billing integration
+- [x] OAuth providers (GitHub, Google)
+- [ ] Enhanced web dashboard
+- [ ] VSCode extension
+- [ ] CI/CD integrations
+- [ ] Custom tool marketplace
+- [ ] Team collaboration features
+
+---
+
+**Build fast. Guard faster.** 🛡️
