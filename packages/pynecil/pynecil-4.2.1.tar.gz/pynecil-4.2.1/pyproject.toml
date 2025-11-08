@@ -1,0 +1,99 @@
+[tool.coverage.report]
+exclude_lines = [
+    "if TYPE_CHECKING:"
+]
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+extend-select = ["I", "TRY", "UP", "D", "W"]
+extend-ignore = ["D213", "D202", "D203", "D213", "TRY003"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=pynecil/ --cov-report=term-missing"
+asyncio_mode = "auto"
+
+[tool.hatch]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+source = "regex_commit"
+tag_sign = false
+commit_extra_args = ["-e"]
+path = "pynecil/__init__.py"
+
+[tool.hatch.envs.default]
+python = "3.14"
+installer = "uv"
+dependencies = [
+    "aiohttp==3.13.2",
+    "bleak==1.1.1",
+    "bleak-retry-connector==4.4.3",
+    "mypy==1.18.2",
+    "ruff==0.14.4",
+    "pytest==8.4.2",
+    "pytest-cov==7.0.0",
+    "mkdocs-material==9.6.23",
+    "mkdocstrings[python]==0.30.1",
+    "pytest-asyncio==1.2.0",
+]
+
+[tool.hatch.envs.hatch-test]
+parallel = true
+extra-dependencies = [
+  "pytest-asyncio==1.2.0",
+  "pytest-cov==7.0.0",
+]
+extra-args = ["--cov-report=xml", "-vv"]
+type = "virtual"
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.14", "3.13", "3.12", "3.11", "3.10"]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest"
+test-cov-xml = "pytest --cov-report=xml"
+
+type-check = [
+  "mypy pynecil/",
+]
+docs-serve = "mkdocs serve"
+docs-build = "mkdocs build"
+
+[tool.hatch.envs.hatch-static-analysis]
+dependencies = [
+    "ruff==0.14.4",
+]
+config-path = "none"
+
+[build-system]
+requires = ["hatchling", "hatch-regex-commit"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pynecil"
+authors = [
+  { name = "Manfred Dennerlein Rodelo", email = "manfred@dennerlein.name" }
+]
+description = "Python library to communicate with Pinecil V2 soldering irons via Bluetooth"
+readme = "README.md"
+dynamic = ["version"]
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent"
+]
+requires-python = ">=3.11"
+dependencies = [
+    "bleak>=0.22.0",
+    "bleak-retry-connector>=4.3.0",
+    "bluetooth-adapters>=2.1.0;python_version>='3.14'",
+    "aiohttp>=3.11.10"
+]
+
+[project.urls]
+Documentation = "https://tr4nt0r.github.io/pynecil/"
+Source = "https://github.com/tr4nt0r/pynecil"
