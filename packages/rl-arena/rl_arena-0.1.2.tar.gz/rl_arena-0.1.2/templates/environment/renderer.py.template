@@ -1,0 +1,264 @@
+"""Renderer for {{game_name}} environment."""
+
+from typing import Any, Dict, List
+import numpy as np
+
+from rl_arena.core.renderer import Renderer
+
+
+class {{class_name}}Renderer(Renderer):
+    """Renderer for {{game_name}} environment visualization."""
+
+    def __init__(self):
+        """Initialize the renderer."""
+        super().__init__()
+        # TODO: Initialize pygame, matplotlib, or other rendering backend
+
+    def render_frame(self, state: Dict[str, Any]) -> np.ndarray:
+        """
+        Render a single frame as RGB array.
+
+        Args:
+            state: Current game state
+
+        Returns:
+            RGB array of shape (height, width, 3)
+        """
+        # TODO: Implement frame rendering
+        # This should return a numpy array with RGB values
+
+        # PLACEHOLDER - REPLACE THIS:
+        # Create a simple black frame
+        height, width = 400, 600
+        frame = np.zeros((height, width, 3), dtype=np.uint8)
+
+        # TODO: Draw game elements on frame
+        # Example with matplotlib or pygame:
+        # - Draw players
+        # - Draw ball/game objects
+        # - Draw scores
+        # - Add labels
+
+        return frame
+
+    def render_human(self, state: Dict[str, Any]) -> None:
+        """
+        Render for human viewing (display window).
+
+        Args:
+            state: Current game state
+        """
+        # TODO: Implement human-visible rendering
+        # Options:
+        # 1. Use pygame to create a window
+        # 2. Use matplotlib to show an image
+        # 3. Print to terminal (simple text-based)
+
+        # PLACEHOLDER - REPLACE THIS:
+        frame = self.render_frame(state)
+        # Display frame using your preferred method
+        pass
+
+    def render_ansi(self, state: Dict[str, Any]) -> str:
+        """
+        Render as ASCII string for terminal.
+
+        Args:
+            state: Current game state
+
+        Returns:
+            String representation of the game state
+        """
+        # TODO: Implement ASCII rendering
+        # Create a text-based visualization of the game
+
+        # PLACEHOLDER - REPLACE THIS:
+        lines = []
+        lines.append("╔════════════════════════════╗")
+        lines.append("║   {{game_name}} Game       ║")
+        lines.append("╠════════════════════════════╣")
+        # TODO: Add game state visualization
+        lines.append("║                            ║")
+        lines.append("║  P1: 0   |   P2: 0        ║")
+        lines.append("╚════════════════════════════╝")
+
+        return "\n".join(lines)
+
+    def render_ipython(self, state: Dict[str, Any]) -> None:
+        """
+        Render inline in Jupyter notebook.
+
+        Args:
+            state: Current game state
+        """
+        try:
+            from IPython.display import display, Image
+            import matplotlib.pyplot as plt
+
+            # Render frame
+            frame = self.render_frame(state)
+
+            # Display using matplotlib
+            plt.figure(figsize=(8, 6))
+            plt.imshow(frame)
+            plt.axis("off")
+            plt.title(f"{{game_name}} - Step {state.get('step', 0)}")
+            plt.tight_layout()
+            plt.show()
+
+        except ImportError:
+            raise ImportError(
+                "IPython is required for notebook rendering. "
+                "Install it with: pip install ipython"
+            )
+
+    def render_html(self, state_history: List[Dict[str, Any]]) -> str:
+        """
+        Render full game as HTML5 animation.
+
+        Args:
+            state_history: List of all states in the episode
+
+        Returns:
+            HTML string with embedded animation
+        """
+        # TODO: Implement HTML rendering
+        # This should create an animated visualization of the entire episode
+
+        # PLACEHOLDER - REPLACE THIS:
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{{game_name}} Replay</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    background: #1a1a1a;
+                    color: white;
+                    margin: 20px;
+                }}
+                #canvas {{
+                    border: 2px solid #4a4a4a;
+                    background: black;
+                }}
+                #controls {{
+                    margin-top: 20px;
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                }}
+                button {{
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    cursor: pointer;
+                    background: #4a90e2;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                }}
+                button:hover {{
+                    background: #357abd;
+                }}
+                #info {{
+                    margin-top: 10px;
+                    font-size: 18px;
+                }}
+            </style>
+        </head>
+        <body>
+            <h1>{{game_name}} Replay</h1>
+            <canvas id="canvas" width="600" height="400"></canvas>
+            <div id="controls">
+                <button onclick="playPause()">⏯ Play/Pause</button>
+                <button onclick="restart()">↺ Restart</button>
+                <button onclick="stepForward()">→ Step</button>
+                <input type="range" id="speed" min="1" max="10" value="5" 
+                       oninput="updateSpeed(this.value)">
+                <label>Speed: <span id="speedLabel">5</span>x</label>
+            </div>
+            <div id="info">
+                Frame: <span id="frame">0</span> / {len(state_history)}
+            </div>
+
+            <script>
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                const states = {state_history};
+                
+                let currentFrame = 0;
+                let isPlaying = false;
+                let speed = 5;
+                let animationInterval;
+
+                function drawFrame(frameIndex) {{
+                    const state = states[frameIndex];
+                    
+                    // Clear canvas
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // TODO: Draw game state
+                    // Example:
+                    // ctx.fillStyle = 'white';
+                    // ctx.fillRect(state.player1_x, state.player1_y, 20, 60);
+                    
+                    // Update frame counter
+                    document.getElementById('frame').textContent = frameIndex;
+                }}
+
+                function playPause() {{
+                    isPlaying = !isPlaying;
+                    if (isPlaying) {{
+                        animationInterval = setInterval(() => {{
+                            currentFrame++;
+                            if (currentFrame >= states.length) {{
+                                currentFrame = 0;
+                            }}
+                            drawFrame(currentFrame);
+                        }}, 1000 / (30 * speed / 5));
+                    }} else {{
+                        clearInterval(animationInterval);
+                    }}
+                }}
+
+                function restart() {{
+                    currentFrame = 0;
+                    drawFrame(currentFrame);
+                    if (isPlaying) {{
+                        playPause();
+                    }}
+                }}
+
+                function stepForward() {{
+                    if (!isPlaying) {{
+                        currentFrame = (currentFrame + 1) % states.length;
+                        drawFrame(currentFrame);
+                    }}
+                }}
+
+                function updateSpeed(value) {{
+                    speed = parseInt(value);
+                    document.getElementById('speedLabel').textContent = speed;
+                    if (isPlaying) {{
+                        playPause();
+                        playPause();
+                    }}
+                }}
+
+                // Draw initial frame
+                drawFrame(0);
+            </script>
+        </body>
+        </html>
+        """
+
+        return html
+
+    def close(self) -> None:
+        """Clean up rendering resources."""
+        # TODO: Clean up pygame window, matplotlib figures, etc.
+        super().close()

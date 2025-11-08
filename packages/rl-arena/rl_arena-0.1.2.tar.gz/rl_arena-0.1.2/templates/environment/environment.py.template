@@ -1,0 +1,274 @@
+"""{{game_name}} environment for RL Arena.
+
+This is a template for creating new RL Arena environments.
+Replace the placeholders and implement the game logic.
+"""
+
+from typing import Any, Dict, List, Tuple, Optional
+import numpy as np
+import gymnasium as gym
+
+from rl_arena.core.environment import Environment
+from rl_arena.core.types import ObservationType, ActionType, RewardType
+from rl_arena.core.renderer import Renderer
+
+
+class {{class_name}}Environment(Environment):
+    """
+    {{game_name}} environment for competitive RL.
+
+    Game Description:
+        TODO: Describe the game rules, objectives, and win conditions.
+
+    Observation Space:
+        TODO: Describe what information each agent observes.
+        Example: Box(shape=(8,), dtype=float32)
+        - Element 0-1: Player position (x, y)
+        - Element 2-3: Opponent position (x, y)
+        - Element 4-5: Ball position (x, y)
+        - etc.
+
+    Action Space:
+        TODO: Describe the available actions.
+        Example: Discrete(3)
+        - 0: Move left
+        - 1: Stay
+        - 2: Move right
+
+    Rewards:
+        TODO: Describe the reward structure.
+        Example:
+        - +1: Win the game
+        - -1: Lose the game
+        - 0: Otherwise
+
+    Episode Termination:
+        TODO: Describe when episodes end.
+        Example:
+        - When one player reaches 10 points
+        - When max_steps is reached (truncation)
+    """
+
+    metadata = {
+        "render_modes": ["human", "rgb_array", "ansi", "ipython", "html"],
+        "render_fps": 30,
+    }
+
+    def __init__(self, configuration: Optional[Dict[str, Any]] = None):
+        """
+        Initialize {{game_name}} environment.
+
+        Args:
+            configuration: Optional configuration dict with keys:
+                - render_mode (str): Rendering mode
+                - max_steps (int): Maximum steps per episode
+                - TODO: Add your configuration options
+        """
+        super().__init__(configuration)
+
+        # Get configuration values
+        self.max_steps = self.configuration.get("max_steps", 1000)
+        # TODO: Add more configuration options
+
+        # Initialize game state
+        self._reset_state()
+
+        # Define spaces
+        self._num_players = 2  # TODO: Change if not 2-player game
+        self._action_space = self._create_action_space()
+        self._observation_space = self._create_observation_space()
+
+    def _create_action_space(self) -> gym.Space:
+        """Create the action space for the environment."""
+        # TODO: Define your action space
+        # Examples:
+        # - Discrete(n): For n discrete actions
+        # - Box(low, high, shape): For continuous actions
+        # - MultiDiscrete([n1, n2, ...]): For multiple discrete actions
+        return gym.spaces.Discrete(3)  # REPLACE THIS
+
+    def _create_observation_space(self) -> gym.Space:
+        """Create the observation space for the environment."""
+        # TODO: Define your observation space
+        # Examples:
+        # - Box(low, high, shape, dtype=np.float32): For continuous observations
+        # - Discrete(n): For discrete observations
+        # - Dict({...}): For structured observations
+        return gym.spaces.Box(
+            low=0.0, high=1.0, shape=(8,), dtype=np.float32
+        )  # REPLACE THIS
+
+    def _reset_state(self) -> None:
+        """Reset the internal game state."""
+        # TODO: Initialize your game state variables
+        # Example:
+        # self.player1_position = [0.5, 0.5]
+        # self.player2_position = [0.5, 0.5]
+        # self.ball_position = [0.5, 0.5]
+        # self.scores = [0, 0]
+        pass
+
+    @property
+    def num_players(self) -> int:
+        """Return the number of players."""
+        return self._num_players
+
+    @property
+    def action_space(self) -> gym.Space:
+        """Return the action space."""
+        return self._action_space
+
+    @property
+    def observation_space(self) -> gym.Space:
+        """Return the observation space."""
+        return self._observation_space
+
+    def reset(
+        self, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
+    ) -> Tuple[List[ObservationType], Dict[str, Any]]:
+        """
+        Reset the environment to initial state.
+
+        Args:
+            seed: Random seed for reproducibility
+            options: Optional reset parameters
+
+        Returns:
+            observations: List of initial observations for each player
+            info: Dictionary with auxiliary information
+        """
+        # Handle seeding
+        super().reset(seed=seed)
+        if seed is not None:
+            self._seed = seed
+            self._np_random = np.random.default_rng(seed)
+        elif self._np_random is None:
+            self._np_random = np.random.default_rng()
+
+        # Reset game state
+        self._reset_state()
+        self._current_step = 0
+        self._done = False
+
+        # Clear state history if recording
+        if self._record_states:
+            self._state_history = []
+            self._state_history.append(self._get_render_state())
+
+        # Get initial observations
+        observations = self._get_observations()
+
+        # Info dict
+        info = {
+            "step": self._current_step,
+            # TODO: Add any additional info
+        }
+
+        return observations, info
+
+    def step(
+        self, actions: List[ActionType]
+    ) -> Tuple[List[ObservationType], List[RewardType], bool, bool, Dict[str, Any]]:
+        """
+        Execute one step in the environment.
+
+        Args:
+            actions: List of actions, one for each player
+
+        Returns:
+            observations: List of observations for each player
+            rewards: List of rewards for each player
+            terminated: Whether episode ended (win/loss)
+            truncated: Whether episode was cut off (max steps)
+            info: Dictionary with auxiliary information
+        """
+        # Validate actions
+        if len(actions) != self.num_players:
+            raise ValueError(
+                f"Expected {self.num_players} actions, got {len(actions)}"
+            )
+
+        # Validate each action
+        for i, action in enumerate(actions):
+            if not self.action_space.contains(action):
+                raise ValueError(f"Player {i} took invalid action: {action}")
+
+        # Update game state based on actions
+        # TODO: Implement your game logic here
+        # Example:
+        # self._update_player_positions(actions)
+        # self._update_ball_physics()
+        # self._check_collisions()
+        # rewards = self._calculate_rewards()
+        # terminated = self._check_win_condition()
+
+        # PLACEHOLDER - REPLACE THIS:
+        rewards = [0.0] * self.num_players
+        terminated = False
+
+        # Increment step counter
+        self._current_step += 1
+
+        # Check truncation
+        truncated = self._current_step >= self.max_steps
+
+        # Get observations
+        observations = self._get_observations()
+
+        # Record state if recording enabled
+        if self._record_states:
+            self._state_history.append(self._get_render_state())
+
+        # Info dict
+        info = {
+            "step": self._current_step,
+            # TODO: Add any additional info
+        }
+
+        return observations, rewards, terminated, truncated, info
+
+    def _get_observations(self) -> List[ObservationType]:
+        """
+        Get current observations for all players.
+
+        Returns:
+            List of observations, one per player
+        """
+        # TODO: Implement observation extraction from game state
+        # Remember: Each player may see the game from their perspective
+
+        # PLACEHOLDER - REPLACE THIS:
+        obs = np.zeros(8, dtype=np.float32)
+        return [obs.copy() for _ in range(self.num_players)]
+
+    def _create_renderer(self) -> Renderer:
+        """Create the renderer for this environment."""
+        from rl_arena.envs.{{game_name_lower}}.renderer import {{class_name}}Renderer
+
+        return {{class_name}}Renderer()
+
+    def _get_render_state(self) -> Dict[str, Any]:
+        """
+        Get current state in a format suitable for rendering.
+
+        Returns:
+            Dictionary with all rendering information
+        """
+        # TODO: Extract renderable state from game state
+        return {
+            "step": self._current_step,
+            # TODO: Add all state needed for rendering
+            # Example:
+            # "player1_pos": self.player1_position,
+            # "player2_pos": self.player2_position,
+            # "ball_pos": self.ball_position,
+            # "scores": self.scores,
+        }
+
+
+# Default configuration
+DEFAULT_CONFIG = {
+    "render_mode": None,
+    "max_steps": 1000,
+    # TODO: Add your default configuration
+}

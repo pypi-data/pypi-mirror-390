@@ -1,0 +1,69 @@
+name: Validate New Environment
+
+on:
+  pull_request:
+    paths:
+      - 'rl_arena/envs/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Check for required files
+      run: |
+        # Check if new environment has required files
+        # This is a simple check - can be extended
+        echo "Checking for required environment files..."
+        
+        # Add validation logic here
+        # Example: check for __init__.py, environment.py, README.md, etc.
+    
+    - name: Run environment-specific tests
+      run: |
+        # Run tests for the new environment
+        pytest tests/envs/ -v
+    
+    - name: Verify environment registration
+      run: |
+        python -c "
+        import rl_arena
+        envs = rl_arena.list_environments()
+        print('Registered environments:', envs)
+        "
+    
+    - name: Test environment creation and basic functionality
+      run: |
+        python -c "
+        import rl_arena
+        
+        # Try to create all environments
+        for env_name in rl_arena.list_environments():
+            print(f'Testing {env_name}...')
+            env = rl_arena.make(env_name)
+            
+            # Test reset
+            observations, info = env.reset(seed=42)
+            assert len(observations) == env.num_players
+            
+            # Test step
+            actions = [env.action_space.sample() for _ in range(env.num_players)]
+            observations, rewards, terminated, truncated, info = env.step(actions)
+            assert len(observations) == env.num_players
+            assert len(rewards) == env.num_players
+            
+            env.close()
+            print(f'{env_name} passed basic checks!')
+        "
