@@ -1,0 +1,47 @@
+# Ensure suitable error is raised for inconsistent package index overrides
+
+[[runtimes]]
+name = "cpython-3.13"
+python_implementation = "cpython@3.13.7"
+requirements = []
+
+[[frameworks]]
+name = "pytorch-cpu"
+runtime = "cpython-3.13"
+requirements = []
+# Package name ends with a capital to ensure names are normalised
+package_indexes = { torcH = "pytorch-cpu"}
+
+[[frameworks]]
+name = "pytorch-cu128"
+runtime = "cpython-3.13"
+requirements = []
+# Package name is capitalised to ensure names are normalised
+package_indexes = { Torch = "pytorch-cu128"}
+
+[[applications]]
+name = "override"
+launch_module = "../minimal_project/empty.py"
+# This is accepted, as even though the framework layers specify a different
+# package index for PyTorch, it is declared as a permitted override
+frameworks = ["pytorch-cu128", "pytorch-cpu"]
+index_overrides = { pytorch-cpu = "pytorch-cu128" }
+requirements = []
+
+[[applications]]
+name = "invalid"
+launch_module = "../minimal_project/empty.py"
+# This will fail, since the framework layers specify different package indexes for PyTorch
+# *without* specifying that the first of them is an expected override for the other
+frameworks = ["pytorch-cu128", "pytorch-cpu"]
+requirements = []
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
