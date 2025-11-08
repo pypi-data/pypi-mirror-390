@@ -1,0 +1,154 @@
+Metadata-Version: 2.4
+Name: satctl
+Version: 0.3.0
+Summary: Toolkit to search, download and process Earth Observation data
+Author-email: Edoardo Arnaudo <edoardo.arnaudo@linksfoundation.com>, Luca Barco <andrea.bragagnolo@linksfoundation.com>, Andrea Bragagnolo <luca.barco@linksfoundation.com>, Gaetano Chiriaco <gaetano.chiriaco@linksfoundation.com>
+License-File: LICENSE
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: GIS
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.10
+Requires-Dist: boto3>=1.28.0
+Requires-Dist: bottleneck>=1.6.0
+Requires-Dist: earthaccess>=0.14.0
+Requires-Dist: envyaml>=1.10.211231
+Requires-Dist: eumdac>=3.0.0
+Requires-Dist: geojson-pydantic>=2.1.0
+Requires-Dist: h5netcdf>=1.7.3
+Requires-Dist: h5py>=3.15.1
+Requires-Dist: netcdf4>=1.7.2
+Requires-Dist: odc-stac>=0.4.0
+Requires-Dist: pydantic-settings>=2.10.1
+Requires-Dist: pydantic>=2.11.9
+Requires-Dist: pyhdf>=0.11.6
+Requires-Dist: pyproj>=3.7.1
+Requires-Dist: pyresample>=1.31.0
+Requires-Dist: pyspectral>=0.13.6
+Requires-Dist: pystac-client>=0.9.0
+Requires-Dist: pystac>=1.14.1
+Requires-Dist: rioxarray>=0.19.0
+Requires-Dist: satpy>=0.58.0
+Requires-Dist: shapely>=2.1.1
+Provides-Extra: all
+Requires-Dist: mkdocs-material>=9.6.22; extra == 'all'
+Requires-Dist: pre-commit>=4.3.0; extra == 'all'
+Requires-Dist: pyright>=1.1.406; extra == 'all'
+Requires-Dist: pytest-cov>=7.0.0; extra == 'all'
+Requires-Dist: pytest-xdist>=3.8.0; extra == 'all'
+Requires-Dist: pytest>=8.4.2; extra == 'all'
+Requires-Dist: rich>=14.1.0; extra == 'all'
+Requires-Dist: ruff>=0.13.2; extra == 'all'
+Requires-Dist: typer>=0.19.2; extra == 'all'
+Provides-Extra: console
+Requires-Dist: rich>=14.1.0; extra == 'console'
+Requires-Dist: typer>=0.19.2; extra == 'console'
+Provides-Extra: dev
+Requires-Dist: mkdocs-material>=9.6.22; extra == 'dev'
+Requires-Dist: pre-commit>=4.3.0; extra == 'dev'
+Requires-Dist: pyright>=1.1.406; extra == 'dev'
+Requires-Dist: ruff>=0.13.2; extra == 'dev'
+Provides-Extra: test
+Requires-Dist: pytest-cov>=7.0.0; extra == 'test'
+Requires-Dist: pytest-xdist>=3.8.0; extra == 'test'
+Requires-Dist: pytest>=8.4.2; extra == 'test'
+Description-Content-Type: text/markdown
+
+# satctl
+
+Modular library and CLI utility to search, download and process satellite data from different sources, powered by [satpy](https://satpy.readthedocs.io/en/stable/).
+
+[![test passing](https://img.shields.io/github/actions/workflow/status/links-ads/satctl/test.yml)](https://github.com/links-ads/satctl)
+[![coverage](https://img.shields.io/codecov/c/gh/links-ads/satctl)](https://codecov.io/gh/links-ads/satctl)
+[![pypi version](https://img.shields.io/pypi/v/satctl)](https://pypi.org/project/satctl/)
+[![python versions](https://img.shields.io/pypi/pyversions/satctl)](https://github.com/links-ads/satctl)
+
+[![license](https://img.shields.io/github/license/links-ads/satctl)](https://github.com/links-ads/satctl)
+[![documentation](https://img.shields.io/badge/documentation-%F0%9F%93%9A-blue)](https://links-ads.github.io/satctl/)
+
+## Quickstart
+
+`satctl` can be installed via pip, or uv, in different flavors.
+
+```shell
+# via pip
+$ pip install satctl
+# via uv
+$ uv add satctl
+# including CLI tools
+$ uv add satctl[console]
+```
+
+### Usage
+
+`satctl` tries to be as modular as possible, giving the user the possibility to stop the process at any time in the pipeline, from searching to converting the raw data into a GeoTIFF.
+
+Here's a simple example of usage.
+
+```python
+from datetime import datetime
+from pathlib import Path
+
+from satctl.model import ConversionParams, SearchParams
+from satctl.sources import create_source
+from satctl.writers import create_writer
+
+if __name__ == "__main__":
+    # search available satellites and products
+    names = list_sources(name="s2*")
+
+    # or directly create any source
+    source = create_source("slstr")
+
+    # Define a research area, from file or as a simple Polygon
+    area_file = Path("my_aoi.geojson")
+
+    # filter by space, time or source options
+    params = SearchParams.from_file(path=area_file, datetime(2025, 8, 15), end=datetime(2025, 8, 16))
+    items = source.search(params)
+
+    # download the tiles locally
+    downloaded, fail = source.download(items, destination=Path("downloads/"), num_workers=4)
+
+    # ... load an item as a satpy Scene ...
+    sene = source.load_scene(items[0], datasets=["S3", "S2", "S1"])
+
+    # ... or store them directly on file
+    writer = create_writer("geotiff")
+    source.save(
+        downloaded,
+        params=ConversionParams.from_file(
+            path=area_file,
+            target_crs="4326",
+            datasets=["all_bands_h"],
+            resolution=500,
+        ),
+        destination=Path("results/"),
+        writer=writer,
+        num_workers=4,
+    )
+```
+
+For more examples and use cases, see the documentation.
+
+## Contributing
+
+Contributing requires the following tools: `uv` for environment and project management, `ruff` for linting and formatting, `pyright` for standard type checking.
+Formatting, linting and type checking is enforced at `pre-commit` and CI level.
+
+The easiest way to quickstart is the following:
+```
+# prepare the environment, requires uv
+$ make install
+```
+
+More information about contributing will be added in the main documentation.

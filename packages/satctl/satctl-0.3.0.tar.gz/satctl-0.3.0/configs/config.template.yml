@@ -1,0 +1,96 @@
+download:
+  http:
+    max_retries: 3
+    timeout: 30
+    pool_connections: 10
+    pool_maxsize: 4
+
+auth:
+  odata:
+    token_url: "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+    client_id: "cdse-public"
+    username: $ODATA_USERNAME
+    password: $ODATA_PASSWORD
+
+  eumetsat:
+    consumer_key: $EUMETSAT_CONSUMER_KEY
+    consumer_secret: $EUMETSAT_CONSUMER_SECRET
+
+  earthdata:
+    strategy: "environment"
+    username: $EARTHDATA_USERNAME
+    password: $EARTHDATA_PASSWORD
+    mode: "requests_https"
+
+  s3:
+    token_url: "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+    client_id: "cdse-public"
+    username: $ODATA_USERNAME
+    password: $ODATA_PASSWORD
+    s3_credentials_url: "https://eodata.dataspace.copernicus.eu/s3-credentials"
+    endpoint_url: "https://eodata.dataspace.copernicus.eu"
+    use_temp_credentials: false
+
+sources:
+  slstr:
+    default_authenticator: "odata"
+    default_downloader: "http"
+    default_composite: "all_bands_m"
+    stac_url: "https://stac.dataspace.copernicus.eu/v1"
+    search_limit: 100
+
+  olci:
+    default_authenticator: "odata"
+    default_downloader: "http"
+    default_composite: "all_bands"
+    stac_url: "https://stac.dataspace.copernicus.eu/v1"
+    search_limit: 100
+
+  s2l2a:
+    default_authenticator: "s3"
+    default_downloader: "s3"
+    default_composite: "true_color"
+    stac_url: "https://stac.dataspace.copernicus.eu/v1"
+    search_limit: 100
+
+  s2l1c:
+    default_authenticator: "s3"
+    default_downloader: "s3"
+    default_composite: "true_color"
+    stac_url: "https://stac.dataspace.copernicus.eu/v1"
+    search_limit: 100
+
+  viirs-l1b:
+    default_authenticator: "earthdata"
+    default_downloader: "http"
+    search_limit: 100
+    satellite: ["vnp", "jp1", "jp2"]
+    product_type: ["mod", "img"]
+
+  modis-l1b:
+    default_authenticator: "earthdata"
+    default_downloader: "http"
+    search_limit: 100
+    platform: ["mod"]
+    resolution: ["qkm", "hkm", "1km"]
+
+  mtg:
+    default_authenticator: "eumetsat"
+    default_downloader: "http"
+    search_limit: 2
+    collection_name: "EO:EUM:DAT:0662"
+    reader: "fci_l1c_nc"
+    default_composite: "natural_color"
+
+  s1grd:
+    default_authenticator: "s3"
+    default_downloader: "s3"
+    stac_url: "https://stac.dataspace.copernicus.eu/v1"
+    search_limit: 100
+    download_pool_conns: 1
+    download_pool_size: 1
+
+writer:
+  geotiff:
+    compress: lzw
+    tiled: true
