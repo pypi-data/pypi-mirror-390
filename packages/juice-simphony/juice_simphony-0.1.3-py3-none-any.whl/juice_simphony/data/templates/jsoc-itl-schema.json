@@ -1,0 +1,389 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://juicesoc.esac.esa.int/data/jsoc-itl-schema.json",
+  "title": "JUICE Science Operations Instrument Timeline Input File Schema v02-draft",
+  "type": "object",
+  "properties": {
+    "header": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "anyOf": [
+            {
+              "pattern": "^ITL_.*\\.json$",
+              "description": "Filename should start with 'ITL_' and end with '.json'"
+            },
+            {
+              "pattern": "^OTL_.*\\.json$",
+              "description": "Filename should start with 'OTL_' and end with '.json'"
+            }
+          ]
+        },
+        "creation_date": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?Z$",
+          "description": "Creation date of the file in UTC format YYYY-MM-DDThh:mm:ss[.mmm]Z"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author of the file"
+        },
+        "origin": {
+          "type": "string",
+          "description": "Origin of the file"
+        },
+        "configuration": {
+          "type": "object",
+          "properties": {
+            "json_schema": {
+              "type": "string",
+              "description": "ITL JSON Schema used"
+            },
+            "itl_version": {
+              "type": "string",
+              "description": "Version of the ITL file used"
+            },
+            "osve_session_file": {
+              "type": "string",
+              "description": "OSVE session file used"
+            },
+            "osve_version": {
+              "type": "string",
+              "description": "OSVE version in use"
+            },
+            "eps_version": {
+              "type": "string",
+              "description": "EPS version in use"
+            },
+            "mib_version": {
+              "type": "string",
+              "description": "MIB version in use"
+            },
+            "evt_fct": {
+              "type": "string",
+              "description": "Flight Control Team User Event file (UEVT) in use"
+            },
+            "evt_fdy": {
+              "type": "string",
+              "description": "Flight Dynamics STP/MTP Event file (EVTC, EVTM) in use"
+            },
+            "evt_soc": {
+              "type": "string",
+              "description": "Science Operations Center Event file (EVT_SOC) in use"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Configuration object containing schema, session file, and version details"
+        },
+        "validity_range": {
+          "type": "object",
+          "properties": {
+            "start_time": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?Z$",
+              "description": "Start time in UTC format YYYY-MM-DDThh:mm:ss[.mmm]Z"
+            },
+            "end_time": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?Z$",
+              "description": "End time in UTC format YYYY-MM-DDThh:mm:ss[.mmm]Z"
+            }
+          },
+          "required": [
+            "start_time",
+            "end_time"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "filename",
+        "creation_date",
+        "author"
+      ],
+      "additionalProperties": false
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the action or observation, must correspond to an observation definition or a modelled action"
+          },
+          "unique_id": {
+            "type": "string",
+            "description": "ID of the action or observation, must correspond to an observation definition or a modelled action"
+          },
+          "instrument": {
+            "type": "string",
+            "description": "Instrument/Unit responsible for the activity"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "OBSERVATION",
+              "ACTION"
+            ],
+            "description": "Indicates type of activity, either an observation or an action"
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Target of the activity as a LID of a PDS4 Target, i.e.: satellite.earth.moon"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Array of targets of the activity as a LID of a PDS4 Target, i.e.: satellite.earth.moon"
+              }
+            ]
+          },
+          "stack": {
+            "type": "string",
+            "description": "Intended POR/group of the activity"
+          },
+          "start_time": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?Z$",
+                "description": "Start time in UTC format (absolute time) YYYY-MM-DDThh:mm:ss[.mmm]Z"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Event name for relative start time"
+                  },
+                  "counter": {
+                    "type": "integer",
+                    "description": "Counter associated with the event"
+                  },
+                  "delta_time": {
+                    "type": "string",
+                    "pattern": "^[+-]?(\\d{3}\\.\\d{2}:\\d{2}:\\d{2}|\\d{2}:\\d{2}:\\d{2})$",
+                    "description": "Relative time format [+|-]ddd[Thh:mm:ss]"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Start time of the activity, either absolute or relative"
+              }
+            ]
+          },
+          "end_time": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?Z$",
+                "description": "End time in UTC format (absolute time) YYYY-MM-DDThh:mm:ss[.mmm]Z"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Event name for relative end time"
+                  },
+                  "counter": {
+                    "type": "integer",
+                    "description": "Counter associated with the event"
+                  },
+                  "delta_time": {
+                    "type": "string",
+                    "pattern": "^[+-]?(\\d{3}\\.\\d{2}:\\d{2}:\\d{2}|\\d{2}:\\d{2}:\\d{2})$",
+                    "description": "Relative time format [+|-]ddd[Thh:mm:ss]"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "description": "End time of the activity, either absolute or relative"
+              }
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "description": "EPS construct to indicate the mode during the action"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Action/Observation parameters as an array of parameter name and value pairs",
+            "additionalProperties": true
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Observation or action textual description, can be null"
+          },
+          "scheduling_rules": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Rules for scheduling the activity, can be null"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Free text comments related to the activity, can be null"
+          },
+          "power_profile": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "unit": { "type": "string" },
+              "values": {
+                "type": "object",
+                "description": "Key-value pairs, no enforced format on keys",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": ["unit", "values"],
+            "description": "Optional power usage profile keyed by HH:MM:SS"
+          },
+          "data_rate_profiles": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "unit": { "type": "string" },
+              "values": {
+                "type": "object",
+                "description": "Key-value pairs, no enforced format on keys",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": ["unit", "values"],
+            "description": "Optional data-rate profile keyed by HH:MM:SS"
+          },
+          "data_volume_profile": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "unit": { "type": "string" },
+              "values": {
+                "type": "object",
+                "description": "Key-value pairs, no enforced format on keys",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": ["unit", "values"],
+            "description": "Optional Data Volume profile keyed by HH:MM:SS"
+          }
+
+        },
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "name"
+            ]
+          },
+          {
+            "required": [
+              "id"
+            ]
+          }
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "unit"
+            ]
+          },
+          {
+            "required": [
+              "instrument"
+            ]
+          }
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "start_time",
+                "end_time"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "OBSERVATION"
+                }
+              }
+            },
+            "then": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "mode"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "ACTION"
+                }
+              }
+            },
+            "then": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "end_time"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "timeline"
+  ],
+  "additionalProperties": false
+}

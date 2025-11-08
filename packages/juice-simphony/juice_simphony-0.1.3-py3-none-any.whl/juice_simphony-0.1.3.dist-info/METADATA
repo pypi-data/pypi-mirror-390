@@ -1,0 +1,150 @@
+Metadata-Version: 2.1
+Name: juice-simphony
+Version: 0.1.3
+Summary: JUICE Scenario Generator
+License: ESA
+Author: JUICE SOC Team
+Requires-Python: >=3.10
+Classifier: License :: Other/Proprietary License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Dist: jinja2 (>=3.1.6,<4.0.0)
+Requires-Dist: python-dotenv (>=1.1.0,<2.0.0)
+Requires-Dist: requests (>=2.32.3,<3.0.0)
+Requires-Dist: setuptools (>=80.3.1,<81.0.0)
+Description-Content-Type: text/markdown
+
+# JUICE Symphony
+
+juice-simphony (a.k.a. Simphony) is a suite of integrated tools designed to assist users at the start of
+the tactical science planning process by preparing the scenario file structure required to run the 
+SOC simulations with OSVE and or MAPPS (ultimately AGM and EPS). 
+
+This file structure provide the latest version of the required inputs as defined in 
+[JUI-ESAC-SGS-TN-031 Configuration Items Description](https://s2e2.cosmos.esa.int/confluence/spaces/SOCDEV/pages/582126047/JUI-ESAC-SGS-TN-031+Configuration+Items+Description)
+and is complemented by the procedure [UC44 Top Level Detailsed Scenario Setup](https://s2e2.cosmos.esa.int/confluence/spaces/SOCDEV/pages/582127647/UC_34_Top_level_Detailed_Scenario_Setup).
+
+
+## Getting started
+
+
+## Project requirements
+
+- Python 3.10
+
+## Install the juice-simphony (also known as Simphony) package
+
+```
+pip install juice-simphony
+```
+
+## Check spice kernels (for MAPPS products)
+
+Ensure that the spice meta-kernel is aligned with that of the segmentation. 
+If not, perform a git checkout accordingly.
+
+
+## Run the script
+
+Start by running the script with the -h option
+
+```
+juice-simphony -h
+```
+the following output is expected
+```
+usage: juice-simphony [-h] [--config CONFIG] [--template] [--mapps]
+
+Standalone Simphony Scenario Generator
+
+options:
+  -h, --help       show this help message and exit
+  --config CONFIG  Path to JSON config file
+  --template       Optional flag to dump template and exit
+  --mapps          Enable MAPPS-specific behaviour
+  --zip            Save the output as a ZIP file
+```
+
+Get the template configuration file by executing
+```
+juice-simphony --template
+```
+which prints the configuration file in data/config_scenario.json.
+
+```
+{
+  "juice_conf": "$HOME/juice_conf",
+  "output_folder": "$HOME/JUICE_PREOPS/PLANNING",
+  "kernel_abs_path": "$HOME/juice/kernels",
+  "scenario_id": "S008_01",
+  "shortDesc": "ORB17",
+  "trajectory": "CREMA_5_1_150lb_23_1_a3",
+  "mnemonic": "segment_opportunities_v4_derived_segmentation_v3",
+  "startTime": "2032-12-18T17:32:33",
+  "endTime": "2033-01-08T21:05:31",
+  "main_target": "Jupiter",
+  "iniAbsolutePath": "SOFTWARE/MAPPS"
+}
+```
+Execute the package via 
+```
+juice-simphony --config yourpath/config_scenario.json (--mapps --zip)
+```
+where the --mapps option allows the generation of MAPPS specific outputs, and the --zip option can be used to zip the output folder.
+
+The output is folder created generated in the directory provided above in the configuration. 
+
+
+## Description
+
+The starting point of Symphony to generate the timeline related data for the given scenario is the trajectory segmentation.
+
+The trajectory segmentation process divides the Juice Tour trajectory into non-overlapping prime segments.
+These segments are not linked to individual instruments but rather to specific measurement objectives, each representing a distinct and well-defined scientific focus.
+Within each segment, one science discipline is prioritized for mission resources such as pointing and power.
+The primary goal of this approach is to minimize potential operational conflicts between instruments in the future.
+By aligning all instruments toward a common science objective within each segment, it becomes easier — ideally — to coordinate and make necessary compromises.
+
+Once the segmentation is finalized, time periods of operational importance are explored in greater detail through the creation of a new operational scenario.
+To support this, the module used for detailed studies must be configured with both the appropriate settings and the segmentation attributes, 
+which serve as the foundation for scenario generation. 
+During this process, the supporting tools will retrieve the prime and opportunity segments, along with their expected theoretical data production and power consumption.
+Segments defined by instrument types will be replaced by specific instrument observations if available (each instrument is associated with an instrument type, 
+and each segment type supports compatible observation types).
+
+Simphony builds upon the products of the Segment Harmonization Toolset (SHT) — a collection of tools that support the trajectory segmentation process:
+- It provides a data model and a persistence layer (based on a relational database) to store all required entities, accessible via the SHT core and Web admin interface.
+- It exposes a public REST API over HTTPS, enabling data access for other modules within the uplink system.
+- It includes a web-based timeline tool that allows users to visualize and modify the segmentation interactively.
+
+The Simphony module authenticates with the public SHT REST API endpoint and performs a series of synchronous API calls 
+to fetch the necessary data. This interaction ensures that all required planning inputs are retrieved directly from 
+the authoritative SHT database.
+The query to the SHT REST API is executed using the parameters defined in the configuration file. 
+The resulting segmentation is then loaded into memory for processing, and each individual segment is subsequently inspected.
+Currently, if a segment is truncated due to the query’s input start and end dates, the segment is adjusted accordingly in terms of data rate (DR) and data volume (DV).
+Overlapping segments are not permitted. If overlapping segments are detected within the segmentation, the program halts execution and returns an error.
+
+Simphony resolves resource values for each segment instance in the PRIME timeline only, including instrument-type-level data such as data rate and power consumption.
+The logic for selecting resource values follows a hierarchical priority.
+If the segment instance belongs to a group, the resource definitions at the segment or instance level are ignored, and the group-level resource information is used.
+Else, if the segment instance defines its own resources, the segment-level resource definitions are ignored, and the instance-level resources are used.
+The segment-level resource definitions are used otherwise.
+
+Information provided at the instrument level takes the highest priority and overrides any data given at the instrument-type level for the same instrument type.
+The final information at the instrument-type level is computed by combining the resources from all instruments belonging to that type.
+This mixing process ensures that specifying an attribute for one particular instrument does not overwrite or interfere with attributes at the instrument-type level for other instrument types.
+
+
+SHT provides Simphony exclusively with instantaneous resource magnitudes, specifically data rates and power consumption values.
+For each resource category and type, Simphony aggregates all relevant resource entries, 
+converts these entries into instantaneous rates, and computes the total resource rate by summing their contributions. 
+When the resource data originates from a group, the aggregated value is normalized by the total group duration, 
+which is the sum of the durations of all group members. If the resource comes from a segment instance or segment definition, 
+the value is normalized by the duration of that specific instance. Output files for data rate, data volume and accumulated data volume
+are created by target, instrument type and instrument.
+
+
+
