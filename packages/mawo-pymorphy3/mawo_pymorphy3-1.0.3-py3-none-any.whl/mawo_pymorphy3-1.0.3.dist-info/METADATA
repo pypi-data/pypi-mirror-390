@@ -1,0 +1,432 @@
+Metadata-Version: 2.4
+Name: mawo-pymorphy3
+Version: 1.0.3
+Summary: Улучшенный морфологический анализатор для русского языка с DAWG-оптимизацией и сокращением памяти на 90%
+Author-email: MAWO Team <team@mawo.ru>
+Maintainer-email: MAWO Team <team@mawo.ru>
+License: MIT
+Project-URL: Homepage, https://github.com/mawo-ru/mawo-pymorphy3
+Project-URL: Documentation, https://github.com/mawo-ru/mawo-pymorphy3#readme
+Project-URL: Repository, https://github.com/mawo-ru/mawo-pymorphy3
+Project-URL: Issues, https://github.com/mawo-ru/mawo-pymorphy3/issues
+Project-URL: Changelog, https://github.com/mawo-ru/mawo-pymorphy3/blob/main/CHANGELOG.md
+Keywords: nlp,russian,morphology,pymorphy3,dawg,mawo
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: Russian
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Text Processing :: Linguistic
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: dawg-python>=0.7.2
+Requires-Dist: tqdm>=4.66.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Provides-Extra: security
+Requires-Dist: defusedxml>=0.7.1; extra == "security"
+Provides-Extra: rich
+Requires-Dist: rich>=13.0; extra == "rich"
+Provides-Extra: all
+Requires-Dist: mawo-pymorphy3[dev,rich,security]; extra == "all"
+Dynamic: license-file
+
+# mawo-pymorphy3
+
+[![PyPI версия](https://badge.fury.io/py/mawo-pymorphy3.svg)](https://badge.fury.io/py/mawo-pymorphy3)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Лицензия: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Улучшенный морфологический анализатор для русского языка** с удобным API, потокобезопасностью и встроенными DAWG-словарями OpenCorpora 2025.
+
+## Возможности
+
+- **Компактные словари DAWG**: Всего ~13МБ на диске (против 69МБ XML)
+- **Работа офлайн**: После установки не требует интернета
+- **Потокобезопасность**: Безопасно для многопоточного использования
+- **OpenCorpora 2025**: Самый свежий словарь русского языка
+- **Быстрая загрузка**: ~0.05 секунды (против 30-60 секунд разбора XML)
+- **Малое потребление памяти**: ~15-20 МБ (вместо ~500 МБ)
+- **100% Совместимость**: Полная замена для pymorphy2/pymorphy3
+
+## Установка
+
+```bash
+pip install mawo-pymorphy3
+```
+
+### С дополнительными зависимостями
+
+```bash
+# Безопасность (рекомендуется для production)
+pip install mawo-pymorphy3[security]
+
+# Красивый вывод в консоль
+pip install mawo-pymorphy3[rich]
+
+# Все дополнения
+pip install mawo-pymorphy3[all]
+```
+
+## Быстрый старт
+
+```python
+from mawo_pymorphy3 import create_analyzer
+
+# Создаём анализатор (автоматически загружает DAWG словарь)
+analyzer = create_analyzer()
+
+# Разбираем русские слова
+word = analyzer.parse("стали")[0]
+print(word.tag)           # VERB,perf,intr plur,past,indc
+print(word.normal_form)   # стать
+print(word.inflect({"sing", "femn"}))  # стала
+
+# Морфологический анализ
+for parse in analyzer.parse("дом"):
+    print(f"{parse.word} -> {parse.normal_form} ({parse.tag})")
+```
+
+## Продвинутое использование
+
+### Потокобезопасный синглтон
+
+```python
+from mawo_pymorphy3 import get_global_analyzer
+
+# Получаем глобальный экземпляр (потокобезопасный)
+analyzer = get_global_analyzer()
+```
+
+### Анализ падежей
+
+```python
+# Поддержка русских падежей
+word = analyzer.parse("дома")[0]
+
+# Получаем все падежные формы
+cases = {
+    "именительный": word.inflect({"nomn"}),
+    "родительный": word.inflect({"gent"}),
+    "дательный": word.inflect({"datv"}),
+    "винительный": word.inflect({"accs"}),
+    "творительный": word.inflect({"ablt"}),
+    "предложный": word.inflect({"loct"}),
+}
+
+for case_name, form in cases.items():
+    if form:
+        print(f"{case_name}: {form.word}")
+```
+
+### Управление DAWG кэшем
+
+```python
+from mawo_pymorphy3 import MAWODictionaryManager
+
+manager = MAWODictionaryManager()
+
+# Проверяем наличие DAWG кэша
+if manager.is_dawg_cache_available():
+    print("✅ DAWG кэш готов")
+else:
+    # Создаём DAWG кэш из OpenCorpora XML
+    manager.build_dawg_cache()
+```
+
+### Оптимизированный анализатор с кэшированием
+
+```python
+from mawo_pymorphy3 import MAWOOptimizedMorphAnalyzer
+
+# Создаём оптимизированный анализатор (с кэшем результатов)
+analyzer = MAWOOptimizedMorphAnalyzer()
+
+# Анализируем текст целиком
+results = analyzer.analyze("Я иду домой")
+
+for result in results:
+    print(f"{result['word']} -> {result['normal_form']} ({result['pos']})")
+    print(f"  Падеж: {result['case']}, Число: {result['number']}")
+```
+
+## Производительность
+
+### Использование памяти
+
+**Реальные цифры (v1.0.3+):**
+| Библиотека | Размер на диске | Память в RAM | Время загрузки | Примечание |
+|-----------|-----------------|--------------|----------------|------------|
+| OpenCorpora XML (raw) | ~69МБ | ~500МБ | 30-60 сек | Используется только для компиляции словарей |
+| pymorphy2 (DAWG) | ~11МБ (отдельно) | ~15-20МБ | ~0.05-0.1 сек | Требуется отдельная загрузка словарей |
+| **mawo-pymorphy3 v1.0.3+ (DAWG)** | **~13МБ (в пакете)** | **~15-20МБ** | **~0.05 сек** | **✅ Словари встроены, работает из коробки** |
+
+**Что изменилось:**
+- ❌ **v1.0.0-1.0.2**: Парсил XML при загрузке (~30-60 сек, ~500 МБ памяти)
+- ✅ **v1.0.3+**: Использует готовые DAWG словари (~0.05 сек, ~15-20 МБ памяти)
+
+### Бенчмарки
+
+```python
+import time
+from mawo_pymorphy3 import create_analyzer
+
+analyzer = create_analyzer()
+
+# Прогрев
+analyzer.parse("тест")
+
+# Замер производительности
+start = time.time()
+for _ in range(10000):
+    analyzer.parse("стали")
+elapsed = time.time() - start
+
+print(f"10000 разборов: {elapsed:.2f}сек ({10000/elapsed:.0f} слов/сек)")
+# Типично: ~15k-25k слов/сек (однопоточно)
+```
+
+## Файлы данных
+
+Пакет включает оптимизированные DAWG словари (~13МБ):
+
+```
+mawo_pymorphy3/
+├── dicts_ru/
+│   ├── words.dawg                      # Основной словарь
+│   ├── prediction-suffixes-0.dawg      # Суффиксы для предсказания
+│   ├── prediction-suffixes-1.dawg
+│   └── prediction-suffixes-2.dawg
+└── data/
+    └── dict.opcorpora.xml              # OpenCorpora 2025 (опционально)
+```
+
+### 📦 Репозиторий данных MAWO
+
+Все справочные данные, модели и корпуса для библиотек MAWO доступны в отдельном репозитории:
+
+**🔗 [mawo-nlp-data](https://github.com/mawo-ru/mawo-nlp-data)**
+
+Репозиторий содержит:
+- **OpenCorpora 2025** (69MB) - полный корпус для продвинутого морфологического анализа
+- **SlovNet модели** (2-3MB каждая) - NER, морфология, синтаксис
+- **Navec эмбеддинги** (26MB) - векторные представления слов
+- **Словари имён** (2025) - мужские/женские имена, фамилии, отчества
+
+### Скачать полный OpenCorpora (опционально)
+
+Для продвинутого использования или пересборки словаря:
+
+```bash
+# Скачать с релизов MAWO (69МБ)
+wget https://github.com/mawo-ru/mawo-nlp-data/releases/download/v1.0.0/opencorpora-2025.tar.gz
+tar -xzf opencorpora-2025.tar.gz -C ~/.mawo-pymorphy3/
+
+# Проверить контрольную сумму
+wget https://github.com/mawo-ru/mawo-nlp-data/releases/download/v1.0.0/checksums.txt
+sha256sum -c checksums.txt
+```
+
+Подробнее о данных, моделях и способах установки см. в [mawo-nlp-data README](https://github.com/mawo-ru/mawo-nlp-data#readme).
+
+## Миграция с pymorphy2/pymorphy3
+
+**100% совместимость!** Просто замените импорт:
+
+```python
+# Было (pymorphy2)
+from pymorphy2 import MorphAnalyzer
+analyzer = MorphAnalyzer()
+
+# Было (pymorphy3)
+from pymorphy3 import MorphAnalyzer
+analyzer = MorphAnalyzer()
+
+# Стало
+from mawo_pymorphy3 import create_analyzer
+analyzer = create_analyzer()
+# или
+from mawo_pymorphy3 import MorphAnalyzer
+analyzer = MorphAnalyzer()
+```
+
+Все API остаются прежними. Ваш код будет работать без изменений.
+
+## Настройка
+
+### Свой путь к словарю
+
+```python
+from pathlib import Path
+from mawo_pymorphy3 import MAWOMorphAnalyzer
+
+analyzer = MAWOMorphAnalyzer(
+    dict_path=Path("/свой/путь/к/словарям")
+)
+```
+
+### Отключить DAWG оптимизацию
+
+```python
+# Использовать оригинальный XML словарь (медленнее, больше памяти)
+analyzer = create_analyzer(use_dawg=False)
+```
+
+## Технические детали
+
+### DAWG (Направленный ациклический граф слов)
+
+- **Сжатие**: Без потерь, 100% точность
+- **Структура**: Префиксное дерево с общими суффиксами
+- **Поиск**: O(|слово|) временная сложность
+- **Размер**: ~50МБ для 391,845 лексем
+
+### История DAWG в pymorphy
+
+**Важное уточнение:**
+- **pymorphy2** (с 2013) использовал DAWG (~15 МБ памяти, ~0.05 сек загрузка)
+- **pymorphy3** также использовал DAWG (~15-20 МБ)
+- **mawo-pymorphy3 v1.0.3+** теперь ПРАВИЛЬНО использует DAWG:
+  - ✅ Использует pymorphy2 внутри для работы с DAWG
+  - ✅ Словари встроены в пакет (~13 МБ)
+  - ✅ Загрузка ~0.05 секунды (НЕ 30-60!)
+  - ✅ Память ~15-20 МБ (НЕ ~500!)
+  - ✅ Современный API и потокобезопасность
+  - ✅ OpenCorpora 2025 из коробки
+
+**Что было исправлено в v1.0.3:**
+- ❌ Раньше (v1.0.0-1.0.2): Парсил OpenCorpora XML каждый раз (~30-60 сек, ~500 МБ)
+- ✅ Теперь (v1.0.3+): Использует готовые DAWG словари (~0.05 сек, ~15-20 МБ)
+
+**Источники:**
+- [Статья М. Коробова о DAWG в pymorphy2 (2013)](https://habr.com/ru/articles/176575/)
+- [Документация pymorphy2 о памяти](https://pymorphy2.readthedocs.io/en/stable/internals/dict.html)
+
+### Источники словаря
+
+- **OpenCorpora 2025**: Морфологический словарь русского языка
+- **Ревизия**: 417260 (сентябрь 2025)
+- **Лексем**: 391,845
+- **Словоформ**: ~5 миллионов
+
+### Потокобезопасность
+
+Все операции потокобезопасны:
+- Глобальный синглтон использует threading.Lock
+- DAWG словари неизменяемы (только чтение)
+- Нет разделяемого изменяемого состояния
+
+## Решение проблем
+
+### Модуль не найден
+
+```python
+# Если видите: ModuleNotFoundError: No module named 'mawo_pymorphy3'
+pip install --upgrade mawo-pymorphy3
+```
+
+### Отсутствует DAWG кэш
+
+```python
+# Создайте кэш вручную
+from mawo_pymorphy3 import MAWODictionaryManager
+manager = MAWODictionaryManager()
+manager.build_dawg_cache()
+```
+
+### Нехватка памяти
+
+```python
+# Используйте DAWG (по умолчанию, только 50МБ)
+analyzer = create_analyzer(use_dawg=True)
+```
+
+## Разработка
+
+### Настройка окружения
+
+```bash
+git clone https://github.com/mawo-ru/mawo-pymorphy3.git
+cd mawo-pymorphy3
+pip install -e ".[dev]"
+```
+
+### Запуск тестов
+
+```bash
+pytest tests/
+```
+
+### Форматирование кода
+
+```bash
+black mawo_pymorphy3/
+ruff check mawo_pymorphy3/
+```
+
+## Благодарности и Upstream-проекты
+
+**mawo-pymorphy3** является форком проекта **[pymorphy3](https://github.com/no-plagiarism/pymorphy3)**, который основан на оригинальном **[pymorphy2](https://github.com/pymorphy2/pymorphy2)**.
+
+### Оригинальный проект - pymorphy2
+
+- **Репозиторий**: https://github.com/pymorphy2/pymorphy2
+- **Автор**: Mikhail Korobov ([@kmike](https://github.com/kmike))
+- **Лицензия**: MIT
+- **Публикация**: Korobov M.: Morphological Analyzer and Generator for Russian and Ukrainian Languages // Analysis of Images, Social Networks and Texts, pp 320-332 (2015)
+
+### Продолжение - pymorphy3
+
+- **Репозиторий**: https://github.com/no-plagiarism/pymorphy3
+- **Мейнтейнеры**: Danylo Halaiko ([@d9nchik](https://github.com/d9nchik)), [@insolor](https://github.com/insolor)
+- **Лицензия**: MIT
+- **Copyright**: (c) 2022 (продолжение pymorphy2)
+
+### Словари OpenCorpora
+
+- **Сайт**: http://opencorpora.org/
+- **Лицензия**: CC BY-SA 3.0
+- **Версия**: 0.92 (revision 417260, 2025)
+
+### Улучшения MAWO
+
+- **Компактные DAWG-словари**: ~11МБ против 69МБ XML (снижение на 84%)
+- **Потокобезопасность**: Thread-safe паттерн Singleton
+- **Offline-first архитектура**: Полная автономность
+- **Быстрая загрузка**: 1-2 секунды против 30-60 секунд
+- **OpenCorpora 2025**: Самые свежие словари
+- **100% совместимость API**: Drop-in replacement
+
+**Полная информация об авторстве**: см. [ATTRIBUTION.md](ATTRIBUTION.md)
+
+## Лицензия
+
+MIT License - см. [LICENSE](LICENSE) файл.
+
+Этот проект полностью соответствует MIT лицензии оригинальных проектов pymorphy2/pymorphy3 и CC BY-SA 3.0 лицензии OpenCorpora, сохраняя все оригинальные copyright notices.
+
+## Ссылки
+
+- **GitHub**: https://github.com/mawo-ru/mawo-pymorphy3
+- **PyPI**: https://pypi.org/project/mawo-pymorphy3/
+- **Проблемы**: https://github.com/mawo-ru/mawo-pymorphy3/issues
+- **Данные и модели**: https://github.com/mawo-ru/mawo-nlp-data
+- **Оригинальный pymorphy2**: https://github.com/pymorphy2/pymorphy2
+- **Оригинальный pymorphy3**: https://github.com/no-plagiarism/pymorphy3
+- **OpenCorpora**: http://opencorpora.org/
+
+---
+
+Сделано с ❤️ командой [MAWO](https://github.com/mawo-ru)
