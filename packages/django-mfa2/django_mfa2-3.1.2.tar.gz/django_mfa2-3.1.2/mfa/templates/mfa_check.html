@@ -1,0 +1,13 @@
+{% load static %}
+{% block head %}
+    <link href="{% static 'mfa/css/mfa.css' %}" rel="stylesheet">
+    {{ request.session.mfa.verified|json_script:"request_session_mfa_verified" }}
+    {% url 'mfa_recheck' as mfa_recheck %}
+    {{ mfa_recheck|json_script:"mfa_recheck" }}
+    {% url 'toggle_key' as toggle_key %}
+    {{ toggle_key|json_script:"toggle_key" }}
+    <script type="application/javascript" src="{% static 'mfa/js/mfa_check.js' %}"></script>
+{% endblock %}
+{% block content %}
+    {% include "modal.html" %}
+{% endblock %}
