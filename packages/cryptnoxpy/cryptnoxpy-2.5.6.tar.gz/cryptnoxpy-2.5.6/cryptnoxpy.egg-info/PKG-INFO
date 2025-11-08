@@ -1,0 +1,420 @@
+Metadata-Version: 2.4
+Name: cryptnoxpy
+Version: 2.5.6
+Home-page: https://www.cryptnox.com/
+Author: Cryptnox SA
+Author-email: info@cryptnox.ch
+License: LGPLv3+
+Project-URL: Source Code, https://github.com/Cryptnox-Software/cryptnoxpy
+Keywords: python,cryptography
+Platform: any
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security :: Cryptography
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: <=3.13.7,>=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp
+Requires-Dist: cryptography
+Requires-Dist: pyscard
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license-file
+Dynamic: requires-dist
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7613b715-90f3-4855-890e-9bba08add646" height="200" width="200" />
+</p>
+
+<h3 align="center">CryptnoxPy - Python SDK for managing smartcard wallets</h3>
+
+<br/>
+ 
+[![PyPI version](https://img.shields.io/pypi/v/cryptnoxpy)](https://pypi.org/project/cryptnoxpy)
+[![Python versions](https://img.shields.io/pypi/pyversions/cryptnoxpy.svg)](https://pypi.org/project/cryptnoxpy/)
+[![Documentation status](https://img.shields.io/badge/docs-latest-blue)](https://cryptnox-software.github.io/cryptnoxpy)
+![License](https://img.shields.io/pypi/l/cryptnoxpy)
+
+`cryptnoxpy` is a Python 3 library used to communicate with the **Cryptnox Smartcard Applet**.
+It provides a high-level API to manage Cryptnox Hardware Wallet Cards, including initialization,
+secure channel setup, seed management, and cryptographic signing.
+
+---
+
+## Supported hardware
+
+- **Cryptnox Smartcards** 💳
+- **Standard PC/SC Smartcard Readers**: either USB NFC reader or a USB smartcard reader
+  → Readers are also available in the Cryptnox shop.
+
+Get your card and readers here: [shop.cryptnox.com](https://shop.cryptnox.com)
+
+---
+
+## Features
+
+- Establish communication with Cryptnox smartcards
+- Initialize and manage card lifecycle
+- Secure channel authentication and pairing
+- Seed generation and restoration (BIP32 / BIP39 compatibility)
+- ECDSA secp256k1 signing for blockchain applications
+
+---
+
+## Installation
+
+```bash
+pip install cryptnoxpy
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/Cryptnox-Software/cryptnoxpy.git
+pip install .
+```
+
+Requires:
+- Python 3.11–3.13
+- PC/SC smartcard service (`pcscd`) on Linux
+
+On Linux, ensure the PC/SC service is running:
+
+```bash
+sudo systemctl start pcscd
+sudo systemctl enable pcscd
+```
+
+---
+
+## Quick usage examples
+
+### 1. Connect to a Cryptnox Card
+
+```python
+import cryptnoxpy
+
+try:
+    connection = cryptnoxpy.Connection(0)
+    card = cryptnoxpy.factory.get_card(connection)
+except cryptnoxpy.ReaderException:
+    print("Reader not found at index")
+except cryptnoxpy.CryptnoxException as error:
+    # Issue loading the card
+    print(error)
+else:
+    # Card is loaded and can be used
+    print(f"Card serial number: {card.serial_number}")
+
+```
+
+### 2. Test PIN code
+
+In the PIN verification example below the card must be initialized before calling verify_pin.
+
+```python
+import cryptnoxpy
+
+# Connect to the Cryptnox card first
+try:
+    connection = cryptnoxpy.Connection(0)  # Connect to card at index 0
+    card = cryptnoxpy.factory.get_card(connection)
+except cryptnoxpy.ReaderException:
+    print("Reader not found at index")
+except cryptnoxpy.CryptnoxException as error:
+    print(f"Error loading card: {error}")
+else:
+    # Once connected, you can verify the PIN
+    pin_to_test = "1234"  # Example PIN
+    try:
+        card.verify_pin(pin_to_test)
+    except cryptnoxpy.PinException:
+        print("Invalid PIN code.")
+    except cryptnoxpy.DataValidationException:
+        print("Invalid PIN length or PIN authentication disabled.")
+    except cryptnoxpy.SoftLock:
+        print("Card is locked. Please power cycle the card.")
+    else:
+        print("PIN verified successfully. Card is ready for operations.")
+```
+
+### 3. Generate a new seed
+
+In the example below the card must be init before generating a seed.
+
+```python
+import binascii
+import cryptnoxpy
+
+PIN = "1234"  # or "" if the card was opened via challenge-response
+
+def main():
+    try:
+        connection = cryptnoxpy.Connection(0)
+        card = cryptnoxpy.factory.get_card(connection)
+    except cryptnoxpy.ReaderException:
+        print("Reader not found at index")
+        return
+    except cryptnoxpy.CryptnoxException as err:
+        print(f"Error loading card: {err}")
+        return
+
+    try:
+        seed_uid = card.generate_seed(PIN)
+    except cryptnoxpy.KeyAlreadyGenerated:
+        print("A seed is already generated on this card.")
+    except cryptnoxpy.KeyGenerationException as err:
+        print(f"Failed to generate seed: {err}")
+    else:
+        # seed_uid is of type bytes: display in hex for readability
+        print("Seed (primary node m) UID:", binascii.hexlify(seed_uid).decode())
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Documentation
+
+📚 Full API reference: https://cryptnox-software.github.io/cryptnoxpro
+
+---
+
+## License
+
+- This library is available under **LGPL-3.0+**.  
+- For commercial licensing options, contact: **info@cryptnox.ch**
+
+=========
+Changelog
+=========
+
+All notable changes to this project will be documented in this file.
+
+The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_\ ,
+and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
+
+`Unreleased <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.3.0...HEAD>`_
+-------------------------------------------------------------------------------------
+
+`2.4.0 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.3.0...2.4.0>`_ - 2023-01-31
+-----------------------------------------------------------------------------------------------
+
+Changed
+^^^^^^^
+
+- Remote connection message format, not compatible with previous version
+
+`2.3.0 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.2.1...2.3.0>`_ - 2022-11-28
+-----------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+- Ability to write and read custom bytes from select command
+
+`2.2.1 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.2.0...2.2.1>`_ - 2022-07-14
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+- Installation for Python 3.10
+
+`2.2.0 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.1.1...2.2.0>`_ - 2022-07-13
+-----------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+- Support for Python 3.10
+
+Removed
+^^^^^^^
+
+- Support for Python 3.6
+
+Fixed
+^^^^^
+
+- `get_public_key` raises an unhandled exception when asking for current key with a derivation path
+
+`2.1.1 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.1.0...2.1.1>`_ - 2022-06-13
+-----------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+- Add optional "hexed" parameter in get_public_key of cards
+
+`2.1.0 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.0.3...v2.1.0>`_ - 2022-06-01
+-----------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+- Add option for cards from remote connection
+
+`2.0.3 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.0.2...v2.0.3>`_ - 2022-03-14
+-----------------------------------------------------------------------------------------------
+
+Changed
+^^^^^^^
+
+- Installation instructions added missing instructions
+
+Fixed
+^^^^^
+
+- `generate_seed` command allowed without previously verifying PIN code
+
+
+`2.0.2 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.0.1...v2.0.2>`_ - 2022-03-14
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+- `unblock_pin` command shows "PIN code wasn't authorized" when card is not locked
+
+`2.0.1 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v2.0.0...v2.0.1>`_ - 2022-01-03
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+- Printing debug data during requests call for certificates
+
+`2.0.0 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.6...v2.0.0>`_ - 2022-01-03
+-----------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+- New cad type, NFT, with limited functionality intended for keeping one NFT
+- Method for checking private key validity
+
+Changed
+^^^^^^^
+
+- User data read and write property to list
+- pyscard on windows fixed to version 2.0.1, in pipenv all OSes.
+
+`1.1.6 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.5...v1.1.6>`_ - 2021-11-03
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+* Debug parameter not passed when creating card class
+
+`1.1.5 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.4...v1.1.5>`_ - 2021-10-29
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+* Genuineness check made more resilient to exceptions
+
+`1.1.4 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.3...v1.1.4>`_ - 2021-10-21
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+* Opening secure channel with G0 card throws exception
+
+`1.1.3 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.2...v1.1.3>`_ - 2021-10-20
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+* sign operation throws error if PIN code is not provided when user key is used for authentication.
+
+`1.1.2 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.1...v1.1.2>`_ - 2021-10-07
+-----------------------------------------------------------------------------------------------
+
+Fixed
+^^^^^
+
+* Handling of error response from the card for not authenticated
+
+`1.1.1 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.1.0...v1.1.1>`_ - 2021-10-06
+-----------------------------------------------------------------------------------------------
+
+Changed
+^^^^^^^
+
+* User data size increased to 3600 bytes
+
+Fixed
+^^^^^
+
+* Set PIN-less path didn't convert input path to correct values for card
+* Setting PIN-less path and PIN authentication doesn't set flags for indication
+* Sign method doesn't fill up given PIN code with 0s up to 9 characters
+
+`1.1.0 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.0.4...v1.1.0>`_ - 2021-09-24
+-----------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+* Origin property for indicating if the card is original or not or check can't be done.
+
+Changed
+^^^^^^^
+
+* PyScard updated to 2.0.2
+
+Fixed
+^^^^^
+
+* When card is not initialized seed_source property throws exception. Return `SeedSource.NO_SEED` instead
+* When seed is generated in the card the flag for it stays the same
+* Operation unlock_pin doesn't raise exception when card is not locked
+
+`1.0.4 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.0.3...v1.0.4>`_ - 2021-09-09
+-----------------------------------------------------------------------------------------------
+
+Changed
+^^^^^^^
+
+* Improvements in setup
+
+`1.0.3 <https://github.com/Cryptnox-Software/cryptnoxpy/compare/v1.0.0...v1.0.3>`_ - 2021-09-07
+-----------------------------------------------------------------------------------------------
+
+Changed
+^^^^^^^
+
+* Documentation changed to rst
+* Version number stored in the module instead of getting it from pbr
+
+Removed
+^^^^^^^
+
+* PBR dependency
+
+Fixed
+^^^^^
+
+* PyPI doesn't install dependencies
+
+`1.0.0 <https://github.com/Cryptnox-Software/cryptnoxpy/releases/tag/v1.0.0>`_ - 2021-08-20
+-------------------------------------------------------------------------------------------
+
+Added
+^^^^^
+
+* Card operations
+* Pipfile and requirements for setting up environment
+* Setup file to install the library
