@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio-metatag"
+version = "0.1.4"
+description = "Clean metadata and tag audio files (MP3, FLAC, Ogg Vorbis)"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Corey Goldberg"}]
+maintainers = [{name = "Corey Goldberg"}]
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = [
+    "audio", "cleaner", "cli", "flac", "metadata", "mp3", "music",
+    "ogg-vorbis", "tags", "tagging"
+]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "mutagen==1.47.0",
+]
+
+[project.scripts]
+audio_metatag = "audio_metatag:main"
+
+[project.urls]
+homepage = "https://github.com/cgoldberg/audio-metatag"
+source = "https://github.com/cgoldberg/audio-metatag"
+download = "https://pypi.org/project/audio-metatag"
+
+[dependency-groups]
+dev = [
+    "tox",
+]
+lint = [
+    "black",
+    "refurb",
+    "ruff",
+]
+test = [
+    "pytest",
+]
+validate = [
+    "packaging",
+    "validate-pyproject",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.pytest.ini_options]
+addopts = "-vv" # extra verbose
+tmp_path_retention_policy = "none"
+
+[tool.black]
+line-length = 120
+target-version = [
+    "py312", "py313"
+]
+
+[tool.ruff]
+line-length = 120
+respect-gitignore = true
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "D", "E", "F", "I", "PT", "RUF", "TID", "W"
+]
+extend-ignore = [
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "D203",
+    "D205", "D211", "D213", "D400", "D401", "RUF012"
+]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 120
+
+[tool.refurb]
+python_version = "3.12"
+enable_all = true
+disable = [
+    "FURB107", "FURB173", "FURB183", "FURB184"
+]
