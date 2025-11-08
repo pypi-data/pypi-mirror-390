@@ -1,0 +1,33 @@
+{
+    "name": "KPI Data Hub",
+    "version": "16.0.1.1.1",
+    "summary": """A module to store and manage KPI data for reporting.""",
+    "author": "nicolasramos",
+    "website": "",
+    "category": "Reporting",
+    "depends": ["base", "web", "mis_builder", "mail", "date_range"],
+    "data": [
+        "security/ir.model.access.csv",
+        "data/kpi_data_record_sequence.xml",
+        "wizards/kpi_data_hub_warning_views.xml",
+        "wizards/kpi_template_version_update_wizard_views.xml",
+        "wizards/kpi_record_create_wizard_views.xml",
+        "views/kpi_entity_views.xml",
+        "views/kpi_data_template_views.xml",
+        "views/kpi_data_record_views.xml",
+        "views/mis_integration_views.xml",
+        "views/kpi_menus.xml",
+    ],
+    "demo": [
+        "demo/comprehensive_demo.xml",
+        "demo/mis_reports_demo.xml",
+        "demo/hybrid_mis_report_demo.xml",
+    ],
+    "assets": {
+        "web.assets_backend": ["kpi_data_hub/static/src/**/*"],
+    },
+    "application": True,
+    "installable": True,
+    "auto_install": False,
+    "license": "LGPL-3",
+}

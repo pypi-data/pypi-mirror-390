@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- KPI Template Version Update Wizard Form View -->
+    <record id="kpi_template_version_update_wizard_form" model="ir.ui.view">
+        <field name="name">kpi.template.version.update.wizard.form</field>
+        <field name="model">kpi_template_version_update_wizard</field>
+        <field name="arch" type="xml">
+            <form string="Update Template Versions">
+                <div class="alert alert-info" role="alert">
+                    <p><strong
+                        >Template Version Update:</strong> This wizard will synchronize KPI records with the latest version of their template. New KPI items will be added and obsolete items will be removed.</p>
+                </div>
+
+                <group>
+                    <group string="Template Information">
+                        <field name="template_id" readonly="1" />
+                        <field name="total_records" readonly="1" widget="statinfo" />
+                        <field name="outdated_records" readonly="1" widget="statinfo" />
+                    </group>
+
+                    <group string="Update Options">
+                        <field name="update_option" />
+                        <field
+                            name="entity_id"
+                            attrs="{'required': [('update_option', '=', 'entity')], 'invisible': [('update_option', '!=', 'entity')]}"
+                        />
+                    </group>
+                </group>
+
+                <group
+                    string="Records to Update"
+                    attrs="{'invisible': [('update_option', '!=', 'selected')]}"
+                >
+                    <field name="record_ids" readonly="1" nolabel="1">
+                        <tree decoration-danger="is_outdated == True">
+                            <field name="name" />
+                            <field name="entity_id" />
+                            <field name="date_from" />
+                            <field name="date_to" />
+                            <field name="template_version" />
+                            <field name="is_outdated" />
+                        </tree>
+                    </field>
+                </group>
+
+                <group
+                    string="Results"
+                    attrs="{'invisible': [('updated_count', '=', 0), ('skipped_count', '=', 0), ('error_count', '=', 0)]}"
+                >
+                    <field name="updated_count" readonly="1" widget="statinfo" />
+                    <field name="skipped_count" readonly="1" widget="statinfo" />
+                    <field name="error_count" readonly="1" widget="statinfo" />
+                </group>
+
+                <footer>
+                    <button
+                        name="action_update_versions"
+                        string="Update Versions"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-refresh"
+                        confirm="This operation will update the selected records to the latest template version. This action cannot be undone. Do you want to continue?"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for the wizard -->
+    <record
+        id="action_kpi_template_version_update_wizard"
+        model="ir.actions.act_window"
+    >
+        <field name="name">Update Template Versions</field>
+        <field name="res_model">kpi_template_version_update_wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'active_ids': active_ids}</field>
+    </record>
+</odoo>

@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <!-- ======================================== -->
+        <!-- CONFIGURACIÓN COMPLETA DE DEMOSTRACIÓN -->
+        <!-- ======================================== -->
+
+        <!-- ======================================== -->
+        <!-- 1. CONFIGURACIÓN DE COMPAÑÍAS -->
+        <!-- ======================================== -->
+
+        <!-- Compañía Principal (ya existe en Odoo) -->
+        <!-- base.main_company -->
+
+        <!-- Compañía Demo para Multi-compañía -->
+        <record id="demo_company_b" model="res.company">
+            <field name="name">Empresa Demo B</field>
+            <field name="currency_id" ref="base.EUR" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 2. CONFIGURACIÓN DE USUARIOS -->
+        <!-- ======================================== -->
+
+        <!-- Usuario Demo para KPI Hub -->
+        <record id="demo_user_kpi" model="res.users">
+            <field name="name">Usuario Demo KPI</field>
+            <field name="login">demo.kpi@example.com</field>
+            <field name="email">demo.kpi@example.com</field>
+            <field name="company_id" ref="base.main_company" />
+            <field
+                name="groups_id"
+                eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('base.group_system')
+            ])]"
+            />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 3. CONFIGURACIÓN DE RANGOS DE FECHA -->
+        <!-- ======================================== -->
+
+        <!-- Tipo de Rango de Fecha -->
+        <record id="demo_date_range_type" model="date.range.type">
+            <field name="name">Rangos de Fecha Demo</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- Rangos de Fecha para Demostración -->
+        <record id="demo_date_range_2023" model="date.range">
+            <field name="name">2023</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2023-01-01</field>
+            <field name="date_end">2023-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_2024" model="date.range">
+            <field name="name">2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-01-01</field>
+            <field name="date_end">2024-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_2025" model="date.range">
+            <field name="name">2025</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2025-01-01</field>
+            <field name="date_end">2025-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- Rangos Trimestrales 2024 -->
+        <record id="demo_date_range_q1_2024" model="date.range">
+            <field name="name">Q1_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-01-01</field>
+            <field name="date_end">2024-03-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_q2_2024" model="date.range">
+            <field name="name">Q2_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-04-01</field>
+            <field name="date_end">2024-06-30</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_q3_2024" model="date.range">
+            <field name="name">Q3_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-07-01</field>
+            <field name="date_end">2024-09-30</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_q4_2024" model="date.range">
+            <field name="name">Q4_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-10-01</field>
+            <field name="date_end">2024-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- Rangos Mensuales 2024 -->
+        <record id="demo_date_range_jan_2024" model="date.range">
+            <field name="name">ENERO_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-01-01</field>
+            <field name="date_end">2024-01-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_feb_2024" model="date.range">
+            <field name="name">FEBRERO_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-02-01</field>
+            <field name="date_end">2024-02-29</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <record id="demo_date_range_mar_2024" model="date.range">
+            <field name="name">MARZO_2024</field>
+            <field name="type_id" ref="demo_date_range_type" />
+            <field name="date_start">2024-03-01</field>
+            <field name="date_end">2024-03-31</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 4. CONFIGURACIÓN DE ENTIDADES -->
+        <!-- ======================================== -->
+
+        <record id="demo_entity_main" model="kpi_hub.entity">
+            <field name="name">Empresa Principal Demo</field>
+            <field
+                name="description"
+            >Empresa principal para demostración de la integración MIS Builder</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_entity_subsidiary" model="kpi_hub.entity">
+            <field name="name">Subsidiaria Demo</field>
+            <field
+                name="description"
+            >Subsidiaria para demostración multi-compañía</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_entity_department" model="kpi_hub.entity">
+            <field name="name">Departamento Demo</field>
+            <field
+                name="description"
+            >Departamento para demostración de KPIs departamentales</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 5. CONFIGURACIÓN DE PLANTILLAS -->
+        <!-- ======================================== -->
+
+        <!-- Plantilla Principal de Performance -->
+        <record id="demo_template_main_performance" model="kpi_hub.template">
+            <field name="name">📊 Performance Principal - Demo</field>
+            <field
+                name="description"
+            >Plantilla principal para demostración de la integración MIS Builder</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Plantilla de Ventas -->
+        <record id="demo_template_sales" model="kpi_hub.template">
+            <field name="name">🛒 Ventas y Marketing - Demo</field>
+            <field name="description">Plantilla para KPIs de ventas y marketing</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Plantilla de Operaciones -->
+        <record id="demo_template_operations" model="kpi_hub.template">
+            <field name="name">⚙️ Operaciones - Demo</field>
+            <field
+                name="description"
+            >Plantilla para KPIs operativos y de productividad</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Plantilla de Recursos Humanos -->
+        <record id="demo_template_hr" model="kpi_hub.template">
+            <field name="name">👥 Recursos Humanos - Demo</field>
+            <field name="description">Plantilla para KPIs de recursos humanos</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 6. CONFIGURACIÓN DE KPIs -->
+        <!-- ======================================== -->
+
+        <!-- KPIs de Performance Principal -->
+        <record id="demo_kpi_revenue" model="kpi_hub.item.template">
+            <field name="name">Ingresos Operativos</field>
+            <field name="code">REVENUE</field>
+            <field name="template_id" ref="demo_template_main_performance" />
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">10</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_kpi_costs" model="kpi_hub.item.template">
+            <field name="name">Costos Operativos</field>
+            <field name="code">COSTS</field>
+            <field name="template_id" ref="demo_template_main_performance" />
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">20</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_kpi_profit" model="kpi_hub.item.template">
+            <field name="name">Beneficio Neto</field>
+            <field name="code">PROFIT</field>
+            <field name="template_id" ref="demo_template_main_performance" />
+            <field name="calculation_type">formula</field>
+            <field name="formula">REVENUE - COSTS</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">30</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_kpi_margin" model="kpi_hub.item.template">
+            <field name="name">Margen de Beneficio</field>
+            <field name="code">MARGIN</field>
+            <field name="template_id" ref="demo_template_main_performance" />
+            <field name="calculation_type">formula</field>
+            <field name="formula">(PROFIT / REVENUE) * 100</field>
+            <field name="data_type">percentage</field>
+            <field name="suffix">%</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">40</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- KPIs de Ventas -->
+        <record id="demo_kpi_sales_q1" model="kpi_hub.item.template">
+            <field name="name">Ventas Q1</field>
+            <field name="code">SALES_Q1</field>
+            <field name="template_id" ref="demo_template_sales" />
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">10</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_kpi_sales_q2" model="kpi_hub.item.template">
+            <field name="name">Ventas Q2</field>
+            <field name="code">SALES_Q2</field>
+            <field name="template_id" ref="demo_template_sales" />
+            <field name="calculation_type">data</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">20</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_kpi_total_sales" model="kpi_hub.item.template">
+            <field name="name">Ventas Totales</field>
+            <field name="code">TOTAL_SALES</field>
+            <field name="template_id" ref="demo_template_sales" />
+            <field name="calculation_type">formula</field>
+            <field name="formula">SALES_Q1 + SALES_Q2</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">30</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- KPIs de Operaciones -->
+        <record id="demo_kpi_employees" model="kpi_hub.item.template">
+            <field name="name">Número de Empleados</field>
+            <field name="code">EMPLOYEES</field>
+            <field name="template_id" ref="demo_template_operations" />
+            <field name="calculation_type">data</field>
+            <field name="data_type">integer</field>
+            <field name="decimal_places">0</field>
+            <field name="sequence">10</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_kpi_productivity" model="kpi_hub.item.template">
+            <field name="name">Productividad por Empleado</field>
+            <field name="code">PRODUCTIVITY</field>
+            <field name="template_id" ref="demo_template_operations" />
+            <field name="calculation_type">formula</field>
+            <field name="formula">REVENUE / EMPLOYEES</field>
+            <field name="data_type">currency</field>
+            <field name="prefix">€</field>
+            <field name="decimal_places">2</field>
+            <field name="sequence">20</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 7. CONFIGURACIÓN DE REGISTROS -->
+        <!-- ======================================== -->
+
+        <!-- Registro Principal 2024 -->
+        <record id="demo_record_main_2024" model="kpi_hub.record">
+            <field name="name">Performance Principal 2024 - Demo</field>
+            <field name="entity_id" ref="demo_entity_main" />
+            <field name="template_id" ref="demo_template_main_performance" />
+            <field name="date_range_id" ref="demo_date_range_2024" />
+            <field name="date_from">2024-01-01</field>
+            <field name="date_to">2024-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+            <field name="active">True</field>
+        </record>
+
+        <!-- Registro de Ventas 2024 -->
+        <record id="demo_record_sales_2024" model="kpi_hub.record">
+            <field name="name">Ventas 2024 - Demo</field>
+            <field name="entity_id" ref="demo_entity_main" />
+            <field name="template_id" ref="demo_template_sales" />
+            <field name="date_range_id" ref="demo_date_range_2024" />
+            <field name="date_from">2024-01-01</field>
+            <field name="date_to">2024-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+            <field name="active">True</field>
+        </record>
+
+        <!-- Registro de Operaciones 2024 -->
+        <record id="demo_record_operations_2024" model="kpi_hub.record">
+            <field name="name">Operaciones 2024 - Demo</field>
+            <field name="entity_id" ref="demo_entity_main" />
+            <field name="template_id" ref="demo_template_operations" />
+            <field name="date_range_id" ref="demo_date_range_2024" />
+            <field name="date_from">2024-01-01</field>
+            <field name="date_to">2024-12-31</field>
+            <field name="company_id" ref="base.main_company" />
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 8. CONFIGURACIÓN DE VALORES -->
+        <!-- ======================================== -->
+
+        <!-- Valores Performance Principal 2024 -->
+        <record id="demo_value_revenue_2024" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_record_main_2024" />
+            <field name="item_template_id" ref="demo_kpi_revenue" />
+            <field name="value">1000000.00</field>
+        </record>
+
+        <record id="demo_value_costs_2024" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_record_main_2024" />
+            <field name="item_template_id" ref="demo_kpi_costs" />
+            <field name="value">700000.00</field>
+        </record>
+
+        <!-- Valores Ventas 2024 -->
+        <record id="demo_value_sales_q1_2024" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_record_sales_2024" />
+            <field name="item_template_id" ref="demo_kpi_sales_q1" />
+            <field name="value">450000.00</field>
+        </record>
+
+        <record id="demo_value_sales_q2_2024" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_record_sales_2024" />
+            <field name="item_template_id" ref="demo_kpi_sales_q2" />
+            <field name="value">550000.00</field>
+        </record>
+
+        <!-- Valores Operaciones 2024 -->
+        <record id="demo_value_employees_2024" model="kpi_hub.item.value">
+            <field name="record_id" ref="demo_record_operations_2024" />
+            <field name="item_template_id" ref="demo_kpi_employees" />
+            <field name="value">50</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 9. CONFIGURACIÓN DE FUENTES AEP -->
+        <!-- ======================================== -->
+
+        <record id="demo_aep_main_performance" model="kpi_hub.aep.source">
+            <field name="name">Fuente AEP - Performance Principal</field>
+            <field name="template_id" ref="demo_template_main_performance" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="expression_pattern">kpi</field>
+            <field name="auto_map_items">True</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_aep_sales" model="kpi_hub.aep.source">
+            <field name="name">Fuente AEP - Ventas</field>
+            <field name="template_id" ref="demo_template_sales" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="expression_pattern">kpi</field>
+            <field name="auto_map_items">True</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_aep_operations" model="kpi_hub.aep.source">
+            <field name="name">Fuente AEP - Operaciones</field>
+            <field name="template_id" ref="demo_template_operations" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="expression_pattern">kpi</field>
+            <field name="auto_map_items">True</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 10. CONFIGURACIÓN DE INTEGRACIONES MIS -->
+        <!-- ======================================== -->
+
+        <record id="demo_mis_main_performance" model="kpi_hub.mis.report">
+            <field name="name">Integración MIS - Performance Principal</field>
+            <field name="kpi_hub_template_id" ref="demo_template_main_performance" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="auto_map_items">True</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_mis_sales" model="kpi_hub.mis.report">
+            <field name="name">Integración MIS - Ventas</field>
+            <field name="kpi_hub_template_id" ref="demo_template_sales" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="auto_map_items">True</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_mis_operations" model="kpi_hub.mis.report">
+            <field name="name">Integración MIS - Operaciones</field>
+            <field name="kpi_hub_template_id" ref="demo_template_operations" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="auto_map_items">True</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 11. CONFIGURACIÓN DE DATOS KPI MIS -->
+        <!-- ======================================== -->
+
+        <record id="demo_mis_kpi_revenue" model="kpi_hub.mis.kpi.data">
+            <field name="name">KPI MIS - REVENUE 2024</field>
+            <field name="kpi_hub_record_id" ref="demo_record_main_2024" />
+            <field name="kpi_hub_item_code">REVENUE</field>
+            <field name="date_from">2024-01-01</field>
+            <field name="date_to">2024-12-31</field>
+            <field name="amount">1000000.00</field>
+            <field name="company_id" ref="base.main_company" />
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_mis_kpi_profit" model="kpi_hub.mis.kpi.data">
+            <field name="name">KPI MIS - PROFIT 2024</field>
+            <field name="kpi_hub_record_id" ref="demo_record_main_2024" />
+            <field name="kpi_hub_item_code">PROFIT</field>
+            <field name="date_from">2024-01-01</field>
+            <field name="date_to">2024-12-31</field>
+            <field name="amount">300000.00</field>
+            <field name="company_id" ref="base.main_company" />
+            <field name="active">True</field>
+        </record>
+
+        <record id="demo_mis_kpi_margin" model="kpi_hub.mis.kpi.data">
+            <field name="name">KPI MIS - MARGIN 2024</field>
+            <field name="kpi_hub_record_id" ref="demo_record_main_2024" />
+            <field name="kpi_hub_item_code">MARGIN</field>
+            <field name="date_from">2024-01-01</field>
+            <field name="date_to">2024-12-31</field>
+            <field name="amount">30.00</field>
+            <field name="company_id" ref="base.main_company" />
+            <field name="active">True</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 12. CONFIGURACIÓN DE MAPPINGS -->
+        <!-- ======================================== -->
+
+        <record id="demo_mapping_revenue" model="kpi_hub.mis.item.mapping">
+            <field name="report_id" ref="demo_mis_main_performance" />
+            <field name="kpi_hub_item_id" ref="demo_kpi_revenue" />
+            <field name="mis_kpi_id">1</field>
+            <field name="multiplier">1.0</field>
+            <field name="offset">0.0</field>
+        </record>
+
+        <record id="demo_mapping_profit" model="kpi_hub.mis.item.mapping">
+            <field name="report_id" ref="demo_mis_main_performance" />
+            <field name="kpi_hub_item_id" ref="demo_kpi_profit" />
+            <field name="mis_kpi_id">2</field>
+            <field name="multiplier">1.0</field>
+            <field name="offset">0.0</field>
+        </record>
+
+        <record id="demo_mapping_margin" model="kpi_hub.mis.item.mapping">
+            <field name="report_id" ref="demo_mis_main_performance" />
+            <field name="kpi_hub_item_id" ref="demo_kpi_margin" />
+            <field name="mis_kpi_id">3</field>
+            <field name="multiplier">1.0</field>
+            <field name="offset">0.0</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- FIN DE CONFIGURACIÓN DE DEMOSTRACIÓN -->
+        <!-- ======================================== -->
+
+    </data>
+</odoo>

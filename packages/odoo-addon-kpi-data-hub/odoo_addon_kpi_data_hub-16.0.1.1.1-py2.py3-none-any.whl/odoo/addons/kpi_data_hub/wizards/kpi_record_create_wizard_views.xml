@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- KPI Record Create Wizard Form View -->
+    <record id="kpi_record_create_wizard_form" model="ir.ui.view">
+        <field name="name">kpi.record.create.wizard.form</field>
+        <field name="model">kpi_record_create_wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create New KPI Record">
+                <div class="alert alert-info" role="alert">
+                    <p><strong
+                        >Create KPI Record:</strong> Select an entity and template to create a new KPI data record. The record will be automatically populated with all KPI items from the selected template.</p>
+                </div>
+
+                <group>
+                    <group string="Record Information">
+                        <field name="entity_id" required="1" />
+                        <field name="template_id" required="1" />
+                        <field name="company_id" groups="base.group_multi_company" />
+                    </group>
+
+                    <group string="Period Information">
+                        <field name="date_range_id" />
+                        <label for="date_from" string="Period" />
+                        <div class="o_row">
+                            <field
+                                name="date_from"
+                                nolabel="1"
+                                attrs="{'readonly': [('date_range_id', '!=', False)]}"
+                            />
+                            <span>-</span>
+                            <field
+                                name="date_to"
+                                nolabel="1"
+                                attrs="{'readonly': [('date_range_id', '!=', False)]}"
+                            />
+                        </div>
+                    </group>
+                </group>
+
+                <footer>
+                    <button
+                        name="action_create_record"
+                        string="Create Record"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-plus"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action for the wizard -->
+    <record id="action_kpi_record_create_wizard" model="ir.actions.act_window">
+        <field name="name">Create KPI Record</field>
+        <field name="res_model">kpi_record_create_wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

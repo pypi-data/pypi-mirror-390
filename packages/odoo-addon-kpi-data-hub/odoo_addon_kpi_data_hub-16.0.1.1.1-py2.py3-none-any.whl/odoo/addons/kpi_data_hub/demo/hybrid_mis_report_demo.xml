@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <!-- ======================================== -->
+        <!-- REPORTE MIS HÍBRIDO: KPI HUB + CONTABILIDAD -->
+        <!-- Combina datos manuales de KPI Hub con datos contables automáticos -->
+        <!-- ======================================== -->
+
+        <!-- ======================================== -->
+        <!-- 1. ESTILOS PARA EL REPORTE HÍBRIDO -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_report_style_header" model="mis.report.style">
+            <field name="name">Hybrid - Header Style</field>
+            <field name="color">#1F4788</field>
+            <field name="background_color">#E8F0FE</field>
+            <field name="font_weight">bold</field>
+            <field name="font_size">large</field>
+            <field name="color_inherit" eval="False" />
+            <field name="background_color_inherit" eval="False" />
+            <field name="font_weight_inherit" eval="False" />
+            <field name="font_size_inherit" eval="False" />
+        </record>
+
+        <record id="hybrid_report_style_subheader" model="mis.report.style">
+            <field name="name">Hybrid - Subheader Style</field>
+            <field name="color">#000000</field>
+            <field name="background_color">#F5F5F5</field>
+            <field name="font_weight">bold</field>
+            <field name="font_size">medium</field>
+            <field name="indent_level">1</field>
+            <field name="color_inherit" eval="False" />
+            <field name="background_color_inherit" eval="False" />
+            <field name="font_weight_inherit" eval="False" />
+            <field name="font_size_inherit" eval="False" />
+            <field name="indent_level_inherit" eval="False" />
+        </record>
+
+        <record id="hybrid_report_style_data" model="mis.report.style">
+            <field name="name">Hybrid - Data Style</field>
+            <field name="color">#333333</field>
+            <field name="font_size">small</field>
+            <field name="indent_level">2</field>
+            <field name="color_inherit" eval="False" />
+            <field name="font_size_inherit" eval="False" />
+            <field name="indent_level_inherit" eval="False" />
+        </record>
+
+        <record id="hybrid_report_style_total" model="mis.report.style">
+            <field name="name">Hybrid - Total Style</field>
+            <field name="color">#FFFFFF</field>
+            <field name="background_color">#1F4788</field>
+            <field name="font_weight">bold</field>
+            <field name="font_size">medium</field>
+            <field name="color_inherit" eval="False" />
+            <field name="background_color_inherit" eval="False" />
+            <field name="font_weight_inherit" eval="False" />
+            <field name="font_size_inherit" eval="False" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 2. REPORTE MIS HÍBRIDO P&amp;L -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_pl_report" model="mis.report">
+            <field name="name">🔀 Hybrid P&amp;L Report (KPI Hub + Accounting)</field>
+            <field
+                name="description"
+            >Complete P&amp;L combining manual KPI Hub data with automated accounting data</field>
+            <field name="style_id" ref="hybrid_report_style_header" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 3. KPIs - SECCIÓN DE INGRESOS (KPI HUB) -->
+        <!-- ======================================== -->
+
+        <!-- Revenue from KPI Hub -->
+        <record id="hybrid_kpi_revenue" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">revenue</field>
+            <field name="description">📊 Total Revenue (KPI Hub)</field>
+            <field name="sequence">10</field>
+            <field name="style_id" ref="hybrid_report_style_header" />
+        </record>
+        <record id="hybrid_kpi_revenue_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_revenue" />
+            <field name="name">kpi('REVENUE')</field>
+        </record>
+
+        <record id="hybrid_kpi_sales" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">sales</field>
+            <field name="description">Sales Revenue (KPI Hub)</field>
+            <field name="sequence">11</field>
+            <field name="style_id" ref="hybrid_report_style_data" />
+        </record>
+        <record id="hybrid_kpi_sales_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_sales" />
+            <field name="name">kpi('SALES')</field>
+        </record>
+
+        <record id="hybrid_kpi_other_income" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">other_income</field>
+            <field name="description">Other Income (KPI Hub)</field>
+            <field name="sequence">12</field>
+            <field name="style_id" ref="hybrid_report_style_data" />
+        </record>
+        <record id="hybrid_kpi_other_income_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_other_income" />
+            <field name="name">kpi('OTHER_INCOME')</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 4. KPIs - COGS (KPI HUB) -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_kpi_cogs" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">cogs</field>
+            <field name="description">📦 Cost of Goods Sold (KPI Hub)</field>
+            <field name="sequence">20</field>
+            <field name="style_id" ref="hybrid_report_style_header" />
+        </record>
+        <record id="hybrid_kpi_cogs_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_cogs" />
+            <field name="name">kpi('COGS')</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 5. KPIs - GASTOS OPERATIVOS (CONTABILIDAD) -->
+        <!-- Aquí mezclamos: totales de KPI Hub con detalle de cuentas contables -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_kpi_opex_total" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">opex_total</field>
+            <field name="description">💼 Operating Expenses (KPI Hub Total)</field>
+            <field name="sequence">30</field>
+            <field name="style_id" ref="hybrid_report_style_header" />
+        </record>
+        <record id="hybrid_kpi_opex_total_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_opex_total" />
+            <field name="name">kpi('OPEX')</field>
+        </record>
+
+        <!-- Detalle de gastos desde contabilidad -->
+        <record id="hybrid_kpi_salaries_accounting" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">salaries_acc</field>
+            <field name="description">├─ Salaries (Accounting)</field>
+            <field name="sequence">31</field>
+            <field name="auto_expand_accounts">True</field>
+            <field
+                name="auto_expand_accounts_style_id"
+                ref="hybrid_report_style_data"
+            />
+            <field name="style_id" ref="hybrid_report_style_subheader" />
+        </record>
+        <record
+            id="hybrid_kpi_salaries_accounting_expr"
+            model="mis.report.kpi.expression"
+        >
+            <field name="kpi_id" ref="hybrid_kpi_salaries_accounting" />
+            <!-- Código de cuenta de gastos de personal - adaptar según plan contable -->
+            <field name="name">balp[640%]</field>
+        </record>
+
+        <record id="hybrid_kpi_rent_accounting" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">rent_acc</field>
+            <field name="description">├─ Rent &amp; Utilities (Accounting)</field>
+            <field name="sequence">32</field>
+            <field name="auto_expand_accounts">True</field>
+            <field
+                name="auto_expand_accounts_style_id"
+                ref="hybrid_report_style_data"
+            />
+            <field name="style_id" ref="hybrid_report_style_subheader" />
+        </record>
+        <record id="hybrid_kpi_rent_accounting_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_rent_accounting" />
+            <!-- Códigos de alquileres y servicios - adaptar según plan contable -->
+            <field name="name">balp[621%,628%]</field>
+        </record>
+
+        <record id="hybrid_kpi_marketing_accounting" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">marketing_acc</field>
+            <field name="description">└─ Marketing (Accounting)</field>
+            <field name="sequence">33</field>
+            <field name="auto_expand_accounts">True</field>
+            <field
+                name="auto_expand_accounts_style_id"
+                ref="hybrid_report_style_data"
+            />
+            <field name="style_id" ref="hybrid_report_style_subheader" />
+        </record>
+        <record
+            id="hybrid_kpi_marketing_accounting_expr"
+            model="mis.report.kpi.expression"
+        >
+            <field name="kpi_id" ref="hybrid_kpi_marketing_accounting" />
+            <!-- Códigos de publicidad y promoción - adaptar según plan contable -->
+            <field name="name">balp[627%]</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 6. KPIs - RESULTADOS CALCULADOS -->
+        <!-- Mezcla cálculos de KPI Hub con totales de contabilidad -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_kpi_gross_profit" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">gross_profit</field>
+            <field name="description">💰 Gross Profit (Calculated)</field>
+            <field name="sequence">40</field>
+            <field name="style_id" ref="hybrid_report_style_total" />
+        </record>
+        <record id="hybrid_kpi_gross_profit_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_gross_profit" />
+            <field name="name">revenue - cogs</field>
+        </record>
+
+        <record id="hybrid_kpi_operating_profit" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">operating_profit</field>
+            <field name="description">📈 Operating Profit (Calculated)</field>
+            <field name="sequence">50</field>
+            <field name="style_id" ref="hybrid_report_style_total" />
+        </record>
+        <record id="hybrid_kpi_operating_profit_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_operating_profit" />
+            <field name="name">gross_profit - opex_total</field>
+        </record>
+
+        <record id="hybrid_kpi_margin" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">margin</field>
+            <field name="description">📊 Profit Margin % (Calculated)</field>
+            <field name="sequence">60</field>
+            <field name="type">pct</field>
+            <field name="style_id" ref="hybrid_report_style_total" />
+        </record>
+        <record id="hybrid_kpi_margin_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_margin" />
+            <field name="name">operating_profit / revenue</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 7. KPIs - COMPARATIVA OPEX (KPI HUB VS CONTABILIDAD) -->
+        <!-- Esta sección demuestra la comparación entre ambas fuentes -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_kpi_opex_comparison_header" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">opex_comparison</field>
+            <field name="description">🔍 OpEx Comparison Section</field>
+            <field name="sequence">70</field>
+            <field name="style_id" ref="hybrid_report_style_header" />
+        </record>
+        <record
+            id="hybrid_kpi_opex_comparison_header_expr"
+            model="mis.report.kpi.expression"
+        >
+            <field name="kpi_id" ref="hybrid_kpi_opex_comparison_header" />
+            <field name="name">0</field>
+        </record>
+
+        <record id="hybrid_kpi_opex_from_kpi_hub" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">opex_kpi_hub</field>
+            <field name="description">├─ OpEx from KPI Hub (Manual)</field>
+            <field name="sequence">71</field>
+            <field name="style_id" ref="hybrid_report_style_subheader" />
+        </record>
+        <record
+            id="hybrid_kpi_opex_from_kpi_hub_expr"
+            model="mis.report.kpi.expression"
+        >
+            <field name="kpi_id" ref="hybrid_kpi_opex_from_kpi_hub" />
+            <field name="name">kpi('OPEX')</field>
+        </record>
+
+        <record id="hybrid_kpi_opex_from_accounting" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">opex_accounting</field>
+            <field name="description">├─ OpEx from Accounting (Auto)</field>
+            <field name="sequence">72</field>
+            <field name="style_id" ref="hybrid_report_style_subheader" />
+        </record>
+        <record
+            id="hybrid_kpi_opex_from_accounting_expr"
+            model="mis.report.kpi.expression"
+        >
+            <field name="kpi_id" ref="hybrid_kpi_opex_from_accounting" />
+            <field name="name">salaries_acc + rent_acc + marketing_acc</field>
+        </record>
+
+        <record id="hybrid_kpi_opex_variance" model="mis.report.kpi">
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="name">opex_variance</field>
+            <field name="description">└─ Variance (KPI Hub - Accounting)</field>
+            <field name="sequence">73</field>
+            <field name="style_id" ref="hybrid_report_style_data" />
+        </record>
+        <record id="hybrid_kpi_opex_variance_expr" model="mis.report.kpi.expression">
+            <field name="kpi_id" ref="hybrid_kpi_opex_variance" />
+            <field name="name">opex_kpi_hub - opex_accounting</field>
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 7. FUENTE AEP PARA EL REPORTE HÍBRIDO -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_pl_aep_source" model="kpi_hub.aep.source">
+            <field name="name">Hybrid P&amp;L AEP Source</field>
+            <field name="template_id" ref="kpi_data_hub.demo_pl_template" />
+            <field name="active">True</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+
+        <!-- ======================================== -->
+        <!-- 8. INSTANCIA DE REPORTE PARA VISUALIZACIÓN -->
+        <!-- ======================================== -->
+
+        <record id="hybrid_pl_report_instance" model="mis.report.instance">
+            <field name="name">Hybrid P&amp;L - Q1 2025 Analysis</field>
+            <field name="report_id" ref="hybrid_pl_report" />
+            <field name="company_id" ref="base.main_company" />
+            <field name="comparison_mode">diff</field>
+        </record>
+
+        <!-- Período actual -->
+        <record id="hybrid_pl_instance_period_q1" model="mis.report.instance.period">
+            <field name="name">Q1 2025</field>
+            <field name="report_instance_id" ref="hybrid_pl_report_instance" />
+            <field name="type">d</field>
+            <field name="date_from">2025-01-01</field>
+            <field name="date_to">2025-03-31</field>
+            <field name="sequence">1</field>
+        </record>
+
+    </data>
+</odoo>

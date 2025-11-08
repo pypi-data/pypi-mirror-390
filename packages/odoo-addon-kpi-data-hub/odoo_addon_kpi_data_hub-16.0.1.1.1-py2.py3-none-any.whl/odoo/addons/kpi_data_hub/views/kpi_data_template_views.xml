@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="kpi_hub_template_view_form" model="ir.ui.view">
+        <field name="name">kpi.hub.template.form</field>
+        <field name="model">kpi_hub.template</field>
+        <field name="arch" type="xml">
+            <form string="Data Template">
+                <sheet>
+                    <group>
+                        <field name="name" />
+                        <field name="mis_report_template_id" />
+                    </group>
+
+                    <!-- Version Information -->
+                    <group string="Version Information" name="version_info">
+                        <field name="version" readonly="1" />
+                        <field name="version_date" readonly="1" />
+                        <field
+                            name="version_changes"
+                            readonly="1"
+                            attrs="{'invisible': [('version_changes', '=', False)]}"
+                        />
+                        <field
+                            name="outdated_record_count"
+                            readonly="1"
+                            widget="statinfo"
+                            string="Outdated Records"
+                        />
+                        <button
+                            name="%(kpi_data_hub.action_kpi_template_version_update_wizard)d"
+                            type="action"
+                            string="Update All Outdated Records"
+                            class="btn btn-warning"
+                            attrs="{'invisible': [('outdated_record_count', '=', 0)]}"
+                            help="Launch wizard to update all outdated records to the latest template version"
+                        />
+                    </group>
+
+                    <notebook>
+                        <page string="Items Structure" name="item_template_ids">
+                            <field name="item_template_ids">
+                                <tree
+                                    editable="bottom"
+                                    decoration-bf="is_group == True"
+                                    decoration-info="calculation_type == 'formula'"
+                                >
+                                    <field name="sequence" widget="handle" />
+                                    <field name="name" />
+                                    <field name="code" />
+                                    <field
+                                        name="parent_id"
+                                        domain="[('template_id', '=', parent.id), ('id', '!=', id)]"
+                                    />
+                                    <field name="calculation_type" />
+                                    <field
+                                        name="data_type"
+                                        attrs="{'readonly': [('calculation_type', 'in', ['formula', 'group'])]}"
+                                    />
+                                    <field
+                                        name="auto_sum_children"
+                                        attrs="{'readonly': [('calculation_type', '!=', 'formula')]}"
+                                    />
+                                    <field name="formula" optional="hide" />
+                                    <field name="min_value" optional="hide" />
+                                    <field name="max_value" optional="hide" />
+                                    <field name="decimal_places" />
+                                    <field name="is_required" optional="hide" />
+                                    <field name="level" invisible="1" />
+                                    <field name="is_group" invisible="1" />
+                                </tree>
+                            </field>
+                            <div class="mt-3">
+                                <p class="text-muted">
+                                    <i class="fa fa-info-circle" title="Information" />
+                                    <strong>Hierarchy Tips:</strong><br />
+                                    • Use <strong
+                                    >Parent Item</strong> to create hierarchies (e.g., "ACTIVO NO CORRIENTE" → "Inmuebles", "Equipos")<br
+                                    />
+                                    • Enable <strong
+                                    >Auto Sum Children</strong> for automatic totals<br
+                                    />
+                                    • Group items (bold) automatically sum their children<br
+                                    />
+                                    • Formula items (blue) are calculated automatically
+                                </p>
+                            </div>
+                        </page>
+
+                        <!-- Version History Page -->
+                        <page string="Version History" name="version_history">
+                            <field name="record_ids" readonly="1" nolabel="1">
+                                <tree
+                                    decoration-danger="is_outdated == True"
+                                    decoration-success="is_outdated == False"
+                                >
+                                    <field name="name" />
+                                    <field name="entity_id" />
+                                    <field name="date_from" />
+                                    <field name="date_to" />
+                                    <field name="template_version" />
+                                    <field name="template_version_date" />
+                                    <field name="is_outdated" />
+                                    <field name="outdated_message" optional="hide" />
+                                </tree>
+                            </field>
+                            <div class="mt-3">
+                                <div
+                                    class="alert alert-info"
+                                    attrs="{'invisible': [('outdated_record_count', '=', 0)]}"
+                                >
+                                    <p>
+                                        <strong><i
+                                                class="fa fa-exclamation-triangle"
+                                            /> Outdated Records Found:</strong>
+                                        <field
+                                            name="outdated_record_count"
+                                            readonly="1"
+                                            nolabel="1"
+                                        /> records are using older versions of this template.
+                                    </p>
+                                    <button
+                                        name="action_view_outdated_records"
+                                        type="object"
+                                        string="View Outdated Records"
+                                        class="btn btn-warning btn-sm"
+                                    />
+                                </div>
+                                <div
+                                    class="alert alert-success"
+                                    attrs="{'invisible': [('outdated_record_count', '!=', 0)]}"
+                                >
+                                    <p><strong><i
+                                                class="fa fa-check-circle"
+                                            /> All Records Up to Date:</strong> All records using this template are synchronized with the latest version.</p>
+                                </div>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista form detallada para item templates -->
+    <record id="kpi_hub_item_template_view_form" model="ir.ui.view">
+        <field name="name">kpi.hub.item.template.form</field>
+        <field name="model">kpi_hub.item.template</field>
+        <field name="arch" type="xml">
+            <form string="Data Item Template">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" />
+                            <field name="code" />
+                            <field name="sequence" />
+                            <field
+                                name="parent_id"
+                                domain="[('template_id', '=', template_id), ('id', '!=', id)]"
+                            />
+                        </group>
+                        <group>
+                            <field name="template_id" />
+                            <field name="calculation_type" />
+                            <field
+                                name="auto_sum_children"
+                                attrs="{'invisible': [('calculation_type', '!=', 'formula')]}"
+                            />
+                            <field name="level" readonly="1" />
+                            <field name="is_group" readonly="1" />
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page
+                            string="Data Configuration"
+                            name="data_config"
+                            attrs="{'invisible': [('calculation_type', 'in', ['formula', 'group'])]}"
+                        >
+                            <group>
+                                <group string="Data Type &amp; Validation">
+                                    <field name="data_type" />
+                                    <field name="min_value" />
+                                    <field name="max_value" />
+                                    <field name="decimal_places" />
+                                    <field name="is_required" />
+                                    <field name="default_value" />
+                                </group>
+                                <group string="Display Format">
+                                    <field name="prefix" placeholder="e.g., $, €" />
+                                    <field
+                                        name="suffix"
+                                        placeholder="e.g., %, kg, m²"
+                                    />
+                                    <field name="data_source_info" />
+                                </group>
+                            </group>
+                        </page>
+
+                        <page
+                            string="Formula"
+                            name="formula_config"
+                            attrs="{'invisible': [('calculation_type', 'not in', ['formula', 'group'])]}"
+                        >
+                            <group>
+                                <field
+                                    name="formula"
+                                    placeholder="e.g., REVENUE - COSTS"
+                                    attrs="{'readonly': [('auto_sum_children', '=', True)]}"
+                                />
+                                <div
+                                    class="alert alert-info"
+                                    role="alert"
+                                    attrs="{'invisible': [('auto_sum_children', '=', True)]}"
+                                >
+                                    <strong>Formula Help:</strong><br />
+                                    • Use item codes in UPPERCASE<br />
+                                    • Available operators: +, -, *, /, (, )<br />
+                                    • Available functions: ABS(), ROUND(), MIN(), MAX(), SUM()<br
+                                    />
+                                    • Example: ROUND((REVENUE - COSTS) / REVENUE * 100, 2)
+                                </div>
+                                <div
+                                    class="alert alert-success"
+                                    role="alert"
+                                    attrs="{'invisible': [('auto_sum_children', '=', False)]}"
+                                >
+                                    <strong>Auto Sum Enabled:</strong><br />
+                                    This item will automatically sum all its child items.<br
+                                    />
+                                    The formula is generated automatically.
+                                </div>
+                            </group>
+                        </page>
+
+                        <page
+                            string="Children"
+                            name="children"
+                            attrs="{'invisible': [('child_ids', '=', [])]}"
+                        >
+                            <field name="child_ids" readonly="1">
+                                <tree>
+                                    <field name="sequence" />
+                                    <field name="name" />
+                                    <field name="code" />
+                                    <field name="calculation_type" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista tree jerárquica -->
+    <record id="kpi_hub_item_template_view_tree" model="ir.ui.view">
+        <field name="name">kpi.hub.item.template.tree</field>
+        <field name="model">kpi_hub.item.template</field>
+        <field name="arch" type="xml">
+            <tree
+                decoration-bf="is_group == True"
+                decoration-info="calculation_type == 'formula'"
+            >
+                <field name="sequence" />
+                <field name="name" />
+                <field name="code" />
+                <field name="parent_id" />
+                <field name="calculation_type" />
+                <field name="data_type" />
+                <field name="level" invisible="1" />
+                <field name="is_group" invisible="1" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="kpi_hub_template_view_tree" model="ir.ui.view">
+        <field name="name">kpi.hub.template.tree</field>
+        <field name="model">kpi_hub.template</field>
+        <field name="arch" type="xml">
+            <tree string="Data Templates">
+                <field name="name" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="kpi_hub_template_action" model="ir.actions.act_window">
+        <field name="name">Data Templates</field>
+        <field name="res_model">kpi_hub.template</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Acción para item templates -->
+    <record id="kpi_hub_item_template_action" model="ir.actions.act_window">
+        <field name="name">Data Item Templates</field>
+        <field name="res_model">kpi_hub.item.template</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
