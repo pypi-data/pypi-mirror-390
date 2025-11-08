@@ -1,0 +1,483 @@
+Metadata-Version: 2.4
+Name: promptron
+Version: 0.1.0
+Summary: A Python package for generating evaluation datasets using LLMs
+Author-email: Hit Shiroya <24.hiit@gmail.com>
+License: MIT
+Keywords: llm,prompt-generation,dataset,evaluation,ollama
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: langchain-ollama>=0.1.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: flake8>=6.0; extra == "dev"
+Dynamic: license-file
+
+# Promptron
+
+A Python package for generating evaluation datasets using Large Language Models (LLMs). Promptron helps you create structured question datasets for testing and evaluating LLM applications.
+
+## Features
+
+- **LLM-Powered Generation**: Uses Ollama to generate questions automatically
+- **Flexible Templates**: Support for multiple question types (correct, red teaming, out-of-scope, etc.)
+- **Configurable**: Customize topics, question counts, and templates via YAML/JSON files
+- **Category Support**: Pre-configured templates for OpenShift and Kubernetes
+- **Structured Output**: Generates JSON datasets ready for evaluation pipelines
+
+## Installation
+
+### Prerequisites
+
+- Python 3.8 or higher
+- [Ollama](https://ollama.ai/) installed and running
+- At least one Ollama model downloaded (e.g., `llama3:latest`)
+
+### Install from PyPI
+
+```bash
+pip install promptron
+```
+
+### Install from Source
+
+```bash
+git clone <repository-url>
+cd promptron
+pip install -e .
+```
+
+## Quick Start
+
+### First Time Setup
+
+1. **Install Promptron:**
+   ```bash
+   pip install promptron
+   ```
+
+2. **Ensure Ollama is running:**
+   ```bash
+   ollama serve
+   ```
+
+3. **Download a model (default: llama3:latest):**
+   ```bash
+   ollama pull llama3:latest
+   ```
+   
+   **Optional:** Use a different model by setting environment variable:
+   ```bash
+   export PROMPTRON_MODEL=llama3.2:latest
+   # or create a .env file with: PROMPTRON_MODEL=llama3.2:latest
+   ```
+
+4. **Initialize example config files (optional):**
+   ```bash
+   promptron init
+   ```
+   This creates `topics.yml` and `prompt_templates.json` in your current directory that you can customize.
+
+### Basic Usage
+
+Generate questions with default settings:
+
+```bash
+promptron generate
+```
+
+This will:
+- Use the `llama3:latest` model (v1 fixed)
+- Use default category and question type from `topics.yml` config
+- Read topics from the default config file
+- Save output to `./artifacts/questions.json`
+- Automatically check Ollama connection before starting
+
+### Advanced Usage
+
+```bash
+# List available categories and question types
+promptron list
+
+# Generate red teaming questions
+promptron generate --question-type red_teaming
+
+# Override default category from config
+promptron generate --category kubernetes
+
+# Override default question type from config
+promptron generate --question-type red_teaming
+
+# Use custom configuration files
+promptron generate \
+  --topics-file my_topics.yml \
+  --prompt-file my_templates.json \
+  --output-file ./my_questions.json
+
+# Create separate output file for each topic
+promptron generate --separate-files
+
+# Generate in JSONL format (ready for batch LLM processing)
+promptron generate --output-format jsonl
+
+# Generate in OpenAI API format (ready to send to OpenAI)
+promptron generate --output-format openai
+
+# Skip Ollama connection check (not recommended)
+promptron generate --skip-check
+```
+
+## Configuration
+
+### Topics File (YAML)
+
+Create a `topics.yml` file to define your topics and question counts. You can also configure defaults and add global template variables:
+
+```yaml
+# Global configuration
+default_category: "openshift"  # Default category to use from prompt templates
+default_question_type: "correct_questions"  # Default question type
+
+# Global template configuration (optional)
+# These variables will be available in all templates
+template_config:
+  domain: "OpenShift/Kubernetes"
+  difficulty: "intermediate"
+  context: "production environment"
+
+# Topics configuration
+topics:
+  - name: "Pod scheduling and resource management"
+    count: 6
+  
+  - name: "Kubernetes ingress controller"
+    count: 10
+    difficulty: "advanced"  # Custom variable (overrides global)
+  
+  - name: "Openshift operator life cycle management"
+    count: 15
+    context: "enterprise deployment"  # Custom variable
+    # Optional: topic-specific template (overrides category template)
+    # template: "Custom template for this topic: {topic} with {count} questions..."
+```
+
+**Available Template Variables:**
+- `{topic}` - Topic name (always available)
+- `{count}` - Number of questions to generate (always available)
+- `{category}` - Category name (always available)
+- `{question_type}` - Question type (always available)
+- Any variables from `template_config` (global)
+- Any custom variables defined per-topic
+
+### Prompt Templates (JSON)
+
+Customize prompt templates for different question types. Templates support dynamic variables:
+
+```json
+{
+  "openshift": {
+    "correct_questions": "You are an OpenShift SME in {domain}. Generate {count} questions about '{topic}' at {difficulty} level. Context: {context}...",
+    "red_teaming": "Generate {count} adversarial questions about '{topic}' in the context of {domain}...",
+    "out_of_scope": "Generate {count} out-of-scope questions...",
+    "other": "Generate {count} creative questions about '{topic}' in {context}..."
+  }
+}
+```
+
+**Dynamic Template Features:**
+- Use any variable from `template_config` in your templates
+- Use per-topic custom variables (e.g., `{difficulty}`, `{context}`)
+- Override category templates with topic-specific templates in `topics.yml`
+- Variables are automatically available - no need to define them in templates
+
+**Example with Dynamic Variables:**
+```json
+{
+  "my_category": {
+    "correct_questions": "You are an expert in {domain}. Generate {count} questions about '{topic}' at {difficulty} level. Context: {context}."
+  }
+}
+```
+
+This template will automatically use:
+- `{domain}` from `template_config`
+- `{difficulty}` from topic config or `template_config`
+- `{context}` from topic config or `template_config`
+
+## Python API
+
+You can use Promptron programmatically in your code:
+
+### Method 1: Using YAML Config File
+
+```python
+from promptron import generate_prompts
+
+# Generate using YAML config file
+generate_prompts(
+    topics_file="./my_topics.yml",
+    output_file="./output.json",
+    output_format="jsonl"
+)
+```
+
+### Method 2: Direct Prompts (Programmatic)
+
+```python
+from promptron import generate_prompts
+
+# Pass prompts directly without YAML file
+generate_prompts(
+    prompts=[
+        {"category": "openshift", "topic": "Pod scheduling", "count": 5},
+        {"category": "openshift", "topic": "Ingress controller", "count": 10},
+        {"category": "kubernetes", "topic": "Networking", "count": 8}
+    ],
+    output_format="jsonl",
+    single_file=True
+)
+```
+
+### Method 3: Using LLMService Directly
+
+```python
+from promptron import LLMService
+
+# Create service instance
+service = LLMService(
+    topics_file="./topics.yml",
+    output_file="./questions.json",
+    output_format="openai"
+)
+
+# Generate questions
+service.generate_questions(single_file=False)
+
+# Or override config programmatically
+service.config = [
+    {"category": "my_domain", "topic": "Topic 1", "count": 5}
+]
+service.generate_questions(single_file=True)
+```
+
+### Complete Example
+
+```python
+from promptron import generate_prompts
+
+# Generate questions programmatically
+prompts = [
+    {"category": "security", "topic": "Authentication", "count": 10},
+    {"category": "security", "topic": "Authorization", "count": 8},
+    {"category": "performance", "topic": "Caching", "count": 5}
+]
+
+generate_prompts(
+    prompts=prompts,
+    output_format="jsonl",
+    single_file=True,
+    output_file="./my_questions.jsonl"
+)
+
+# Output ready to use with LLM APIs!
+```
+
+## Output Formats
+
+Promptron supports multiple output formats optimized for different use cases. Use the `--output-format` flag to choose:
+
+### 1. Evaluation Format (default)
+Best for tracking answers from multiple LLMs:
+
+```bash
+promptron generate --output-format evaluation
+```
+
+```json
+{
+  "categories": [
+    {
+      "topic": "Pod scheduling and resource management",
+      "data": [
+        {
+          "user_question": "How do I configure pod resource limits?",
+          "app_ans": "",
+          "openai_ans": "",
+          "gemini_ans": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 2. JSONL Format
+Perfect for batch processing and streaming to LLMs:
+
+```bash
+promptron generate --output-format jsonl
+```
+
+```jsonl
+{"prompt": "How do I configure pod resource limits?", "topic": "Pod scheduling and resource management"}
+{"prompt": "What is the difference between requests and limits?", "topic": "Pod scheduling and resource management"}
+```
+
+### 3. Simple JSON Format
+Clean array format for easy parsing:
+
+```bash
+promptron generate --output-format simple
+```
+
+```json
+[
+  {
+    "question": "How do I configure pod resource limits?",
+    "topic": "Pod scheduling and resource management"
+  },
+  {
+    "question": "What is the difference between requests and limits?",
+    "topic": "Pod scheduling and resource management"
+  }
+]
+```
+
+### 4. OpenAI API Format
+Ready to send directly to OpenAI API:
+
+```bash
+promptron generate --output-format openai
+```
+
+```json
+[
+  {
+    "messages": [
+      {"role": "user", "content": "How do I configure pod resource limits?"}
+    ],
+    "metadata": {
+      "topic": "Pod scheduling and resource management"
+    }
+  }
+]
+```
+
+### 5. Anthropic API Format
+Ready to send directly to Anthropic API:
+
+```bash
+promptron generate --output-format anthropic
+```
+
+```json
+[
+  {
+    "messages": [
+      {"role": "user", "content": "How do I configure pod resource limits?"}
+    ],
+    "metadata": {
+      "topic": "Pod scheduling and resource management"
+    }
+  }
+]
+```
+
+### 6. Plain Text Format
+Simple text file, one question per line:
+
+```bash
+promptron generate --output-format plain
+```
+
+```
+# Topic: Pod scheduling and resource management
+
+How do I configure pod resource limits?
+What is the difference between requests and limits?
+```
+
+## Using Generated Data with LLMs
+
+### Example: Using JSONL with OpenAI
+
+```python
+import json
+import openai
+
+# Read generated prompts
+with open("questions.jsonl", "r") as f:
+    prompts = [json.loads(line) for line in f]
+
+# Send to OpenAI
+for prompt_data in prompts:
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "user", "content": prompt_data["prompt"]}
+        ]
+    )
+    print(f"Q: {prompt_data['prompt']}")
+    print(f"A: {response.choices[0].message.content}\n")
+```
+
+### Example: Using OpenAI Format Directly
+
+```python
+import json
+import openai
+
+# Read generated prompts (already in OpenAI format)
+with open("questions.json", "r") as f:
+    prompts = json.load(f)
+
+# Send directly to OpenAI
+for prompt_data in prompts:
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=prompt_data["messages"]
+    )
+    print(response.choices[0].message.content)
+```
+
+## Question Types
+
+- **correct_questions**: Standard, technically correct questions
+- **red_teaming**: Adversarial questions designed to test model robustness
+- **out_of_scope**: Questions outside the domain to test boundary handling
+- **other**: Creative, open-ended questions for design discussions
+
+## Requirements
+
+- `langchain-ollama>=0.1.0`
+- `pyyaml>=6.0`
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Author
+
+**Hit Shiroya**
+
+- Email: 24.hiit@gmail.com
+
+## License
+
+MIT License
+
+## Support
+
+For issues and questions, please open an issue on the GitHub repository.
+
