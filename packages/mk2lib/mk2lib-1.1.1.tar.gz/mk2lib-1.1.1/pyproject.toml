@@ -1,0 +1,77 @@
+# PACKAGING
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mk2lib"
+version = "1.1.1"
+description = "Machi Koro 2 Game Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Vitaly Ostrosablin", email = "tmp6154@yandex.ru" }
+]
+keywords = [
+    "python",
+    "game",
+    "boardgame",
+    "engine",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Games/Entertainment",
+    "Topic :: Games/Entertainment :: Board Games",
+    "Topic :: Games/Entertainment :: Simulation",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ostrosablin/mk2lib"
+"Documentation" = "https://github.com/ostrosablin/mk2lib/tree/master/docs"
+"Bug Tracker" = "https://github.com/ostrosablin/mk2lib/issues"
+"Source Code" = "https://github.com/ostrosablin/mk2lib"
+
+[project.optional-dependencies]
+all = [
+    "mk2lib",
+]
+
+[dependency-groups]
+tests = [
+    # required for building the wheels for releases
+    "build",
+    # For the test suite
+    "pytest==8.4.2",
+    # Install coverage:
+    "pytest-cov"
+]
+linting = [
+    "mypy==1.18.1",
+    "pylint==3.3.8"
+]
+all = [{ include-group = "tests" }, { include-group = "linting"}]
+
+# HATCH
+[tool.hatch.build.targets.wheel]
+packages = ["mk2lib"]
+
+[tool.pylint.main]
+jobs = 0
+
+# PYTEST:
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["mk2lib"]

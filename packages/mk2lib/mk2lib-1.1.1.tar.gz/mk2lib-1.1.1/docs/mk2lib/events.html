@@ -1,0 +1,1890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.6">
+<title>mk2lib.events API documentation</title>
+<meta name="description" content="Event dataclasses - purely informational objects for game flow tracking.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source > summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible;min-width:max-content}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin:1em 0}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+/* Collapse source docstrings */
+setTimeout(() => {
+[...document.querySelectorAll('.hljs.language-python > .hljs-string')]
+.filter(el => el.innerHTML.length > 200 && ['"""', "'''"].includes(el.innerHTML.substring(0, 3)))
+.forEach(el => {
+let d = document.createElement('details');
+d.classList.add('hljs-string');
+d.innerHTML = '<summary>"""</summary>' + el.innerHTML.substring(3);
+el.replaceWith(d);
+});
+}, 100);
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>mk2lib.events</code></h1>
+</header>
+<section id="section-intro">
+<p>Event dataclasses - purely informational objects for game flow tracking.</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="mk2lib.events.AlreadyInGame"><code class="flex name class">
+<span>class <span class="ident">AlreadyInGame</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class AlreadyInGame(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when player who&#39;s already in room tries to join again.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Emitted when player who's already in room tries to join again.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.AlreadyInGame.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.CanBuild"><code class="flex name class">
+<span>class <span class="ident">CanBuild</span></span>
+<span>(</span><span>player: Player, build_options: list[Card])</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class CanBuild(Event):
+    &#34;&#34;&#34;
+    Player can build something in build phase.
+    &#34;&#34;&#34;
+
+    player: Player
+    build_options: list[Card]</code></pre>
+</details>
+<div class="desc"><p>Player can build something in build phase.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.CanBuild.build_options"><code class="name">var <span class="ident">build_options</span> : list[Card]</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.CanBuild.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.CanExchangeEstablishments"><code class="flex name class">
+<span>class <span class="ident">CanExchangeEstablishments</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class CanExchangeEstablishments(Event):
+    &#34;&#34;&#34;
+    Player can exchange establishments with another player.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Player can exchange establishments with another player.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.CanExchangeEstablishments.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.CannotExchangeWithSelf"><code class="flex name class">
+<span>class <span class="ident">CannotExchangeWithSelf</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class CannotExchangeWithSelf(Event):
+    &#34;&#34;&#34;
+    Player has attempted to exchange establishments with self.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Player has attempted to exchange establishments with self.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.CannotExchangeWithSelf.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.CardBuilt"><code class="flex name class">
+<span>class <span class="ident">CardBuilt</span></span>
+<span>(</span><span>buyer: Player, card: Card, price_paid: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class CardBuilt(Event):
+    &#34;&#34;&#34;
+    Player has built a new card.
+    &#34;&#34;&#34;
+
+    buyer: Player
+    card: Card
+    price_paid: int</code></pre>
+</details>
+<div class="desc"><p>Player has built a new card.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.CardBuilt.buyer"><code class="name">var <span class="ident">buyer</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.CardBuilt.card"><code class="name">var <span class="ident">card</span> : Card</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.CardBuilt.price_paid"><code class="name">var <span class="ident">price_paid</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.CardUnavailable"><code class="flex name class">
+<span>class <span class="ident">CardUnavailable</span></span>
+<span>(</span><span>buyer: Player, card_name: str, prohibited: bool = False)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class CardUnavailable(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted on attempt to build a card that&#39;s not currently available.
+
+    If card is technically available on market, but rules don&#39;t allow purchasing
+    it - prohibited would be set to True.
+    &#34;&#34;&#34;
+
+    buyer: Player
+    card_name: str
+    prohibited: bool = False</code></pre>
+</details>
+<div class="desc"><p>Emitted on attempt to build a card that's not currently available.</p>
+<p>If card is technically available on market, but rules don't allow purchasing
+it - prohibited would be set to True.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.CardUnavailable.buyer"><code class="name">var <span class="ident">buyer</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.CardUnavailable.card_name"><code class="name">var <span class="ident">card_name</span> : str</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.CardUnavailable.prohibited"><code class="name">var <span class="ident">prohibited</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.DealtCardsToMarket"><code class="flex name class">
+<span>class <span class="ident">DealtCardsToMarket</span></span>
+<span>(</span><span>cards: list[Card] = &lt;factory&gt;, initial: bool = False)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class DealtCardsToMarket(Event):
+    &#34;&#34;&#34;
+    New cards were dealt to market.
+    &#34;&#34;&#34;
+
+    cards: list[Card] = field(default_factory=list)
+    initial: bool = False</code></pre>
+</details>
+<div class="desc"><p>New cards were dealt to market.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.DealtCardsToMarket.cards"><code class="name">var <span class="ident">cards</span> : list[Card]</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.DealtCardsToMarket.initial"><code class="name">var <span class="ident">initial</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.DiceRolled"><code class="flex name class">
+<span>class <span class="ident">DiceRolled</span></span>
+<span>(</span><span>player: Player, dice: Dice)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class DiceRolled(Event):
+    &#34;&#34;&#34;
+    Player rolls dice.
+    &#34;&#34;&#34;
+
+    player: Player
+    dice: Dice</code></pre>
+</details>
+<div class="desc"><p>Player rolls dice.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.DiceRolled.dice"><code class="name">var <span class="ident">dice</span> : Dice</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.DiceRolled.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.ErrorEvent"><code class="flex name class">
+<span>class <span class="ident">ErrorEvent</span></span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ErrorEvent(Event):
+    &#34;&#34;&#34;
+    Base class for error events.
+    &#34;&#34;&#34;</code></pre>
+</details>
+<div class="desc"><p>Base class for error events.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.AlreadyInGame" href="#mk2lib.events.AlreadyInGame">AlreadyInGame</a></li>
+<li><a title="mk2lib.events.CardUnavailable" href="#mk2lib.events.CardUnavailable">CardUnavailable</a></li>
+<li><a title="mk2lib.events.GameInProgress" href="#mk2lib.events.GameInProgress">GameInProgress</a></li>
+<li><a title="mk2lib.events.NoGameInProgress" href="#mk2lib.events.NoGameInProgress">NoGameInProgress</a></li>
+<li><a title="mk2lib.events.NotEnoughMoney" href="#mk2lib.events.NotEnoughMoney">NotEnoughMoney</a></li>
+<li><a title="mk2lib.events.NotEnoughPlayers" href="#mk2lib.events.NotEnoughPlayers">NotEnoughPlayers</a></li>
+<li><a title="mk2lib.events.NotInGame" href="#mk2lib.events.NotInGame">NotInGame</a></li>
+<li><a title="mk2lib.events.NotYourTurn" href="#mk2lib.events.NotYourTurn">NotYourTurn</a></li>
+<li><a title="mk2lib.events.OnlyOwnerOperation" href="#mk2lib.events.OnlyOwnerOperation">OnlyOwnerOperation</a></li>
+<li><a title="mk2lib.events.PlayerHasNoSuchCard" href="#mk2lib.events.PlayerHasNoSuchCard">PlayerHasNoSuchCard</a></li>
+<li><a title="mk2lib.events.RoomIsFull" href="#mk2lib.events.RoomIsFull">RoomIsFull</a></li>
+<li><a title="mk2lib.events.WrongState" href="#mk2lib.events.WrongState">WrongState</a></li>
+</ul>
+</dd>
+<dt id="mk2lib.events.EstablishmentExchanged"><code class="flex name class">
+<span>class <span class="ident">EstablishmentExchanged</span></span>
+<span>(</span><span>from_user: Player,<br>to_user: Player,<br>establishment_given: Establishment,<br>establishment_taken: Establishment)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class EstablishmentExchanged(Event):
+    &#34;&#34;&#34;
+    Players have exchanged establishments.
+    &#34;&#34;&#34;
+
+    from_user: Player
+    to_user: Player
+    establishment_given: Establishment
+    establishment_taken: Establishment</code></pre>
+</details>
+<div class="desc"><p>Players have exchanged establishments.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.EstablishmentExchanged.establishment_given"><code class="name">var <span class="ident">establishment_given</span> : Establishment</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.EstablishmentExchanged.establishment_taken"><code class="name">var <span class="ident">establishment_taken</span> : Establishment</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.EstablishmentExchanged.from_user"><code class="name">var <span class="ident">from_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.EstablishmentExchanged.to_user"><code class="name">var <span class="ident">to_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.EstablishmentGiven"><code class="flex name class">
+<span>class <span class="ident">EstablishmentGiven</span></span>
+<span>(</span><span>from_user: Player, to_user: Player, establishment: Establishment)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class EstablishmentGiven(Event):
+    &#34;&#34;&#34;
+    Establishment was given to player.
+    &#34;&#34;&#34;
+
+    from_user: Player
+    to_user: Player
+    establishment: Establishment</code></pre>
+</details>
+<div class="desc"><p>Establishment was given to player.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.EstablishmentGiven.establishment"><code class="name">var <span class="ident">establishment</span> : Establishment</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.EstablishmentGiven.from_user"><code class="name">var <span class="ident">from_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.EstablishmentGiven.to_user"><code class="name">var <span class="ident">to_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.Event"><code class="flex name class">
+<span>class <span class="ident">Event</span></span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Event:
+    &#34;&#34;&#34;
+    Base class for all Events.
+    &#34;&#34;&#34;</code></pre>
+</details>
+<div class="desc"><p>Base class for all Events.</p></div>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.CanBuild" href="#mk2lib.events.CanBuild">CanBuild</a></li>
+<li><a title="mk2lib.events.CanExchangeEstablishments" href="#mk2lib.events.CanExchangeEstablishments">CanExchangeEstablishments</a></li>
+<li><a title="mk2lib.events.CannotExchangeWithSelf" href="#mk2lib.events.CannotExchangeWithSelf">CannotExchangeWithSelf</a></li>
+<li><a title="mk2lib.events.CardBuilt" href="#mk2lib.events.CardBuilt">CardBuilt</a></li>
+<li><a title="mk2lib.events.DealtCardsToMarket" href="#mk2lib.events.DealtCardsToMarket">DealtCardsToMarket</a></li>
+<li><a title="mk2lib.events.DiceRolled" href="#mk2lib.events.DiceRolled">DiceRolled</a></li>
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.EstablishmentExchanged" href="#mk2lib.events.EstablishmentExchanged">EstablishmentExchanged</a></li>
+<li><a title="mk2lib.events.EstablishmentGiven" href="#mk2lib.events.EstablishmentGiven">EstablishmentGiven</a></li>
+<li><a title="mk2lib.events.FinalScores" href="#mk2lib.events.FinalScores">FinalScores</a></li>
+<li><a title="mk2lib.events.GameCreated" href="#mk2lib.events.GameCreated">GameCreated</a></li>
+<li><a title="mk2lib.events.GameEnded" href="#mk2lib.events.GameEnded">GameEnded</a></li>
+<li><a title="mk2lib.events.GameStarted" href="#mk2lib.events.GameStarted">GameStarted</a></li>
+<li><a title="mk2lib.events.GetExtraTurn" href="#mk2lib.events.GetExtraTurn">GetExtraTurn</a></li>
+<li><a title="mk2lib.events.GetOneCoinBecauseHadNoMoney" href="#mk2lib.events.GetOneCoinBecauseHadNoMoney">GetOneCoinBecauseHadNoMoney</a></li>
+<li><a title="mk2lib.events.MoneyDivided" href="#mk2lib.events.MoneyDivided">MoneyDivided</a></li>
+<li><a title="mk2lib.events.MoneyEarned" href="#mk2lib.events.MoneyEarned">MoneyEarned</a></li>
+<li><a title="mk2lib.events.MoneyTaken" href="#mk2lib.events.MoneyTaken">MoneyTaken</a></li>
+<li><a title="mk2lib.events.MustGiveEstablishment" href="#mk2lib.events.MustGiveEstablishment">MustGiveEstablishment</a></li>
+<li><a title="mk2lib.events.NewLandmarkEffectActivated" href="#mk2lib.events.NewLandmarkEffectActivated">NewLandmarkEffectActivated</a></li>
+<li><a title="mk2lib.events.OwnerChanged" href="#mk2lib.events.OwnerChanged">OwnerChanged</a></li>
+<li><a title="mk2lib.events.PlayerJoined" href="#mk2lib.events.PlayerJoined">PlayerJoined</a></li>
+<li><a title="mk2lib.events.PlayerLeft" href="#mk2lib.events.PlayerLeft">PlayerLeft</a></li>
+<li><a title="mk2lib.events.SkipBuild" href="#mk2lib.events.SkipBuild">SkipBuild</a></li>
+<li><a title="mk2lib.events.SkipExchangeEstablishments" href="#mk2lib.events.SkipExchangeEstablishments">SkipExchangeEstablishments</a></li>
+<li><a title="mk2lib.events.StateSwitch" href="#mk2lib.events.StateSwitch">StateSwitch</a></li>
+<li><a title="mk2lib.events.TurnBegins" href="#mk2lib.events.TurnBegins">TurnBegins</a></li>
+<li><a title="mk2lib.events.TurnSkipped" href="#mk2lib.events.TurnSkipped">TurnSkipped</a></li>
+</ul>
+</dd>
+<dt id="mk2lib.events.FinalScores"><code class="flex name class">
+<span>class <span class="ident">FinalScores</span></span>
+<span>(</span><span>scores: dict[int, list[Player]], finished: bool = True)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class FinalScores(Event):
+    &#34;&#34;&#34;
+    Scores at the time of game end.
+    &#34;&#34;&#34;
+
+    scores: dict[int, list[Player]]
+    finished: bool = True</code></pre>
+</details>
+<div class="desc"><p>Scores at the time of game end.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.FinalScores.finished"><code class="name">var <span class="ident">finished</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.FinalScores.scores"><code class="name">var <span class="ident">scores</span> : dict[int, list[Player]]</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.GameCreated"><code class="flex name class">
+<span>class <span class="ident">GameCreated</span></span>
+<span>(</span><span>owner: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class GameCreated(Event):
+    &#34;&#34;&#34;
+    New game is created.
+    &#34;&#34;&#34;
+
+    owner: Player</code></pre>
+</details>
+<div class="desc"><p>New game is created.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.GameCreated.owner"><code class="name">var <span class="ident">owner</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.GameEnded"><code class="flex name class">
+<span>class <span class="ident">GameEnded</span></span>
+<span>(</span><span>player: Player,<br>finished: bool = False,<br>launch_pad: bool = False,<br>cancelled: bool = False,<br>owner_left: bool = False,<br>not_enough_players: bool = False)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class GameEnded(Event):
+    &#34;&#34;&#34;
+    Game finished.
+    &#34;&#34;&#34;
+
+    player: Player
+    finished: bool = False
+    launch_pad: bool = False
+    cancelled: bool = False
+    owner_left: bool = False
+    not_enough_players: bool = False</code></pre>
+</details>
+<div class="desc"><p>Game finished.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.GameEnded.cancelled"><code class="name">var <span class="ident">cancelled</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameEnded.finished"><code class="name">var <span class="ident">finished</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameEnded.launch_pad"><code class="name">var <span class="ident">launch_pad</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameEnded.not_enough_players"><code class="name">var <span class="ident">not_enough_players</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameEnded.owner_left"><code class="name">var <span class="ident">owner_left</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameEnded.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.GameInProgress"><code class="flex name class">
+<span>class <span class="ident">GameInProgress</span></span>
+<span>(</span><span>player_id: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class GameInProgress(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when action is attempting to join a game in progress.
+    &#34;&#34;&#34;
+
+    player_id: int</code></pre>
+</details>
+<div class="desc"><p>Emitted when action is attempting to join a game in progress.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.GameInProgress.player_id"><code class="name">var <span class="ident">player_id</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.GameStarted"><code class="flex name class">
+<span>class <span class="ident">GameStarted</span></span>
+<span>(</span><span>owner: Player, turn_order: list[Player], use_promo: bool, randomize_players: bool)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class GameStarted(Event):
+    &#34;&#34;&#34;
+    New game is created.
+    &#34;&#34;&#34;
+
+    owner: Player
+    turn_order: list[Player]
+    use_promo: bool
+    randomize_players: bool</code></pre>
+</details>
+<div class="desc"><p>New game is created.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.GameStarted.owner"><code class="name">var <span class="ident">owner</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameStarted.randomize_players"><code class="name">var <span class="ident">randomize_players</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameStarted.turn_order"><code class="name">var <span class="ident">turn_order</span> : list[Player]</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GameStarted.use_promo"><code class="name">var <span class="ident">use_promo</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.GetExtraTurn"><code class="flex name class">
+<span>class <span class="ident">GetExtraTurn</span></span>
+<span>(</span><span>player: Player, no_effect: bool)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class GetExtraTurn(Event):
+    &#34;&#34;&#34;
+    Player gets an extra turn.
+    &#34;&#34;&#34;
+
+    player: Player
+    no_effect: bool</code></pre>
+</details>
+<div class="desc"><p>Player gets an extra turn.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.GetExtraTurn.no_effect"><code class="name">var <span class="ident">no_effect</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.GetExtraTurn.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.GetOneCoinBecauseHadNoMoney"><code class="flex name class">
+<span>class <span class="ident">GetOneCoinBecauseHadNoMoney</span></span>
+<span>(</span><span>user: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class GetOneCoinBecauseHadNoMoney(Event):
+    &#34;&#34;&#34;
+    At the start of build phase, player received 1 coin, because he had none.
+    &#34;&#34;&#34;
+
+    user: Player</code></pre>
+</details>
+<div class="desc"><p>At the start of build phase, player received 1 coin, because he had none.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.GetOneCoinBecauseHadNoMoney.user"><code class="name">var <span class="ident">user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.MoneyDivided"><code class="flex name class">
+<span>class <span class="ident">MoneyDivided</span></span>
+<span>(</span><span>reason: Card, players: int, total_coins: int, from_bank: int, coins: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class MoneyDivided(Event):
+    &#34;&#34;&#34;
+    Money was evenly distributed among the players (possibly rounding up from bank).
+    &#34;&#34;&#34;
+
+    reason: Card
+    players: int
+    total_coins: int
+    from_bank: int
+    coins: int</code></pre>
+</details>
+<div class="desc"><p>Money was evenly distributed among the players (possibly rounding up from bank).</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.MoneyDivided.coins"><code class="name">var <span class="ident">coins</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyDivided.from_bank"><code class="name">var <span class="ident">from_bank</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyDivided.players"><code class="name">var <span class="ident">players</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyDivided.reason"><code class="name">var <span class="ident">reason</span> : Card</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyDivided.total_coins"><code class="name">var <span class="ident">total_coins</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.MoneyEarned"><code class="flex name class">
+<span>class <span class="ident">MoneyEarned</span></span>
+<span>(</span><span>reason: Card, user: Player, earned: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class MoneyEarned(Event):
+    &#34;&#34;&#34;
+    Player gets money from bank.
+    &#34;&#34;&#34;
+
+    reason: Card
+    user: Player
+    earned: int</code></pre>
+</details>
+<div class="desc"><p>Player gets money from bank.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.MoneyEarned.earned"><code class="name">var <span class="ident">earned</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyEarned.reason"><code class="name">var <span class="ident">reason</span> : Card</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyEarned.user"><code class="name">var <span class="ident">user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.MoneyTaken"><code class="flex name class">
+<span>class <span class="ident">MoneyTaken</span></span>
+<span>(</span><span>reason: Card, from_user: Player, to_user: Player, owed: int, taken: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class MoneyTaken(Event):
+    &#34;&#34;&#34;
+    Player A takes money from player B (possibly not in full amount, if any).
+    &#34;&#34;&#34;
+
+    reason: Card
+    from_user: Player
+    to_user: Player
+    owed: int
+    taken: int</code></pre>
+</details>
+<div class="desc"><p>Player A takes money from player B (possibly not in full amount, if any).</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.MoneyTaken.from_user"><code class="name">var <span class="ident">from_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyTaken.owed"><code class="name">var <span class="ident">owed</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyTaken.reason"><code class="name">var <span class="ident">reason</span> : Card</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyTaken.taken"><code class="name">var <span class="ident">taken</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MoneyTaken.to_user"><code class="name">var <span class="ident">to_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.MustGiveEstablishment"><code class="flex name class">
+<span>class <span class="ident">MustGiveEstablishment</span></span>
+<span>(</span><span>from_user: Player, to_user: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class MustGiveEstablishment(Event):
+    &#34;&#34;&#34;
+    Player must give some establishment to previous player.
+    &#34;&#34;&#34;
+
+    from_user: Player
+    to_user: Player</code></pre>
+</details>
+<div class="desc"><p>Player must give some establishment to previous player.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.MustGiveEstablishment.from_user"><code class="name">var <span class="ident">from_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.MustGiveEstablishment.to_user"><code class="name">var <span class="ident">to_user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.NewLandmarkEffectActivated"><code class="flex name class">
+<span>class <span class="ident">NewLandmarkEffectActivated</span></span>
+<span>(</span><span>landmark: Landmark, builder_only: bool = False)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class NewLandmarkEffectActivated(Event):
+    &#34;&#34;&#34;
+    New landmark effect activates.
+    &#34;&#34;&#34;
+
+    landmark: Landmark
+    builder_only: bool = False</code></pre>
+</details>
+<div class="desc"><p>New landmark effect activates.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.NewLandmarkEffectActivated.builder_only"><code class="name">var <span class="ident">builder_only</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.NewLandmarkEffectActivated.landmark"><code class="name">var <span class="ident">landmark</span> : Landmark</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.NoGameInProgress"><code class="flex name class">
+<span>class <span class="ident">NoGameInProgress</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class NoGameInProgress(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when action is attempted on already finished game.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Emitted when action is attempted on already finished game.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.NoGameInProgress.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.NotEnoughMoney"><code class="flex name class">
+<span>class <span class="ident">NotEnoughMoney</span></span>
+<span>(</span><span>buyer: Player, card_name: str, card_price: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class NotEnoughMoney(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted on attempt to build a card with insufficient coins.
+    &#34;&#34;&#34;
+
+    buyer: Player
+    card_name: str
+    card_price: int</code></pre>
+</details>
+<div class="desc"><p>Emitted on attempt to build a card with insufficient coins.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.NotEnoughMoney.buyer"><code class="name">var <span class="ident">buyer</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.NotEnoughMoney.card_name"><code class="name">var <span class="ident">card_name</span> : str</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.NotEnoughMoney.card_price"><code class="name">var <span class="ident">card_price</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.NotEnoughPlayers"><code class="flex name class">
+<span>class <span class="ident">NotEnoughPlayers</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class NotEnoughPlayers(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when attempting to start a game with less than 2 players.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Emitted when attempting to start a game with less than 2 players.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.NotEnoughPlayers.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.NotInGame"><code class="flex name class">
+<span>class <span class="ident">NotInGame</span></span>
+<span>(</span><span>player_id: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class NotInGame(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when action is attempted by player who&#39;s not in current game.
+    &#34;&#34;&#34;
+
+    player_id: int</code></pre>
+</details>
+<div class="desc"><p>Emitted when action is attempted by player who's not in current game.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.NotInGame.player_id"><code class="name">var <span class="ident">player_id</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.NotYourTurn"><code class="flex name class">
+<span>class <span class="ident">NotYourTurn</span></span>
+<span>(</span><span>expected_player: Player, moved_player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class NotYourTurn(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when action is attempted during another player&#39;s turn.
+    &#34;&#34;&#34;
+
+    expected_player: Player
+    moved_player: Player</code></pre>
+</details>
+<div class="desc"><p>Emitted when action is attempted during another player's turn.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.NotYourTurn.expected_player"><code class="name">var <span class="ident">expected_player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.NotYourTurn.moved_player"><code class="name">var <span class="ident">moved_player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.OnlyOwnerOperation"><code class="flex name class">
+<span>class <span class="ident">OnlyOwnerOperation</span></span>
+<span>(</span><span>owner: Player, user: Player, inactivity_remains: float)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class OnlyOwnerOperation(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when attempted to do an owner-only operation.
+
+    Also returns inactivity timeout state.
+    &#34;&#34;&#34;
+
+    owner: Player
+    user: Player
+    inactivity_remains: float</code></pre>
+</details>
+<div class="desc"><p>Emitted when attempted to do an owner-only operation.</p>
+<p>Also returns inactivity timeout state.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.OnlyOwnerOperation.inactivity_remains"><code class="name">var <span class="ident">inactivity_remains</span> : float</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.OnlyOwnerOperation.owner"><code class="name">var <span class="ident">owner</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.OnlyOwnerOperation.user"><code class="name">var <span class="ident">user</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.OwnerChanged"><code class="flex name class">
+<span>class <span class="ident">OwnerChanged</span></span>
+<span>(</span><span>oldowner: Player, newowner: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class OwnerChanged(Event):
+    &#34;&#34;&#34;
+    Old owner left a game in progress.
+    &#34;&#34;&#34;
+
+    oldowner: Player
+    newowner: Player</code></pre>
+</details>
+<div class="desc"><p>Old owner left a game in progress.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.OwnerChanged.newowner"><code class="name">var <span class="ident">newowner</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.OwnerChanged.oldowner"><code class="name">var <span class="ident">oldowner</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.PlayerHasNoSuchCard"><code class="flex name class">
+<span>class <span class="ident">PlayerHasNoSuchCard</span></span>
+<span>(</span><span>player: Player, card_name: str, current: bool)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class PlayerHasNoSuchCard(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted on attempt to give/take a card that&#39;s not in player&#39;s possession.
+    &#34;&#34;&#34;
+
+    player: Player
+    card_name: str
+    current: bool</code></pre>
+</details>
+<div class="desc"><p>Emitted on attempt to give/take a card that's not in player's possession.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.PlayerHasNoSuchCard.card_name"><code class="name">var <span class="ident">card_name</span> : str</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.PlayerHasNoSuchCard.current"><code class="name">var <span class="ident">current</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.PlayerHasNoSuchCard.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.PlayerJoined"><code class="flex name class">
+<span>class <span class="ident">PlayerJoined</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class PlayerJoined(Event):
+    &#34;&#34;&#34;
+    Player has joined game.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Player has joined game.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.PlayerJoined.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.PlayerLeft"><code class="flex name class">
+<span>class <span class="ident">PlayerLeft</span></span>
+<span>(</span><span>player: Player, initiator: Player, during_game: bool = False)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class PlayerLeft(Event):
+    &#34;&#34;&#34;
+    Player has left game.
+    &#34;&#34;&#34;
+
+    player: Player
+    initiator: Player
+    during_game: bool = False</code></pre>
+</details>
+<div class="desc"><p>Player has left game.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.PlayerLeft.during_game"><code class="name">var <span class="ident">during_game</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.PlayerLeft.initiator"><code class="name">var <span class="ident">initiator</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.PlayerLeft.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.RoomIsFull"><code class="flex name class">
+<span>class <span class="ident">RoomIsFull</span></span>
+<span>(</span><span>player_id: int)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class RoomIsFull(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when attempting to join a game with 5 joined players.
+    &#34;&#34;&#34;
+
+    player_id: int</code></pre>
+</details>
+<div class="desc"><p>Emitted when attempting to join a game with 5 joined players.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.RoomIsFull.player_id"><code class="name">var <span class="ident">player_id</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.SkipBuild"><code class="flex name class">
+<span>class <span class="ident">SkipBuild</span></span>
+<span>(</span><span>player: Player, cannot_buy: bool = False)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class SkipBuild(Event):
+    &#34;&#34;&#34;
+    Player skips the build phase.
+    &#34;&#34;&#34;
+
+    player: Player
+    cannot_buy: bool = False</code></pre>
+</details>
+<div class="desc"><p>Player skips the build phase.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.SkipBuild.cannot_buy"><code class="name">var <span class="ident">cannot_buy</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.SkipBuild.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.SkipExchangeEstablishments"><code class="flex name class">
+<span>class <span class="ident">SkipExchangeEstablishments</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class SkipExchangeEstablishments(Event):
+    &#34;&#34;&#34;
+    Player has decided not to exchange establishments.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Player has decided not to exchange establishments.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.SkipExchangeEstablishments.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.StateSwitch"><code class="flex name class">
+<span>class <span class="ident">StateSwitch</span></span>
+<span>(</span><span>prev_state: GameState, new_state: GameState)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class StateSwitch(Event):
+    &#34;&#34;&#34;
+    Game state changes from A to B.
+    &#34;&#34;&#34;
+
+    prev_state: GameState
+    new_state: GameState</code></pre>
+</details>
+<div class="desc"><p>Game state changes from A to B.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.StateSwitch.new_state"><code class="name">var <span class="ident">new_state</span> : GameState</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.StateSwitch.prev_state"><code class="name">var <span class="ident">prev_state</span> : GameState</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.TurnBegins"><code class="flex name class">
+<span>class <span class="ident">TurnBegins</span></span>
+<span>(</span><span>extra: bool, turn_number: int, round_number: int, initial: int, player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class TurnBegins(Event):
+    &#34;&#34;&#34;
+    Next turn begins.
+    &#34;&#34;&#34;
+
+    extra: bool
+    turn_number: int
+    round_number: int
+    initial: int
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Next turn begins.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.TurnBegins.extra"><code class="name">var <span class="ident">extra</span> : bool</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.TurnBegins.initial"><code class="name">var <span class="ident">initial</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.TurnBegins.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.TurnBegins.round_number"><code class="name">var <span class="ident">round_number</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.TurnBegins.turn_number"><code class="name">var <span class="ident">turn_number</span> : int</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.TurnSkipped"><code class="flex name class">
+<span>class <span class="ident">TurnSkipped</span></span>
+<span>(</span><span>player: Player)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class TurnSkipped(Event):
+    &#34;&#34;&#34;
+    Player skips turn.
+    &#34;&#34;&#34;
+
+    player: Player</code></pre>
+</details>
+<div class="desc"><p>Player skips turn.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.TurnSkipped.player"><code class="name">var <span class="ident">player</span> : Player</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+<dt id="mk2lib.events.WrongState"><code class="flex name class">
+<span>class <span class="ident">WrongState</span></span>
+<span>(</span><span>expected_state: GameState, current_state: GameState)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@dataclass(frozen=True)
+class WrongState(ErrorEvent):
+    &#34;&#34;&#34;
+    Emitted when action is attempted in wrong state.
+    &#34;&#34;&#34;
+
+    expected_state: GameState
+    current_state: GameState</code></pre>
+</details>
+<div class="desc"><p>Emitted when action is attempted in wrong state.</p></div>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></li>
+<li><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></li>
+</ul>
+<h3>Instance variables</h3>
+<dl>
+<dt id="mk2lib.events.WrongState.current_state"><code class="name">var <span class="ident">current_state</span> : GameState</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+<dt id="mk2lib.events.WrongState.expected_state"><code class="name">var <span class="ident">expected_state</span> : GameState</code></dt>
+<dd>
+<div class="desc"><p>The type of the None singleton.</p></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="mk2lib" href="index.html">mk2lib</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="mk2lib.events.AlreadyInGame" href="#mk2lib.events.AlreadyInGame">AlreadyInGame</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.AlreadyInGame.player" href="#mk2lib.events.AlreadyInGame.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.CanBuild" href="#mk2lib.events.CanBuild">CanBuild</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.CanBuild.build_options" href="#mk2lib.events.CanBuild.build_options">build_options</a></code></li>
+<li><code><a title="mk2lib.events.CanBuild.player" href="#mk2lib.events.CanBuild.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.CanExchangeEstablishments" href="#mk2lib.events.CanExchangeEstablishments">CanExchangeEstablishments</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.CanExchangeEstablishments.player" href="#mk2lib.events.CanExchangeEstablishments.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.CannotExchangeWithSelf" href="#mk2lib.events.CannotExchangeWithSelf">CannotExchangeWithSelf</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.CannotExchangeWithSelf.player" href="#mk2lib.events.CannotExchangeWithSelf.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.CardBuilt" href="#mk2lib.events.CardBuilt">CardBuilt</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.CardBuilt.buyer" href="#mk2lib.events.CardBuilt.buyer">buyer</a></code></li>
+<li><code><a title="mk2lib.events.CardBuilt.card" href="#mk2lib.events.CardBuilt.card">card</a></code></li>
+<li><code><a title="mk2lib.events.CardBuilt.price_paid" href="#mk2lib.events.CardBuilt.price_paid">price_paid</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.CardUnavailable" href="#mk2lib.events.CardUnavailable">CardUnavailable</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.CardUnavailable.buyer" href="#mk2lib.events.CardUnavailable.buyer">buyer</a></code></li>
+<li><code><a title="mk2lib.events.CardUnavailable.card_name" href="#mk2lib.events.CardUnavailable.card_name">card_name</a></code></li>
+<li><code><a title="mk2lib.events.CardUnavailable.prohibited" href="#mk2lib.events.CardUnavailable.prohibited">prohibited</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.DealtCardsToMarket" href="#mk2lib.events.DealtCardsToMarket">DealtCardsToMarket</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.DealtCardsToMarket.cards" href="#mk2lib.events.DealtCardsToMarket.cards">cards</a></code></li>
+<li><code><a title="mk2lib.events.DealtCardsToMarket.initial" href="#mk2lib.events.DealtCardsToMarket.initial">initial</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.DiceRolled" href="#mk2lib.events.DiceRolled">DiceRolled</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.DiceRolled.dice" href="#mk2lib.events.DiceRolled.dice">dice</a></code></li>
+<li><code><a title="mk2lib.events.DiceRolled.player" href="#mk2lib.events.DiceRolled.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.ErrorEvent" href="#mk2lib.events.ErrorEvent">ErrorEvent</a></code></h4>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.EstablishmentExchanged" href="#mk2lib.events.EstablishmentExchanged">EstablishmentExchanged</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.EstablishmentExchanged.establishment_given" href="#mk2lib.events.EstablishmentExchanged.establishment_given">establishment_given</a></code></li>
+<li><code><a title="mk2lib.events.EstablishmentExchanged.establishment_taken" href="#mk2lib.events.EstablishmentExchanged.establishment_taken">establishment_taken</a></code></li>
+<li><code><a title="mk2lib.events.EstablishmentExchanged.from_user" href="#mk2lib.events.EstablishmentExchanged.from_user">from_user</a></code></li>
+<li><code><a title="mk2lib.events.EstablishmentExchanged.to_user" href="#mk2lib.events.EstablishmentExchanged.to_user">to_user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.EstablishmentGiven" href="#mk2lib.events.EstablishmentGiven">EstablishmentGiven</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.EstablishmentGiven.establishment" href="#mk2lib.events.EstablishmentGiven.establishment">establishment</a></code></li>
+<li><code><a title="mk2lib.events.EstablishmentGiven.from_user" href="#mk2lib.events.EstablishmentGiven.from_user">from_user</a></code></li>
+<li><code><a title="mk2lib.events.EstablishmentGiven.to_user" href="#mk2lib.events.EstablishmentGiven.to_user">to_user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.Event" href="#mk2lib.events.Event">Event</a></code></h4>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.FinalScores" href="#mk2lib.events.FinalScores">FinalScores</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.FinalScores.finished" href="#mk2lib.events.FinalScores.finished">finished</a></code></li>
+<li><code><a title="mk2lib.events.FinalScores.scores" href="#mk2lib.events.FinalScores.scores">scores</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.GameCreated" href="#mk2lib.events.GameCreated">GameCreated</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.GameCreated.owner" href="#mk2lib.events.GameCreated.owner">owner</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.GameEnded" href="#mk2lib.events.GameEnded">GameEnded</a></code></h4>
+<ul class="two-column">
+<li><code><a title="mk2lib.events.GameEnded.cancelled" href="#mk2lib.events.GameEnded.cancelled">cancelled</a></code></li>
+<li><code><a title="mk2lib.events.GameEnded.finished" href="#mk2lib.events.GameEnded.finished">finished</a></code></li>
+<li><code><a title="mk2lib.events.GameEnded.launch_pad" href="#mk2lib.events.GameEnded.launch_pad">launch_pad</a></code></li>
+<li><code><a title="mk2lib.events.GameEnded.not_enough_players" href="#mk2lib.events.GameEnded.not_enough_players">not_enough_players</a></code></li>
+<li><code><a title="mk2lib.events.GameEnded.owner_left" href="#mk2lib.events.GameEnded.owner_left">owner_left</a></code></li>
+<li><code><a title="mk2lib.events.GameEnded.player" href="#mk2lib.events.GameEnded.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.GameInProgress" href="#mk2lib.events.GameInProgress">GameInProgress</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.GameInProgress.player_id" href="#mk2lib.events.GameInProgress.player_id">player_id</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.GameStarted" href="#mk2lib.events.GameStarted">GameStarted</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.GameStarted.owner" href="#mk2lib.events.GameStarted.owner">owner</a></code></li>
+<li><code><a title="mk2lib.events.GameStarted.randomize_players" href="#mk2lib.events.GameStarted.randomize_players">randomize_players</a></code></li>
+<li><code><a title="mk2lib.events.GameStarted.turn_order" href="#mk2lib.events.GameStarted.turn_order">turn_order</a></code></li>
+<li><code><a title="mk2lib.events.GameStarted.use_promo" href="#mk2lib.events.GameStarted.use_promo">use_promo</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.GetExtraTurn" href="#mk2lib.events.GetExtraTurn">GetExtraTurn</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.GetExtraTurn.no_effect" href="#mk2lib.events.GetExtraTurn.no_effect">no_effect</a></code></li>
+<li><code><a title="mk2lib.events.GetExtraTurn.player" href="#mk2lib.events.GetExtraTurn.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.GetOneCoinBecauseHadNoMoney" href="#mk2lib.events.GetOneCoinBecauseHadNoMoney">GetOneCoinBecauseHadNoMoney</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.GetOneCoinBecauseHadNoMoney.user" href="#mk2lib.events.GetOneCoinBecauseHadNoMoney.user">user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.MoneyDivided" href="#mk2lib.events.MoneyDivided">MoneyDivided</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.MoneyDivided.coins" href="#mk2lib.events.MoneyDivided.coins">coins</a></code></li>
+<li><code><a title="mk2lib.events.MoneyDivided.from_bank" href="#mk2lib.events.MoneyDivided.from_bank">from_bank</a></code></li>
+<li><code><a title="mk2lib.events.MoneyDivided.players" href="#mk2lib.events.MoneyDivided.players">players</a></code></li>
+<li><code><a title="mk2lib.events.MoneyDivided.reason" href="#mk2lib.events.MoneyDivided.reason">reason</a></code></li>
+<li><code><a title="mk2lib.events.MoneyDivided.total_coins" href="#mk2lib.events.MoneyDivided.total_coins">total_coins</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.MoneyEarned" href="#mk2lib.events.MoneyEarned">MoneyEarned</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.MoneyEarned.earned" href="#mk2lib.events.MoneyEarned.earned">earned</a></code></li>
+<li><code><a title="mk2lib.events.MoneyEarned.reason" href="#mk2lib.events.MoneyEarned.reason">reason</a></code></li>
+<li><code><a title="mk2lib.events.MoneyEarned.user" href="#mk2lib.events.MoneyEarned.user">user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.MoneyTaken" href="#mk2lib.events.MoneyTaken">MoneyTaken</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.MoneyTaken.from_user" href="#mk2lib.events.MoneyTaken.from_user">from_user</a></code></li>
+<li><code><a title="mk2lib.events.MoneyTaken.owed" href="#mk2lib.events.MoneyTaken.owed">owed</a></code></li>
+<li><code><a title="mk2lib.events.MoneyTaken.reason" href="#mk2lib.events.MoneyTaken.reason">reason</a></code></li>
+<li><code><a title="mk2lib.events.MoneyTaken.taken" href="#mk2lib.events.MoneyTaken.taken">taken</a></code></li>
+<li><code><a title="mk2lib.events.MoneyTaken.to_user" href="#mk2lib.events.MoneyTaken.to_user">to_user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.MustGiveEstablishment" href="#mk2lib.events.MustGiveEstablishment">MustGiveEstablishment</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.MustGiveEstablishment.from_user" href="#mk2lib.events.MustGiveEstablishment.from_user">from_user</a></code></li>
+<li><code><a title="mk2lib.events.MustGiveEstablishment.to_user" href="#mk2lib.events.MustGiveEstablishment.to_user">to_user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.NewLandmarkEffectActivated" href="#mk2lib.events.NewLandmarkEffectActivated">NewLandmarkEffectActivated</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.NewLandmarkEffectActivated.builder_only" href="#mk2lib.events.NewLandmarkEffectActivated.builder_only">builder_only</a></code></li>
+<li><code><a title="mk2lib.events.NewLandmarkEffectActivated.landmark" href="#mk2lib.events.NewLandmarkEffectActivated.landmark">landmark</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.NoGameInProgress" href="#mk2lib.events.NoGameInProgress">NoGameInProgress</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.NoGameInProgress.player" href="#mk2lib.events.NoGameInProgress.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.NotEnoughMoney" href="#mk2lib.events.NotEnoughMoney">NotEnoughMoney</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.NotEnoughMoney.buyer" href="#mk2lib.events.NotEnoughMoney.buyer">buyer</a></code></li>
+<li><code><a title="mk2lib.events.NotEnoughMoney.card_name" href="#mk2lib.events.NotEnoughMoney.card_name">card_name</a></code></li>
+<li><code><a title="mk2lib.events.NotEnoughMoney.card_price" href="#mk2lib.events.NotEnoughMoney.card_price">card_price</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.NotEnoughPlayers" href="#mk2lib.events.NotEnoughPlayers">NotEnoughPlayers</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.NotEnoughPlayers.player" href="#mk2lib.events.NotEnoughPlayers.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.NotInGame" href="#mk2lib.events.NotInGame">NotInGame</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.NotInGame.player_id" href="#mk2lib.events.NotInGame.player_id">player_id</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.NotYourTurn" href="#mk2lib.events.NotYourTurn">NotYourTurn</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.NotYourTurn.expected_player" href="#mk2lib.events.NotYourTurn.expected_player">expected_player</a></code></li>
+<li><code><a title="mk2lib.events.NotYourTurn.moved_player" href="#mk2lib.events.NotYourTurn.moved_player">moved_player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.OnlyOwnerOperation" href="#mk2lib.events.OnlyOwnerOperation">OnlyOwnerOperation</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.OnlyOwnerOperation.inactivity_remains" href="#mk2lib.events.OnlyOwnerOperation.inactivity_remains">inactivity_remains</a></code></li>
+<li><code><a title="mk2lib.events.OnlyOwnerOperation.owner" href="#mk2lib.events.OnlyOwnerOperation.owner">owner</a></code></li>
+<li><code><a title="mk2lib.events.OnlyOwnerOperation.user" href="#mk2lib.events.OnlyOwnerOperation.user">user</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.OwnerChanged" href="#mk2lib.events.OwnerChanged">OwnerChanged</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.OwnerChanged.newowner" href="#mk2lib.events.OwnerChanged.newowner">newowner</a></code></li>
+<li><code><a title="mk2lib.events.OwnerChanged.oldowner" href="#mk2lib.events.OwnerChanged.oldowner">oldowner</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.PlayerHasNoSuchCard" href="#mk2lib.events.PlayerHasNoSuchCard">PlayerHasNoSuchCard</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.PlayerHasNoSuchCard.card_name" href="#mk2lib.events.PlayerHasNoSuchCard.card_name">card_name</a></code></li>
+<li><code><a title="mk2lib.events.PlayerHasNoSuchCard.current" href="#mk2lib.events.PlayerHasNoSuchCard.current">current</a></code></li>
+<li><code><a title="mk2lib.events.PlayerHasNoSuchCard.player" href="#mk2lib.events.PlayerHasNoSuchCard.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.PlayerJoined" href="#mk2lib.events.PlayerJoined">PlayerJoined</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.PlayerJoined.player" href="#mk2lib.events.PlayerJoined.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.PlayerLeft" href="#mk2lib.events.PlayerLeft">PlayerLeft</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.PlayerLeft.during_game" href="#mk2lib.events.PlayerLeft.during_game">during_game</a></code></li>
+<li><code><a title="mk2lib.events.PlayerLeft.initiator" href="#mk2lib.events.PlayerLeft.initiator">initiator</a></code></li>
+<li><code><a title="mk2lib.events.PlayerLeft.player" href="#mk2lib.events.PlayerLeft.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.RoomIsFull" href="#mk2lib.events.RoomIsFull">RoomIsFull</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.RoomIsFull.player_id" href="#mk2lib.events.RoomIsFull.player_id">player_id</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.SkipBuild" href="#mk2lib.events.SkipBuild">SkipBuild</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.SkipBuild.cannot_buy" href="#mk2lib.events.SkipBuild.cannot_buy">cannot_buy</a></code></li>
+<li><code><a title="mk2lib.events.SkipBuild.player" href="#mk2lib.events.SkipBuild.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.SkipExchangeEstablishments" href="#mk2lib.events.SkipExchangeEstablishments">SkipExchangeEstablishments</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.SkipExchangeEstablishments.player" href="#mk2lib.events.SkipExchangeEstablishments.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.StateSwitch" href="#mk2lib.events.StateSwitch">StateSwitch</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.StateSwitch.new_state" href="#mk2lib.events.StateSwitch.new_state">new_state</a></code></li>
+<li><code><a title="mk2lib.events.StateSwitch.prev_state" href="#mk2lib.events.StateSwitch.prev_state">prev_state</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.TurnBegins" href="#mk2lib.events.TurnBegins">TurnBegins</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.TurnBegins.extra" href="#mk2lib.events.TurnBegins.extra">extra</a></code></li>
+<li><code><a title="mk2lib.events.TurnBegins.initial" href="#mk2lib.events.TurnBegins.initial">initial</a></code></li>
+<li><code><a title="mk2lib.events.TurnBegins.player" href="#mk2lib.events.TurnBegins.player">player</a></code></li>
+<li><code><a title="mk2lib.events.TurnBegins.round_number" href="#mk2lib.events.TurnBegins.round_number">round_number</a></code></li>
+<li><code><a title="mk2lib.events.TurnBegins.turn_number" href="#mk2lib.events.TurnBegins.turn_number">turn_number</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.TurnSkipped" href="#mk2lib.events.TurnSkipped">TurnSkipped</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.TurnSkipped.player" href="#mk2lib.events.TurnSkipped.player">player</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="mk2lib.events.WrongState" href="#mk2lib.events.WrongState">WrongState</a></code></h4>
+<ul class="">
+<li><code><a title="mk2lib.events.WrongState.current_state" href="#mk2lib.events.WrongState.current_state">current_state</a></code></li>
+<li><code><a title="mk2lib.events.WrongState.expected_state" href="#mk2lib.events.WrongState.expected_state">expected_state</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
+</footer>
+</body>
+</html>
