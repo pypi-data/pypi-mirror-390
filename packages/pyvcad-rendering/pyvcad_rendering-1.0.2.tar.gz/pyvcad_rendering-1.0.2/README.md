@@ -1,0 +1,1 @@
+This library can be used to render OpenVCAD objects. See the [main OpenVCAD package](https://pypi.org/project/OpenVCAD/) for more info.
