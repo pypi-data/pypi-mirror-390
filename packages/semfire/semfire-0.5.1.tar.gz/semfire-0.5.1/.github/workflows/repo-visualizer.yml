@@ -1,0 +1,23 @@
+name: Repo Visualizer
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Create assets directory
+        run: mkdir -p assets
+      - name: Update diagram
+        uses: githubocto/repo-visualizer@0.7.1
+        with:
+          output_file: "assets/repo-visualizer.svg"
+          commit_message: "Docs: Update repository diagram"
+          branch: ${{ github.ref_name }}
+          excluded_paths: "dist,node_modules,.venv"
