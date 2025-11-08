@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "streaming-fetcher"
+version = "0.3.0"
+description = "Streaming fetcher library can be used to automatize downloads from streaming sites"
+authors = ["Roberto Bochet <r@robertobochet.me>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://github.com/RobertoBochet/streaming-fetcher.git"
+packages = [
+  {include = "streaming_fetcher"},
+  {include = "yt_dlp_plugins", from = "external/StreamingCommunity-yt-dlp-plugin"}
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Operating System :: OS Independent",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Video",
+  "Framework :: AsyncIO",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed"
+]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+playwright = "^1.55.0"
+yt-dlp = "^2025.10.22"
+python-dateutil = "^2.9.0.post0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.3.0"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.9"
+
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = [".git", ".mypy_cache", ".pytest_cache", ".tox", "venv", "tests", "dist", "build"]
+skips = ["B113"]
+
+[tool.pytest.ini_options]
+addopts = "--order-dependencies --order-scope=session"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
