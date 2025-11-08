@@ -1,0 +1,86 @@
+query siteSiteBgpStatus ( $accountId:ID! $siteBgpStatusInput:SiteBgpStatusInput!) {
+	site ( accountId:$accountId ) {
+		siteBgpStatus ( input:$siteBgpStatusInput  )  {
+			status {
+	remoteIp {
+		ip
+		subnet
+		ipRange {
+			from
+			to
+		}
+		globalIpRange {
+			id
+			name
+		}
+	}
+				bgpSession
+				bfdSession
+	routesFromPeer {
+		type
+		subnet
+		rule
+		lastPublishAttempt
+		community {
+			from
+			to
+		}
+	}
+				routesToPeer
+				rejectedRoutesFromPeer {
+	subnet {
+		id
+		name
+	}
+	type {
+		name
+		recommendedAction
+		details
+	}
+					community {
+	from {
+		container {
+			id
+			name
+			description
+			size
+			audit {
+				createdAt
+				createdBy
+				lastModifiedBy
+				lastModifiedAt
+			}
+		}
+	}
+	to {
+		comment {
+			id
+			createdAt
+			text
+			actor {
+				__typename
+				... on AdminRef {
+					id
+					name
+				}
+				... on ApiKeyRef {
+					id
+					name
+				}
+			}
+		}
+	}
+					}
+	rule {
+		useEffectiveFrom
+		effectiveFrom
+		useExpiresAt
+		expiresAt
+	}
+					lastPublishAttempt
+				}
+			}
+			rawStatus
+		}
+	}	
+}
