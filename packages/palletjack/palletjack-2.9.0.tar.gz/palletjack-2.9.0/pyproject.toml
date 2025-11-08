@@ -1,0 +1,91 @@
+[build-system]
+requires = [
+  "setuptools>=55.0",
+  "Cython>=3",
+  "numpy>=1.16.6",
+  "pyarrow~=22.0.0",
+]
+
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "palletjack"
+version = "2.9.0"
+description = "Faster parquet metadata reading"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "pyarrow~=22.0.0",
+]
+
+
+[tool.setuptools.packages.find]
+include = ['palletjack*']
+
+[tool.setuptools.package-data]
+"*" = ["*.pxd", "*.h", "*.pyx"]
+
+[project.urls]
+Homepage = "https://github.com/G-Research/PalletJack"
+Issues = "https://github.com/G-Research/PalletJack/issues"
+
+########################### cibuildwheel ###########################
+[tool.cibuildwheel]
+skip = [
+ "*_i686", 
+ "*-musllinux_*",
+ "*win32",
+ "cp39-*",
+]
+
+# We use manylinux_2_28 for ABI compatibility with pyarrow
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+########################### cibuildwheel Linux #####################
+[tool.cibuildwheel.linux]
+before-build = [
+  "pip install auditwheel",
+  "ldd --version", # This will show the glibc version being used
+  "python -c 'import sysconfig; print(sysconfig.get_config_var(\"CC\"))'", # Show the C compiler used
+  "python -c 'import platform; print(platform.libc_ver())'", # Show libc version Python sees
+  "ls -l /lib64/libc.so.6", # Another way to see glibc
+]
+
+repair-wheel-command = [
+ "auditwheel repair --exclude libarrow.so.2200 --exclude libparquet.so.2200 -w {dest_dir} {wheel}",
+]
+
+# Run multiple commands using an array
+before-all = [
+  "yum -y install curl zip unzip tar perl-IPC-Cmd flex",
+  "if ! ./vcpkg/bootstrap-vcpkg.sh; then rm -rf vcpkg; git clone https://github.com/microsoft/vcpkg.git vcpkg; ./vcpkg/bootstrap-vcpkg.sh; fi",
+  "./vcpkg/vcpkg install --x-manifest-root . --feature-flags=versions",
+  # Copy vcpkg and its installed packages to the output directory on the host.
+  # This allows for persistent caching with 'actions/cache'.
+  "mkdir -p /output",
+  "cp -r vcpkg /output/vcpkg",
+  "cp -r vcpkg_installed /output/vcpkg_installed",
+]
+
+########################### cibuildwheel Windows ###################
+[tool.cibuildwheel.windows]
+before-build = "pip install delvewheel"
+repair-wheel-command = "delvewheel repair --exclude arrow.dll --exclude parquet.dll -w {dest_dir} {wheel}"
+before-all = [
+  "vcpkg install --x-manifest-root . --feature-flags=versions",
+]
+
+########################### cibuildwheel MacOS #####################
+[tool.cibuildwheel.macos]
+before-build = "pip install delocate"
+repair-wheel-command = ""
+
+before-all = [
+  "vcpkg install --x-manifest-root . --feature-flags=versions",
+]
