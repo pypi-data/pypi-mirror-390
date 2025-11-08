@@ -1,0 +1,116 @@
+# 🧠 DevCore CLI
+
+DevCore adalah sistem otomatisasi untuk setup, konfigurasi, dan deployment stack WordPress modern melalui Command Line Interface (CLI).  
+Didesain untuk developer yang ingin mempercepat workflow WordPress Development, mulai dari inisialisasi proyek, konfigurasi environment, hingga sinkronisasi GitHub — semua hanya lewat terminal.
+
+---
+
+## 🚀 Fitur Utama
+
+- ⚙️ **WordPress Auto Installer & Setup**  
+  Buat project WordPress siap-pakai hanya dengan satu perintah.
+
+- 🧩 **Template Builder**  
+  Dukung stack: `WordPress + WooCommerce + Elementor`.
+
+- 💾 **Database Handler (SQLite)**  
+  Menyimpan metadata project dan konfigurasi CLI dengan aman.
+
+- 🔐 **Konfigurasi Environment Otomatis**  
+  Termasuk rebuild & reset config.
+
+- 🔄 **Auto Sync ke GitHub**  
+  Login GitHub langsung dari CLI.
+
+- 🧱 **Modular CLI Structure**  
+  Setiap perintah terpisah secara modular di direktori `core/`.
+
+---
+
+## ⚡ Perintah Dasar DevCore
+
+#### 1️⃣ Login GitHub terlebih dahulu
+```bash
+devcore login github
+```  
+
+#### Setup project 
+```bash
+devcore wp setup --generate
+```  
+
+2️⃣ Membuat template awal  
+
+```bash
+devcore new project --type wordpress --client "New-Commerce-Project" --stack "wordpress+woo"
+```  
+
+3️⃣ Build WordPress Project  
+```bash
+devcore wp init New-Commerce-Project
+```  
+
+4️⃣ Reset atau Rebuild Konfigurasi
+```bash
+devcore config rebuild
+devcore config reset
+```  
+
+5️⃣ Menghapus Database Project
+```bash
+del devcore_projects.db
+```  
+
+#### Setup WordPress Plugins & Themes
+Installs plugins and themes automatically using WP-CLI based on configuration files.
+
+```bash
+devcore wp init New-Commerce-Project --include-setup
+```  
+
+📁 Struktur Direktori DevCore  
+```bash
+dev-core-system/
+│
+├── core/
+│   ├── command_config.py
+│   ├── command_new_setup.py
+│   ├── db.py
+│   ├── env_manager.py
+│   └── wp_init.py
+│   └── wp_dropdb.py
+│   └── github_integration.py
+│   └── template_engine.py
+│
+├── templates/
+│   └── .env.example (autogenerate)
+│   └── docker-compose.yml (autogenerate)
+│   └── README.md (autogenerate)
+│
+├── .devcore.json
+├── devcore_projects.db
+├── devcore
+├── devcore.cmd
+├── README.md
+└── DOCUMENTATION.md
+```  
+
+🧭 Roadmap Singkat  
+| Fase    | Deskripsi                              | Status         |
+| ------- | -------------------------------------- | -------------- |
+| Phase 1 | Core CLI & Config Handler              | ✅ Selesai     |
+| Phase 2 | WordPress Stack Builder                | 🚧 In Progress |
+| Phase 3 | Integration Layer (GitHub, VPS Deploy) | ⏳ Planned     |
+| Phase 4 | Automation & Backup                    | ⏳ Planned     |
+| Phase 5 | DevCore Cloud Dashboard                | 🧩 Research    |
+<img width="1024" height="1536" alt="devcore-system-roadmap" src="https://github.com/user-attachments/assets/a4b64b39-068e-4ef2-8044-b2aadf9d4b39" />
+
+📜 Lisensi
+
+MIT License © 2025 — [DevCore Project Team > Puji Ermanto<pujiermanto@gmail.com>]  
+
+💬 Kontribusi
+
+Pull Request, Issue, dan Feedback selalu terbuka.
+Silakan buat branch baru sebelum commit ke main.  
+
