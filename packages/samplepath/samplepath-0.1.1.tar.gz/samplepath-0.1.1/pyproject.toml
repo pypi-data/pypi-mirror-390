@@ -1,0 +1,91 @@
+[tool.poetry]
+name = "samplepath"
+version = "0.1.1"
+description = "Sample Path Analysis Library"
+authors = ["Krishna Kumar <kkumar@exathink.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://docs.pcalc.org"
+repository = "https://github.com/presence-calculus/samplepath"
+packages = [{ include = "samplepath" }]
+keywords = ["presence", "flow", "queueing", "analytics"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+numpy = ">=1.26,<3.0"
+pandas = { version = ">=2.2,<3.0" }
+matplotlib = { version = ">=3.8,<4.0" }
+sortedcontainers = "^2.4.0"
+
+# Keep only truly optional deps here. If pandas/matplotlib are required, leave them above and
+# remove them from extras. If optional, move them here and delete from dependencies.
+[tool.poetry.extras]
+polars = ["polars"]
+
+[tool.poetry.group.dev.dependencies]
+notebook = "*"
+ipykernel = "*"
+pytest = "*"
+pytest-cov = "*"
+black = "*"
+isort = "*"
+mypy = "*"
+pre-commit = "*"
+pdoc = "^15.0.3"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# -----------
+# Scripts
+# ------------
+[tool.poetry.scripts]
+samplepath = "samplepath.cli:main"
+
+# -------------------------
+# Testing & Coverage
+# -------------------------
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = [
+    "--cov=samplepath",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "-q"
+]
+markers = ["slow: long-running or property tests"]
+# Root layout: allow `pytest` (outside Poetry) to import local package
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["samplepath"]
+omit = ["**/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 2
+# fail_under = 90
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
