@@ -1,0 +1,166 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mha-flow"
+dynamic = ["version"]
+description = "Professional Metaheuristic Algorithm Library with 130+ algorithms, AI-powered recommendations, and modern web interface"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "MHA Flow Development Team", email = "mha.flow@gmail.com"},
+]
+maintainers = [
+    {name = "MHA Flow Development Team", email = "mha.flow@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = [
+    "metaheuristic", "optimization", "evolutionary-algorithm", 
+    "swarm-intelligence", "feature-selection", "machine-learning",
+    "artificial-intelligence", "bio-inspired", "physics-based",
+    "hybrid-algorithms", "pso", "gwo", "sca", "woa", "ga", "de",
+    "algorithm-recommender", "ai-powered", "data-science", "streamlit"
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.19.0",
+    "pandas>=1.2.0",
+    "matplotlib>=3.3.0",
+    "seaborn>=0.11.0",
+    "scikit-learn>=0.24.0",
+    "scipy>=1.6.0",
+    "joblib>=1.0.0",
+    "tqdm>=4.60.0",
+    "click>=8.0.0",
+]
+
+[project.optional-dependencies]
+web = [
+    "streamlit>=1.25.0",
+    "plotly>=5.0.0",
+    "dash>=2.0.0",
+]
+jupyter = [
+    "jupyter>=1.0.0",
+    "ipython>=7.0.0",
+    "notebook>=6.0.0",
+]
+advanced = [
+    "tensorflow>=2.6.0",
+    "torch>=1.9.0",
+    "optuna>=2.10.0",
+    "hyperopt>=0.2.5",
+]
+dev = [
+    "pytest>=6.0.0",
+    "pytest-cov>=2.10.0",
+    "black>=21.0.0",
+    "flake8>=3.8.0",
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+all = [
+    "streamlit>=1.25.0",
+    "plotly>=5.0.0",
+    "dash>=2.0.0",
+    "jupyter>=1.0.0",
+    "ipython>=7.0.0",
+    "notebook>=6.0.0",
+    "tensorflow>=2.6.0",
+    "torch>=1.9.0",
+    "optuna>=2.10.0",
+    "hyperopt>=0.2.5",
+    "pytest>=6.0.0",
+    "pytest-cov>=2.10.0",
+    "black>=21.0.0",
+    "flake8>=3.8.0",
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Achyut103040/MHA-Algorithm"
+Documentation = "https://github.com/Achyut103040/MHA-Algorithm/wiki"
+Repository = "https://github.com/Achyut103040/MHA-Algorithm"
+"Bug Tracker" = "https://github.com/Achyut103040/MHA-Algorithm/issues"
+
+[project.scripts]
+mha-flow = "mha_toolbox.launcher:launch_local_interface"
+mha-flow-web = "mha_toolbox.launcher:launch_online_interface"
+mha-flow-cli = "mha_toolbox.cli:main"
+mha-demo = "mha_toolbox.launcher:run_demo_system"
+
+[tool.setuptools]
+packages = ["mha_toolbox", "mha_toolbox.algorithms", "mha_toolbox.utils"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mha_toolbox.__version__"}
+
+[tool.setuptools.package-data]
+mha_toolbox = ["data/*.csv", "data/*.json", "templates/*.html", "static/*.css", "static/*.js"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers"
+testpaths = [
+    "tests",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["mha_toolbox"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+]
