@@ -1,0 +1,1 @@
+"""Alprina CLI Tests"""
