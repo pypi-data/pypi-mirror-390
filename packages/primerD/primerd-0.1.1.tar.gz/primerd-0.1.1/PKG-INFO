@@ -1,0 +1,81 @@
+Metadata-Version: 2.4
+Name: primerD
+Version: 0.1.1
+Summary: A Python package for designing PCR primers
+Home-page: https://github.com/sarahbiotech/primerD.git
+Author: Sarah Ali
+Author-email: alsayedsarah01@gmail.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-python
+Dynamic: summary
+
+# primerD
+
+primerD:  a Python package for designing and generating primers from DNA sequences. 
+It helps molecular biologists and bioinformatics researchers quickly obtain primer candidates 
+for PCR and gene amplification.
+
+
+## Features
+- Generate forward and reverse primers from DNA sequences.
+- Evaluate GC content and melting temperature (Tm) for each primer.
+- Detect hairpins and homodimer formations.
+- Interactive GUI for easy primer design.
+- Save primer reports as CSV files and visualize results with plots.
+
+## Requirements
+- Python >= 3.8
+- pandas
+- matplotlib
+- primer3-py
+
+## Installation
+```bash
+
+pip  install primerD .
+
+## Usage: 
+
+After installing primerD, you can easily generate primers from a DNA sequence:
+
+from primerD import generate_primers, GC_content, Tm
+from Bio import SeqIO
+
+# Option 1: Manual DNA input
+sequence = input("Enter DNA sequence: ").upper()
+
+# Option 2: Read from FASTA file (uncomment if needed)
+# fasta_file = "example.fasta"
+# sequence = ""
+# for record in SeqIO.parse(fasta_file, "fasta"):
+#     sequence += str(record.seq).upper()
+
+# Set primer length
+primer_length = 18
+
+# Generate primers
+primers = generate_primers(sequence, primer_length=primer_length)
+
+# Display primers with GC% and Tm
+print(f"\nGenerated {len(primers)} primers (showing first 5):\n")
+for i, p in enumerate(primers[:5], start=1):
+    gc = GC_content(p)
+    tm = Tm(p)
+    print(f"Primer {i}: {p} | GC%: {gc:.2f} | Tm: {tm:.2f}آ°C")
+
+
+# Parameters
+Parameter	Type	Description
+sequence	str	DNA sequence from which primers will be generated. Must contain only A, T, C, and G.
+primer_length	int, optional	The length of each primer. Default is 20.
+
