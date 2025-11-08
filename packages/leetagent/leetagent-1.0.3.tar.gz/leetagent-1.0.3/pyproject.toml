@@ -1,0 +1,124 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leetagent"
+version = "1.0.3"
+description = "LeetAgentAutoSat — The Smart LeetCode AI Automation Tool"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = ["leetcode", "automation", "ai", "gemini", "selenium", "coding", "interview-prep"]
+authors = [
+  {name = "Satyam Yadav", email = "satyamyadavaiml@gmail.com"}
+]
+maintainers = [
+  {name = "Satyam Yadav", email = "satyamyadavaiml@gmail.com"}
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Code Generators",
+  "Topic :: Education",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+  "google-generativeai>=0.3.0",
+  "selenium>=4.15.0",
+  "webdriver-manager>=4.0.1",
+  "requests>=2.31.0",
+  "httpx>=0.25.0",
+  "python-dotenv>=1.0.0",
+  "keyring>=24.0.0",
+  "rich>=13.7.0",
+  "typer>=0.9.0",
+  "click>=8.1.0",
+  "aiohttp>=3.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4.0",
+  "pytest-cov>=4.1.0",
+  "pytest-asyncio>=0.21.0",
+  "black>=23.0.0",
+  "flake8>=6.1.0",
+  "mypy>=1.7.0",
+]
+ai = [
+  "langchain>=0.1.0",
+  "langchain-openai>=0.0.2",
+  "chromadb>=0.4.0",
+  "openai>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/satyamyadav/leetagent"
+Documentation = "https://github.com/satyamyadav/leetagent#readme"
+Repository = "https://github.com/satyamyadav/leetagent"
+"Bug Tracker" = "https://github.com/satyamyadav/leetagent/issues"
+
+[project.scripts]
+leetagent = "leetagent.__main__:main"
+leetagent-doctor = "leetagent.post_install:print_instructions"
+
+[tool.setuptools]
+packages = ["core", "modules", "agents", "cli", "utils", "leetagent"]
+py-modules = ["leetagent_launcher", "main", "config"]
+
+[tool.setuptools.package-data]
+"*" = ["*.md", "*.txt", ".env.example"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --cov=. --cov-report=term-missing"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+  "*/tests/*",
+  "*/venv/*",
+  "*/__pycache__/*",
+  "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
