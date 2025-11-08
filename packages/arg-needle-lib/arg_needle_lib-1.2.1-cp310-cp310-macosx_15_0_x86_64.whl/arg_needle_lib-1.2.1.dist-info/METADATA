@@ -1,0 +1,152 @@
+Metadata-Version: 2.2
+Name: arg-needle-lib
+Version: 1.2.1
+Summary: Ancestral recombination graph (ARG) data structure and operations
+Author: ARG-Needle Developers
+Classifier: Development Status :: 4 - Beta
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.9
+Requires-Dist: click
+Requires-Dist: h5py
+Requires-Dist: msprime>=1.3.0
+Requires-Dist: pandas
+Requires-Dist: scipy
+Requires-Dist: tskit>=0.5.8
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: tszip>=0.2.5; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: sphinx; extra == "docs"
+Requires-Dist: sphinx-rtd-theme; extra == "docs"
+Description-Content-Type: text/markdown
+
+# arg-needle-lib
+
+This repository contains arg-needle-lib, which implements an ARG data structure and ARG-based analyses such as genealogy-wide association.
+
+Prebuilt CPython wheels are available for Linux (compatible with glibc ≥ 2.28) and macOS (built on macOS 15 for x86_64 and macOS 14 for arm64).
+
+| Platform \ CPython          | ≤3.8 | 3.9 | 3.10 | 3.11 | 3.12 | 3.13 | 3.14 |
+|-----------------------------| ---- | --- | ---- | ---- | ---- | ---- | ---- |
+| Linux x86_64                | ❌    | ✅   | ✅    | ✅    | ✅    | ✅    | ✅    |
+| Linux aarch64               | ❌    | ✅   | ✅    | ✅    | ✅    | ✅    | ✅    |
+| macOS Intel (x86_64)        | ❌    | ✅   | ✅    | ✅    | ✅    | ✅    | ✅    |
+| macOS Apple Silicon (arm64) | ❌    | ✅   | ✅    | ✅    | ✅    | ✅    | ✅    |
+
+## Quickstart
+
+### Install the Python module from PyPI
+
+Most functionality is available through a Python module which can be installed with:
+
+```bash
+pip install arg-needle-lib
+```
+
+This Python module is currently available on Linux and macOS.
+
+### Documentation
+
+Please see the [ARG-Needle manual](https://palamaralab.github.io/software/argneedle/) for all usage instructions and documentation.
+
+## License
+
+arg-needle-lib is distributed under the GNU General Public License v3.0 (GPLv3). For any questions or comments on arg-needle-lib, please contact Pier Palamara using `<lastname>@stats.ox.ac.uk`.
+
+## Acknowledgements
+
+arg-needle-lib is developed by (in alphabetical order) Arjun Biddanda, Fergus Cooper, Árni Freyr Gunnarsson, Pier Francesco Palamara, Sinan Shi, Brian C. Zhang, and Jiazheng Zhu.
+
+## Reference
+
+If you use this software, please cite:
+
+B. C. Zhang, A. Biddanda, Á. F. Gunnarsson, F. Cooper, P. F. Palamara, Biobank-scale inference of ancestral recombination graphs enables genealogical analysis of complex traits. [Nature Genetics, 2023](https://www.nature.com/articles/s41588-023-01379-x).
+# arg-needle-lib Release Notes
+
+## v1.2.1 (2025-11-07)
+
+### Other changes
+
+- ARG-RHE and ARG matrix multiplication routines.
+- Use cibuildwheel default folder structure.
+- Deploy for latest macos targets as GitHub macos 13 has been retired.
+
+## v1.2.0 (2025-09-04)
+
+### Other changes
+
+- Add option to provide height value in `add_sample`. If omitted the height is set to 0 so original code behaves as normal.
+- Fixed `compute_grm` alpha argument default value from 0 to -1, as stated in the function's API docs.
+
+## v1.1.3 (2025-02-24)
+
+### Other changes
+
+- Resolve incompatibility preventing wheels being built for Python 3.13
+- Additionally, build wheels for Linux arm64. Can now `pip install arg-needle-lib` in Docker on arm64 Macbook, for example.
+
+## v1.1.2 (2025-02-21)
+
+### Other changes
+
+- Added `get_midpoint_height` method to Mutation API, to calculate a height (age) estimate using the midpoint of the containing edge
+- Build wheels for Python 3.13
+
+## v1.1.1 (2024-10-21)
+
+### Other changes
+
+- Added `child_edges_at` method to ARGNode API, for parity for existing methods like `parent_edge_at`
+
+## v1.1.0 (2024-09-26)
+
+### Major changes
+
+- Added methods for genotype mapping
+  - map_genotype_to_ARG, taking a single genotype as a vector/list and a position
+  - map_genotypes_to_ARG, taking a matrix of genotypes, and a vector/list of positions
+- Method to get sorted vector/list of positions from ARG object is renamed to get_site_positions from get_sites 
+
+### Other changes
+
+- Improve documentation
+- Deserialization now performed in C++ rather than Python
+- Python infrastructure modernized to replace setup.py with pyproject.toml
+
+
+## v1.0.2 (2023-09-29)
+
+### Breaking changes
+
+None
+
+### Other changes
+
+- Improve documentation.
+- Build Python wheels for macOS arm64 (Apple Silicon)
+- Build wheels for Python 3.12
+
+
+## v1.0.1 (2023-07-14)
+
+### Breaking changes
+
+None
+
+### Other changes
+
+- Clean-up and release of the source code.
+- Improved mutation class.
+- Added from-to parameters to some functions.
+
+
+## v1.0.0 (2023-03-07)
+
+Initial PyPI release of arg-needle-lib.
