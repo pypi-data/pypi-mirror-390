@@ -1,0 +1,85 @@
+{% load static i18n django_bootstrap5 ndh %}
+<!doctype html>
+{% get_current_language as LANGUAGE_CODE %}<html lang="{{ LANGUAGE_CODE }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block pagetitle %}NDH pagetitle block {% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static "css/ndh.css" %}" />
+    {% block style %}{% endblock %}
+  </head>
+  <body>
+
+    {% block header_navbar %}
+    <header>
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container">
+          {% block translations %}
+          <div class="d-flex">
+            <form action="{% url 'set_language' %}" method="post">{% csrf_token %}
+              {% if LANGUAGE_CODE == "fr" %}
+                <input name="language" type="hidden" value="en-us">
+                {% bootstrap_button "🇫🇷" button_type="submit" button_class="btn-dark" %}
+              {% else %}
+                <input name="language" type="hidden" value="fr">
+                {% bootstrap_button "🇺🇸" button_type="submit" button_class="btn-dark" %}
+              {% endif %}
+            </form>
+          </div>
+          {% endblock %}
+
+          <a class="navbar-brand" href="/" >{% block sitetitle %}NDH sitetitle block {% endblock%}</a>
+
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="d-flex justify-content-between align-items-center w-100">
+              <ul class="navbar-nav">
+                {% block navbarleft %}<li class="nav-item me-auto active"><a class="nav-link" href="#">NDH navbarleft block</a></li>{% endblock %}
+              </ul>
+
+              <ul class="navbar-nav">
+                {% if request.user.is_authenticated %}
+                  <li class="nav-item ms-auto">
+                      <form action="{% url 'logout' %}" method="post">{% csrf_token %}
+                          {% bootstrap_button _("Log out") button_type="submit" button_class="btn-dark" %}
+                      </form>
+                  </li>
+                  {% if request.user.is_superuser %}
+                    <li class="nav-item ms-auto"><a class="nav-link" href="{% url 'admin:index' %}">{% translate "Admin" %}</a></li>
+                    {% if object_list %}
+                    <li class="nav-item ms-auto"><a class="nav-link" href="{{ object_list|admin_url }}">{% translate "List" %}</a></li>
+                    {% endif %}
+                    {% if object %}
+                    <li class="nav-item ms-auto"><a class="nav-link" href="{{ object|admin_url }}">{% translate "Item" %}</a></li>
+                    {% endif %}
+                  {% endif %}
+                {% else %}
+                  <li class="nav-item ms-auto"><a class="nav-link" href="{% url 'login' %}?next={{ request.path }}">{% translate "Log in" %}</a></li>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+    {% endblock %}
+
+    {% block main_content %}
+    <div class="container mt-4" role="main">
+      {% bootstrap_messages %}
+      <main>
+        {% block content %}
+        <h1>NDH content block</h1>
+        {% endblock %}
+      </main>
+    </div>
+    <hr>
+    {% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
