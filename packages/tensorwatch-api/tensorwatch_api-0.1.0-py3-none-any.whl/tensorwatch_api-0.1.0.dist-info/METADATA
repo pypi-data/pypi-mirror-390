@@ -1,0 +1,141 @@
+Metadata-Version: 2.4
+Name: tensorwatch-api
+Version: 0.1.0
+Summary: Interactive Kafka stream visualization API for Jupyter using TensorWatch.
+Home-page: https://github.com/costasrevi/jupyterstreamvis
+Author: Konstantinos Revythis
+Author-email: Konstantinos Revythis <krevythis@tuc.gr>
+License: MIT
+Project-URL: Homepage, https://github.com/costasrevi/jupyterstreamvis
+Project-URL: Source, https://github.com/costasrevi/jupyterstreamvis
+Keywords: kafka,tensorwatch,jupyter,streaming,visualization
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: tensorwatch
+Requires-Dist: ipywidgets
+Requires-Dist: matplotlib
+Requires-Dist: confluent-kafka; extra == "kafka"
+Requires-Dist: pykafka; extra == "pykafka"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# TensorWatch API (`tensorwatch-api`)
+
+`tensorwatch-api` is a Python library designed to simplify **real-time streaming data visualization from Kafka** directly inside Jupyter notebooks.  
+It wraps **TensorWatch** and provides an interactive, high-level API with **ipywidgets** for controlling visualization parameters on the fly.
+
+This package is ideal for data scientists, engineers, and analysts who want to inspect, monitor, and visualize streaming data **without leaving JupyterLab**.
+
+---
+
+## Features
+
+- **Interactive UI**: Control plot parameters like window size, colors, and history in real-time.  
+- **Chainable API**: Fluent API for connecting to Kafka, defining streams, and drawing visualizations.  
+- **Dual Kafka Backends**: Supports `confluent-kafka` (default) and `pykafka`.  
+- **Live Metrics**: Display real-time throughput and latency metrics alongside visualizations.  
+- **Custom Processing**: Apply Python lambda expressions for aggregation or preprocessing.  
+- **Efficient Updates**: Debouncing ensures smooth UI updates without overloading the kernel.  
+
+---
+
+## Installation
+
+Install the package and its dependencies:
+
+```bash
+pip install tensorwatch-api
+pip install tensorwatch ipywidgets matplotlib
+```
+Install a Kafka client:
+```bash
+# Default Kafka connector
+pip install confluent-kafka
+
+# Or pykafka connector
+pip install pykafka
+```
+##Quick Start
+# Enable interactive matplotlib backend
+%matplotlib widget
+
+# Import the library
+from tensorwatch_api import twapi as tw
+
+# Initialize the API
+test = tw()
+
+# Create a connector to a Kafka topic
+test.connector(
+    topic='mytopic',
+    host='localhost:9092',
+    cluster_size=5,
+    queue_length=100000,
+    parsetype="protobuf",               # optional: json, pickle, avro, protobuf
+    parser_extra="benchmark_pb2",       # module name for protobuf
+    protobuf_message="BenchmarkMessage",# class name for protobuf
+    schema_path=r"C:\path\to\protobuf" # path to protobuf module
+)
+
+# Define the stream processing logic
+test.stream(expr='lambda d: sum(msg["seq"] for msg in d.data) if d.data else 0')
+
+# Draw the UI with metrics
+test.draw_with_metrics()
+
+
+## API Reference
+
+### `twapi()`
+Initializes the API wrapper and UI components.
+
+### `.connector(...)`
+Creates a Kafka consumer in a background thread, fetching data and reporting metrics.
+
+**Arguments:**
+
+- `topic` (str): Kafka topic to consume.  
+- `host` (str): Broker host (`localhost:9092`).  
+- `conn_type` (str): Connector type (`'kafka'` or `'pykafka'`). Default is `'kafka'`.  
+- `parsetype` (str): Message format (`'json'`, `'pickle'`, `'avro'`, `'protobuf'`). Default `'json'`.  
+- `cluster_size` (int): Number of consumer threads. Default 1.  
+- `queue_length` (int): Max messages in memory. Default 50000.  
+- Other parameters: `schema_path`, `protobuf_message`, `parser_extra`, `random_sampling`, `countmin_width`, `countmin_depth`, `ordering_field`.
+
+### `.stream(expr)`
+Defines the data processing logic for the stream.
+
+- `expr` (str): A Python lambda expression. Receives `d` (connector instance) and returns a single numerical value to plot.
+
+### `.draw()` / `.draw_with_metrics()`
+Renders interactive UI widgets and plot area.
+
+- `.draw()`: Standard UI.  
+- `.draw_with_metrics()`: Includes real-time benchmark metrics.
+
+---
+
+## UI Controls
+
+- **Reset Button**: Reset all options and clear the plot.  
+- **Start / Apply Changes Button**: Initially `"Start"`. Activates on first Kafka message, then applies UI changes.  
+- **Accordion Options**:  
+  - **Window Size**: Number of points shown.  
+  - **Window Width**: Width of plot.  
+  - **Pick a Color**: Plot line color.  
+  - **Date / Use Offset / Dim History**: TensorWatch visualization options.
+
+---
+
+## License
+
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
