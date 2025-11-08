@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["database*"]
+
+[project]
+name = "glean-database"
+version = "0.3.0"
+description = "Database access classes with caching capabilities"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.0.0",
+]
+
+[project.scripts]
+glean-db = "database.__main__:cli"
+
+[tool.pytest.ini_options]
+addopts = "--asyncio-mode=auto --cov=database --cov-report=term-missing --cov-fail-under=70"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "redis: marks tests that require Redis server",
+    "mongo: marks tests that require MongoDB server",
+    "postgres: marks tests that require PostgreSQL server",
+    "timescale: marks tests that require TimescaleDB server",
+]
+
+[tool.coverage.run]
+omit = ["tests/*"]
+
+[project.optional-dependencies]
+
+sqlite = [
+    "aiosqlite>=0.19.0"
+]
+
+postgres = [
+    "asyncpg>=0.28.0"
+]
+
+mongo = [
+    "motor>=3.3.0"
+]
+
+timescale = [
+    "asyncpg>=0.28.0"
+]
+
+mysql = [
+    "aiomysql>=0.2.0"
+]
+
+mssql = [
+    "pymssql>=2.2.0"
+]
+
+oracle = [
+    "oracledb>=2.0.0"
+]
+
+redis = [
+    "redis[hiredis]>=5.0.0"
+]
+
+all = [
+    "aiosqlite>=0.19.0",
+    "asyncpg>=0.28.0",
+    "motor>=3.3.0",
+    "aiomysql>=0.2.0",
+    "pymssql>=2.2.0",
+    "oracledb>=2.0.0",
+    "redis[hiredis]>=5.0.0"
+]
+
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "coverage>=7.3.0",
+    "mypy>=1.0.0",
+    "black>=22.0.0",
+    "isort>=5.0.0",
+    "pytest-cov>=4.1.0"
+]
