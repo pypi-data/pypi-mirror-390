@@ -1,0 +1,55 @@
+[CDF-26214] Correct list replacement in SQL (#2176)
+
+# Description
+
+Reviewer: note that since we want to implement the same fix in inline
+SQL in Transformation.sql files, I had to refactor a bit to send in the
+full path, and also add a bit of logic to identify the query property
+and get the right replacement. The resulting code is quite complex. I
+wonder if we should explore revisiting the replacement logic altogether.
+Maybe Pydantic custom serializers?
+
+
+Given a sql file _or_ a query property that has this:
+
+```wells AS (
+  SELECT
+    a.externalId AS asset_ext_id,
+  	a.top_level_asset AS top_level_asset
+  FROM cdf_nodes('{{ apm_source_data_space }}',
+                 'APM_Asset',
+                 '{{ apm_source_data_version }}') a
+  WHERE a.type = 'Well'
+    AND a.space IN {{ instance_spaces }}
+),
+```
+
+and a config.<env>.yaml like this: 
+
+```
+instance_spaces:
+    - sp_asset_a
+    - sp_asset_b
+```
+ 
+Before, the Toolkit replaced the placeholder to `["sp_asset_a",
+"sp_asset_b"]` which is not correct SQL. Now it will convert it into
+`("sp_asset_a", "sp_asset_b")` which is correct SQL.
+
+
+
+## Changelog
+
+- [x] Patch
+- [ ] Skip
+
+## cdf
+
+### Fixed
+
+- List variables are converted to the correct SQL set format 
+
+
+## templates
+
+No changes.
