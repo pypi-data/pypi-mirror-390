@@ -1,0 +1,71 @@
+[project]
+name = "rya"
+version = "0.2.24"
+requires-python = ">=3.12,<4"
+description = "rya is a Python application bootstrapper."
+dependencies = [
+    "rich>=14.1.0,< 14.2.0",
+    "dynaconf>=3.2.0,<4",
+    "typer>=0.17.4",
+    "pyyaml==6.0.2",
+    "click>=8.1.8,<8.2",
+    "colorama>=0.4.6",
+    "platformdirs>=4.4.0",
+    "pydantic>=2.11.10,<2.13",
+    "properpath>=0.2.9",
+    "rich-click>=1.9.4",
+]
+readme = "README.md"
+authors = [{ name = "Alexander Haller, Mahadi Xion", email = "elabftw@uni-heidelberg.de" }]
+maintainers = [{ name = "Mahadi Xion", email = "mahadi.xion@urz.uni-heidelberg.de" }]
+license-files = [
+    "LICENSE",
+    "src/rya/_vendor/*/LICENSE"
+]
+keywords = [
+    "cli",
+    "bootstrap",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: AnyIO",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://www.urz.uni-heidelberg.de/"
+Repository = "https://github.com/uhd-urz/rya.git"
+Issues = "https://github.com/uhd-urz/rya/issues"
+Changelog = "https://github.com/uhd-urz/rya/blob/main/CHANGELOG.md"
+
+
+[tool.uv.build-backend]
+module-name = "rya"
+module-root = "src"
+
+[project.scripts]
+rya = "rya.cli.__main__:app"
+
+[build-system]
+requires = ["uv_build>=0.7.19,<0.8.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = []
+
+[tool.vendy]
+target = 'src/rya/'  # vendy will auto-crate src/rya/_vendor
+packages = [
+    "haggis==0.14.1",
+]
+
+[tool.mypy]
+plugins = "pydantic.mypy"
