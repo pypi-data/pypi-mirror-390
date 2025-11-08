@@ -1,0 +1,54 @@
+This file contains developer documentation for the UserResponseCollector. This project origniated within the BlackJackSim project.
+Here it is being separated as its own project and significantly refactored. The intent is to refactor it using the Command design
+pattern, to eliminate the enumeration of query types, and to enable extensibility for individual applications by creating new
+child command classes.
+
+Following terminology in the Command section of the Gang of Four design patterns book:
+1. UserQueryReceiver (abstract base class) = The object that knows how to perform the operations associated with carrying out a request.
+	a. A Child version (UserQueryConsoleReceiver) will be a class that knows how to use python input and print statements to interact with the user
+		in a command prompt window.
+	b. Another child version (UserQueryTkinterReceiver) will know how to interact with the user of a tkinter based GUI application.
+2. Invoker = The oject that asks the Command to carry out the request.
+	a. Think that this will be the Client. The Client will instantiate a Command object, assign it the correct Receiver, and call its Execute method.
+3. Client = Create a ConcreteCommand object and set its Receiver.
+	a. This will be for example the black jack or cribbage simulator.
+4 UserQueryCommand = Abstract base class that delcares an interface for exeuting an operation.
+5. UserQuerryCommandX = Implements the Command interface, by invoking methods in its Receiver
+	a. X = Menu, NumberInteger (really an integer), Cards (define/implement within BlackJackSim), PathSave, PathOpen,
+		MusicalPitch (define/implement within GuitarTab)...
+
+Current issues:
+1. UserQueryReceiver is implemented using Global Object Pattern and Prebound Method Pattern, which is not really compatible with the UserQueryCommand
+	having a receiver. Coding around this for now, but need to decide how to handle this. While retaining the ability for simulator code not to care
+	if the receiver is a console or a tkinter app. Can I pass the global object in as the receiver? Can I pass the two prebound methods in to the command
+	as callables rather than passing in the receiver (not very OO)? Do I need a factory to create commands with the right type of receiver?
+		a. Possible Soloution 1: How about have a prebound method that takes a UserQueryCommand object as an argument and assigns it the correct 
+			receiver? In other words, the Client would set the receiver of the command object by passing the command object to the prebound method.
+			Currently the command's __init__ takes the receiver object as an argument, so maybe have a prebound method that returns the receiver,
+			so that the return value of the prebound method can be included in the argument list when the command object is constructed. This soluiton
+			would retain the prebound method pattern as the way to "swap" from console to tkinterapp for the receiver, without simulator code having
+			to change.
+	NOTE: This issue was resolved by providing a method of UserQueryReceiver that returns self, and then providing a prebound method to this method.
+	When a Client constructs a Command object, it calls the prebound method to get the global object UserQueryReceiver and passes it in the Command's
+	constructor (__init__()).
+2. Not quite sure how PathSave and PathOpen commands are going to generalize between console (enter a string) and tkinter app using file dialogs.
+	a. One possible solution is to have the methods supported by UserQueryReceiver also take as argument the type of the UserQueryCommand that
+		is making the request of the receiver. This might also enable a tkInterUserConsoleReceiver to decide what widget to user to process a Menu
+		request versus a NumberInterger request, etc.
+		1. If an app created a custom command, it's type wouldn't be recognized and it would not to be processed by tkInterConsoleReceiver as a
+			text entry? This all does seem like breaking encapsulation, but still thinking through it ... Maybe also define a custom receiver that
+			recognizes it is intended for that command? None of this is a problem for the Console receiver, because it can be relied
+			upon to only return raw text. But Menu command is weird because it returns whatever type the key in the dictionary is.
+
+References:
+    (1) Global Object Pattern: https://python-patterns.guide/python/module-globals/
+    (2) Prebound Method Pattern: https://python-patterns.guide/python/prebound-methods/
+
+Needs - before pushing up to GitHub
+Readme.md: Move to Documentation subfolder {done}. Add content. {done}
+license.txt {done}
+Sort out if UserResponseCollector related files are tracked in git or not. {done}
+	git ls-tree -r master --name-only {to list files that git is currently tracking}
+	Removed UserResponseCollector.py and _test_UserResponseCollector.py from git, with
+	git rm --cached UserResponseCollector.py
+	gir rm --chached _test_UserResponseCollector.py
