@@ -1,0 +1,1137 @@
+Metadata-Version: 2.4
+Name: ffmcp
+Version: 0.1.5
+Summary: AI command-line tool inspired by ffmpeg
+Home-page: https://github.com/brandonhenry/ffmcp
+Author: Brandon Henry
+Author-email: itsbhenry@gmail.com
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: click>=8.0.0
+Requires-Dist: httpx>=0.24.0
+Provides-Extra: openai
+Requires-Dist: openai>=1.0.0; extra == "openai"
+Provides-Extra: anthropic
+Requires-Dist: anthropic>=0.18.0; extra == "anthropic"
+Provides-Extra: all
+Requires-Dist: openai>=1.0.0; extra == "all"
+Requires-Dist: anthropic>=0.18.0; extra == "all"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# ffmcp
+
+**ffmcp** - AI command-line tool inspired by ffmpeg. Access any AI service from the command line with a unified interface.
+
+[![npm version](https://img.shields.io/npm/v/ffmcp.svg)](https://www.npmjs.com/package/ffmcp)
+[![npm downloads](https://img.shields.io/npm/dm/ffmcp.svg)](https://www.npmjs.com/package/ffmcp)
+
+**Install via npm:** `npm install -g ffmcp` | **Install from source:** See [Installation](#installation) below
+
+## Features
+
+- 🚀 **Unified CLI**: Single command-line interface for multiple AI providers
+- 🔌 **11 AI Providers**: OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral AI, Together AI, Cohere, Perplexity, AI33, and AIMLAPI
+- 📝 **Simple**: Works just like ffmpeg - simple, powerful, composable
+- 🔧 **Configurable**: Manage API keys and settings easily
+- 📊 **Streaming**: Real-time streaming support for responses
+- 🎨 **Full OpenAI Support**: All OpenAI features including vision, images, audio, embeddings, and assistants
+- 🧠 **Memory with Zep (Brains)**: Create brains, store/retrieve chat memory, collections, and graph
+- 🤖 **Agents**: Named agents with model, instructions, brain, dynamic properties, and actions (web, images, vision, embeddings)
+- 👥 **Multi-Agent Teams**: Agents can work together in teams, delegate tasks, and collaborate to accomplish complex goals
+- 💬 **Threads**: Conversation history for both chat and agents - maintain context across multiple interactions
+- 🎤 **Voiceover/TTS**: Full text-to-speech support with multiple providers (ElevenLabs), voice management, and agent voice integration
+
+## Installation
+
+ffmcp can be installed via **npm** (recommended) or **Python** (from source).
+
+### Option 1: npm Installation (Recommended)
+
+**Prerequisites:** You need both the Python package and npm package installed.
+
+1. **Install Python package** (required):
+   ```bash
+   # Clone the repository
+   git clone https://github.com/brandonhenry/ffmcp.git
+   cd ffmcp
+   
+   # Create a virtual environment (recommended)
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   
+   # Install in development mode
+   pip install -e .
+   ```
+
+2. **Install npm package**:
+   ```bash
+   # Install globally (for CLI usage)
+   npm install -g ffmcp
+   
+   # Or install locally in your project
+   npm install ffmcp
+   ```
+
+**Note:** The npm package is a wrapper around the Python CLI. Both packages must be installed for it to work.
+
+### Option 2: Python Installation Only
+
+**Note:** This package is not currently published to PyPI. You must install it from the source code.
+
+```bash
+# Clone the repository
+git clone https://github.com/brandonhenry/ffmcp.git
+cd ffmcp
+
+# Create a virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in development mode
+pip install -e .
+
+# Or install with specific providers
+pip install -e ".[openai]"
+pip install -e ".[anthropic]"
+pip install -e ".[all]"
+```
+
+**Important Notes:**
+- **Not on PyPI**: This package is not available via `pip install ffmcp`. You must install from source using `pip install -e .` from the project directory.
+- **macOS/Homebrew Python**: On macOS with Homebrew Python, you'll encounter an "externally-managed-environment" error if you try to install system-wide. Always use a virtual environment:
+  ```bash
+  python3 -m venv ~/.venvs/ffmcp  # or any path you prefer
+  source ~/.venvs/ffmcp/bin/activate
+  pip install -e .
+  ```
+- **Python Versions**: Supports Python 3.8 through 3.14.
+- **Node.js Versions**: npm package requires Node.js >= 14.0.0.
+
+## Quick Start
+
+### 1. Configure API Keys
+
+```bash
+# Set OpenAI API key
+ffmcp config -p openai -k YOUR_OPENAI_API_KEY
+
+# Set Anthropic API key
+ffmcp config -p anthropic -k YOUR_ANTHROPIC_API_KEY
+
+# Set Google Gemini API key
+ffmcp config -p gemini -k YOUR_GEMINI_API_KEY
+
+# Set Groq API key
+ffmcp config -p groq -k YOUR_GROQ_API_KEY
+
+# Set DeepSeek API key
+ffmcp config -p deepseek -k YOUR_DEEPSEEK_API_KEY
+
+# Set Mistral AI API key
+ffmcp config -p mistral -k YOUR_MISTRAL_API_KEY
+
+# Set Together AI API key
+ffmcp config -p together -k YOUR_TOGETHER_API_KEY
+
+# Set Cohere API key
+ffmcp config -p cohere -k YOUR_COHERE_API_KEY
+
+# Set Perplexity API key
+ffmcp config -p perplexity -k YOUR_PERPLEXITY_API_KEY
+
+# Set AI33 API key
+ffmcp config -p ai33 -k YOUR_AI33_API_KEY
+
+# Set AIMLAPI API key
+ffmcp config -p aimlapi -k YOUR_AIMLAPI_API_KEY
+
+# Set ElevenLabs API key (for voiceover/TTS)
+ffmcp config -p elevenlabs -k YOUR_ELEVENLABS_API_KEY
+
+# Or use environment variables (provider name in uppercase)
+export OPENAI_API_KEY=your_key
+export ANTHROPIC_API_KEY=your_key
+export GEMINI_API_KEY=your_key
+export GROQ_API_KEY=your_key
+export DEEPSEEK_API_KEY=your_key
+export MISTRAL_API_KEY=your_key
+export TOGETHER_API_KEY=your_key
+export COHERE_API_KEY=your_key
+export PERPLEXITY_API_KEY=your_key
+export AI33_API_KEY=your_key
+export AIMLAPI_API_KEY=your_key
+export ELEVENLABS_API_KEY=your_key
+```
+
+### 2. Generate Text
+
+```bash
+# Basic generation
+ffmcp generate "Write a haiku about coding"
+
+# With specific provider and model
+ffmcp generate "Explain quantum computing" -p openai -m gpt-4
+ffmcp generate "Explain quantum computing" -p gemini -m gemini-1.5-pro
+ffmcp generate "Explain quantum computing" -p groq -m llama-3.1-70b-versatile
+ffmcp generate "Explain quantum computing" -p deepseek -m deepseek-chat
+ffmcp generate "Explain quantum computing" -p mistral -m mistral-large-latest
+ffmcp generate "Explain quantum computing" -p together -m meta-llama/Llama-3-70b-chat-hf
+ffmcp generate "Explain quantum computing" -p cohere -m command-r-plus
+ffmcp generate "Explain quantum computing" -p perplexity -m llama-3.1-sonar-large-128k-online
+
+# Stream the response
+ffmcp generate "Tell me a story" -s
+
+# Read from file
+ffmcp generate -i prompt.txt -o output.txt
+
+# Pipe input
+echo "Summarize this" | ffmcp generate
+```
+
+### 3. Chat Mode
+
+```bash
+# Conversational chat
+ffmcp chat "Hello, how are you?" -p anthropic
+
+# With system message
+ffmcp chat "What is 2+2?" -s "You are a helpful math tutor"
+
+# Chat with thread (maintains conversation history)
+ffmcp chat "Hello" -t conversation1
+ffmcp chat "What did I just say?" -t conversation1  # Remembers previous messages
+
+# Thread management
+ffmcp thread create conversation1
+ffmcp thread list
+ffmcp thread use conversation1
+ffmcp thread current
+ffmcp thread clear conversation1
+ffmcp thread delete conversation1
+```
+
+### 4. Agents
+
+```bash
+# Create an agent (any provider, default actions enabled)
+ffmcp agent create myagent -p openai -m gpt-4o-mini -i "You are a helpful assistant" --brain mybrain
+ffmcp agent create gemini-agent -p gemini -m gemini-2.0-flash-exp -i "You are a helpful assistant"
+ffmcp agent create groq-agent -p groq -m llama-3.1-70b-versatile -i "You are a helpful assistant"
+
+# Create an agent with voice (for TTS)
+ffmcp agent create myagent -p openai -m gpt-4o-mini -i "You are a helpful assistant" --voice my-voice
+
+# Create an agent with instructions from a file
+ffmcp agent create myagent -p openai -m gpt-4o-mini -f instructions.txt --brain mybrain
+
+# List and select the active agent
+ffmcp agent list
+ffmcp agent use myagent
+
+# Show details
+ffmcp agent show
+
+# Thread Management (conversation history)
+ffmcp agent thread create myagent thread1
+ffmcp agent thread list myagent
+ffmcp agent thread use myagent thread1
+ffmcp agent thread current myagent
+ffmcp agent thread clear myagent thread1
+ffmcp agent thread delete myagent thread1
+
+# Run the agent (uses active thread automatically)
+ffmcp agent run "Plan a 3-day trip to Paris and fetch top sights"
+
+# Run with specific thread
+ffmcp agent run "Continue planning" --thread thread1
+
+# Manage properties and actions
+ffmcp agent prop set myagent timezone UTC
+ffmcp agent action enable myagent web_fetch
+ffmcp agent action disable myagent generate_image
+```
+
+**See [Threads: Conversation History](#threads-conversation-history) section for detailed thread documentation.**
+
+### 5. Multi-Agent Teams (Hierarchical)
+
+Agents can work together in hierarchical teams to accomplish complex tasks. Teams use an orchestrator agent at the top that orchestrates collaboration by delegating tasks to members or sub-teams. All activity flows up through the hierarchy, and the top orchestrator has visibility into everything through shared brain/memory.
+
+```bash
+# Create specialized agents
+ffmcp agent create researcher -p openai -m gpt-4o-mini -i "You are a research specialist. Focus on finding and analyzing information."
+ffmcp agent create writer -p openai -m gpt-4o-mini -i "You are a writing specialist. Focus on creating clear, well-structured content."
+ffmcp agent create orchestrator -p openai -m gpt-4o-mini -i "You are a project orchestrator. Break down tasks and delegate to team members."
+
+# Enable delegation action for orchestrator (allows it to delegate to other agents)
+ffmcp agent action enable orchestrator delegate_to_agent
+
+# Create a simple team with orchestrator and members
+ffmcp team create research-team -o orchestrator -m researcher -m writer
+
+# Create a shared brain for team memory (flows up hierarchy)
+ffmcp brain create team-brain
+ffmcp team create project-team -o orchestrator -m researcher -m writer -b team-brain
+
+# Create nested teams (teams within teams)
+# First create sub-teams
+ffmcp agent create sub-orchestrator-1 -p openai -m gpt-4o-mini -i "You coordinate a research sub-team"
+ffmcp agent action enable sub-orchestrator-1 delegate_to_agent
+ffmcp team create research-sub-team -o sub-orchestrator-1 -m researcher -b team-brain
+
+ffmcp agent create sub-orchestrator-2 -p openai -m gpt-4o-mini -i "You coordinate a writing sub-team"
+ffmcp agent action enable sub-orchestrator-2 delegate_to_agent
+ffmcp team create writing-sub-team -o sub-orchestrator-2 -m writer -b team-brain
+
+# Create top-level team with sub-teams
+ffmcp team create main-team -o orchestrator -s research-sub-team -s writing-sub-team -b team-brain
+
+# Run a task with the hierarchical team (orchestrator delegates as needed)
+ffmcp team run "Research and write a comprehensive report on quantum computing" --team main-team
+
+# List teams
+ffmcp team list
+
+# Show team details including hierarchy
+ffmcp team show main-team
+
+# Add/remove members and sub-teams
+ffmcp team add-member main-team analyst
+ffmcp team add-sub-team main-team analysis-sub-team
+ffmcp team remove-member main-team analyst
+
+# Set a different orchestrator
+ffmcp team set-orchestrator main-team new-orchestrator
+```
+
+**How Hierarchical Teams Work:**
+- **Orchestrator**: One agent at the top level that receives tasks and orchestrates collaboration
+- **Members**: Direct agent members below the orchestrator
+- **Sub-teams**: Nested teams with their own orchestrators and members (supports multiple layers)
+- **Shared Brain**: Memory context that flows up the hierarchy - the top orchestrator sees all activity
+- **Delegation**: Orchestrators can delegate to members or sub-team orchestrators
+- **Visibility**: All activity flows up through the hierarchy, giving the top orchestrator complete visibility
+
+**Example Hierarchical Structure:**
+```
+main-team (orchestrator: ceo)
+├── research-sub-team (orchestrator: research-manager)
+│   ├── researcher-1
+│   └── researcher-2
+├── writing-sub-team (orchestrator: writing-manager)
+│   ├── writer-1
+│   └── writer-2
+└── direct-member (analyst)
+```
+
+**Example Workflow:**
+```bash
+# 1. Create agents for different roles
+ffmcp agent create ceo -p openai -m gpt-4o-mini -i "You are a CEO orchestrating multiple teams"
+ffmcp agent create research-manager -p openai -m gpt-4o-mini -i "You manage a research team"
+ffmcp agent create writing-manager -p openai -m gpt-4o-mini -i "You manage a writing team"
+ffmcp agent create researcher-1 -p openai -m gpt-4o-mini -i "You are a researcher"
+ffmcp agent create writer-1 -p openai -m gpt-4o-mini -i "You are a writer"
+
+# 2. Enable delegation for orchestrators
+ffmcp agent action enable ceo delegate_to_agent
+ffmcp agent action enable research-manager delegate_to_agent
+ffmcp agent action enable writing-manager delegate_to_agent
+
+# 3. Create shared brain for team memory
+ffmcp brain create org-brain
+
+# 4. Create sub-teams
+ffmcp team create research-team -o research-manager -m researcher-1 -b org-brain
+ffmcp team create writing-team -o writing-manager -m writer-1 -b org-brain
+
+# 5. Create top-level team with sub-teams
+ffmcp team create org-team -o ceo -s research-team -s writing-team -b org-brain
+
+# 6. Run a complex task - CEO orchestrates, delegates to sub-teams, sees all activity
+ffmcp team run "Create a comprehensive market analysis report" --team org-team
+```
+
+## OpenAI Features
+
+### Vision / Image Understanding
+
+```bash
+# Analyze images
+ffmcp openai vision "What's in this image?" image1.jpg image2.png
+
+# With custom model and options
+ffmcp openai vision "Describe this" photo.jpg -m gpt-4o -t 0.5
+```
+
+### Image Generation (DALL·E)
+
+```bash
+# Generate image with DALL·E 3
+ffmcp openai image "A futuristic cityscape at sunset"
+
+# DALL·E 2 with custom size
+ffmcp openai image "A cat wearing sunglasses" -m dall-e-2 --size 512x512
+
+# High quality with natural style
+ffmcp openai image "Abstract art" --quality hd --style natural
+
+# Save URL to file
+ffmcp openai image "Beautiful landscape" -o image_url.txt
+```
+
+### Audio Transcription (Whisper)
+
+```bash
+# Transcribe audio to text
+ffmcp openai transcribe audio.mp3
+
+# With language hint
+ffmcp openai transcribe audio.mp3 -l es
+
+# With prompt for better accuracy
+ffmcp openai transcribe meeting.mp3 -p "This is a technical meeting about AI"
+
+# Output as JSON with timestamps
+ffmcp openai transcribe audio.mp3 --json -o transcript.json
+```
+
+### Audio Translation
+
+```bash
+# Translate audio to English
+ffmcp openai translate spanish_audio.mp3
+
+# With prompt
+ffmcp openai translate audio.mp3 -p "Technical presentation"
+```
+
+### Text-to-Speech
+
+```bash
+# Convert text to speech
+ffmcp openai tts "Hello, world!" output.mp3
+
+# With custom voice and speed
+ffmcp openai tts "Welcome to the future" speech.mp3 -v nova -s 1.2
+
+# High quality model
+ffmcp openai tts "Important announcement" announcement.mp3 -m tts-1-hd
+```
+
+### Voiceover/TTS System
+
+ffmcp includes a comprehensive voiceover/TTS system with support for multiple providers (starting with ElevenLabs). You can create voice configurations, manage them, and associate them with agents.
+
+#### Setup
+
+```bash
+# Configure ElevenLabs API key
+ffmcp config -p elevenlabs -k YOUR_ELEVENLABS_API_KEY
+
+# Or use environment variable
+export ELEVENLABS_API_KEY=your_key
+```
+
+#### Discover Available Voices
+
+```bash
+# List all voices from ElevenLabs
+ffmcp voiceover provider list --provider elevenlabs
+
+# Show details of a specific voice
+ffmcp voiceover provider show --provider elevenlabs 21m00Tcm4TlvDq8ikWAM
+```
+
+#### Create Voice Configurations
+
+```bash
+# Create a voice configuration with default settings
+ffmcp voiceover create my-voice \
+  --provider elevenlabs \
+  --voice-id 21m00Tcm4TlvDq8ikWAM \
+  --description "My favorite voice"
+
+# Create with custom settings
+ffmcp voiceover create narrator \
+  --provider elevenlabs \
+  --voice-id pNInz6obpgDQGcFmaJgB \
+  --model-id eleven_multilingual_v2 \
+  --stability 0.5 \
+  --similarity-boost 0.75 \
+  --style 0.0 \
+  --use-speaker-boost \
+  --output-format mp3_44100_128 \
+  --description "Narrator voice for stories"
+```
+
+#### Manage Voice Configurations
+
+```bash
+# List all saved voices
+ffmcp voiceover list
+
+# Show voice details
+ffmcp voiceover show my-voice
+
+# Update voice settings
+ffmcp voiceover update my-voice --stability 0.6 --similarity-boost 0.8
+
+# Delete a voice
+ffmcp voiceover delete my-voice
+```
+
+#### Generate Speech
+
+```bash
+# Using a saved voice configuration
+ffmcp tts "Hello, this is a test" output.mp3 --voice my-voice
+
+# Using provider and voice ID directly
+ffmcp tts "Direct voice usage" output.mp3 \
+  --provider elevenlabs \
+  --voice-id 21m00Tcm4TlvDq8ikWAM
+
+# With custom parameters (overrides saved config)
+ffmcp tts "Custom settings" output.mp3 \
+  --voice my-voice \
+  --stability 0.7 \
+  --similarity-boost 0.9
+```
+
+#### Agent Voice Integration
+
+```bash
+# Create agent with voice
+ffmcp agent create assistant \
+  -p openai \
+  -m gpt-4o-mini \
+  -i "You are a helpful assistant" \
+  --voice my-voice
+
+# Set voice for existing agent
+ffmcp agent voice set assistant my-voice
+
+# Show agent's voice
+ffmcp agent voice show assistant
+
+# Remove voice from agent
+ffmcp agent voice remove assistant
+```
+
+**Voice Parameters:**
+- `--stability` (0.0-1.0): Controls voice stability (lower = more variation)
+- `--similarity-boost` (0.0-1.0): Controls similarity to original voice
+- `--style` (0.0-1.0): Controls style exaggeration
+- `--use-speaker-boost`: Enable speaker boost for clearer speech
+- `--output-format`: Audio format (e.g., `mp3_44100_128`, `pcm_16000`, etc.)
+- `--model-id`: TTS model (e.g., `eleven_multilingual_v2`, `eleven_turbo_v2`)
+
+**Supported Providers:**
+- **ElevenLabs**: High-quality multilingual TTS with voice cloning support
+- More providers coming soon!
+
+### Embeddings
+
+```bash
+# Create embeddings
+ffmcp openai embed "This is a sample text"
+
+# With custom dimensions
+ffmcp openai embed "Vectorize this" -d 256
+
+# Output full JSON with usage stats
+ffmcp openai embed "Text to embed" --json -o embeddings.json
+```
+
+### Function Calling / Tools
+
+```bash
+# Chat with function calling
+# First, create a tools.json file:
+cat > tools.json << EOF
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Get the current weather",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"}
+        }
+      }
+    }
+  }
+]
+EOF
+
+# Use with chat
+ffmcp openai tools "What's the weather in San Francisco?" -t tools.json
+```
+
+### Assistants API
+
+```bash
+# Create an assistant
+ffmcp openai assistant create "Math Tutor" "You are a helpful math tutor"
+
+# Create a conversation thread
+ffmcp openai assistant thread -o thread_id.txt
+
+# Add a message to thread
+ffmcp openai assistant message $(cat thread_id.txt) "Solve 2x + 5 = 15"
+
+# Run the assistant
+ffmcp openai assistant run $(cat thread_id.txt) $(cat assistant_id.txt)
+
+# Get messages from thread
+ffmcp openai assistant messages $(cat thread_id.txt)
+
+# Upload a file for the assistant
+ffmcp openai assistant upload document.pdf
+```
+
+### 4. List Providers
+
+```bash
+ffmcp providers
+```
+
+This will show all available providers:
+- **openai** - OpenAI GPT models (GPT-4, GPT-3.5, DALL·E, Whisper, TTS, Embeddings)
+- **anthropic** - Anthropic Claude models (Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku)
+- **gemini** - Google Gemini models (Gemini 2.0 Flash, Gemini 1.5 Pro, Gemini 1.5 Flash)
+- **groq** - Groq models (Llama 3.1, Mixtral, Gemma) - Ultra-fast inference
+- **deepseek** - DeepSeek models (DeepSeek Chat, DeepSeek Coder) - OpenAI-compatible
+- **mistral** - Mistral AI models (Mistral Large, Mistral Medium, Pixtral)
+- **together** - Together AI models (Access to many open-source models like Llama, Mixtral, Qwen)
+- **cohere** - Cohere models (Command R+, Command R) - Enterprise-focused
+- **perplexity** - Perplexity AI models (Sonar Large, Sonar Pro) - Built-in web search
+
+### 5. Daily Token Tracking
+
+ffmcp automatically tracks total tokens used per UTC day across supported providers (e.g., OpenAI, Anthropic). Totals are stored in `~/.ffmcp/tokens.json`.
+
+```bash
+# Show today's total token count (UTC day)
+ffmcp tokens
+
+# Filter by provider
+ffmcp tokens -p openai
+ffmcp tokens -p gemini
+ffmcp tokens -p groq
+# ... any provider name
+
+# Specify a date (UTC, YYYY-MM-DD)
+ffmcp tokens -d 2025-11-07
+```
+
+Notes:
+- The total is best-effort for streaming responses and depends on provider SDK support for usage in stream events.
+- Token accounting is updated automatically on each command invocation that returns usage from the provider.
+
+## Threads: Conversation History
+
+ffmcp supports **threads** to maintain conversation history for both the `chat` command and `agent run` command. Threads allow you to have ongoing conversations where the AI remembers previous messages.
+
+### Chat Threads
+
+Chat threads are independent conversation histories that work with the `chat` command:
+
+```bash
+# Create a chat thread
+ffmcp thread create conversation1
+
+# Set it as active (optional - chat will use active thread automatically)
+ffmcp thread use conversation1
+
+# Chat with conversation history
+ffmcp chat "Hello, my name is Alice" -t conversation1 -p openai
+ffmcp chat "What's my name?" -t conversation1 -p openai  # Remembers!
+
+# Or use active thread (no -t needed)
+ffmcp chat "Hello" -p openai  # Uses active thread automatically
+ffmcp chat "Continue" -p openai  # Remembers previous message
+
+# With system message (saved to thread)
+ffmcp chat "Solve 2+2" -s "You are a math tutor" -t math-thread
+ffmcp chat "Now solve 5+5" -t math-thread  # Remembers system message
+
+# Manage threads
+ffmcp thread list                    # List all chat threads
+ffmcp thread current                 # Show active thread
+ffmcp thread clear conversation1     # Clear messages (keeps thread)
+ffmcp thread delete conversation1    # Delete thread entirely
+```
+
+**Key Points:**
+- Chat threads are **independent** from agent threads
+- Each thread maintains its own conversation history
+- System messages are saved to the thread on first use
+- Active thread is used automatically if no thread is specified
+
+### Agent Threads
+
+Agent threads are tied to specific agents and maintain conversation history for agent runs:
+
+```bash
+# Create an agent
+ffmcp agent create myagent -p openai -m gpt-4o-mini -i "You are helpful"
+
+# Create a thread for the agent
+ffmcp agent thread create myagent conversation1
+
+# Set it as active (optional - agent run uses active thread automatically)
+ffmcp agent thread use myagent conversation1
+
+# Run agent with conversation history
+ffmcp agent run "Plan a trip to Paris" --agent myagent
+ffmcp agent run "Add a day in London" --agent myagent  # Remembers!
+
+# Or specify thread explicitly
+ffmcp agent run "Start new topic" --agent myagent --thread conversation2
+
+# Manage agent threads
+ffmcp agent thread list myagent           # List threads for agent
+ffmcp agent thread current myagent        # Show active thread
+ffmcp agent thread clear myagent conv1    # Clear messages
+ffmcp agent thread delete myagent conv1   # Delete thread
+```
+
+**Key Points:**
+- Agent threads are **tied to specific agents**
+- Each agent can have multiple threads
+- Each agent has its own active thread
+- Tool calls and actions are saved to the thread
+- Threads work seamlessly with agent actions (web fetch, image generation, etc.)
+
+### When to Use Threads
+
+**Use Chat Threads when:**
+- You want simple conversation history with the `chat` command
+- You're switching between different providers/models
+- You don't need agent features (actions, tools, etc.)
+- You want lightweight conversation management
+
+**Use Agent Threads when:**
+- You're using agents with actions and tools
+- You want conversation history tied to a specific agent configuration
+- You need multiple conversation contexts per agent
+- You want to leverage agent capabilities (web search, image generation, etc.)
+
+### Thread Management Commands
+
+**Chat Threads:**
+```bash
+ffmcp thread create <name>      # Create thread
+ffmcp thread list               # List all threads
+ffmcp thread use <name>         # Set active thread
+ffmcp thread current            # Show active thread
+ffmcp thread clear <name>       # Clear messages
+ffmcp thread delete <name>      # Delete thread
+```
+
+**Agent Threads:**
+```bash
+ffmcp agent thread create <agent> <name>    # Create thread
+ffmcp agent thread list <agent>              # List threads
+ffmcp agent thread use <agent> <name>        # Set active thread
+ffmcp agent thread current <agent>           # Show active thread
+ffmcp agent thread clear <agent> <name>      # Clear messages
+ffmcp agent thread delete <agent> <name>    # Delete thread
+```
+
+### Example Workflows
+
+**Chat Thread Workflow:**
+```bash
+# Create and use a thread
+ffmcp thread create project-planning
+ffmcp thread use project-planning
+
+# Have a conversation
+ffmcp chat "I want to build a web app" -p openai
+ffmcp chat "What technologies should I use?" -p openai
+ffmcp chat "Tell me more about React" -p openai
+
+# Switch to different thread
+ffmcp thread create personal-chat
+ffmcp thread use personal-chat
+ffmcp chat "What's the weather like?" -p openai  # Fresh conversation
+```
+
+**Agent Thread Workflow:**
+```bash
+# Create agent and thread
+ffmcp agent create assistant -p openai -m gpt-4o-mini -i "You are helpful"
+ffmcp agent thread create assistant project-a
+ffmcp agent thread use assistant project-a
+
+# Run agent with conversation history
+ffmcp agent run "Research React best practices" --agent assistant
+ffmcp agent run "Find examples of React hooks" --agent assistant  # Uses web_fetch action
+
+# Create another thread for different project
+ffmcp agent thread create assistant project-b
+ffmcp agent thread use assistant project-b
+ffmcp agent run "Research Python frameworks" --agent assistant  # Fresh conversation
+```
+
+## Zep Memory (Brains)
+
+**Note:** Brains (Zep) are separate from threads. Threads maintain conversation history locally, while Brains provide advanced memory features including semantic search, document storage, and graph relationships. You can use both together - agents can have threads for conversation history AND a brain for long-term memory and document search.
+
+### Setup
+
+```bash
+# Configure Zep (Cloud)
+export ZEP_CLOUD_API_KEY=your_key
+
+# Optional for self-hosted
+export ZEP_BASE_URL=http://localhost:8000
+
+# Or persist settings
+ffmcp config -p zep -k YOUR_ZEP_API_KEY
+```
+
+### Brains
+
+```bash
+# Create and use a brain
+ffmcp brain create mybrain
+ffmcp brain current
+ffmcp brain list
+ffmcp brain use mybrain
+```
+
+### Memory
+
+```bash
+# Add a message to memory
+ffmcp brain memory add --role user --role-type user --content "Who was Octavia Butler?"
+
+# Get memory context
+ffmcp brain memory get
+
+# Get memory for a specific brain and session
+ffmcp brain memory get --brain mybrain --session session-123
+
+# Search memory
+ffmcp brain memory search "Octavia"
+
+# Clear memory for session
+ffmcp brain memory clear
+```
+
+Notes:
+- Omitting `--brain` uses the active brain (set with `ffmcp brain use`).
+- Omitting `--session` defaults to the brain’s `default_session_id` (if set) or the brain name.
+
+### Collections & Documents
+
+```bash
+# Create a namespaced collection under the brain
+ffmcp brain collection create knowledge --description "KB for mybrain"
+
+# Add a document
+ffmcp brain document add knowledge --text "Zep is a memory platform for LLM apps" --id doc1
+
+# Search documents
+ffmcp brain document search knowledge "memory platform"
+```
+
+### Graph (Zep Cloud)
+
+```bash
+# Add JSON data to user graph
+echo '{"projects": {"alpha": {"status": "in progress"}}}' | \
+  ffmcp brain graph add user-123 --type json --input -
+
+# Get user graph
+ffmcp brain graph get user-123
+```
+
+## Usage Examples
+
+### Basic Text Generation
+
+```bash
+ffmcp generate "Write a Python function to calculate fibonacci"
+```
+
+### Advanced Options
+
+```bash
+ffmcp generate "Creative story" \
+  -p openai \
+  -m gpt-4 \
+  -t 0.9 \
+  --max-tokens 500 \
+  -s
+```
+
+### File Processing
+
+```bash
+# Process a file
+ffmcp generate -i input.txt -o output.txt
+
+# Chain operations
+cat data.txt | ffmcp generate | grep "important" > filtered.txt
+```
+
+### Integration in Scripts
+
+```bash
+#!/bin/bash
+RESULT=$(ffmcp generate "Translate to French: Hello world" -p openai)
+echo "Translation: $RESULT"
+```
+
+### Programmatic Usage (Node.js/JavaScript)
+
+If you installed via npm, you can use ffmcp programmatically in your Node.js projects:
+
+```javascript
+const ffmcp = require('ffmcp');
+
+// Generate text
+const result = await ffmcp.generate('Write a haiku about coding', {
+  provider: 'openai',
+  model: 'gpt-4',
+  temperature: 0.7
+});
+console.log(result);
+
+// Chat with AI
+const response = await ffmcp.chat('Hello, how are you?', {
+  provider: 'anthropic',
+  system: 'You are a helpful assistant',
+  thread: 'conversation1'
+});
+console.log(response);
+
+// Stream responses
+const stream = ffmcp.streamGenerate('Tell me a story', {
+  provider: 'openai'
+});
+
+stream.on('data', (chunk) => {
+  process.stdout.write(chunk);
+});
+
+stream.on('end', () => {
+  console.log('\nDone!');
+});
+
+// Configure API keys
+await ffmcp.config('openai', 'your-api-key-here');
+
+// List providers
+const providers = await ffmcp.providers();
+console.log(providers);
+
+// Execute raw commands
+const output = await ffmcp.raw(['agent', 'list']);
+console.log(output);
+```
+
+**TypeScript Support:**
+```typescript
+import ffmcp from 'ffmcp';
+
+const result = await ffmcp.generate('Hello', {
+  provider: 'openai',
+  model: 'gpt-4',
+  temperature: 0.7
+});
+```
+
+See [NPM_README.md](NPM_README.md) for complete npm package documentation.
+
+### Complete Workflow Example
+
+```bash
+# 1. Transcribe audio
+ffmcp openai transcribe meeting.mp3 -o transcript.txt
+
+# 2. Summarize transcript
+ffmcp generate -i transcript.txt -o summary.txt
+
+# 3. Generate image based on summary
+ffmcp openai image "$(cat summary.txt | head -c 100)"
+
+# 4. Create embeddings for search
+ffmcp openai embed "$(cat transcript.txt)" -o embeddings.json
+```
+
+## Supported AI Providers
+
+ffmcp supports 11 major AI providers, each with their own strengths:
+
+| Provider | Models | Key Features | Best For |
+|----------|--------|-------------|----------|
+| **OpenAI** | GPT-4, GPT-3.5, DALL·E, Whisper | Full feature set (vision, images, audio, embeddings) | Comprehensive AI tasks |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus | Long context, high quality | Complex reasoning, long documents |
+| **Google Gemini** | Gemini 2.0 Flash, Gemini 1.5 Pro | Multimodal, fast | General purpose, vision tasks |
+| **Groq** | Llama 3.1, Mixtral, Gemma | Ultra-fast inference | Speed-critical applications |
+| **DeepSeek** | DeepSeek Chat, DeepSeek Coder | OpenAI-compatible, coding-focused | Code generation, technical tasks |
+| **Mistral AI** | Mistral Large, Pixtral | High quality, vision support | Enterprise applications |
+| **Together AI** | Llama, Mixtral, Qwen, many more | Access to many open-source models | Experimentation, cost-effective |
+| **Cohere** | Command R+, Command R | Enterprise features, RAG | Business applications, embeddings |
+| **Perplexity** | Sonar Large, Sonar Pro | Built-in web search, citations | Research, real-time information |
+| **AI33** | Various models | Multiple model access | General purpose |
+| **AIMLAPI** | 300+ models unified API | Single API for 300+ models, OpenAI-compatible | Access to wide variety of models |
+
+### Default Models
+
+Each provider has a sensible default model:
+- OpenAI: `gpt-4o-mini`
+- Anthropic: `claude-3-5-sonnet-20241022`
+- Gemini: `gemini-2.0-flash-exp`
+- Groq: `llama-3.1-70b-versatile`
+- DeepSeek: `deepseek-chat`
+- Mistral: `mistral-large-latest`
+- Together: `meta-llama/Llama-3-70b-chat-hf`
+- Cohere: `command-r-plus`
+- Perplexity: `llama-3.1-sonar-large-128k-online`
+- AI33: (varies by model)
+- AIMLAPI: `gpt-4o`
+
+You can override defaults with the `-m` flag or set a custom default:
+```bash
+ffmcp config set-default-model gemini gemini-1.5-pro
+```
+
+## Architecture
+
+```
+ffmcp/
+├── ffmcp/
+│   ├── __init__.py
+│   ├── cli.py              # Main CLI interface
+│   ├── config.py           # Configuration management
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── base.py         # Base provider interface
+│   │   ├── openai_provider.py      # Full OpenAI implementation
+│   │   ├── anthropic_provider.py   # Anthropic Claude
+│   │   ├── gemini_provider.py      # Google Gemini
+│   │   ├── groq_provider.py        # Groq
+│   │   ├── deepseek_provider.py    # DeepSeek
+│   │   ├── mistral_provider.py     # Mistral AI
+│   │   ├── together_provider.py   # Together AI
+│   │   ├── cohere_provider.py      # Cohere
+│   │   └── perplexity_provider.py  # Perplexity AI
+│   └── voiceover/
+│       ├── __init__.py
+│       ├── base.py         # Base TTS provider interface
+│       └── elevenlabs_provider.py   # ElevenLabs TTS implementation
+├── setup.py
+├── requirements.txt
+└── README.md
+```
+
+## OpenAI Features Supported
+
+- ✅ **Chat Completions** - GPT-4, GPT-3.5, GPT-4o models
+- ✅ **Vision** - Image understanding with GPT-4 Vision
+- ✅ **DALL·E** - Image generation (DALL·E 2 & 3)
+- ✅ **Whisper** - Audio transcription and translation
+- ✅ **Text-to-Speech** - TTS-1 and TTS-1-HD models
+- ✅ **Embeddings** - Text embeddings for semantic search
+- ✅ **Function Calling** - Tools and function calling support
+- ✅ **Assistants API** - Create and manage AI assistants
+- ✅ **Streaming** - Real-time streaming for all text generation
+
+## Voiceover/TTS Features Supported
+
+- ✅ **Multiple TTS Providers** - ElevenLabs (more coming soon)
+- ✅ **Voice Configuration Management** - Create, read, update, delete voice configs
+- ✅ **Provider Voice Discovery** - List and explore available voices
+- ✅ **Agent Voice Integration** - Assign voices to agents
+- ✅ **Flexible TTS Generation** - Use saved configs or direct parameters
+- ✅ **Advanced Voice Settings** - Stability, similarity, style, speaker boost
+- ✅ **Multiple Output Formats** - MP3, PCM, and more
+
+## Adding New Providers
+
+To add a new AI provider:
+
+1. Create a new file in `ffmcp/providers/` (e.g., `cohere_provider.py`)
+2. Inherit from `BaseProvider` and implement required methods
+3. Register it in `ffmcp/providers/__init__.py`
+
+Example:
+
+```python
+from ffmcp.providers.base import BaseProvider
+
+class CohereProvider(BaseProvider):
+    def get_provider_name(self) -> str:
+        return 'cohere'
+    
+    def generate(self, prompt: str, **kwargs) -> str:
+        # Implementation
+        pass
+    # ... implement other methods
+```
+
+## Roadmap
+
+- [x] OpenAI full feature support
+- [x] Multiple AI providers (9 providers supported!)
+- [x] Image generation support
+- [x] Audio transcription/translation
+- [x] Voiceover/TTS system with multiple providers
+- [x] Agent voice integration
+- [x] npm package for Node.js/JavaScript users
+- [ ] Batch processing
+- [ ] Plugin system for custom providers
+- [ ] Python API for programmatic use
+- [x] Advanced features (function calling, tool use, etc.)
+- [ ] Provider-specific features (Gemini vision, Cohere RAG, etc.)
+
+## Provider Documentation
+
+For detailed information about each provider, see [PROVIDERS.md](PROVIDERS.md) (if available) or run:
+```bash
+ffmcp providers
+```
+
+For comprehensive voiceover/TTS documentation, see [VOICEOVER.md](VOICEOVER.md).
+
+For npm package usage and Node.js/JavaScript API documentation, see [NPM_README.md](NPM_README.md).
+
+## Contributing
+
+Contributions welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License
+
