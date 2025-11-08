@@ -1,0 +1,92 @@
+Metadata-Version: 2.4
+Name: dojo-openenv
+Version: 0.1.1
+Summary: Wrapper for dojo-sdk-client to use with OpenEnv
+Requires-Python: >=3.9
+Requires-Dist: dojo-sdk-client>=0.1.6
+Requires-Dist: dojo-sdk-core>=0.1.11
+Requires-Dist: openenv-core>=0.1.0
+Provides-Extra: dev
+Requires-Dist: ruff; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Dojo OpenEnv
+
+Wrapper for `dojo-sdk-client` to use with OpenEnv, enabling Dojo tasks to be used as OpenEnv-compatible environments for reinforcement learning.
+
+## Overview
+
+`dojo-openenv` provides a bridge between the Dojo RL environment framework and OpenEnv, allowing you to run Dojo tasks through the standard OpenEnv interface. This enables seamless integration of Dojo tasks with OpenEnv-based training pipelines and evaluation frameworks.
+
+## Installation
+
+```bash
+uv add dojo-openenv
+```
+
+Or with pip:
+
+```bash
+pip install dojo-openenv
+```
+
+## Basic Usage
+
+```python
+from dojo_openenv import DojoEnvClient, DojoAction
+from dojo_sdk_core.types import ClickAction
+
+# Initialize the environment with a task ID and API key
+env = DojoEnvClient(
+    task_id="2048/get-2048",
+    api_key="your-api-key-here"
+)
+
+try:
+    # Reset the environment
+    result = env.reset()
+
+    # Run steps until done
+    while not result.done:
+        # Create an action (or generate an action via an AI agent)
+        action = DojoAction(
+            action=ClickAction(x=100, y=100),
+            reasoning="Clicking on the game board",
+            raw_response="User clicked at coordinates (100, 100)"
+        )
+
+        # Step the environment
+        result = env.step(action)
+
+        # Access observation and reward
+        print(f"Reward: {result.reward}")
+        print(f"State: {result.observation.task_response.state}")
+
+finally:
+    # Clean up
+    env.close()
+```
+
+## Key Components
+
+### `DojoEnvClient`
+
+The main environment client that implements the OpenEnv `HTTPEnvClient` specification.
+
+### `DojoAction`
+
+Action wrapper that extends the OpenEnv `Action` base class with:
+
+- `action`: A Dojo core action from `dojo-sdk-core` (e.g., `ClickAction`, `TypeAction`, etc.)
+- `reasoning`: String describing the reasoning behind the action
+- `raw_response`: Raw response from the agent (for debugging or logging)
+
+### `DojoObservation`
+
+Observation wrapper that extends the OpenEnv `Observation` base class with:
+
+- `task_response`: The current task state from the Dojo client, which includes the task history and a current screenshot of the task environment.
+
+## Documentation
+
+For more information about Dojo tasks, actions, and the SDK, visit [docs.trydojo.ai](https://docs.trydojo.ai).
