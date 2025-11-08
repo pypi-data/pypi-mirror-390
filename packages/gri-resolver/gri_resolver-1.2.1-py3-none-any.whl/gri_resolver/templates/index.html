@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRI Resolver - Web Interface</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <style>
+        .tile-card {
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .tile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .image-thumbnail {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .rating-stars {
+            color: #ffc107;
+            font-size: 1.2rem;
+        }
+        .task-status {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+        .status-started { background-color: #fff3cd; }
+        .status-running { background-color: #d1ecf1; }
+        .status-completed { background-color: #d4edda; }
+        .status-error { background-color: #f8d7da; }
+        .progress-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .progress-step {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-left: 3px solid #007bff;
+            background-color: white;
+        }
+        .progress-step.active {
+            border-left-color: #28a745;
+            font-weight: bold;
+        }
+        .progress-step.completed {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+        .main-progress-bar {
+            height: 35px;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        #roiMap {
+            height: 400px;
+            width: 100%;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+        .leaflet-control-layers {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .tile-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .tile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .tile-card .card-img-top {
+            border-bottom: 1px solid #dee2e6;
+        }
+        .mgrs-tile-label {
+            background: transparent !important;
+            border: none !important;
+        }
+        .leaflet-marker-icon.mgrs-tile-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .mgrs-tile-label img {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">GRI Resolver</span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link main-nav-link active" href="#tiles" id="nav-tiles" onclick="showSection('tiles'); return false;">Cached Tiles</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link main-nav-link" href="#downloads" id="nav-downloads" onclick="showSection('downloads'); return false;">Downloads</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link main-nav-link" href="#storage" id="nav-storage" onclick="showSection('storage'); return false;">Storage</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Cached Tiles Section -->
+        <div id="tilesSection">
+            {% include 'partials/tiles.html' %}
+        </div>
+
+        <!-- Download Section -->
+        <div id="downloadsSection" style="display: none;">
+            {% include 'partials/downloads.html' %}
+        </div>
+
+        <!-- Storage Information Section -->
+        <div id="storageSection" style="display: none;">
+            {% include 'partials/storage.html' %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
+    
+    <!-- Load JavaScript modules in correct order -->
+    <script src="/static/js/common.js"></script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/roi.js"></script>
+    <script src="/static/js/downloads.js"></script>
+    <script src="/static/js/storage.js"></script>
+    <script src="/static/js/tiles.js"></script>
+    
+    <script>
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load tiles list (main section - loaded by default)
+            if (typeof loadTiles === 'function') {
+                loadTiles();
+            }
+        });
+    </script>
+</body>
+</html>

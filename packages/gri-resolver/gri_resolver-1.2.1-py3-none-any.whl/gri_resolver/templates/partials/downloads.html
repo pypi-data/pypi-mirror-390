@@ -1,0 +1,71 @@
+<!-- Download Section -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Download Tiles</h5>
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs" id="downloadTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tiles-tab" data-bs-toggle="tab" data-bs-target="#tiles" type="button">By Tiles</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="roi-tab" data-bs-toggle="tab" data-bs-target="#roi" type="button">By ROI</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="region-tab" data-bs-toggle="tab" data-bs-target="#region" type="button">By Region</button>
+            </li>
+        </ul>
+        <div class="tab-content mt-3" id="downloadTabContent">
+            <div class="tab-pane fade show active" id="tiles" role="tabpanel">
+                <div class="mb-3">
+                    <label for="tilesInput" class="form-label">Tile Codes (space-separated)</label>
+                    <input type="text" class="form-control" id="tilesInput" placeholder="31UDQ 33MUV">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="roi" role="tabpanel">
+                <div class="mb-3">
+                    <p class="text-muted">Draw a rectangle on the map to select your area of interest, or enter coordinates manually.</p>
+                    <div id="roiMap"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="minLon" class="form-label">Min Longitude</label>
+                        <input type="number" class="form-control" id="minLon" step="0.0001" onchange="updateMapFromInputs()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="minLat" class="form-label">Min Latitude</label>
+                        <input type="number" class="form-control" id="minLat" step="0.0001" onchange="updateMapFromInputs()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="maxLon" class="form-label">Max Longitude</label>
+                        <input type="number" class="form-control" id="maxLon" step="0.0001" onchange="updateMapFromInputs()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="maxLat" class="form-label">Max Latitude</label>
+                        <input type="number" class="form-control" id="maxLat" step="0.0001" onchange="updateMapFromInputs()">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearROI()">Clear Selection</button>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="region" role="tabpanel">
+                <div class="mb-3">
+                    <label for="regionSelect" class="form-label">Region</label>
+                    <select class="form-select" id="regionSelect">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="limitInput" class="form-label">Limit (optional)</label>
+            <input type="number" class="form-control" id="limitInput" placeholder="Leave empty for no limit">
+        </div>
+        <button class="btn btn-primary" onclick="identifyTiles()">Identify Tiles</button>
+        <div id="tilesPreview" style="display: none; margin-top: 20px;"></div>
+        <div id="downloadStatus"></div>
+        <div id="downloadProgress" class="progress-container" style="display: none;"></div>
+    </div>
+</div>
+
