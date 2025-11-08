@@ -1,0 +1,314 @@
+---
+title: Metrics
+description: Track and analyze validation results with HumaLab metrics
+---
+
+HumaLab provides a comprehensive metrics system for tracking and analyzing your validation experiments.
+
+## Metric Types
+
+### Standard Metrics
+
+Standard metrics track time-series data across episodes or steps.
+
+```python
+from humalab.constants import GraphType
+
+# Create a metric
+metric = hl.metrics.Metrics(
+    graph_type=GraphType.LINE
+)
+
+# Add to run
+run.add_metric("score", metric)
+
+# Log data points
+run.log({"score": 0.95}, x={"score": 0})  # x is optional
+run.log({"score": 0.97}, x={"score": 1})
+```
+
+### Graph Types
+
+Specify how metrics should be visualized:
+
+```python
+from humalab.constants import GraphType
+
+# Line graph (default for time-series)
+GraphType.LINE
+
+# Histogram
+GraphType.HISTOGRAM
+
+# Bar chart
+GraphType.BAR
+
+# Scatter plot
+GraphType.SCATTER
+
+# Heatmap (for 2D data)
+GraphType.HEATMAP
+
+# Gaussian distribution plot
+GraphType.GAUSSIAN
+
+# 3D visualization
+GraphType.THREE_D_MAP
+```
+
+## Logging Metrics
+
+### Episode-Level Logging
+
+Log metrics specific to an episode:
+
+```python
+with episode:
+    # Log a dictionary of metrics
+    episode.log({
+        "reward": 100.0,
+        "steps": 150,
+        "success": True
+    })
+```
+
+### Run-Level Logging
+
+Log metrics across all episodes:
+
+```python
+# Create metric
+metric = hl.metrics.Metrics(
+    graph_type=GraphType.LINE
+)
+
+# Add to run
+run.add_metric("cumulative_reward", metric)
+
+# Log across episodes
+for i in range(100):
+    with run.create_episode() as episode:
+        result = validate(episode)
+        run.log({"cumulative_reward": result.reward})
+```
+
+### Time-Series Data
+
+Track metrics over time or steps:
+
+```python
+# Create metric
+metric = hl.metrics.Metrics()
+run.add_metric("training_loss", metric)
+
+# Log with explicit x-axis values
+for step in range(1000):
+    loss = train_step()
+    run.log(
+        {"training_loss": loss},
+        x={"training_loss": step}
+    )
+```
+
+### Replace vs Append
+
+Control whether to replace the last value or append a new one:
+
+```python
+# Append new value (default)
+run.log({"score": 0.95})
+
+# Replace last value
+run.log({"score": 0.97}, replace=True)
+```
+
+## Scenario Statistics
+
+Scenario statistics are automatically tracked when you use distributions in your scenarios. They provide insights into how parameters are being sampled.
+
+```python
+# Define scenario with distributions
+scenario.init(scenario={
+    "gravity": "${uniform(-9.8, -8.8)}",
+    "friction": "${gaussian(0.5, 0.1)}"
+})
+
+# Statistics are automatically collected
+# Each parameter gets its own ScenarioStats metric
+# - Distribution type
+# - Sampled values across episodes
+# - Episode status correlation
+```
+
+Scenario statistics are automatically uploaded when you finish the run.
+
+## Summary Metrics
+
+Summary metrics aggregate data into a single value using various aggregation methods:
+
+```python
+from humalab.metrics.summary import Summary
+
+# Create a summary metric with aggregation type
+# Supported types: "min", "max", "mean", "last", "first", "none"
+summary_max = Summary(summary="max")
+summary_mean = Summary(summary="mean")
+summary_last = Summary(summary="last")
+
+# Add to run
+run.add_metric("max_reward", summary_max)
+run.add_metric("avg_success_rate", summary_mean)
+run.add_metric("final_score", summary_last)
+
+# Log values - summary will aggregate them
+run.log({"max_reward": 95.5})
+run.log({"max_reward": 98.2})  # Will keep the max
+run.log({"avg_success_rate": 0.85})  # Will compute mean of all logged values
+```
+
+## Code Artifacts
+
+Track code versions associated with your runs:
+
+```python
+# Read code file
+with open("my_agent.py", "r") as f:
+    agent_code = f.read()
+
+# Log as artifact
+run.log_code(
+    key="agent_implementation",
+    code_content=agent_code
+)
+```
+
+Scenarios are automatically logged as code artifacts:
+
+```python
+# Scenario YAML is automatically uploaded
+# Access it via run.scenario.yaml
+```
+
+
+## Metric Finalization
+
+Metrics are finalized and uploaded when you finish a run:
+
+```python
+# All metrics are automatically finalized
+run.finish()
+```
+
+Manual finalization (usually not needed):
+
+```python
+# Get finalized metric data
+metric_data = metric.finalize()
+print(metric_data)  # {"values": [...], "x_values": [...]}
+```
+
+## Complete Example
+
+```python
+import humalab as hl
+from humalab.constants import GraphType
+
+# Initialize
+hl.init(api_key="your_api_key")
+
+# Create scenario
+scenario = hl.scenarios.Scenario()
+scenario.init(scenario={
+    "difficulty": "${uniform(0, 1)}"
+})
+
+# Create run
+run = hl.Run(scenario=scenario, project="test")
+
+# Add run-level metrics
+success_rate = hl.metrics.Metrics(
+    graph_type=GraphType.LINE
+)
+run.add_metric("success_rate", success_rate)
+
+avg_reward = hl.metrics.Metrics(
+    graph_type=GraphType.LINE
+)
+run.add_metric("avg_reward", avg_reward)
+
+# Execute episodes
+successes = 0
+total_reward = 0
+
+with run:
+    for i in range(100):
+        with run.create_episode() as episode:
+            # Run validation
+            result = validate(episode)
+
+            # Track episode metrics
+            episode.log({
+                "reward": result.reward,
+                "steps": result.steps,
+                "success": result.success
+            })
+
+            # Update run metrics
+            if result.success:
+                successes += 1
+            total_reward += result.reward
+
+            # Log aggregated metrics
+            run.log({
+                "success_rate": successes / (i + 1),
+                "avg_reward": total_reward / (i + 1)
+            })
+
+# Cleanup
+hl.finish()
+```
+
+## Best Practices
+
+1. **Choose Appropriate Graph Types**: Match the visualization to your data
+   - Use `LINE` for time-series
+   - Use `HISTOGRAM` for distributions
+   - Use `SCATTER` for 2D relationships
+   - Use `HEATMAP` for 2D density
+
+2. **Use Meaningful Metric Names**: Make it clear what you're tracking
+   ```python
+   run.add_metric("episode_success_rate", metric)
+   run.add_metric("avg_episode_length", metric)
+   ```
+
+3. **Log Consistently**: Maintain consistent logging patterns
+   ```python
+   # Good: log every episode
+   for episode in episodes:
+       run.log({"metric": value})
+
+   # Avoid: sparse, inconsistent logging
+   ```
+
+4. **Avoid Reserved Names**: Don't use reserved metric names
+   ```python
+   # These will raise ValueError
+   # "scenario", "config", "episode_vals"
+   ```
+
+5. **Track What Matters**: Focus on metrics that help answer your research questions
+   - Success rates
+   - Performance metrics
+   - Efficiency measures
+   - Error rates
+
+6. **Use Episode vs Run Metrics Appropriately**:
+   - Episode metrics: Data specific to one execution
+   - Run metrics: Aggregated or cumulative data
+
+7. **Include Units in Names** (when appropriate):
+   ```python
+   run.add_metric("training_time_seconds", metric)
+   run.add_metric("memory_usage_mb", metric)
+   ```
