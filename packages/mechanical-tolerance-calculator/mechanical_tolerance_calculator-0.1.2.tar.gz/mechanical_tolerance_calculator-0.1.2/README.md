@@ -1,0 +1,172 @@
+# Tolerances Package
+
+A Python package for material tolerance calculations, converted from the original JavaScript npm package.
+
+## Installation
+
+### From PyPI (once published)
+
+```bash
+pip install mechanical_tolerance_calculator
+```
+
+### From source
+
+```bash
+git clone https://github.com/AjayGhimire1998/mechanical_tolerance_calculator.git
+cd mechanical_tolerance_calculator
+pip install -e .
+```
+
+## Usage
+
+```python
+from tolerances import (
+    get_all_tolerances_for,
+
+    check_one_measurement_for,
+    check_multiple_measurements_for
+)
+
+# Get all tolerances for a material type
+housing_tolerances = get_all_tolerances_for("housing")
+shaft_tolerances = get_all_tolerances_for("shaft")
+shell_tolerances = get_all_tolerances_for("shell")
+
+
+
+# Check a single measurement
+result = check_one_measurement_for("shaft", 5.98)
+print(result)
+# Output includes:
+# - measurement: the input measurement
+# - nominal: calculated nominal diameter
+# - specification: the specification used (e.g., "h9")
+# - IT_grade: the IT grade used
+# - computed_specification_bounds: upper and lower bounds
+# - meets_specification: whether the measurement meets specs
+# - meets_IT_tolerance: whether it meets IT tolerance
+
+# Check multiple measurements
+measurements = [5.97, 5.98, 5.99, 6.00]
+result = check_multiple_measurements_for("shaft", measurements)
+print(result)
+# Output includes all the above plus:
+# - meets_IT_Tolerance: whether measurements meet IT tolerance
+# - meets_final_compliance: overall compliance status
+```
+
+## API Reference
+
+### `get_all_tolerances_for(material_type: str) -> dict`
+
+Returns all tolerances for the given material type.
+
+**Parameters:**
+
+- `material_type` (str): The type of material. Valid values: 'housing', 'shaft', 'shell'
+
+**Returns:**
+
+- dict: Object containing the relevant tolerances or an error message
+
+**Example:**
+
+```python
+tolerances = get_all_tolerances_for("housing")
+```
+
+### `check_one_measurement_for(material_type: str, measurement: float) -> dict`
+
+Check a single measurement against standard tolerances.
+
+**Parameters:**
+
+- `material_type` (str): The type of material. Valid values: 'housing', 'shaft', 'shell'
+- `measurement` (float): The measured value to check
+
+**Returns:**
+
+- dict: Detailed analysis including specification bounds and compliance status
+
+**Example:**
+
+```python
+result = check_one_measurement_for("shaft", 5.98)
+if result.get("meets_IT_tolerance"):
+    print("Measurement passes!")
+```
+
+### `check_multiple_measurements_for(material_type: str, measurements: list) -> dict`
+
+Check multiple measurements against standard tolerances.
+
+**Parameters:**
+
+- `material_type` (str): The type of material. Valid values: 'housing', 'shaft', 'shell'
+- `measurements` (list): A list of measured values to check
+
+**Returns:**
+
+- dict: Comprehensive analysis of all measurements including IT tolerance compliance
+
+**Example:**
+
+```python
+measurements = [5.97, 5.98, 5.99, 6.00]
+result = check_multiple_measurements_for("shaft", measurements)
+if result.get("meets_final_compliance"):
+    print("All measurements pass!")
+```
+
+## Material Types
+
+The package supports three material types:
+
+1. **Housing** - Uses H8 specification (IT6 grade)
+2. **Shaft** - Uses h9 specification (IT5 grade)
+3. **Shell** - Uses H9 specification (IT6 grade)
+
+## Data Format
+
+The package requires a `Tolerances.json` file with the following structure:
+
+```json
+{
+  "housingBores": {
+    "H8": {
+      [
+        {
+          "minimum_diameter": 0,
+          "maximum_diameter": 3,
+          "upper_deviation": "0.014",
+          "lower_deviation": "0.000",
+          "IT6": 0.006
+        }
+      ]
+    }
+  },
+  "shafts": {
+    "h9": {
+      [...]
+    }
+  },
+  "shellBores": {
+    "H9": {
+      [...]
+    }
+  }
+}
+```
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Support
+
+For issues and questions, please open an issue on GitHub.
