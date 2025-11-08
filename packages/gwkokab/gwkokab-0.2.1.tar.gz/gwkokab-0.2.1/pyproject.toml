@@ -1,0 +1,173 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages]
+find = { where = ["src/"] }
+
+[project]
+authors = [
+    { name = "Meesum Qazalbash", email = "meesumqazalbash@gmail.com" },
+    { name = "Muhammad Zeeshan", email = "m.zeeshan5885@gmail.com" },
+    { name = "Richard O'Shaughnessy", email = "richardoshaughnessyrossma@gmail.com" },
+]
+name = "gwkokab"
+version = "0.2.1"
+maintainers = [
+    { name = "Meesum Qazalbash", email = "meesumqazalbash@gmail.com" },
+]
+description = "A JAX-based gravitational-wave population inference toolkit for parametric models"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "arviz>=0.20.0",
+    "chex>=0.1.87",
+    "equinox>=0.11.3",
+    "flowMC==0.4.5",
+    "glasbey>=0.3.0",
+    "h5py>=3.12.1",
+    "jaxtyping>=0.2.36",
+    "jenkspy==0.4.1",
+    "loguru>=0.7.0",
+    "matplotlib>=3.9.0",
+    "mplcursors>=0.6",
+    "numpy<3",
+    "numpyro>=0.19.0",
+    "pandas>=2.2.0",
+    "quadax>=0.2.5",
+    "RIFT>=0.0.15.11",
+    "scipy>=1.12",
+    "seaborn>=0.13.0",
+    "tqdm>=4.60.0",
+]
+keywords = [
+    "astrophysics",
+    "bayesian-inference",
+    "bbh",
+    "binary-black-holes",
+    "binary-neutron-stars",
+    "bns",
+    "compact-binaries",
+    "gravitational-waves",
+    "jax",
+    "neutron-star-black-hole",
+    "nsbh",
+    "population-inference",
+]
+
+[project.optional-dependencies]
+cpu = ["jax>=0.4.30,<0.9.0"]
+cuda12 = ["jax[cuda12]>=0.4.30,<0.9.0"]
+cuda13 = ["jax[cuda13]>=0.4.30,<0.9.0"]
+tpu = ["jax[tpu]>=0.4.30,<0.9.0"]
+dev = ["pre-commit>=4.0.0", "ruff>=0.8.0", "setuptools>=75.6.0"]
+test = ["pytest>=8.3.0", "tfp-nightly", "astropy>=6.0.0"]
+doc = [
+    "astroid<5",
+    "furo",
+    "ipython!=8.7.0",
+    "myst-nb",
+    "setuptools_scm",
+    "sphinx_design",
+    "sphinx-autoapi",
+    "sphinx-copybutton",
+    "sphinx-togglebutton",
+    "sphinx>=2.0",
+    "sphinxcontrib-bibtex",
+]
+
+[[tool.uv.index]]
+name = "jax"
+url = "https://storage.googleapis.com/jax-releases/jax_releases.html"
+
+[project.urls]
+Changelog = "https://github.com/gwkokab/gwkokab/blob/main/CHANGELOG.md"
+Discussion = "https://github.com/gwkokab/gwkokab/discussions"
+Homepage = "https://github.com/gwkokab/gwkokab"
+Issues = "https://github.com/gwkokab/gwkokab/issues"
+
+[project.scripts]
+# GWKokab scripts
+gwk_batch_scatter2d = "cli_gwkokab.batch_scatter2d:main"
+gwk_batch_scatter3d = "cli_gwkokab.batch_scatter3d:main"
+gwk_chain_plot = "cli_gwkokab.chain_plot:main"
+gwk_corner_overplot = "cli_gwkokab.corner_overplot:main"
+gwk_corner_plot = "cli_gwkokab.corner_plot:main"
+gwk_ess_evolution_plot = "cli_gwkokab.ess_evolution_plot:main"
+gwk_ess_plot = "cli_gwkokab.ess_plot:main"
+gwk_hist_overplot = "cli_gwkokab.hist_overplot:main"
+gwk_joint_plot = "cli_gwkokab.joint_plot:main"
+gwk_ppd_plot = "cli_gwkokab.ppd_plot:main"
+gwk_r_hat_plot = "cli_gwkokab.r_hat_plot:main"
+gwk_samples_from_vt = "cli_gwkokab.samples_from_vt:main"
+gwk_scatter2d = "cli_gwkokab.scatter2d:main"
+gwk_scatter3d = "cli_gwkokab.scatter3d:main"
+# Kokab scripts
+## Genie scripts
+genie_ecc_matters = "kokab.ecc_matters.genie:main"
+genie_n_pls_m_gs = "kokab.n_pls_m_gs.genie:main"
+## FSage scripts
+f_sage_ecc_matters = "kokab.ecc_matters.sage:f_main"
+f_sage_n_pls_m_gs = "kokab.n_pls_m_gs.sage:f_main"
+f_sage_one_powerlaw_one_peak = "kokab.one_powerlaw_one_peak.sage:f_main"
+f_sage_bp2p = "kokab.bp2p.sage:f_main"
+f_sage_bp2p_multispin_multitilt = "kokab.bp2p_multispin_multitilt.sage:f_main"
+## NSage scripts
+n_sage_ecc_matters = "kokab.ecc_matters.sage:n_main"
+n_sage_n_pls_m_gs = "kokab.n_pls_m_gs.sage:n_main"
+n_sage_one_powerlaw_one_peak = "kokab.one_powerlaw_one_peak.sage:n_main"
+n_sage_bp2p = "kokab.bp2p.sage:n_main"
+n_sage_bp2p_multispin_multitilt = "kokab.bp2p_multispin_multitilt.sage:n_main"
+## Monk scripts
+f_monk_ecc_matters = "kokab.ecc_matters.monk:main"
+f_monk_n_pls_m_gs = "kokab.n_pls_m_gs.monk:main"
+f_monk_bp2p = "kokab.bp2p.monk:main"
+f_monk_bp2p_multispin_multitilt = "kokab.bp2p_multispin_multitilt.monk:main"
+## PPD scripts
+ppd_ecc_matters = "kokab.ecc_matters.ppd:main"
+ppd_n_pls_m_gs = "kokab.n_pls_m_gs.ppd:main"
+ppd_one_powerlaw_one_peak = "kokab.one_powerlaw_one_peak.ppd:main"
+ppd_bp2p = "kokab.bp2p.ppd:main"
+
+[tool.pytest.ini_options]
+addopts = ["-v", "--color=yes"]
+filterwarnings = [
+    "error",
+    "ignore:numpy.ufunc size changed,:RuntimeWarning",
+    "ignore:Using a non-tuple sequence:FutureWarning",
+    "ignore:jax.tree_structure is deprecated:FutureWarning",
+    "ignore:numpy.linalg support is experimental:UserWarning",
+    "ignore:scipy.linalg support is experimental:UserWarning",
+    "once:No GPU:UserWarning",
+    "once::DeprecationWarning",
+]
+doctest_optionflags = [
+    "ELLIPSIS",
+    "NORMALIZE_WHITESPACE",
+    "IGNORE_EXCEPTION_DETAIL",
+]
+
+[tool.docformatter]
+# The ``summaries`` are not (yet) 75 characters because the summary lines can't be
+# automatically wrapped and must be re-written, which should be done at some point.
+recursive = true
+wrap-summaries = 88
+wrap-descriptions = 88
+syntax = "numpy"
