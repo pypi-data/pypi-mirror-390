@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Query assistant for {% if table %}{{ table }}{% else %}{{ database }}{% endif %}{% endblock %}
+
+{% block crumbs %}
+{{ crumbs.nav(request=request, database=database, table=table) }}
+{% endblock %}
+
+{% block content %}
+
+<h1>Query assistant for {% if table %}{{ table }}{% else %}{{ database }}{% endif %}</h1>
+
+<form class="core" action="" method="POST">
+  <p>
+    <label for="id_question" style="width: auto">Ask a question of your data</label>
+  </p>
+  <p><textarea style="width: 80%; height: 4em;" name="question" id="id_question"></textarea>
+  <p>
+    <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+    {% if table %}
+      <input type="hidden" name="table" value="{{ table }}">
+    {% endif %}
+    <single-click>
+      <input type="submit" value="Submit">
+    </single-click>
+  </p>
+</form>
+
+<details><summary>Schema that will be passed to the model</summary>
+<pre>{{ schema }}</pre>
+</details>
+
+<script>
+document.querySelector('#id_question').focus();
+</script>
+
+<script type="module">
+class SingleClick extends HTMLElement {
+  constructor() {
+    super();
+  }
+
+  connectedCallback() {
+    // Get the text attribute value or default to "Processing..."
+    this.disabledText = this.getAttribute('text') || 'Processing...';
+    // Initialize the component
+    this.initialize();
+  }
+
+  initialize() {
+    // Find all buttons and submit inputs inside the component
+    const clickables = this.querySelectorAll('button, input[type="submit"]');
+    clickables.forEach(element => {
+      // Add click event listeners to each button/input
+      element.addEventListener('click', (e) => {
+        // Only proceed if the element is not already disabled
+        if (!element.disabled) {
+          // Store the original state before changing anything
+          if (element.tagName === 'BUTTON') {
+            element.dataset.originalText = element.textContent;
+            element.textContent = this.disabledText;
+          } else if (element.tagName === 'INPUT') {
+            element.dataset.originalValue = element.value;
+            element.value = this.disabledText;
+          }
+          // For form elements, we need to let the submission happen first
+          const form = element.closest('form');
+          if (form) {
+            // Let the submission start, then disable the button
+            setTimeout(() => {
+              element.disabled = true;
+            }, 0);
+          } else {
+            // For non-form buttons, disable immediately
+            element.disabled = true;
+          }
+        }
+      });
+    });
+  }
+}
+
+customElements.define('single-click', SingleClick);
+</script>
+{% endblock %}
