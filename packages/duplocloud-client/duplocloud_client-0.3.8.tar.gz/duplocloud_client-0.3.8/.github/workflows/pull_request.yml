@@ -1,0 +1,37 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+    - main
+permissions:
+  issues: write
+  pull-requests: write
+  security-events: write
+jobs: 
+
+  prerequisites:
+    name: Prerequisites
+    runs-on: ubuntu-latest
+    steps:
+    - name: Auto Assign 
+      uses: kentaro-m/auto-assign-action@v2.0.0
+      with:
+        configuration-path: .github/assign.yml
+    - name: Make sure Changleog is updated
+      uses: tarides/changelog-check-action@v3
+      with:
+        changelog: CHANGELOG.md
+
+  quality:
+    name: Test
+    uses: ./.github/workflows/quality.yml
+    secrets: inherit
+    with:
+      push: false
+      codescan: false
+
+  unit_test:
+    name: Test
+    uses: ./.github/workflows/test_unit.yml
+    secrets: inherit
