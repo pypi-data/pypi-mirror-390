@@ -1,0 +1,59 @@
+# Inspired from https://towardsdatascience.com/
+#   ultimate-guide-to-python-debugging-854dea731e1b
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "[%(asctime)s] %(levelname)s - %(message)s"
+    datefmt: "%H:%M:%S"
+  detail:
+    format: "%(asctime)s %(filename)25s:%(lineno)-4d %(levelname)-8s %(message)s"
+
+handlers:
+  console: # handler which will log into stdout
+    class: logging.StreamHandler
+    level: WARNING
+    formatter: standard # Use formatter defined above
+    stream: ext://sys.stdout
+  filesize: # handler which will log to file up to a size
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detail # Use formatter defined above
+    filename: ext://os.devnull
+    maxBytes: 10485760 # 10 Mb
+    backupCount: 10
+    encoding: utf8
+  filetime: # handler which will switch files regularly
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: detail # Use formatter defined above
+    filename: ext://os.devnull
+    when: W0
+    # interval: 0
+    # maxBytes:  10485760
+    # backupCount:
+    encoding: utf8
+  email: # email handler for error messages
+    class: logging.handlers.SMTPHandler
+    level: ERROR
+    formatter: standard # Use formatter defined above
+    mailhost: tbd # ext://util.config.log.mailhost
+    # credentials: ext://util.config.log.credentials
+    # secure: ext://util.config.log.secure
+    fromaddr: tbd # ext://util.config.log.fromaddr
+    toaddrs: tbd # ext://util.config.log.toaddrs
+    # - support_team@domain.tld
+    # - dev_team@domain.tld
+    subject: tbd #  ext://util.config.log.subject # Houston, we have a problem.
+
+root: # Loggers are organized in hierarchy - this is the root logger config
+  level: DEBUG
+  handlers: [console] # , file, email] # Attaches both handler defined above
+
+# loggers: # Defines descendants of root logger
+#   mymodule: # Logger for "mymodule"
+#     level: INFO
+#     handlers: [file] # Will only use "file" handler defined above
+#     propagate: no # Will not propagate logs to "root" logger
