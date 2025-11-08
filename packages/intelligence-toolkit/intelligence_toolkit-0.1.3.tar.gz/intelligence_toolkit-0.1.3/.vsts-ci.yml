@@ -1,0 +1,99 @@
+name: Intelligence Toolkit
+pool:
+  vmImage: ubuntu-latest
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+      
+schedules:
+- cron: "0 0 * * 0"  # Runs every Sunday at midnight (UTC)
+  branches:
+    include:
+      - main
+
+stages:
+  - stage: Compliance
+    dependsOn: []
+    jobs:
+      - job: compliance
+        displayName: Compliance
+        pool:
+          vmImage: windows-latest
+        steps:
+          - task: CredScan@3
+            inputs:
+              outputFormat: sarif
+              debugMode: false
+
+          - task: ComponentGovernanceComponentDetection@0
+            inputs:
+              scanType: "Register"
+              verbosity: "Verbose"
+              alertWarningLevel: "High"
+
+          - task: PublishSecurityAnalysisLogs@3
+            inputs:
+              ArtifactName: "CodeAnalysisLogs"
+              ArtifactType: "Container"
+
+  - stage: ValidateAndBuild
+    dependsOn: []
+    condition: 
+    jobs:
+      - job: validate
+        displayName: Install and tests
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.11"
+            displayName: "Use Python 3.11"
+          - task: Bash@3
+            displayName: Install uv
+            inputs:
+              workingDirectory: ./
+              targetType: "inline"
+              script: |
+                curl -LsSf https://astral.sh/uv/install.sh | sh
+          - task: Bash@3
+            displayName: Sync dependencies
+            inputs:
+              workingDirectory: ./
+              targetType: "inline"
+              script: |
+                ~/.local/bin/uv sync --extra dev
+          - task: Bash@3
+            displayName: Run Unit Tests
+            inputs:
+              workingDirectory: ./
+              targetType: "inline"
+              script: |
+                ~/.local/bin/uv run poe test_unit
+          - task: Bash@3
+            displayName: Run Smoke Tests
+            inputs:
+              workingDirectory: ./
+              targetType: "inline"
+              script: |
+                ~/.local/bin/uv run poe test_smoke
+      
+      - job: buildAndPush
+        displayName: BuildAndPushContainer
+        dependsOn: validate
+        condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['SHOULD_BUILD'], 'true')))
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            displayName: 'Push Docker image'
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+            inputs:
+              command: 'buildAndPush'
+              containerRegistry: '$(CONTAINER_REGISTRY)'
+              repository: 'intelligence-toolkit'
+              Dockerfile: '**/Dockerfile'
+              tags: '$(TAG)'
