@@ -1,0 +1,20 @@
+{# Render a single form field with label, widget, help text, and errors #}
+{% load djadmin_layout %}
+
+{% if form_field %}
+    <div{% if field_def.css_classes %} class="{{ field_def.css_classes|join:' ' }}"{% endif %}>
+        {{ form_field.label_tag }}
+        {{ form_field }}
+        {% if form_field.help_text %}
+            <small>{{ form_field.help_text }}</small>
+        {% endif %}
+        {% if form_field.errors %}
+            <p class="error">{{ form_field.errors }}</p>
+        {% endif %}
+    </div>
+{% else %}
+    {# Field not found in form - show warning #}
+    <div class="error">
+        <strong>Field not found:</strong> {{ field_def.name }}
+    </div>
+{% endif %}

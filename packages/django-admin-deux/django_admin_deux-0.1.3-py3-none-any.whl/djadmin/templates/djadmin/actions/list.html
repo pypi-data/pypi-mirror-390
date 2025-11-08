@@ -1,0 +1,245 @@
+{% extends "djadmin/admin_base.html" %}
+{% load djadmin_tags %}
+
+{% block title %}{{ opts.verbose_name_plural|capfirst }} - {{ site_title|default:"Django Admin" }}{% endblock %}
+
+{% block content %}
+    <article>
+        {# Header with model info #}
+        <header>
+            <h1>{{ opts.app_label|title }} - {{ opts.verbose_name_plural|capfirst }}</h1>
+        </header>
+
+        <div>
+            {# Info Bar with General Actions #}
+            <div>
+                <p>
+                    {% if page_obj %}
+                        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ paginator.count }}
+                    {% else %}
+                        {{ object_list.count }} total
+                    {% endif %}
+                </p>
+                <menu>
+                    {% include "djadmin/includes/_action_buttons.html" with actions=filtered_general_actions default_css_class="primary" use_list_items=True %}
+                </menu>
+            </div>
+
+            {# Bulk Actions Bar #}
+            {% if filtered_bulk_actions %}
+                <form method="post" id="bulk-action-form">
+                    {% csrf_token %}
+                    <menu>
+                        <li>
+                            <label for="bulk-action-select">Bulk Actions:</label>
+                            <select name="bulk_action" id="bulk-action-select">
+                                <option value="">--- Choose action ---</option>
+                                {% for action in filtered_bulk_actions %}
+                                    <option value="{% url action_namespace|add:':'|add:action.url_name %}"
+                                            data-method="{{ action.http_method|default:'POST' }}">
+                                        {{ action.label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="primary">Go</button>
+                        </li>
+                        <li>
+                            <span id="selection-count"><span id="selected-count">0</span> selected</span>
+                        </li>
+                    </menu>
+                </form>
+            {% endif %}
+
+            {# Table #}
+            <table>
+                <thead>
+                    <tr>
+                        {% if filtered_bulk_actions %}
+                            <th>
+                                <input type="checkbox"
+                                       id="select-all"
+                                       aria-label="Select all">
+                            </th>
+                        {% endif %}
+                        {% for column in list_display %}
+                            <th>
+                                <span class="column-header-label">{% get_column_label column model model_admin %}</span>
+                                {% render_column_header_icons column %}
+                            </th>
+                        {% endfor %}
+                        {% if record_actions %}
+                            <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for obj in object_list %}
+                        <tr>
+                            {% if filtered_bulk_actions %}
+                                <td data-label="Select">
+                                    <input type="checkbox"
+                                           name="_selected_action"
+                                           value="{{ obj.pk }}"
+                                           form="bulk-action-form"
+                                           aria-label="Select {{ obj }}">
+                                </td>
+                            {% endif %}
+                            {% for column in list_display %}
+                                <td data-label="{% get_column_label column model model_admin %}">
+                                    {% get_column_value obj column model_admin %}
+                                </td>
+                            {% endfor %}
+                            {% if record_actions %}
+                                <td data-label="Actions">
+                                    <menu>
+                                        {% include "djadmin/includes/_action_buttons.html" with actions=record_actions object=obj use_list_items=True %}
+                                    </menu>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{% if filtered_bulk_actions %}
+                                             {{ list_display|length|add:2 }}
+                                         {% elif record_actions %}
+                                             {{ list_display|length|add:1 }}
+                                         {% else %}
+                                             {{ list_display|length }}
+                                         {% endif %}">
+                                <div>
+                                    <p>No {{ opts.verbose_name_plural }} found.</p>
+                                    {% if filtered_general_actions %}
+                                        <p>
+                                            {% include "djadmin/includes/_action_buttons.html" with actions=filtered_general_actions default_css_class="primary" %}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {# Pagination #}
+            {% if page_obj and paginator.num_pages > 1 %}
+                <nav aria-label="Pagination">
+                    <p>Page {{ page_obj.number }} of {{ paginator.num_pages }}</p>
+                    <menu>
+                        {% if page_obj.has_previous %}
+                            <li>
+                                <a href="{% querystring page=page_obj.previous_page_number %}">Previous</a>
+                            </li>
+                        {% endif %}
+
+                        {% for page_num in page_range %}
+                            {% if page_num == None %}
+                                <li><span>...</span></li>
+                            {% elif page_num == page_obj.number %}
+                                <li><span aria-current="page">{{ page_num }}</span></li>
+                            {% else %}
+                                <li><a href="{% querystring page=page_num %}">{{ page_num }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li>
+                                <a href="{% querystring page=page_obj.next_page_number %}">Next</a>
+                            </li>
+                        {% endif %}
+                    </menu>
+                </nav>
+            {% endif %}
+        </div>
+    </article>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% if filtered_bulk_actions %}
+        <script>
+(function() {
+    'use strict';
+
+    const selectAllCheckbox = document.getElementById('select-all');
+    const rowCheckboxes = document.querySelectorAll('input[name="_selected_action"]');
+    const bulkActionForm = document.getElementById('bulk-action-form');
+    const bulkActionSelect = document.getElementById('bulk-action-select');
+    const selectionCount = document.getElementById('selection-count');
+    const selectedCount = document.getElementById('selected-count');
+
+    // Update selection count display
+    function updateSelectionCount() {
+        const checkedBoxes = document.querySelectorAll('input[name="_selected_action"]:checked');
+        const count = checkedBoxes.length;
+
+        selectedCount.textContent = count;
+
+        if (count > 0) {
+            selectionCount.style.display = 'inline';
+        } else {
+            selectionCount.style.display = 'none';
+        }
+    }
+
+    // Select all checkbox handler
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            rowCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectionCount();
+        });
+    }
+
+    // Individual checkbox handler
+    rowCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Update select-all state
+            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(rowCheckboxes).every(cb => !cb.checked);
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allChecked;
+                selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+            }
+
+            updateSelectionCount();
+        });
+    });
+
+    // Bulk action form submission
+    if (bulkActionForm) {
+        bulkActionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const selectedBoxes = document.querySelectorAll('input[name="_selected_action"]:checked');
+            if (selectedBoxes.length === 0) {
+                alert('Please select at least one item.');
+                return;
+            }
+
+            const actionUrl = bulkActionSelect.value;
+            if (!actionUrl) {
+                alert('Please select an action.');
+                return;
+            }
+
+            // Get the HTTP method from the selected option
+            const selectedOption = bulkActionSelect.options[bulkActionSelect.selectedIndex];
+            const httpMethod = selectedOption.getAttribute('data-method') || 'GET';
+
+            // Set form action and method
+            this.action = actionUrl;
+            this.method = httpMethod;
+
+            // Submit the form
+            this.submit();
+        });
+    }
+
+    // Initialize count on page load
+    updateSelectionCount();
+})();
+        </script>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "djadmin/base_action.html" %}
+
+{% block action_content %}
+  <div role="alert" class="warning">
+    <p>Are you sure you want to delete the following {{ objects_count }} {{ opts.verbose_name_plural }}?</p>
+  </div>
+
+  {% if object_list %}
+    <ul>
+      {% for obj in object_list %}
+        <li>{{ obj }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <footer>
+      <button type="submit" class="danger">Confirm Delete</button>
+      <a href="{% url action_namespace|add:':'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_list' %}">Cancel</a>
+    </footer>
+  </form>
+{% endblock %}

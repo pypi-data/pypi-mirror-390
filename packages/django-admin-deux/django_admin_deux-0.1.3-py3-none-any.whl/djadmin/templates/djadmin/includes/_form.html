@@ -1,0 +1,27 @@
+{# Shared form rendering partial for create and update actions #}
+{% if form.non_field_errors %}
+  <div role="alert" class="error">
+    {{ form.non_field_errors }}
+  </div>
+{% endif %}
+
+{% if form.djadmin_layout %}
+  {# Layout-based rendering #}
+  {% include "djadmin/includes/form_layout.html" with layout=form.djadmin_layout %}
+{% else %}
+  {# Fallback: standard Django form rendering #}
+  <fieldset>
+    {% for field in form %}
+      <div>
+        {{ field.label_tag }}
+        {{ field }}
+        {% if field.errors %}
+          <p>{{ field.errors }}</p>
+        {% endif %}
+        {% if field.help_text %}
+          <small>{{ field.help_text }}</small>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </fieldset>
+{% endif %}

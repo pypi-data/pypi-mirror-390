@@ -1,0 +1,14 @@
+{# Render a single field/row item in detail view #}
+{% if item.type == 'field' %}
+  <div class="field {% if item.css_classes %}{{ item.css_classes|join:' ' }}{% endif %}">
+    <dt>{{ item.label }}</dt>
+    <dd>{{ item.value|default:"-" }}</dd>
+  </div>
+
+{% elif item.type == 'row' %}
+  <div class="row {% if item.css_classes %}{{ item.css_classes|join:' ' }}{% endif %}">
+    {% for field_item in item.items %}
+      {% include "djadmin/actions/_detail_item.html" with item=field_item %}
+    {% endfor %}
+  </div>
+{% endif %}

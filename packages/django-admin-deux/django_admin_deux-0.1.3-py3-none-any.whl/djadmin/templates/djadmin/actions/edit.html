@@ -1,0 +1,19 @@
+{% extends "djadmin/base_action.html" %}
+
+{% block action_content %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {% include "djadmin/includes/_form.html" %}
+
+    <footer>
+      <button type="submit" class="primary">Save Changes</button>
+      <a href="{{ list_url }}">Cancel</a>
+      {% if filtered_record_actions %}
+        <menu>
+          {% include "djadmin/includes/_action_buttons.html" with actions=filtered_record_actions object=object %}
+        </menu>
+      {% endif %}
+    </footer>
+  </form>
+{% endblock %}

@@ -1,0 +1,37 @@
+{# Base navigation without dark mode toggle #}
+<header>
+    <nav>
+        {# Brand/Logo #}
+        <a href="{{ index_url|default:'/' }}">
+            {% block site_title %}{{ site_header|default:"Django Admin" }}{% endblock %}
+        </a>
+
+        {# Navigation Menu #}
+        <menu>
+            {% block nav_links %}
+            <li><a href="{{ index_url|default:'/' }}">Dashboard</a></li>
+            {% endblock %}
+        </menu>
+
+        {# User Info #}
+        {% if user.is_authenticated %}
+        <div>
+            <span>{{ user.get_username }}</span>
+        </div>
+        {% endif %}
+
+        {# Mobile Menu Toggle #}
+        <button type="button" id="mobile-menu-toggle" aria-label="Toggle menu">
+            <span></span>
+        </button>
+    </nav>
+
+    {# Mobile Menu #}
+    <nav id="mobile-menu" hidden>
+        <menu>
+            {% block mobile_nav_links %}
+            <li><a href="{{ index_url|default:'/' }}">Dashboard</a></li>
+            {% endblock %}
+        </menu>
+    </nav>
+</header>
