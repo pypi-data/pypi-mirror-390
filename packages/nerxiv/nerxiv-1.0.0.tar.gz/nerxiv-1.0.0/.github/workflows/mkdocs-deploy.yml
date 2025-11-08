@@ -1,0 +1,41 @@
+name: Deploy Versioned MkDocs Site
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:  # allows manual triggering if needed
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Install documentation dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[docu]
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy Docs with Mike
+        env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          echo "Deploying docs for version ${RELEASE_VERSION}"
+          mike deploy --push --update-aliases "${RELEASE_VERSION}" latest
