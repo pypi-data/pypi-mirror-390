@@ -1,0 +1,41 @@
+[project]
+name = "dojo-openenv"
+version = "0.1.0"
+description = "Wrapper for dojo-sdk-client to use with OpenEnv"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "dojo-sdk-client>=0.1.6",
+    "dojo-sdk-core>=0.1.11",
+    "openenv-core>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/README.md"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv.sources]
+dojo-sdk-client = { path = "../dojo-client", editable=true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["dojo_openenv"]
+
+[tool.ruff]
+line-length = 128
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
