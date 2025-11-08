@@ -1,0 +1,31 @@
+# Cross configuration for cross-platform builds
+[build]
+# Build build-scripts in the container to avoid GLIBC version issues
+xargo = false
+
+[build.env]
+passthrough = ["RUST_BACKTRACE"]
+
+[target.aarch64-unknown-linux-gnu]
+# For aarch64 Linux, we build a standalone binary that doesn't link against Python
+# We use PYO3_NO_PYTHON to skip Python detection in PyO3 build script
+# No pre-build steps needed since we don't need Python
+
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+    "PYO3_NO_PYTHON"
+]
+# Tell PyO3 to skip Python detection for standalone binary
+PYO3_NO_PYTHON = "1"
+
+[target.aarch64-linux-android]
+# For Android, we build a standalone binary that doesn't link against Python
+# We use PYO3_NO_PYTHON to skip Python detection in PyO3 build script
+# No pre-build steps needed since we don't need Python
+
+[target.aarch64-linux-android.env]
+passthrough = [
+    "PYO3_NO_PYTHON"
+]
+# Tell PyO3 to skip Python detection for standalone binary
+PYO3_NO_PYTHON = "1"

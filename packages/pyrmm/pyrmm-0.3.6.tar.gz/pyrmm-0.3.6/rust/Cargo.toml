@@ -1,0 +1,66 @@
+[package]
+name = "rmm"
+version = "0.3.6"
+edition = "2024"
+description = "高性能RMMP管理器"
+license = "MIT"
+homepage = "https://github.com/LIghtJUNction/RootManageModuleModel"
+repository = "https://github.com/LIghtJUNction/RootManageModuleModel"
+
+authors = ["LIghtJUNction <lightjuntion.me@gmail.com>"]
+
+
+[lib]
+name = "rmmcore"
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "rmm"
+path = "src/main.rs"
+
+[dependencies]
+# pyo3 is optional and only enabled when the `python-extension` feature is enabled.
+# This avoids compiling pyo3 and its transitive deps during normal binary-only builds.
+pyo3 = { version = "0.27.1", optional = true, default-features = false }
+clap = { version = "4.5.40", features = ["derive"] }
+clap_complete = "4.5.58"
+anyhow = "1.0.100"
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "0.9.7"
+chrono = { version = "0.4.42", features = ["serde"] }
+serde_json = "1.0.145"
+regex = "1.11.3"
+reqwest = { version = "0.12.23", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1.47.1", features = ["rt-multi-thread"] }
+git2 = { version = "0.20.2", default-features = false, features = ["vendored-openssl", "vendored-libgit2"] }
+glob = "0.3.3"
+zip = "6.0.0"
+flate2 = "1.1.4"
+tar = "0.4.44"
+walkdir = "2.5.0"
+humantime = "2.3.0"
+colored =  "3"
+
+[dev-dependencies]
+tempfile = "3.23.0"
+
+[profile.release]
+lto = true
+strip = true      
+opt-level = 3
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+panic = "unwind"
+
+[build-dependencies]
+pyo3-build-config = "0.27.1"
+
+[features]
+# Feature to enable building Python extension (enables pyo3 features needed for extension)
+# Use this feature when building via maturin so the Rust crate is compiled as a Python extension.
+# Enable 'macros' so attribute macros like #[pyclass]/#[pymethods]/#[pyfunction] are available.
+# Enable 'auto-initialize' to simplify embedding Python (optional but helpful).
+python-extension = ["pyo3/extension-module", "pyo3/macros", "pyo3/auto-initialize"]
+
