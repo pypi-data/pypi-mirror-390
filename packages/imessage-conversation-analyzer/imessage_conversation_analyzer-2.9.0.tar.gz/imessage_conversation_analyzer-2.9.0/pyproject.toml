@@ -1,0 +1,94 @@
+[project]
+name = "imessage-conversation-analyzer"
+version = "2.9.0"
+description = "Analyzes the entire history of a macOS Messages conversation"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    {name = "Caleb Evans", email = "caleb@calebevans.me"}
+]
+maintainers = [
+    {name = 'Caleb Evans', email = 'caleb@calebevans.me'}
+]
+license = "MIT"
+keywords = ["apple", "imessage", "macos", "conversation", "chat", "analysis", "pandas"]
+dependencies = [
+    "pandas",
+    "pyarrow",
+    "tabulate",
+    "openpyxl",
+    "pytypedstream",
+    "phonenumbers",
+    "tzlocal",
+]
+
+[project.urls]
+homepage = "https://github.com/caleb531/imessage-conversation-analyzer"
+documentation = "https://github.com/caleb531/imessage-conversation-analyzer#readme"
+repository = "https://github.com/caleb531/imessage-conversation-analyzer"
+changelog = "https://github.com/caleb531/imessage-conversation-analyzer/releases"
+
+[project.scripts]
+ica = "ica.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "ica"
+module-root = ""
+
+[tool.mypy]
+exclude = ["build"]
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pandas.*",
+    "tabulate.*",
+    "typedstream.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+include = ["**/*.py"]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # pyflakes
+    "F",
+    # isort
+    "I",
+    # perflint
+    "PERF",
+]
+
+# Configuration for coverage.py (https://pypi.python.org/pypi/coverage)
+
+[tool.coverage.run]
+# Enable branch coverage
+branch = true
+# Only check coverage for source files
+source = ['ica']
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_lines = [
+    "pragma: no cover",
+    # Ignore non-runnable code
+    "if __name__ == .__main__.:",
+    "pass",
+]
+
+[dependency-groups]
+dev = [
+    "freezegun>=1.5.1",
+    "mypy>=1.14.1",
+    "pytest>=8.4.2",
+    "pytest-cov>=6.3.0",
+    "ruff>=0.12.0",
+]
