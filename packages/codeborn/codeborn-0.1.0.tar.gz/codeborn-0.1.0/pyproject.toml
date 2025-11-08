@@ -1,0 +1,110 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.envs.default]
+installer = "uv"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+
+[tool.hatch.build]
+exclude = [
+  "/Dockerfile*",
+  "/infra",
+  "/migrations",
+  "/frontend",
+  "/*.yml",
+  "/*.env",
+  "/codeborn/api",
+  "/codeborn/engine",
+  "/codeborn/generators",
+  "/codeborn/config.py",
+  "/codeborn/database.py",
+  "/codeborn/logger.py",
+  "/codeborn/model.py",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "codeborn.client",
+  "codeborn.simulator",
+  "codeborn.rules"
+]
+
+[tool.hatch.envs.default.scripts]
+build-client = "docker build -t localhost/codeborn-client:latest -f Dockerfile.client ."
+frontend-deps = "npm --prefix frontend install"
+migration = """
+  read -p 'Migration description: ' desc
+  aerich migrate --name "$desc"
+  aerich upgrade
+"""
+
+deploy = "ansible-playbook -i infra/inventory.ini infra/deploy.yml"
+
+infra = "docker compose up"
+api = "python -m codeborn.api"
+frontend = "npm --prefix frontend run dev"
+engine = "python -m codeborn.engine"
+
+[project]
+name = "codeborn"
+version = "0.1.0"
+description = "Codeborn package"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi>=0.118.0",
+  "uvicorn>=0.37.0",
+  "authlib>=1.6.5",
+  "itsdangerous>=2.2.0",
+  "yarl>=1.22.0",
+  "pyjwt>=2.10.1",
+  "pydantic[email]>=2.11.9",
+  "alembic>=1.16.5",
+  "databases[postgresql]>=0.9.0",
+  "sqlalchemy>=2.0.43",
+  "python-dotenv>=1.1.1",
+  "structlog>=25.4.0",
+  "pygithub>=2.8.1",
+  "configobj>=5.0.9",
+  "gitpython>=3.1.45",
+  "ansible>=12.0.0",
+  "ansible-vault>=4.1.0",
+  "pydantic-settings>=2.11.0",
+  "msgspec>=0.19.0",
+  "tomli>=2.3.0",
+  "tortoise-orm>=0.25.1",
+  "aerich>=0.9.2",
+  "httpx>=0.28.1",
+  "numpy>=2.3.4",
+  "matplotlib>=3.10.7",
+  "opensimplex>=0.4.5.1",
+]
+
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.2",
+    "pytest>=8.4.2",
+    "mypy>=1.18.2",
+    "hatch>=1.15.1",
+]
+
+[tool.aerich]
+tortoise_orm = "codeborn.database.AERICH_CONFIG"
+location = "./migrations"
+src_folder = "./."
+
+[tool.ruff]
+target-version = "py313"
+src = ["codeborn"]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C", "B"]
+preview = true
+ignore = [
+  "B008"  # Function call in fnc args (fastapi's Depends)
+]
