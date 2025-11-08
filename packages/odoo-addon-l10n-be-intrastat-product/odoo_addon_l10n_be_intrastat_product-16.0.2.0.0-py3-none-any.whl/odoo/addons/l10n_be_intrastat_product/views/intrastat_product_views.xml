@@ -1,0 +1,139 @@
+<?xml version="1.0" ?>
+<odoo>
+
+    <record
+        id="l10n_be_intrastat_product_computation_line_view_form"
+        model="ir.ui.view"
+    >
+        <field name="name">l10n.be.intrastat.product.computation.line.form</field>
+        <field name="model">intrastat.product.computation.line</field>
+        <field name="mode">primary</field>
+        <field
+            name="inherit_id"
+            ref="intrastat_product.intrastat_product_computation_line_view_form"
+        />
+        <field name="arch" type="xml">
+            <field name="region_id" position="attributes">
+                <attribute name="attrs" operation="update">
+                    {
+                        "invisible": [],
+                    }
+                </attribute>
+            </field>
+            <field name="region_id" position="attributes">
+                <attribute name="invisible" />
+            </field>
+            <field name="amount_accessory_cost_company_currency" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="incoterm_id" position="attributes">
+                <attribute name="invisible" />
+                <attribute
+                    name="attrs"
+                >{'required': [('reporting_level', '=', 'extended')],
+                  'invisible': [('reporting_level', '!=', 'extended')]}</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record
+        id="l10n_be_intrastat_product_computation_line_view_tree"
+        model="ir.ui.view"
+    >
+        <field name="name">l10n.be.intrastat.product.computation.line.tree</field>
+        <field name="model">intrastat.product.computation.line</field>
+        <field name="mode">primary</field>
+        <field
+            name="inherit_id"
+            ref="intrastat_product.intrastat_product_computation_line_view_tree"
+        />
+        <field name="arch" type="xml">
+            <field name="region_id" position="attributes">
+                <attribute name="attrs" operation="update">
+                    {
+                        "column_invisible": [],
+                    }
+                </attribute>
+            </field>
+            <field name="amount_accessory_cost_company_currency" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record
+        id="l10n_be_intrastat_product_declaration_line_view_form"
+        model="ir.ui.view"
+    >
+        <field name="name">l10n.be.intrastat.product.declaration.line.form</field>
+        <field name="model">intrastat.product.declaration.line</field>
+        <field name="mode">primary</field>
+        <field
+            name="inherit_id"
+            ref="intrastat_product.intrastat_product_declaration_line_view_form"
+        />
+        <field name="arch" type="xml">
+            <field name="vat" position="attributes">
+                <attribute
+                    name="attrs"
+                >{'invisible': [('declaration_type', '=', 'arrivals')]}</attribute>
+            </field>
+            <field name="incoterm_id" position="attributes">
+                <attribute name="invisible" />
+                <attribute
+                    name="attrs"
+                >{'required': [('reporting_level', '=', 'extended')],
+                  'invisible': [('reporting_level', '!=', 'extended')]}</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record
+        id="l10n_be_intrastat_product_declaration_line_view_tree"
+        model="ir.ui.view"
+    >
+        <field name="name">l10n.be.intrastat.product.declaration.line.tree</field>
+        <field name="model">intrastat.product.declaration.line</field>
+        <field name="mode">primary</field>
+        <field
+            name="inherit_id"
+            ref="intrastat_product.intrastat_product_declaration_line_view_tree"
+        />
+        <field name="arch" type="xml">
+            <field name="vat" position="attributes">
+                <attribute
+                    name="attrs"
+                >{'invisible': [('declaration_type', '=', 'arrivals')]}</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="l10n_be_intrastat_product_declaration_view_form" model="ir.ui.view">
+        <field name="name">l10n.be.intrastat.product.declaration.form</field>
+        <field name="model">intrastat.product.declaration</field>
+        <field name="mode">primary</field>
+        <field
+            name="inherit_id"
+            ref="intrastat_product.intrastat_product_declaration_view_form"
+        />
+        <field name="arch" type="xml">
+            <field name="computation_line_ids" position="attributes">
+                <attribute name="context" operation="update">
+                    {
+                        "tree_view_ref": "l10n_be_intrastat_product.l10n_be_intrastat_product_computation_line_view_tree",
+                        "form_view_ref": "l10n_be_intrastat_product.l10n_be_intrastat_product_computation_line_view_form",
+                    }
+                </attribute>
+            </field>
+            <field name="declaration_line_ids" position="attributes">
+                <attribute name="context" operation="update">
+                    {
+                        "tree_view_ref": "l10n_be_intrastat_product.l10n_be_intrastat_product_declaration_line_view_tree",
+                        "form_view_ref": "l10n_be_intrastat_product.l10n_be_intrastat_product_declaration_line_view_form",
+                    }
+                </attribute>
+            </field>
+        </field>
+    </record>
+
+</odoo>
