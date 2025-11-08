@@ -1,0 +1,963 @@
+Metadata-Version: 2.4
+Name: b8tex
+Version: 0.2.1
+Summary: A high-level Python wrapper for Tectonic LaTeX compiler with project-aware compilation
+Project-URL: Homepage, https://github.com/samehkamaleldin/pytex
+Project-URL: Documentation, https://github.com/samehkamaleldin/pytex#readme
+Project-URL: Repository, https://github.com/samehkamaleldin/pytex
+Project-URL: Issues, https://github.com/samehkamaleldin/pytex/issues
+Author-email: Sameh Mohamed <sameh.kamaleldin@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: compiler,latex,pdf,tectonic,typesetting
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Text Processing :: Markup :: LaTeX
+Classifier: Typing :: Typed
+Requires-Python: >=3.13
+Requires-Dist: jinja2>=3.1.0
+Requires-Dist: platformdirs>=4.0.0
+Requires-Dist: tomli>=2.0.0; python_version < '3.11'
+Requires-Dist: typing-extensions>=4.12.0
+Provides-Extra: async
+Requires-Dist: anyio>=4.7.0; extra == 'async'
+Provides-Extra: dev
+Requires-Dist: mypy>=1.13.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.24.0; extra == 'dev'
+Requires-Dist: pytest-cov>=6.0.0; extra == 'dev'
+Requires-Dist: pytest>=8.3.0; extra == 'dev'
+Requires-Dist: ruff>=0.8.0; extra == 'dev'
+Provides-Extra: templates
+Requires-Dist: matplotlib>=3.7.0; extra == 'templates'
+Requires-Dist: pandas>=2.0.0; extra == 'templates'
+Provides-Extra: watch
+Requires-Dist: watchfiles>=0.24.0; extra == 'watch'
+Description-Content-Type: text/markdown
+
+# B8TeX
+
+A modern, type-safe Python wrapper for the [Tectonic](https://tectonic-typesetting.github.io/) LaTeX compiler.
+
+B8TeX provides a high-level, Pythonic interface for compiling LaTeX documents with support for:
+
+- In-memory compilation from strings
+- Custom style files and packages
+- Multi-file projects with dependency tracking
+- Type-safe API with comprehensive error handling
+- Project-aware builds with multiple output formats
+
+## Features
+
+- **Template System** (NEW in v0.2.0): Professional document templates (NeurIPS, ICLR, ACL) with programmatic Python API
+- **Data-Driven**: Pandas DataFrames → LaTeX tables, Matplotlib → embedded figures
+- **Modern Python**: Built for Python 3.13+ with full type hints
+- **Auto-Install**: Automatically downloads the Tectonic binary on first use
+- **Flexible Sources**: Compile from files, strings, or in-memory sources
+- **Custom Packages**: Bundle custom `.sty`, `.cls`, and resource files with your documents
+- **Project Support**: Multi-target builds with Tectonic V1 and V2 interface support
+- **Type-Safe**: Comprehensive type hints and runtime validation
+- **Secure**: Built-in security policies with LaTeX validation, resource limits, and configurable timeouts
+- **Resilient**: Automatic retry with exponential backoff and graceful failure handling
+- **Rich Results**: Structured compilation results with warnings, errors, and artifacts
+- **Cross-Platform**: Supports Linux, macOS, and Windows (x86_64 and aarch64)
+
+## Security & Resource Management
+
+B8TeX includes comprehensive security features to protect against malicious or resource-intensive LaTeX documents:
+
+### LaTeX Content Validation
+
+Validates documents for security and resource constraints:
+
+```python
+from b8tex.core.validation import ContentValidator, ValidationLimits
+
+# Configure validation limits
+limits = ValidationLimits(
+    max_file_size=10 * 1024 * 1024,  # 10MB per file
+    max_total_size=50 * 1024 * 1024,  # 50MB total
+    max_files=100,                    # Max 100 files
+    allow_shell_escape=False,         # Block shell-escape packages
+    dangerous_packages={"shellesc", "minted", "pythontex"}  # Block dangerous packages
+)
+
+validator = ContentValidator(limits=limits, mode="strict")
+errors = validator.validate_document(document)
+```
+
+**Validation modes:**
+- `strict`: Raise errors immediately on validation failure
+- `permissive`: Collect warnings, only error on critical issues (default)
+- `disabled`: Skip validation entirely
+
+### Resource Limits
+
+Control memory, CPU, and output size limits:
+
+```python
+from b8tex.core.runner import ResourceLimits, ProcessRunner
+
+limits = ResourceLimits(
+    memory_mb=1024,            # 1GB memory limit
+    timeout_seconds=300.0,     # 5 minute timeout
+    max_output_size_mb=100,    # Max 100MB output
+    cpu_time_seconds=300       # Max 5 minutes CPU time (Unix only)
+)
+
+runner = ProcessRunner(limits=limits)
+```
+
+### Configurable Timeouts
+
+Set different timeouts for different operations with document size-based scaling:
+
+```python
+from b8tex.core.timeouts import TimeoutConfig
+
+timeouts = TimeoutConfig(
+    compilation=600.0,          # 10 minute compilation timeout
+    download=300.0,             # 5 minute download timeout
+    probe=5.0,                  # 5 second probe timeout
+    global_multiplier=2.0,      # Double all timeouts for slow systems
+    enable_size_scaling=True,   # Scale timeout by document size
+    size_scale_factor=0.1       # +0.1s per KB above base size
+)
+
+# Get effective timeout for a 500KB document
+timeout = timeouts.get("compilation", document_size_kb=500)  # 640s (600 + 400*0.1)
+```
+
+### Retry Policies & Graceful Failure
+
+Handle transient failures with automatic retry and exponential backoff:
+
+```python
+from b8tex.core.retry import RetryPolicy, retry_with_policy
+
+policy = RetryPolicy(
+    max_attempts=3,
+    initial_delay=1.0,
+    max_delay=30.0,
+    exponential_backoff=True,
+    backoff_factor=2.0,
+    retryable_exceptions=(OSError, IOError, TimeoutError)
+)
+
+result = retry_with_policy(
+    policy,
+    lambda: compile_document(doc),
+    operation_name="compilation"
+)
+```
+
+### Security Configuration
+
+All security settings can be configured via `~/.config/b8tex/config.toml`:
+
+```toml
+# Cache limits
+max_cache_size_mb = 1000
+max_cache_age_days = 30
+
+[validation]
+mode = "permissive"  # "strict", "permissive", or "disabled"
+
+[validation.limits]
+max_file_size = 10485760      # 10MB
+max_total_size = 52428800     # 50MB
+max_files = 100
+allow_shell_escape = false    # Block minted, pythontex, etc.
+
+[resource_limits]
+memory_mb = 1024
+timeout_seconds = 300.0
+max_output_size_mb = 100
+
+[timeouts]
+compilation = 300.0
+download = 300.0
+global_multiplier = 1.0
+enable_size_scaling = true
+```
+
+Or via environment variables:
+
+```bash
+# Validation
+export B8TEX_VALIDATION_MODE=strict
+
+# Resource limits
+export B8TEX_MEMORY_LIMIT_MB=2048
+export B8TEX_CPU_TIME_LIMIT=600
+
+# Timeouts
+export B8TEX_TIMEOUT_COMPILATION=600
+export B8TEX_TIMEOUT_MULTIPLIER=2.0
+
+# Cache
+export B8TEX_MAX_CACHE_SIZE_MB=2000
+```
+
+## Installation
+
+### Simple Installation (Recommended)
+
+B8TeX will automatically download and install the Tectonic binary on first use:
+
+```bash
+# Using uv (recommended)
+uv pip install b8tex
+
+# Or with pip
+pip install b8tex
+```
+
+That's it! When you first use B8TeX, it will automatically download the appropriate Tectonic binary for your platform.
+
+### Manual Tectonic Installation (Optional)
+
+If you prefer to manage Tectonic yourself:
+
+```bash
+# macOS
+brew install tectonic
+
+# Linux (see https://tectonic-typesetting.github.io/install.html)
+# Windows (see https://tectonic-typesetting.github.io/install.html)
+```
+
+Or use the B8TeX CLI to manually install:
+
+```bash
+# Download and install Tectonic binary
+b8tex install-binary
+
+# Download a specific version
+b8tex install-binary --version=0.15.0
+
+# Force re-download
+b8tex install-binary --force
+```
+
+### Configuration
+
+B8TeX can be configured via environment variables or a configuration file.
+
+#### Environment Variables
+
+```bash
+# Disable automatic downloads
+export B8TEX_NO_AUTO_DOWNLOAD=1
+
+# Specify Tectonic version
+export B8TEX_TECTONIC_VERSION=0.15.0
+
+# Use custom Tectonic binary
+export TECTONIC_PATH=/usr/local/bin/tectonic
+
+# Override config file location
+export B8TEX_CONFIG_PATH=~/.config/b8tex/config.toml
+```
+
+#### Configuration File
+
+Create a configuration file at `~/.config/b8tex/config.toml` (or use `b8tex init-config`):
+
+```toml
+# Binary management
+auto_download = true
+# tectonic_version = "0.15.0"
+# binary_path = "/usr/local/bin/tectonic"
+
+# Cache configuration
+max_cache_size_mb = 1000
+max_cache_age_days = 30
+
+# Security and validation
+[validation]
+mode = "permissive"  # "strict", "permissive", or "disabled"
+
+[validation.limits]
+max_file_size = 10485760      # 10MB
+max_total_size = 52428800     # 50MB
+max_files = 100
+allow_shell_escape = false
+
+# Resource limits
+[resource_limits]
+memory_mb = 1024
+timeout_seconds = 300.0
+max_output_size_mb = 100
+
+# Timeouts
+[timeouts]
+compilation = 300.0
+download = 300.0
+global_multiplier = 1.0
+enable_size_scaling = true
+```
+
+#### CLI Commands
+
+```bash
+# Initialize default config file
+b8tex init-config
+
+# Show current configuration
+b8tex config
+
+# Install Tectonic binary
+b8tex install-binary
+
+# Show help
+b8tex help
+```
+
+### For Development
+
+```bash
+git clone https://github.com/samehkamaleldin/pytex.git
+cd b8tex
+uv venv
+source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
+uv pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### Basic Usage
+
+Compile LaTeX from a string:
+
+```python
+from b8tex import compile_string
+
+latex = r"""
+\documentclass{article}
+\title{Hello B8TeX}
+\begin{document}
+\maketitle
+Hello, world!
+\end{document}
+"""
+
+result = compile_string(latex)
+if result.success:
+    print(f"PDF generated: {result.pdf_path}")
+```
+
+### Custom Style Files
+
+Use custom packages and styles:
+
+```python
+from b8tex import Document, InMemorySource, Resource, compile_document
+
+# Define a custom style
+style = InMemorySource("mystyle.sty", r"""
+\ProvidesPackage{mystyle}
+\newcommand{\mycommand}{Custom text}
+""")
+
+# Main document
+doc = Document(
+    name="custom",
+    entrypoint=InMemorySource("main.tex", r"""
+\documentclass{article}
+\usepackage{mystyle}
+\begin{document}
+\mycommand
+\end{document}
+"""),
+    resources=[Resource(style)]
+)
+
+result = compile_document(doc)
+```
+
+### Project Builds
+
+Compile multi-target projects:
+
+```python
+from b8tex import Project, Target, Document, BuildOptions, OutputFormat
+
+project = Project.from_directory(Path("my_project"))
+project.add_target(Target(
+    name="pdf",
+    document=Document.from_path(Path("main.tex")),
+    options=BuildOptions(outfmt=OutputFormat.PDF)
+))
+
+from b8tex import TectonicCompiler
+compiler = TectonicCompiler()
+result = compiler.build_project(project, target="pdf")
+```
+
+## Template System
+
+**New in v0.2.0**: B8TeX now includes a complete template system for programmatic document generation. Write Python code instead of LaTeX preambles!
+
+### Why Templates?
+
+- **No LaTeX Boilerplate**: Focus on content, not preambles
+- **Type-Safe**: Full type hints and autocomplete
+- **Professional Styles**: NeurIPS, ICLR, ACL conference templates
+- **Data-Driven**: Pandas DataFrames → tables, Matplotlib → figures
+- **Validation**: Catch errors before compilation
+
+### Quick Example
+
+```python
+from b8tex.templates import compile_template, Author, Section
+
+result = compile_template(
+    template="neurips",
+    title="My Research Paper",
+    authors=[
+        Author(name="Alice", affiliation="MIT"),
+        Author(name="Bob", affiliation="Stanford"),
+    ],
+    abstract="This paper presents a novel approach...",
+    sections=[
+        Section(title="Introduction", content="Our work addresses..."),
+        Section(title="Methods", content="We propose..."),
+        Section(title="Results", content="Experiments show..."),
+    ],
+    status="draft",  # or "final", "confidential"
+)
+
+print(f"PDF: {result.pdf_path}")
+```
+
+### Template Features
+
+#### 1. Simple API for Quick Documents
+
+```python
+from b8tex.templates import compile_template
+
+# One-liner compilation
+result = compile_template(
+    template="neurips",
+    title="Quick Paper",
+    authors="John Doe",
+    content=r"\section{Intro} Hello world!",
+)
+```
+
+#### 2. Fluent Builder with Context Managers
+
+```python
+from b8tex.templates import DocumentBuilder
+
+with DocumentBuilder(template="neurips", title="My Paper") as builder:
+    builder.add_author("Alice", affiliation="MIT")
+    builder.set_abstract("This paper presents...")
+
+    with builder.section("Introduction"):
+        builder.add_text("Our motivation is...")
+
+        with builder.subsection("Background"):
+            builder.add_text("Previous work includes...")
+
+    doc = builder.build()
+
+result = b8tex.compile_template_document(doc)
+```
+
+#### 3. Data-Driven Documents
+
+Requires optional dependencies: `pip install b8tex[templates]`
+
+```python
+from b8tex.templates import DocumentBuilder
+import pandas as pd
+import matplotlib.pyplot as plt
+
+with DocumentBuilder(template="neurips", title="Results Report") as builder:
+    # Pandas DataFrame → LaTeX table
+    df = pd.DataFrame({
+        "Model": ["ResNet-18", "ResNet-34", "ResNet-50"],
+        "Accuracy": [94.2, 95.8, 96.5],
+        "Params (M)": [11.7, 21.8, 25.6],
+    })
+
+    with builder.section("Results"):
+        builder.add_table(
+            df,
+            caption="Model comparison",
+            label="tab:results"
+        )
+
+        # Matplotlib figure → embedded PDF
+        fig, ax = plt.subplots()
+        ax.plot([1, 2, 3], [94, 95, 96])
+        ax.set_title("Accuracy over time")
+
+        builder.add_plot(
+            fig,
+            caption="Training progress",
+            label="fig:training"
+        )
+
+    doc = builder.build()
+
+result = b8tex.compile_template_document(doc)
+```
+
+### Available Templates
+
+- **NeurIPS**: Conference on Neural Information Processing Systems
+- **ICLR**: International Conference on Learning Representations
+- **ACL**: Association for Computational Linguistics
+
+### Status Modes
+
+- `final`: Clean, publication-ready output
+- `draft`: Line numbers, watermarks, TODOs highlighted
+- `confidential`: Watermark for internal documents
+- `internal`: Organization-specific formatting
+
+### Template Variables (Jinja2)
+
+```python
+from b8tex.templates import compile_template
+
+result = compile_template(
+    template="neurips",
+    title="Experiment Results",
+    content="Accuracy: {{ accuracy }}% on {{ dataset }}",
+    template_variables={
+        "accuracy": 95.5,
+        "dataset": "CIFAR-10",
+    },
+)
+```
+
+### Validation
+
+```python
+from b8tex.templates import validate_template_document
+
+# Validate before compilation
+is_valid, issues = validate_template_document(doc)
+
+if not is_valid:
+    for issue in issues:
+        print(f"[{issue.severity}] {issue.message}")
+```
+
+### More Examples
+
+See [`examples/`](examples/) directory:
+- `08_template_basic.py` - Simple template usage
+- `09_neurips_template.py` - Full-featured paper with nested sections
+- `10_data_driven_template.py` - Tables and plots from data
+
+## Documentation
+
+For more examples, see the [`examples/`](examples/) directory.
+
+### Core Concepts
+
+- **Document**: A LaTeX document with entrypoint and resources
+- **Resource**: Style files, images, bibliographies, etc.
+- **BuildOptions**: Compilation settings (output format, reruns, security, etc.)
+- **CompileResult**: Structured result with artifacts, warnings, and errors
+- **Project**: Multi-target build configuration
+
+### API Reference
+
+#### Main Functions
+
+- `compile_string(content, **options)` - Compile LaTeX source code
+- `compile_document(document, **options)` - Compile a Document object
+- `TectonicCompiler()` - Main compiler interface for advanced usage
+
+#### Core Classes
+
+- `Document` - LaTeX document representation
+- `InMemorySource` - In-memory file content
+- `Resource` - Additional files (styles, images, etc.)
+- `BuildOptions` - Compilation configuration
+- `Project` - Multi-target project
+- `CompileResult` - Compilation results
+
+## Development
+
+### Setup
+
+```bash
+# Clone and install
+git clone https://github.com/samehkamaleldin/pytex.git
+cd b8tex
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=b8tex --cov-report=html
+
+# Run type checking
+mypy src/b8tex
+
+# Run linting
+ruff check src tests
+```
+
+### Code Quality
+
+This project uses:
+
+- **mypy** for static type checking
+- **ruff** for linting and formatting
+- **pytest** for testing
+
+All code must pass type checking and linting before merging.
+
+## Requirements
+
+- Python 3.13+
+- Tectonic LaTeX compiler (automatically downloaded if not found)
+- uv (recommended) or pip
+
+### Supported Platforms
+
+B8TeX can automatically download Tectonic for the following platforms:
+
+- **Linux**: x86_64, aarch64
+- **macOS**: x86_64 (Intel), aarch64 (Apple Silicon)
+- **Windows**: x86_64
+
+If automatic download is not available for your platform, you can install Tectonic manually following the [official installation guide](https://tectonic-typesetting.github.io/install.html).
+
+### How Auto-Download Works
+
+When you first use B8TeX:
+
+1. B8TeX checks for Tectonic in the following order:
+   - Custom binary path from config file
+   - `TECTONIC_PATH` environment variable
+   - System PATH
+   - B8TeX cache directory (`~/.cache/b8tex/` or platform equivalent)
+
+2. If Tectonic is not found and auto-download is enabled:
+   - Downloads the appropriate binary from [Tectonic GitHub releases](https://github.com/tectonic-typesetting/tectonic/releases)
+   - Extracts and caches it in `~/.cache/b8tex/`
+   - Uses the cached binary for all future compilations
+
+3. If auto-download is disabled or fails:
+   - Provides clear instructions for manual installation
+   - Suggests using `b8tex install-binary` command
+
+You can disable auto-download by:
+- Setting `B8TEX_NO_AUTO_DOWNLOAD=1` environment variable
+- Setting `auto_download = false` in `~/.config/b8tex/config.toml`
+
+## Troubleshooting
+
+### Common Issues
+
+#### Binary Not Found
+
+**Problem**: `MissingBinaryError: Tectonic binary not found`
+
+**Solutions**:
+1. Enable auto-download (default): B8TeX will automatically download Tectonic
+2. Manual installation: `b8tex install-binary`
+3. Install Tectonic system-wide: `brew install tectonic` (macOS) or follow [official guide](https://tectonic-typesetting.github.io/install.html)
+4. Set custom path: `export TECTONIC_PATH=/path/to/tectonic`
+
+#### Compilation Fails
+
+**Problem**: Compilation returns errors but unclear why
+
+**Solutions**:
+1. Check `result.errors` for specific error messages
+2. Use `options.print_log=True` to see full Tectonic output
+3. Enable `options.keep_logs=True` to preserve log files
+4. Verify LaTeX syntax is valid (try with `tectonic` command directly)
+
+#### Permission Errors
+
+**Problem**: `PermissionError` when compiling
+
+**Solutions**:
+1. Check write permissions in output directory
+2. Verify cache directory is writable: `~/.cache/b8tex/`
+3. Try running with elevated permissions (not recommended)
+4. Use custom output directory: `workdir=Path("/tmp/b8tex")`
+
+#### Platform Not Supported
+
+**Problem**: `UnsupportedPlatformError` on auto-download
+
+**Solutions**:
+1. Install Tectonic manually for your platform
+2. Set `TECTONIC_PATH` to your manual installation
+3. Open an issue if you think your platform should be supported
+
+#### Slow Compilation
+
+**Problem**: Compilation is slower than expected
+
+**Solutions**:
+1. Enable caching (on by default): `TectonicCompiler(use_cache=True)`
+2. Use `only_cached=True` for offline/fast builds
+3. Reduce LaTeX reruns: `BuildOptions(reruns=1)`
+4. Check if cache is being invalidated unnecessarily
+5. See Performance Tips section below
+
+#### Cache Issues
+
+**Problem**: Cache not working or corrupted
+
+**Solutions**:
+1. Clear cache: `b8tex clean-cache` or `cache.clear()`
+2. Check cache stats: `cache.stats()`
+3. Verify cache directory exists: `~/.cache/b8tex/build_cache.db`
+4. Clean old entries: `cache.cleanup(max_age_days=30)`
+
+## FAQ
+
+### General
+
+**Q: Do I need to install LaTeX?**
+A: No! B8TeX uses Tectonic, which is a self-contained LaTeX distribution. You don't need TeX Live, MiKTeX, or any other LaTeX distribution.
+
+**Q: What Python versions are supported?**
+A: B8TeX requires Python 3.13 or later for modern type hints and language features.
+
+**Q: Is B8TeX production-ready?**
+A: B8TeX is currently in active development. The core API is stable, but advanced features are still being added. Check the version number and release notes.
+
+**Q: How does B8TeX compare to other LaTeX wrappers?**
+A: B8TeX focuses on modern Python features, type safety, and developer experience. It's built specifically for Tectonic and offers features like automatic binary management, build caching, and in-memory compilation.
+
+### Usage
+
+**Q: Can I compile LaTeX files from disk?**
+A: Yes! Use `Document.from_path(Path("document.tex"))` or pass a Path object directly.
+
+**Q: How do I include images in my document?**
+A: Add images as resources:
+```python
+from b8tex import Document, Resource
+doc = Document(
+    entrypoint=Path("main.tex"),
+    resources=[Resource(Path("image.png"))]
+)
+```
+
+**Q: Can I compile multiple documents in parallel?**
+A: Yes! Use the async API or Python's `concurrent.futures`. See `examples/04_async_compilation.py`.
+
+**Q: How do I use custom LaTeX packages?**
+A: Add them as resources with `kind="sty"`:
+```python
+Resource(Path("mypackage.sty"), kind="sty")
+```
+
+**Q: Can I compile without internet access?**
+A: Yes! Once Tectonic is installed and packages are cached, use `BuildOptions(only_cached=True)`.
+
+### Configuration
+
+**Q: Where is the cache directory?**
+A: Platform-dependent:
+- **macOS**: `~/Library/Caches/b8tex/`
+- **Linux**: `~/.cache/b8tex/`
+- **Windows**: `%LOCALAPPDATA%\b8tex\cache\`
+
+**Q: How do I disable auto-download?**
+A: Set `B8TEX_NO_AUTO_DOWNLOAD=1` or `auto_download = false` in config file.
+
+**Q: Can I use a specific Tectonic version?**
+A: Yes! Set in config file:
+```toml
+tectonic_version = "0.15.0"
+```
+Or use: `b8tex install-binary --version=0.15.0`
+
+**Q: How do I change the output directory?**
+A: Use the `workdir` parameter:
+```python
+result = compiler.compile_document(doc, workdir=Path("/tmp/output"))
+```
+
+### Performance
+
+**Q: Why is the first compilation slow?**
+A: Tectonic downloads required LaTeX packages on first use. Subsequent compilations are much faster thanks to package caching.
+
+**Q: Does B8TeX cache compilation results?**
+A: Yes! Build caching is enabled by default. See `examples/05_cache_demo.py`.
+
+**Q: How much space does the cache use?**
+A: Check with `cache.stats()`. Typically 10-100MB depending on usage. Clean old entries with `cache.cleanup()`.
+
+## Performance Tips
+
+### 1. Enable Build Caching (Default)
+
+Build caching can speed up repeated compilations by 10-100x:
+
+```python
+from b8tex import TectonicCompiler, BuildCache
+
+# Caching is enabled by default
+compiler = TectonicCompiler(use_cache=True)
+
+# Or explicitly create cache
+cache = BuildCache()
+compiler = TectonicCompiler(cache=cache)
+```
+
+**When cache helps**:
+- Repeated compilation of unchanged documents
+- CI/CD pipelines
+- Development with frequent rebuilds
+- Batch processing similar documents
+
+**Cache invalidation**: The cache automatically invalidates when:
+- Document content changes
+- Build options change
+- Tectonic version changes
+- Dependencies are modified
+
+### 2. Use Only-Cached Mode
+
+For fastest compilation when all packages are already downloaded:
+
+```python
+from b8tex import BuildOptions
+
+options = BuildOptions(only_cached=True)
+result = compiler.compile_document(doc, options=options)
+```
+
+This prevents Tectonic from downloading packages, ideal for offline work or CI.
+
+### 3. Reduce Reruns
+
+LaTeX sometimes needs multiple passes. Limit reruns for faster compilation:
+
+```python
+options = BuildOptions(reruns=1)  # Default is automatic
+```
+
+**Trade-off**: Cross-references and bibliographies may not resolve correctly.
+
+### 4. Parallel Compilation
+
+For batch processing, use async or parallel execution:
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+
+def compile_doc(content):
+    return compile_string(content)
+
+with ThreadPoolExecutor(max_workers=4) as executor:
+    results = list(executor.map(compile_doc, documents))
+```
+
+**Speedup**: Near-linear with number of cores for independent documents.
+
+### 5. Persistent Workspaces
+
+Reuse workspace directories to avoid file I/O:
+
+```python
+workdir = Path("/tmp/b8tex_workspace")
+workdir.mkdir(exist_ok=True)
+
+for doc in documents:
+    result = compiler.compile_document(doc, workdir=workdir)
+```
+
+### 6. In-Memory Compilation
+
+Use in-memory sources instead of file I/O when possible:
+
+```python
+from b8tex import InMemorySource, Document
+
+doc = Document(
+    entrypoint=InMemorySource("doc.tex", latex_content),
+    resources=[InMemorySource("style.sty", style_content)]
+)
+```
+
+**Benefit**: Faster file operations, no disk cleanup needed.
+
+### 7. Cache Management
+
+Keep cache healthy with periodic cleanup:
+
+```python
+# Remove entries older than 30 days
+cache.cleanup(max_age_days=30)
+
+# Check cache size
+stats = cache.stats()
+print(f"Cache entries: {stats['total_entries']}")
+print(f"Cache size: {stats['db_size_bytes'] / 1024 / 1024:.1f} MB")
+
+# Clear if needed
+if stats['db_size_bytes'] > 100_000_000:  # > 100 MB
+    cache.clear()
+```
+
+### 8. Minimize Document Changes
+
+The cache fingerprint includes all content. To maximize cache hits:
+- Use variables/templates for changing content
+- Separate frequently-changing content from static boilerplate
+- Consider using LaTeX's `\input` for modular documents
+
+### Performance Benchmarks
+
+Typical compilation times on modern hardware:
+
+| Scenario | First Compile | Cached | Speedup |
+|----------|--------------|--------|---------|
+| Simple document (1 page) | 2-5s | 0.1-0.5s | 10-20x |
+| Medium document (10 pages) | 5-15s | 0.2-1s | 15-25x |
+| Large document (100 pages) | 15-60s | 1-3s | 15-30x |
+| With images/complex math | 10-30s | 0.5-2s | 15-20x |
+
+**Note**: First compile includes package downloads. Subsequent first compiles (different documents) are faster as packages are cached by Tectonic.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new features
+4. Ensure all tests pass and types check
+5. Submit a pull request
+
+## Acknowledgments
+
+- Built on top of the excellent [Tectonic](https://tectonic-typesetting.github.io/) LaTeX compiler
+- Inspired by modern Python packaging and type safety best practices
