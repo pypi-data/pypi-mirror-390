@@ -1,0 +1,81 @@
+[project]
+name = "m3d"
+version = "1.1.0"
+description = "Python3 3D transformation library with object oriented API and MIT licensed"
+authors = [
+    { name = "Kurant Robotics", email = "olivier.roulet@solwr.com" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "twine>=6.2.0",
+]
+
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+
+[project.optional-dependencies]
+orientation-mean = ["scipy"]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "ruff==0.14",
+    "m3d[orientation-mean]",
+    "scipy-stubs",
+]
+
+[project.urls]
+Homepage = "https://gitlab.com/kurant-open/m3d"
+
+[tool.uv-build]
+include = [
+  { path = "**/py.typed" },
+]
+
+[build-system]
+requires = ["uv-build"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.mypy]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = "numpy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mypy-scipy.*"
+ignore_missing_imports = true
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+line-length = 120
+extend-exclude = []
+target-version = "py310"
+#select = [N", "PL", "UP", "S", "FBT, COM, "CPY", "DTZ", DJ, "T20", "SLOT", "SIM", "TID", "TCH", "ARG", "PD", "PL", "TRY" , "AIR"]  # checks we cannot/want not apply for some reasons...
+#select = ["C90", "N", "B", "PYI", "PT", "ERA"] # checks we might want to enable but need som fixes
+lint.select = ["E", "F", "YTT", "W", "YTT", "ASYNC", "T10", "ISC", "G", "PIE", "RET", "INT", "RUF", "NPY", "PLE", "PLC", "PLW", "UP", "C4", "LOG", "ANN", "C4", "PGH", "SLF", "FA", "PERF", "A"]
+lint.ignore = ["RET504", "PERF203", "ISC001", "ISC002", "ANN401", "ASYNC109", "PLW1641"]
+[tool.ruff.lint.per-file-ignores]
+"test_*" = ["SLF001", "PGH"]
