@@ -1,0 +1,56 @@
+# API Endpoint: {{ endpoint.path }}
+
+**Method:** {{ endpoint.method }}
+**Module:** {{ endpoint.module }}
+**Access:** {% if endpoint.public %}Public{% else %}Internal{% endif %}
+
+## Description
+
+{{ endpoint.description }}
+
+## Request
+
+```http
+{{ endpoint.method }} {{ endpoint.path }} HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+{% if endpoint.public %}
+# No authentication required for public endpoints
+{% else %}
+Authorization: Bearer <token>
+{% endif %}
+```
+
+## Response
+
+```json
+{
+  "status": "success",
+  "endpoint": "{{ endpoint.path }}",
+  "method": "{{ endpoint.method }}",
+  "message": "{{ endpoint.description }}"
+}
+```
+
+## Implementation
+
+This endpoint is implemented in the `{{ endpoint.module }}` module.
+
+{% if endpoint.public -%}
+### Public Access
+
+This is a public endpoint and does not require authentication.
+{%- else -%}
+### Internal Access
+
+This endpoint is for internal use only and requires proper authentication.
+{%- endif %}
+
+## Testing
+
+```bash
+curl -X {{ endpoint.method }} \
+  http://localhost:8000{{ endpoint.path }} \
+  -H "Content-Type: application/json"{% if not endpoint.public %} \
+  -H "Authorization: Bearer YOUR_TOKEN"{% endif %}
+```

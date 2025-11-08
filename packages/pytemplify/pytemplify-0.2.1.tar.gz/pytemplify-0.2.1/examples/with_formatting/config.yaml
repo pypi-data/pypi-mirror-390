@@ -1,0 +1,68 @@
+globals:
+  version: "1.0.0"
+  project: "FormattingExample"
+
+# Enable code formatting
+format:
+  enabled: true
+
+  defaults:
+    preserve_manual_sections: true
+    ignore_patterns: ["*.min.*", "*.generated.*"]
+
+  formatters:
+    # Python files - use Black formatter
+    ".py":
+      type: "black"
+      enabled: true
+      options:
+        line_length: 88
+        string_normalization: true
+
+    # JavaScript/TypeScript files - use command-line prettier (more stable)
+    ".js|.ts|.jsx|.tsx":
+      type: "command"
+      enabled: true
+      command: "prettier --stdin-filepath ${input} --parser typescript < ${input} > ${output}"
+      extensions: [".js", ".ts", ".jsx", ".tsx"]
+      options:
+        timeout: 30
+
+    # JSON files - use command-line prettier
+    ".json":
+      type: "command"
+      enabled: true
+      command: "prettier --stdin-filepath ${input} --parser json < ${input} > ${output}"
+      extensions: [".json"]
+      options:
+        timeout: 30
+
+    # C/C++ files - use clang-format
+    ".cpp|.hpp|.c|.h|.cc|.cxx":
+      type: "command"
+      enabled: true
+      command: "clang-format -style=file ${input} > ${output}"
+      extensions: [".cpp", ".hpp", ".c", ".h", ".cc", ".cxx"]
+      options:
+        timeout: 30
+
+templates:
+  - name: "Python Service"
+    folder: "templates"
+    output: "output"
+    iterate: "service in dd.services"
+
+  - name: "JavaScript Utils"
+    folder: "templates"
+    output: "output"
+    iterate: "util in dd.utils"
+
+  - name: "Config Files"
+    folder: "templates"
+    output: "output"
+    iterate: "config in dd.configs"
+
+  - name: "C++ Components"
+    folder: "templates"
+    output: "output"
+    iterate: "component in dd.components"

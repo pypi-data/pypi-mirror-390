@@ -1,0 +1,70 @@
+# {{ service.name | title }} - Service Documentation
+
+**Category:** {{ service.category }}
+**Port:** {{ service.port }}
+
+## Description
+
+{{ service.description }}
+
+## Configuration
+
+| Property | Value |
+|----------|-------|
+| Service Name | {{ service.name }} |
+| Category | {{ service.category }} |
+| Port | {{ service.port }} |
+
+## API Endpoints
+
+{% if service.category == 'api' -%}
+### Health Check
+
+```
+GET /{{ service.name }}/health
+```
+
+Returns the health status of the service.
+
+### Service Info
+
+```
+GET /{{ service.name }}/info
+```
+
+Returns detailed service information.
+
+{%- else -%}
+This is a {{ service.category }} service and does not expose HTTP endpoints.
+{%- endif %}
+
+## Usage
+
+```python
+from {{ service.category }} import {{ service.name | title | replace('-', '') }}Service
+
+service = {{ service.name | title | replace('-', '') }}Service()
+service.start()
+```
+
+## Testing
+
+Run unit tests:
+```bash
+pytest tests/unit/test_{{ service.name | replace('-', '_') }}_unit_test.py
+```
+
+Run integration tests:
+```bash
+pytest tests/integration/test_{{ service.name | replace('-', '_') }}_integration_test.py -m integration
+```
+
+## Debug Utilities
+
+Debug utilities are available in:
+```python
+from debug import {{ service.name | title | replace('-', '') }}Debug
+
+status = {{ service.name | title | replace('-', '') }}Debug.get_status()
+{{ service.name | title | replace('-', '') }}Debug.run_diagnostics()
+```

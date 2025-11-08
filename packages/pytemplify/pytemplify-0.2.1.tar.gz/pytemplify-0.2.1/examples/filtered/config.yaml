@@ -1,0 +1,62 @@
+# Template Filtering Example
+# Demonstrates how to use template filtering with include/exclude patterns
+
+globals:
+  version: "1.0.0"
+  project: "FilteringExample"
+
+templates:
+  - name: "Core Infrastructure"
+    folder: "templates"
+    output: "output/core"
+    iterate: "service in dd.services if service.category == 'core'"
+    files:
+      include: ["*core_service*"]
+    enabled: true
+
+  - name: "API Services"
+    folder: "templates"
+    output: "output/api"
+    iterate: "service in dd.services if service.category == 'api'"
+    files:
+      include: ["*api_handler*"]
+    enabled: true
+
+  - name: "Debug Utilities"
+    folder: "templates"
+    output: "output/debug"
+    iterate: "service in dd.services"
+    files:
+      include: ["*debug*"]
+    enabled: true
+
+  - name: "Unit Tests"
+    folder: "templates"
+    output: "output/tests/unit"
+    iterate: "service in dd.services"
+    files:
+      include: ["*unit_test*"]
+    enabled: true
+
+  - name: "Integration Tests"
+    folder: "templates"
+    output: "output/tests/integration"
+    iterate: "service in dd.services"
+    files:
+      include: ["*integration_test*"]
+    enabled: true
+
+  - name: "Documentation"
+    folder: "templates"
+    output: "output/docs"
+    iterate: "service in dd.services"
+    files:
+      include: ["*doc.md*"]
+    enabled: true
+
+  - name: "Static Config"
+    folder: "templates"
+    output: "output"
+    files:
+      include: ["overview.md*"]
+    enabled: true

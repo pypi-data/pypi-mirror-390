@@ -1,0 +1,58 @@
+"""Integration tests for {{ service.name }}
+
+{{ service.description }}
+"""
+
+import pytest
+import asyncio
+from typing import Any
+
+
+@pytest.mark.integration
+class Test{{ service.name | title | replace('-', '') }}Integration:
+    """Integration tests for {{ service.name }} service."""
+
+    @pytest.fixture
+    async def service_client(self):
+        """Create service client for testing."""
+        # TODO: Setup integration test client
+        yield None
+        # TODO: Cleanup
+
+    @pytest.mark.asyncio
+    async def test_service_connectivity(self, service_client):
+        """Test connectivity to {{ service.name }} service."""
+        # TODO: Implement connectivity test
+        pass
+
+    @pytest.mark.asyncio
+    async def test_service_response_time(self, service_client):
+        """Test response time of {{ service.name }} service."""
+        # TODO: Implement response time test
+        pass
+
+    {% if service.category == 'api' -%}
+    @pytest.mark.asyncio
+    async def test_api_endpoints(self, service_client):
+        """Test API endpoints integration."""
+        # TODO: Test actual API calls
+        pass
+
+    @pytest.mark.asyncio
+    async def test_api_error_handling(self, service_client):
+        """Test API error handling."""
+        # TODO: Test error scenarios
+        pass
+    {%- endif %}
+
+    {% if service.category == 'core' -%}
+    @pytest.mark.asyncio
+    async def test_core_service_reliability(self, service_client):
+        """Test core service reliability."""
+        # TODO: Test core service under load
+        pass
+    {%- endif %}
+
+    # MANUAL SECTION START: custom_integration_tests
+    # Add your custom integration tests here
+    # MANUAL SECTION END

@@ -1,0 +1,42 @@
+"""{{ component.name | title }} {{ component.type | title }}
+
+Part of the {{ module.name }} module.
+Type: {{ component.type }}
+"""
+
+import logging
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+
+class {{ component.name | title }}{{ component.type | title }}:
+    """{{ component.type | title }} for {{ component.name }} operations."""
+
+    def __init__(self):
+        self.name = "{{ component.name }}"
+        self.type = "{{ component.type }}"
+        self.module = "{{ module.name }}"
+        logger.info(f"Initialized {self.type} for {self.name}")
+
+    {% for method in component.methods -%}
+    def {{ method }}(self, *args: Any, **kwargs: Any) -> Optional[Any]:
+        """{{ method | replace('_', ' ') | title }} operation.
+
+        Args:
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+
+        Returns:
+            Result of the {{ method }} operation
+        """
+        logger.debug(f"Executing {{ method }} in {self.name}")
+        # MANUAL SECTION START: {{ method }}_implementation
+        # TODO: Implement {{ method }} logic here
+        raise NotImplementedError("{{ method }} not yet implemented")
+        # MANUAL SECTION END
+
+    {% endfor %}
+
+    def __repr__(self) -> str:
+        return f"{{ component.name | title }}{{ component.type | title }}(module={self.module})"
