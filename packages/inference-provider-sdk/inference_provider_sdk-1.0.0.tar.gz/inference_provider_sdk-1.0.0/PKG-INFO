@@ -1,0 +1,402 @@
+Metadata-Version: 2.4
+Name: inference-provider-sdk
+Version: 1.0.0
+Summary: Python SDK for Inference Provider API - Build powerful AI agents with RAG, tool calling, and MCP integration
+License: MIT
+License-File: LICENSE
+Keywords: inference,ai,api,sdk,agent,rag,mcp,llm,chatbot,openai,anthropic,langchain
+Author: DevMayur
+Author-email: mayurkakade@gmail.com
+Requires-Python: >=3.8,<4.0
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: httpx (>=0.25.0,<0.26.0)
+Requires-Dist: pydantic (>=2.0.0,<3.0.0)
+Project-URL: Documentation, https://github.com/DevMayur/Inference_Provider_V2/tree/main/sdks/python
+Project-URL: Homepage, https://github.com/DevMayur/Inference_Provider_V2
+Project-URL: Repository, https://github.com/DevMayur/Inference_Provider_V2
+Description-Content-Type: text/markdown
+
+# Inference Provider SDK (Python)
+
+Python SDK for Inference Provider V2 API. Build powerful AI agents with RAG, tool calling, and MCP integration.
+
+## Installation
+
+```bash
+pip install inference-provider-sdk
+```
+
+Or with poetry:
+
+```bash
+poetry add inference-provider-sdk
+```
+
+## Quick Start
+
+```python
+from inference_provider import InferenceProviderClient
+
+# Initialize client
+client = InferenceProviderClient(
+    api_key="ip_xxxxxxxxxx",
+    api_secret="xxxxxxxxxxxxxx"
+)
+
+# Run agent inference
+response = client.agents.run(
+    agent_id="your-agent-id",
+    user_message="Hello, world!"
+)
+
+print(response.response)
+print(f"Cost: ${response.usage.cost}")
+print(f"Tokens: {response.usage.total_tokens}")
+```
+
+## Features
+
+- ✅ Full Python type hints with Pydantic
+- ✅ Both sync and async support
+- ✅ Agent inference with conversation history
+- ✅ RAG (Retrieval-Augmented Generation)
+- ✅ Tool calling (REST API, JavaScript, MCP)
+- ✅ MCP server integration
+- ✅ Provider and model management
+- ✅ Custom response formatting
+- ✅ Automatic retry with exponential backoff
+- ✅ Rate limit handling
+- ✅ Context manager support
+
+## Authentication
+
+### Environment Variables
+
+```bash
+export INFERENCE_API_KEY=ip_xxxxxxxxxx
+export INFERENCE_API_SECRET=xxxxxxxxxxxxxx
+```
+
+```python
+# Auto-loads from environment
+client = InferenceProviderClient()
+```
+
+### Explicit Configuration
+
+```python
+client = InferenceProviderClient(
+    api_key="ip_xxxxxxxxxx",
+    api_secret="xxxxxxxxxxxxxx",
+    base_url="https://your-instance.supabase.co",  # Optional
+    timeout=60,  # Optional, default 60s
+    max_retries=3,  # Optional, default 3
+    debug=False  # Optional, default False
+)
+```
+
+## Usage Examples
+
+### Basic Agent Inference
+
+```python
+from inference_provider import InferenceProviderClient
+
+client = InferenceProviderClient()
+
+response = client.agents.run(
+    agent_id="agent-id",
+    user_message="What is the weather today?"
+)
+
+print(response.response)
+```
+
+### With Conversation History
+
+```python
+from inference_provider.types import ConversationMessage
+
+history = [
+    ConversationMessage(role="user", content="My name is Alice"),
+    ConversationMessage(role="assistant", content="Nice to meet you, Alice!")
+]
+
+response = client.agents.chat(
+    agent_id="agent-id",
+    message="What is my name?",
+    history=history
+)
+
+print(response.response)
+```
+
+### With RAG
+
+```python
+response = client.agents.run_with_rag(
+    agent_id="agent-id",
+    message="Tell me about our product features",
+    collection_id="collection-id",
+    match_threshold=0.8,
+    match_count=5
+)
+
+if response.rag:
+    print(f"Found {response.rag.results_count} relevant documents")
+    for result in response.rag.results:
+        print(f"Similarity: {result.similarity}")
+        print(f"Content: {result.content}")
+```
+
+### With Vision (Image Inputs)
+
+```python
+from inference_provider.types import ImageInput
+
+response = client.agents.run_with_vision(
+    agent_id="agent-id",
+    message="What do you see in this image?",
+    images=[
+        ImageInput(
+            type="image_url",
+            image_url={"url": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."}
+        )
+    ]
+)
+
+print(response.response)
+```
+
+### With Variable Substitution
+
+```python
+response = client.agents.run(
+    agent_id="agent-id",
+    user_message="Process this request",
+    variables={
+        "user_name": "Alice",
+        "company_name": "Acme Corp"
+    }
+)
+```
+
+### Agent Management
+
+#### Create Agent
+
+```python
+from inference_provider.types import Variable, VariableType
+
+agent = client.agents.create(
+    name="Customer Support Agent",
+    description="Handles customer inquiries",
+    system_prompt="You are a helpful customer support agent for {{company_name}}",
+    model_name="gpt-4",
+    temperature=0.7,
+    max_tokens=2000,
+    variables=[
+        Variable(
+            name="company_name",
+            type=VariableType.TEXT,
+            description="Company name",
+            default_value="Acme Corp"
+        )
+    ],
+    tags=["customer-support", "production"]
+)
+
+print(f"Created agent: {agent.id}")
+```
+
+#### List Agents
+
+```python
+agents = client.agents.list()
+active_agents = client.agents.list(is_active=True)
+
+for agent in agents:
+    print(f"{agent.name} ({agent.id})")
+```
+
+#### Update Agent
+
+```python
+updated = client.agents.update(
+    agent_id="agent-id",
+    temperature=0.8,
+    system_prompt="Updated prompt"
+)
+```
+
+#### Delete Agent
+
+```python
+client.agents.delete("agent-id")
+```
+
+## Async Support
+
+```python
+import asyncio
+from inference_provider import AsyncInferenceProviderClient
+
+async def main():
+    async with AsyncInferenceProviderClient() as client:
+        response = await client.agents.run(
+            agent_id="agent-id",
+            user_message="Hello, world!"
+        )
+        print(response.response)
+
+asyncio.run(main())
+```
+
+## Error Handling
+
+```python
+from inference_provider import (
+    InferenceProviderClient,
+    AuthenticationError,
+    ValidationError,
+    NotFoundError,
+    RateLimitError,
+    APIError,
+    NetworkError
+)
+
+try:
+    response = client.agents.run(
+        agent_id="agent-id",
+        user_message="Hello"
+    )
+except AuthenticationError as e:
+    print(f"Invalid credentials: {e}")
+except ValidationError as e:
+    print(f"Invalid input: {e.message} (field: {e.field})")
+except NotFoundError as e:
+    print(f"Resource not found: {e}")
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e.message}")
+    print(f"Reset time: {e.reset_time}")
+except APIError as e:
+    print(f"API error: {e.status_code} - {e.message}")
+except NetworkError as e:
+    print(f"Network error: {e}")
+```
+
+## Context Manager
+
+```python
+# Sync
+with InferenceProviderClient() as client:
+    response = client.agents.run(
+        agent_id="agent-id",
+        user_message="Hello"
+    )
+
+# Async
+async with AsyncInferenceProviderClient() as client:
+    response = await client.agents.run(
+        agent_id="agent-id",
+        user_message="Hello"
+    )
+```
+
+## Utility Functions
+
+### Text Chunking for RAG
+
+```python
+from inference_provider.utils import chunk_text
+
+text = "Long document text..."
+chunks = chunk_text(text, chunk_size=500, chunk_overlap=50)
+
+for i, chunk in enumerate(chunks):
+    print(f"Chunk {i + 1}: {chunk[:100]}...")
+```
+
+### Variable Substitution
+
+```python
+from inference_provider.utils import substitute_variables, extract_variable_names
+
+template = "Hello {{name}}, welcome to {{company}}!"
+variables = {"name": "Alice", "company": "Acme Corp"}
+
+result = substitute_variables(template, variables)
+# => "Hello Alice, welcome to Acme Corp!"
+
+names = extract_variable_names(template)
+# => ["name", "company"]
+```
+
+## Type Safety
+
+The SDK provides comprehensive type hints:
+
+```python
+from inference_provider.types import (
+    Agent,
+    AgentInferenceResponse,
+    AIProvider,
+    AIModel,
+    ToolDefinition,
+    DocumentCollection,
+    MCPServer
+)
+
+# Full type safety with IDE auto-completion
+response: AgentInferenceResponse = client.agents.run(
+    agent_id="agent-id",
+    user_message="Hello"
+)
+
+print(response.usage.total_tokens)
+print(response.agent.name)
+```
+
+## Development
+
+```bash
+# Install dependencies
+poetry install
+
+# Run tests
+pytest
+
+# Run tests with coverage
+pytest --cov=inference_provider
+
+# Format code
+black inference_provider tests
+
+# Lint
+ruff inference_provider tests
+
+# Type check
+mypy inference_provider
+```
+
+## License
+
+MIT
+
+## Support
+
+- Documentation: https://docs.inference-provider.com
+- Issues: https://github.com/your-org/inference-provider/issues
+- Email: support@inference-provider.com
+

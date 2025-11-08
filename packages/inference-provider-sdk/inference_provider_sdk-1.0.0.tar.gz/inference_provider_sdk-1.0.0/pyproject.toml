@@ -1,0 +1,85 @@
+[tool.poetry]
+name = "inference-provider-sdk"
+version = "1.0.0"
+description = "Python SDK for Inference Provider API - Build powerful AI agents with RAG, tool calling, and MCP integration"
+authors = ["DevMayur <mayurkakade@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/DevMayur/Inference_Provider_V2"
+repository = "https://github.com/DevMayur/Inference_Provider_V2"
+documentation = "https://github.com/DevMayur/Inference_Provider_V2/tree/main/sdks/python"
+keywords = ["inference", "ai", "api", "sdk", "agent", "rag", "mcp", "llm", "chatbot", "openai", "anthropic", "langchain"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+packages = [{include = "inference_provider"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+httpx = "^0.25.0"
+pydantic = "^2.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.21.0"
+black = "^23.7.0"
+ruff = "^0.0.285"
+mypy = "^1.5.0"
+types-requests = "^2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.14.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long (black handles this)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.8"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=inference_provider --cov-report=term-missing --cov-report=html"
+asyncio_mode = "auto"
