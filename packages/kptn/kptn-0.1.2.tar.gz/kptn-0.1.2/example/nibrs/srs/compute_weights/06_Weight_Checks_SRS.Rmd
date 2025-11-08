@@ -1,0 +1,485 @@
+---
+title: "Weights Checks (SRS)"
+author: "JD Bunker"
+date: "07/06/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+#Note (16Jun2023): updating to include JD/MSA/FO checks
+#Note (16Jun2023): Updating to reflect SRS pipeline (not NIBRS)
+#Note (16Jun2023): still need to rename `n NIBRS LEAs, Overall` to `n SRS LEAs, Overall` in calibration programs - for now, just rename outputs after reading in
+#Note (13Aug2025): Accounting for addition of minimum and maximum in each weighting check
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+## Purpose
+
+The purpose of this program is to compile weight checks from judicial district, MSA, field office, tribal, and university weights. Note that unlike with the NIBRS pipeline, there are no national, region, and state specific weights. Instead a bottom-up approach based on judicial district weights will be used when calculating estimates and measures of uncertainty.
+
+* SRS-reporting LEAs with missing weights are marked red in all the tables. Each of these LEAs should get a nonzero weight during calibration and thus missing weights implies an issue during the calibration process. If nonzero weights exist the estimation process should be halted as the estimates will not be correct. A review of how the LEA is identified for purposes of estimation should be reviewed to ensure it should receive a weight.  
+* Weights greater than 20 in all tables are marked red in all the tables. This suggests that a single SRS-reporting agency represents 20+ SRS-eligible agencies and may yield unreliable estimates. If this occurs in a domain, review the coverage rate for the domain. If the coverage is low, this result is expected and not an indication of a larger issue. 
+* Weights less than 1 in all tables are marked red in all the tables. During calibration of judicial district-, MSA-, and field office-level weights, a weight of 1 was used as the lower limit thus any weights less than this number suggest the model failed for a weighting group. For the remaining weight variables (e.g., state-level), weights were assigned by N/n, where N is the number of SRS-eligible agencies and n is the number of SRS-reporting agencies; weights < 1 is theoretically illogical and suggest an issue with either the numerator or denominator of the weights calculation. If weights < 1 do occur, review the domain where it occurs to ensure the process is working correctly. 
+* UWEs between 2 and 3 are marked yellow in all the tables and UWEs greater than 3 are marked red. This indicates a high level of variance inflation due to unequal weighting. For judicial district-, MSA-, and field office-level weights this implies that the agencies within a weighting group had high levels of dispersion in their weights. If this occurs in a domain, review the coverage rate for the domain. If the coverage is low, this result is expected and not an indication of a larger issue.
+* Cases where the 95th percentile is 5 or more times higher than the median are marked red in the judicial district-, MSA-, field office-level weights. For these weight variables, this implies one or more agencies had significantly higher weights than the rest of the agencies in a given summary level. All tribal and university LEAs received the same weight and thus this isn’t applicable in the corresponding tables. If this occurs in a domain, review the coverage rate for the domain. If the coverage is low, this result is possible and not an indication of a larger issue.
+
+
+## Load Data
+
+Loading field office, judicial district, and MSA weight checks
+
+```{r load,echo=FALSE,message=FALSE}
+
+log_trace("Generating weights_checks_srs.html")
+#################
+#Read in files
+
+results_jd <- read_csv(file=paste0(output_weighting_data_folder,"weights_jd_cal_srs_altcombs_col_checks_srs.csv"))
+results_msa <- read_csv(file=paste0(output_weighting_data_folder,"weights_MSA_cal_srs_altcombs_col_checks_srs.csv"))
+results_fo <- read_csv(file=paste0(output_weighting_data_folder,"weights_FO_cal_srs_altcombs_col_checks_srs.csv"))
+#Note (16Jun2023): Don't have SRS university/tribal weights yet
+#results_university <- read_csv(file=paste0(output_weighting_data_folder,"weights_university_checks_srs.csv"))
+#results_tribal <- read_csv(file=paste0(output_weighting_data_folder,"weights_tribal_checks_srs.csv"))
+#27Jul2022: Read in national weights
+#weights_national <- read_csv(paste0(output_weighting_data_folder,'weights_national.csv'))
+
+```
+
+## Prep overall national results
+```{r prep,echo=FALSE,message=FALSE}
+# 
+# SF2 <- weights_national
+# out_temp <- SF2 %>%
+#   subset(!is.na(NationalWgt))
+#     temp.describe <- describe(out_temp$NationalWgt)
+#     temp.quantiles <- quantile(out_temp$NationalWgt,
+#                                probs=c(0.05,0.1,0.25,0.5,0.75,0.9,0.95),
+#                                na.rm=TRUE)
+#     #Note (26Jul2022): Adding n Eligible LEAs
+#     temp.nElig <- SF2 %>%
+#       nrow()
+#     temp.nLT1 <- sum(out_temp$NationalWgt < 1 & out_temp$NationalWgt>0, na.rm=TRUE)
+#     #Note (29Jul2022): Switching from >100 to >20
+#     #temp.nGT100 <- sum(out_temp$NationalWgt > 100, na.rm=TRUE)
+#     temp.nGT20 <- sum(out_temp$NationalWgt > 20, na.rm=TRUE)
+#     temp.UWE <- 1+var(out_temp$NationalWgt,na.rm=TRUE)/(mean(out_temp$NationalWgt,na.rm=TRUE)^2)
+#     temp.out <- data.frame(wgtGpDesc="All LEAs",
+#                            calibrated=NA,
+#                            nElig=temp.nElig,
+#                            nNIBRS=as.numeric(temp.describe$counts["n"]) + as.numeric(temp.describe$counts["missing"]),
+#                            nMissing=as.numeric(temp.describe$counts["missing"]),
+#                            nLT1=temp.nLT1,
+#                            #nGT100=temp.nGT100,
+#                            nGT20=temp.nGT20,
+#                            UWE=sprintf(temp.UWE,fmt="%1.3f"),
+#                            Mean=sprintf(as.numeric(temp.describe$counts["Mean"]),fmt="%1.3f"),
+#                            pt05=sprintf(temp.quantiles["5%"],fmt="%1.3f"),
+#                            pt10=sprintf(temp.quantiles["10%"],fmt="%1.3f"),
+#                            pt25=sprintf(temp.quantiles["25%"],fmt="%1.3f"),
+#                            pt50=sprintf(temp.quantiles["50%"],fmt="%1.3f"),
+#                            pt75=sprintf(temp.quantiles["75%"],fmt="%1.3f"),
+#                            pt90=sprintf(temp.quantiles["90%"],fmt="%1.3f"),
+#                            pt95=sprintf(temp.quantiles["95%"],fmt="%1.3f")) %>%
+#       #Need to convert some variables to numeric
+#       mutate(UWE=as.numeric(UWE),
+#              Mean=as.numeric(Mean),
+#              pt05=as.numeric(pt05),
+#              pt10=as.numeric(pt10),
+#              pt25=as.numeric(pt25),
+#              pt50=as.numeric(pt50),
+#              pt75=as.numeric(pt75),
+#              pt90=as.numeric(pt90),
+#              pt95=as.numeric(pt95))
+#     colnames(temp.out) <- c("Weight Group","Calibrated",
+#                             "n Eligible LEAs","n NIBRS LEAs, Overall","n NIBRS LEAs, Missing Weight",
+#                             "n LT 1","n GT 20","UWE",#"n GT 100","UWE",
+#                             "Mean","5th Pctl","10th Pctl","25th Pctl","50th Pctl",
+#                             "75th Pctl","90th Pctl","95th Pctl") 
+#     list2env(list("results_national_0"=temp.out),.GlobalEnv)
+#     
+# #Stack total row onto rest of national results
+# results_national <- bind_rows(results_national_0,
+#                               results_national)
+```
+
+## Display Results
+```{r results,echo=FALSE,warning=FALSE}
+#################
+#Display results
+
+#29Jul2022: Changing n GT 100 to n GT 20
+
+#30Jun2023: Adding summary table before each geography
+
+#National
+# log_debug("National")
+# results_national %>%
+#   mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+#   `row.names<-`(1:nrow(.)) %>%
+#   DT::datatable(options = list(columnDefs = list(
+#     list(visible = FALSE, targets = 17)#16)
+#   ))) %>%
+#   formatStyle(columns="n NIBRS LEAs, Missing Weight",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="n LT 1",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   #formatStyle(columns="n GT 100",
+#   formatStyle(columns="n GT 20",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="UWE",
+#               backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+#   formatStyle(columns="95th Pctl",
+#               valueColumns="ratio",
+#               backgroundColor = styleInterval(c(5), c('NULL','red')))
+# 
+# #Region
+# log_debug("Region")
+# results_region %>%
+#   arrange(Region) %>%
+#   mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+#   #`row.names<-`(1:nrow(.)) %>%
+#   DT::datatable(options = list(columnDefs = list(
+#     list(visible = FALSE, targets = 18)#17)
+#   ))) %>%
+#   formatStyle(columns="n NIBRS LEAs, Missing Weight",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="n LT 1",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   #formatStyle(columns="n GT 100",
+#   formatStyle(columns="n GT 20",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="UWE",
+#               backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+#   formatStyle(columns="95th Pctl",
+#               valueColumns="ratio",
+#               backgroundColor = styleInterval(c(5), c('NULL','red')))
+# 
+# #State
+# log_debug("State")
+# results_state %>%
+#   arrange(State) %>%
+#   mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+#   #`row.names<-`(1:nrow(.)) %>%
+#   DT::datatable(options = list(columnDefs = list(
+#     list(visible = FALSE, targets = 18)#16)#15)
+#   ))) %>%
+#   formatStyle(columns="n NIBRS LEAs, Missing Weight",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="n LT 1",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   #formatStyle(columns="n GT 100",
+#   formatStyle(columns="n GT 20",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="UWE",
+#               backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+#   formatStyle(columns="95th Pctl",
+#               valueColumns="ratio",
+#               backgroundColor = styleInterval(c(5), c('NULL','red')))
+
+#JD
+message("JD")
+
+summary_jd_major <- results_jd %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(redMissingWgts=`n NIBRS LEAs, Missing Weight`>0,
+         redNLT1=`n LT 1`>0,
+         redNGT20=`n GT 20`>0,
+         yellowUWE=UWE<3 & UWE>=2,
+         redUWE=UWE>=3,
+         redRatio=ratio>=5) %>%
+  group_by(`Judicial District`) %>%
+  dplyr::summarize(anyMajor=any(redMissingWgts,redNLT1,redNGT20,redUWE,redRatio),
+                   anyMissingWgts=any(redMissingWgts),
+                   anyMissingWgtsGeo=ifelse(anyMissingWgts,`Judicial District`,NA_character_),
+                   anyNLT1=any(redNLT1),
+                   anyNLT1Geo=ifelse(anyNLT1,`Judicial District`,NA_character_),
+                   anyNGT20=any(redNGT20),
+                   anyNGT20Geo=ifelse(anyNGT20,`Judicial District`,NA_character_),
+                   anyUWEGTE3=any(redUWE),
+                   anyUWEGTE3Geo=ifelse(anyUWEGTE3,`Judicial District`,NA_character_),
+                   anyRatioGTE5=any(redRatio),
+                   anyRatioGTE5Geo=ifelse(anyRatioGTE5,`Judicial District`,NA_character_)) %>%
+  ungroup() %>%
+  dplyr::summarize(anyMajor=any(anyMajor),
+                   anyMissingWgtsDesc=ifelse(any(anyMissingWgts),paste0("1+ SRS LEAs missing weights",str_flatten(anyMissingWgtsGeo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyNLT1Desc=ifelse(any(anyNLT1),paste0("1+ weight <1: ",str_flatten(anyNLT1Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyNGT20Desc=ifelse(any(anyNGT20),paste0("1+ weight > 20: ",str_flatten(anyNGT20Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyUWEGTE3Desc=ifelse(any(anyUWEGTE3),paste0("UWE >= 3: ",str_flatten(anyUWEGTE3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyRatioGTE5Desc=ifelse(any(anyRatioGTE5),paste0("95th Pctl / Median >= 5: ",str_flatten(anyRatioGTE5Geo %>% subset(!is.na(.)),col=", ")),NA_character_)) %>%
+  mutate(anyMajorDesc=ifelse(any(anyMajor),
+                             str_flatten(c(anyMissingWgtsDesc %>% subset(!is.na(.)),
+                                           anyNLT1Desc %>% subset(!is.na(.)),
+                                           anyNGT20Desc %>% subset(!is.na(.)),
+                                           anyUWEGTE3Desc %>% subset(!is.na(.)),
+                                           anyRatioGTE5Desc %>% subset(!is.na(.))),
+                                         col=";<br/><br/>"),
+                             NA_character_)) %>%
+  mutate(`Weight Level`="Judicial District",
+         Status=ifelse(!is.na(anyMajorDesc),"Major problem(s) found","No major problems found"),
+         `Flagged Areas`=anyMajorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+
+summary_jd_minor <- results_jd %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(yellowUWE=UWE<3 & UWE>=2) %>%
+  group_by(`Judicial District`) %>%
+  dplyr::summarize(anyMinor=any(yellowUWE),
+                   anyUWE2to3=any(yellowUWE),
+                   anyUWE2to3Geo=ifelse(anyUWE2to3,`Judicial District`,NA_character_)) %>%
+  ungroup() %>%
+  dplyr::summarize(anyUWE2to3Desc=ifelse(any(anyUWE2to3),paste0("2 <= UWE < 3: ",str_flatten(anyUWE2to3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyMinor=any(anyUWE2to3)) %>%
+  mutate(anyMinorDesc=ifelse(anyMinor,anyUWE2to3Desc,NA_character_)) %>%
+  mutate(`Weight Level`="Judicial District",
+         Status=ifelse(!is.na(anyMinorDesc),"Minor problem(s) found","No minor problems found"),
+         `Flagged Areas`=anyMinorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+
+summary_jd <- bind_rows(summary_jd_major,
+                        summary_jd_minor)
+
+summary_jd %>% DT::datatable(escape=FALSE)
+
+results_jd %>%
+  arrange(`Judicial District`) %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  #`row.names<-`(1:nrow(.)) %>%
+  `colnames<-`(colnames(.) %>% str_replace("NIBRS","SRS")) %>%
+  DT::datatable(options = list(columnDefs = list(
+    list(visible = FALSE, targets = 20)#18)#16)#15)
+  ))) %>%
+  formatStyle(columns="n SRS LEAs, Missing Weight",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="n LT 1",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  #formatStyle(columns="n GT 100",
+  formatStyle(columns="n GT 20",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="UWE",
+              backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+  formatStyle(columns="95th Pctl",
+              valueColumns="ratio",
+              backgroundColor = styleInterval(c(5), c('NULL','red')))
+
+#MSA
+message("MSA")
+summary_msa_major <- results_msa %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(redMissingWgts=`n NIBRS LEAs, Missing Weight`>0,
+         redNLT1=`n LT 1`>0,
+         redNGT20=`n GT 20`>0,
+         yellowUWE=UWE<3 & UWE>=2,
+         redUWE=UWE>=3,
+         redRatio=ratio>=5) %>%
+  group_by(`MSA`) %>%
+  dplyr::summarize(anyMajor=any(redMissingWgts,redNLT1,redNGT20,redUWE,redRatio),
+                   anyMissingWgts=any(redMissingWgts),
+                   anyMissingWgtsGeo=ifelse(anyMissingWgts,`MSA`,NA_character_),
+                   anyNLT1=any(redNLT1),
+                   anyNLT1Geo=ifelse(anyNLT1,`MSA`,NA_character_),
+                   anyNGT20=any(redNGT20),
+                   anyNGT20Geo=ifelse(anyNGT20,`MSA`,NA_character_),
+                   anyUWEGTE3=any(redUWE),
+                   anyUWEGTE3Geo=ifelse(anyUWEGTE3,`MSA`,NA_character_),
+                   anyRatioGTE5=any(redRatio),
+                   anyRatioGTE5Geo=ifelse(anyRatioGTE5,`MSA`,NA_character_)) %>%
+  ungroup() %>%
+  dplyr::summarize(anyMajor=any(anyMajor),
+                   anyMissingWgtsDesc=ifelse(any(anyMissingWgts),paste0("1+ SRS LEAs missing weights",str_flatten(anyMissingWgtsGeo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyNLT1Desc=ifelse(any(anyNLT1),paste0("1+ weight <1: ",str_flatten(anyNLT1Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyNGT20Desc=ifelse(any(anyNGT20),paste0("1+ weight > 20: ",str_flatten(anyNGT20Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyUWEGTE3Desc=ifelse(any(anyUWEGTE3),paste0("UWE >= 3: ",str_flatten(anyUWEGTE3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyRatioGTE5Desc=ifelse(any(anyRatioGTE5),paste0("95th Pctl / Median >= 5: ",str_flatten(anyRatioGTE5Geo %>% subset(!is.na(.)),col=", ")),NA_character_)) %>%
+  mutate(anyMajorDesc=ifelse(any(anyMajor),
+                             str_flatten(c(anyMissingWgtsDesc %>% subset(!is.na(.)),
+                                           anyNLT1Desc %>% subset(!is.na(.)),
+                                           anyNGT20Desc %>% subset(!is.na(.)),
+                                           anyUWEGTE3Desc %>% subset(!is.na(.)),
+                                           anyRatioGTE5Desc %>% subset(!is.na(.))),
+                                         col=";<br/><br/>"),
+                             NA_character_)) %>%
+  mutate(`Weight Level`="MSA",
+         Status=ifelse(!is.na(anyMajorDesc),"Major problem(s) found","No major problems found"),
+         `Flagged Areas`=anyMajorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+
+summary_msa_minor <- results_msa %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(yellowUWE=UWE<3 & UWE>=2) %>%
+  group_by(`MSA`) %>%
+  dplyr::summarize(anyMinor=any(yellowUWE),
+                   anyUWE2to3=any(yellowUWE),
+                   anyUWE2to3Geo=ifelse(anyUWE2to3,`MSA`,NA_character_)) %>%
+  ungroup() %>%
+  dplyr::summarize(anyUWE2to3Desc=ifelse(any(anyUWE2to3),paste0("2 <= UWE < 3: ",str_flatten(anyUWE2to3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyMinor=any(anyUWE2to3)) %>%
+  mutate(anyMinorDesc=ifelse(anyMinor,anyUWE2to3Desc,NA_character_)) %>%
+  mutate(`Weight Level`="MSA",
+         Status=ifelse(!is.na(anyMinorDesc),"Minor problem(s) found","No minor problems found"),
+         `Flagged Areas`=anyMinorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+
+summary_msa <- bind_rows(summary_msa_major,
+                         summary_msa_minor)
+
+summary_msa %>% DT::datatable(escape=FALSE)
+
+results_msa %>%
+  arrange(MSA) %>%
+  `colnames<-`(colnames(.) %>% str_replace("NIBRS","SRS")) %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  #`row.names<-`(1:nrow(.)) %>%
+  DT::datatable(options = list(columnDefs = list(
+    list(visible = FALSE, targets = 20)#18)#16)#15)
+  ))) %>%
+  formatStyle(columns="n SRS LEAs, Missing Weight",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="n LT 1",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  #formatStyle(columns="n GT 100",
+  formatStyle(columns="n GT 20",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="UWE",
+              backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+  formatStyle(columns="95th Pctl",
+              valueColumns="ratio",
+              backgroundColor = styleInterval(c(5), c('NULL','red')))
+
+#FO
+message("FO")
+
+summary_fo_major <- results_fo %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(redMissingWgts=`n NIBRS LEAs, Missing Weight`>0,
+         redNLT1=`n LT 1`>0,
+         redNGT20=`n GT 20`>0,
+         yellowUWE=UWE<3 & UWE>=2,
+         redUWE=UWE>=3,
+         redRatio=ratio>=5) %>%
+  group_by(`Field Office`) %>%
+  dplyr::summarize(anyMajor=any(redMissingWgts,redNLT1,redNGT20,redUWE,redRatio),
+                   anyMissingWgts=any(redMissingWgts),
+                   anyMissingWgtsGeo=ifelse(anyMissingWgts,`Field Office`,NA_character_),
+                   anyNLT1=any(redNLT1),
+                   anyNLT1Geo=ifelse(anyNLT1,`Field Office`,NA_character_),
+                   anyNGT20=any(redNGT20),
+                   anyNGT20Geo=ifelse(anyNGT20,`Field Office`,NA_character_),
+                   anyUWEGTE3=any(redUWE),
+                   anyUWEGTE3Geo=ifelse(anyUWEGTE3,`Field Office`,NA_character_),
+                   anyRatioGTE5=any(redRatio),
+                   anyRatioGTE5Geo=ifelse(anyRatioGTE5,`Field Office`,NA_character_)) %>%
+  ungroup() %>%
+  dplyr::summarize(anyMajor=any(anyMajor),
+                   anyMissingWgtsDesc=ifelse(any(anyMissingWgts),paste0("1+ SRS LEAs missing weights",str_flatten(anyMissingWgtsGeo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyNLT1Desc=ifelse(any(anyNLT1),paste0("1+ weight <1: ",str_flatten(anyNLT1Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyNGT20Desc=ifelse(any(anyNGT20),paste0("1+ weight > 20: ",str_flatten(anyNGT20Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyUWEGTE3Desc=ifelse(any(anyUWEGTE3),paste0("UWE >= 3: ",str_flatten(anyUWEGTE3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyRatioGTE5Desc=ifelse(any(anyRatioGTE5),paste0("95th Pctl / Median >= 5: ",str_flatten(anyRatioGTE5Geo %>% subset(!is.na(.)),col=", ")),NA_character_)) %>%
+  mutate(anyMajorDesc=ifelse(any(anyMajor),
+                             str_flatten(c(anyMissingWgtsDesc %>% subset(!is.na(.)),
+                                           anyNLT1Desc %>% subset(!is.na(.)),
+                                           anyNGT20Desc %>% subset(!is.na(.)),
+                                           anyUWEGTE3Desc %>% subset(!is.na(.)),
+                                           anyRatioGTE5Desc %>% subset(!is.na(.))),
+                                         col=";<br/><br/>"),
+                             NA_character_)) %>%
+  mutate(`Weight Level`="Field Office",
+         Status=ifelse(!is.na(anyMajorDesc),"Major problem(s) found","No major problems found"),
+         `Flagged Areas`=anyMajorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+
+summary_fo_minor <- results_fo %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(yellowUWE=UWE<3 & UWE>=2) %>%
+  group_by(`Field Office`) %>%
+  dplyr::summarize(anyMinor=any(yellowUWE),
+                   anyUWE2to3=any(yellowUWE),
+                   anyUWE2to3Geo=ifelse(anyUWE2to3,`Field Office`,NA_character_)) %>%
+  ungroup() %>%
+  dplyr::summarize(anyUWE2to3Desc=ifelse(any(anyUWE2to3),paste0("2 <= UWE < 3: ",str_flatten(anyUWE2to3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+                   anyMinor=any(anyUWE2to3)) %>%
+  mutate(anyMinorDesc=ifelse(anyMinor,anyUWE2to3Desc,NA_character_)) %>%
+  mutate(`Weight Level`="Field Office",
+         Status=ifelse(!is.na(anyMinorDesc),"Minor problem(s) found","No minor problems found"),
+         `Flagged Areas`=anyMinorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+
+summary_fo <- bind_rows(summary_fo_major,
+                        summary_fo_minor)
+
+summary_fo %>% DT::datatable(escape=FALSE)
+
+results_fo %>%
+  arrange(`Field Office`) %>%
+  `colnames<-`(colnames(.) %>% str_replace("NIBRS","SRS")) %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  #`row.names<-`(1:nrow(.)) %>%
+  DT::datatable(options = list(columnDefs = list(
+    list(visible = FALSE, targets = 20)#18)#16)#15)
+  ))) %>%
+  formatStyle(columns="n SRS LEAs, Missing Weight",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="n LT 1",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  #formatStyle(columns="n GT 100",
+  formatStyle(columns="n GT 20",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="UWE",
+              backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+  formatStyle(columns="95th Pctl",
+              valueColumns="ratio",
+              backgroundColor = styleInterval(c(5), c('NULL','red')))
+
+#Note (16Jun2023): Don't have university or tribal weights yet so commenting out for now
+#University
+# log_debug("University")
+# #Note (12Jul2022): Don't show percentiles and add note
+# results_university %>%
+#   mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+#   #`row.names<-`(1:nrow(.)) %>%
+#   DT::datatable(options = list(columnDefs = list(
+#     list(visible = FALSE, targets = c(9:16))#targets = 15
+#   ))) %>%
+#   formatStyle(columns="n NIBRS LEAs, Missing Weight",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="n LT 1",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   #formatStyle(columns="n GT 100",
+#   formatStyle(columns="n GT 20",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="UWE",
+#               backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) #%>%
+# #formatStyle(columns="95th Pctl",
+# #		  valueColumns="ratio",
+# #          backgroundColor = styleInterval(c(5), c('NULL','red')))
+# log_debug("All agencies in this agency type have the same weight so percentiles are not displayed")
+# 
+# #Tribal
+# log_debug("Tribal")
+# #Note (12Jul2022): Don't show percentiles and add note
+# results_tribal %>%
+#   mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+#   #`row.names<-`(1:nrow(.)) %>%
+#   DT::datatable(options = list(columnDefs = list(
+#     list(visible = FALSE, targets = c(9:16))#targets = 15
+#   ))) %>%
+#   formatStyle(columns="n NIBRS LEAs, Missing Weight",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="n LT 1",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   #formatStyle(columns="n GT 100",
+#   formatStyle(columns="n GT 20",
+#               backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+#   formatStyle(columns="UWE",
+#               backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) #%>%
+# #formatStyle(columns="95th Pctl",
+# #			  valueColumns="ratio",
+# #             backgroundColor = styleInterval(c(5), c('NULL','red')))
+# log_debug("All agencies in this agency type have the same weight so percentiles are not displayed")
+log_trace("Finished generating weights_checks_srs.html")
+```

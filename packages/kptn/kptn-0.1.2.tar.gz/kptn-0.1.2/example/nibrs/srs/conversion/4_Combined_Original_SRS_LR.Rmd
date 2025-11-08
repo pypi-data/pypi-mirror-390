@@ -1,0 +1,123 @@
+---
+title: '4-Combined Original SRS'
+author: "Philip Lee"
+date: "April 7, 2023"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(DBI)
+library(DT)
+library(lubridate)
+library(data.table)
+library(openxlsx)
+
+
+#Create some functions
+tablena <- partial(table, useNA = "ifany")
+table_func <- partial(table, useNA="ifany")
+sum_func <- partial(sum, na.rm=TRUE)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+trim <- partial(trimws, which="both")
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+#Function to gather the list of files
+readfiles <- function(inpath, inpatternfile){
+  
+  #Get the list of files
+  raw_list_files <- list.files(path=inpath, pattern=inpatternfile)
+  
+  #See the list of files
+  print(raw_list_files)
+  
+  #Loop thru to get the files
+  returndata <- map_dfr(raw_list_files,  ~{
+      
+      #Get current file name
+      raw_current_file <- .x
+  
+      #Read the current file
+      #raw_main <- fread(paste0(inpath, raw_current_file)) 
+      raw_main <- read_csv(paste0(inpath, raw_current_file),
+                           #Declare the variable types
+                           col_types = cols(ori= col_character(), legacy_ori= col_character())
+                           ) 
+      
+      #Return the file
+      return(raw_main)
+      
+  })
+  
+  #Return the data
+  return(returndata)
+  
+}
+
+
+
+```
+
+
+```{r}
+
+#####################################################################
+
+
+#Read all the SRS csv files
+raw_main <- readfiles(inpath=filepathin_lr, inpatternfile=paste0("^SRS_", CONST_YEAR, "_\\w+.csv"))
+
+#Get the list of variables
+MACRO_V_VARS <- colnames(raw_main) %>%
+  as_tibble() %>%
+  mutate(keep = str_match(string=.$value, pattern="v(\\d+)")[,2] %>% as.numeric()) %>%
+  #Keep the original variables
+  filter(!is.na(keep) ) %>%
+  arrange(keep) %>%
+  select(value) %>%
+  pull()
+
+#See the variables
+print(MACRO_V_VARS)
+
+
+
+#Output file to share
+# raw_main %>%
+#   select(ori, legacy_ori, !!!(MACRO_V_VARS %>% rlang:::parse_exprs())) %>%
+#   write_csv(paste0(CONST_OUTPUT, "SRS_Original_Combined_with_NA.csv"))
+
+
+
+#0 filled the blanks
+raw_main2 <- raw_main %>%
+    mutate(
+      across(
+        .cols=any_of(MACRO_V_VARS),
+        .fns = ~ {
+          
+          replace_na(.x, 0)
+          
+        },
+        .names="{col}"
+      )
+    )
+  
+#Output to share
+raw_main2 %>%
+  write_csv(paste0(filepathout, "SRS_Original_Combined_LR.csv"))
+
+
+
+
+```

@@ -1,0 +1,37 @@
+[flake8]
+
+# Requires the flake8-docstrings package
+docstring-convention = google
+
+# Ignore some warnings/errors. flake8 ignores some warnings/errors by default.
+# However, we don't want to ignore the same ones ignored by default. Therefore,
+# we define this using `ignore` instead of `extends-ignore`.
+ignore =
+    # Whitespace before ':'
+    #   This is for black compatibility, because there are some instances where
+    #   black intentionally adds a space before a ':' in slices.
+    E203,
+
+    # Line too long
+    #   Black will enforce line-length restrictions, so no need to check for it
+    #   here.
+    E501,
+
+    # Line break before binary operator
+    #   This is for black compatibility, because black breaks lines before a
+    #   binary operator. Breaking lines after a binary operator is reported as
+    #   W504, which is mutually exclusive with W503.
+    W503,
+
+    # Missing docstrings
+    #   The D1xx errors are provided by flake8-docstrings. We will use our
+    #   discretion about where to require docstrings. For example, we won't
+    #   bother adding them to the Django auto-generated/boilerplate code.
+    D1
+
+extend-exclude =
+    cloudformation/ne-cloudformation/cdk.out,
+    .mypy_cache,
+    artifacts,
+    scratch,
+    .venv

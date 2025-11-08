@@ -1,0 +1,1131 @@
+---
+title: '1-Create Extracts'
+author: "Philip Lee"
+date: "March 22, 2023"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(DBI)
+library(DT)
+library(lubridate)
+library(data.table)
+
+
+#Create some functions
+tablena <- partial(table, useNA = "ifany")
+table_func <- partial(table, useNA="ifany")
+sum_func <- partial(sum, na.rm=TRUE)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+trim <- partial(trimws, which="both")
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+cleanup_memory <- function(){
+  
+  #Get the list of objects
+  tbd_list <- c(ls(pattern="^df", envir=.GlobalEnv), ls(pattern="^query", envir=.GlobalEnv))
+  print("Removing objects:  ")
+  print(as.character(tbd_list))
+
+  #Remove the objects
+  rm(list=c(as.character(tbd_list)), envir=.GlobalEnv)
+ 
+  #Free up memory
+  gc()
+   
+}
+
+#Function to recode offenses
+#Write the function for the SRS offense recodes.
+#Note this is the order of the SRS hierarchy rule
+
+offense_recode <- function(data){
+  
+  returndata <- data %>% mutate(
+    
+  #SRS Offenses
+  der_murder_non_neg_manslaughter = fcase(
+    trim_upcase(offense_code) %in% c("09A"), 1, #09A	Murder and Nonnegligent Manslaughter
+    default = 0),  
+  
+  der_neg_manslaughter = fcase(
+    trim_upcase(offense_code) %in% c("09B"), 1, #09B	Negligent Manslaughter
+    default = 0),    
+
+  der_collapse_rape = fcase(
+    trim_upcase(offense_code) %in% c("11A", "11B", "11C"), 1,
+    default = 0),  
+
+  der_robbery	= fcase(
+    trim_upcase(offense_code) %in% c("120"), 1,
+    default = 0),  
+  
+  der_aggravated_assault = fcase(
+    trim_upcase(offense_code) %in% c("13A"), 1, #13A	Aggravated Assault
+    default = 0),   
+  
+  der_collapse_simple_assault = fcase(
+    trim_upcase(offense_code) %in% c("13B", "13C"), 1,
+    default = 0),  
+    
+  der_burglary_b_e	= fcase(
+    trim_upcase(offense_code) %in% c("220"), 1,
+    default = 0), 
+ 
+  der_collapse_theft = fcase(
+    trim_upcase(offense_code) %in% c("23A", "23B", "23C", "23D", "23E", "23F", "23G", "23H"), 1,
+    default = 0), 
+  
+  der_motor_vehicle_theft	= fcase(
+    trim_upcase(offense_code) %in% c("240"), 1,
+    default = 0),
+
+  der_motor_vehicle_theft_attempt	= fcase(
+    trim_upcase(offense_code) %in% c("240") & trim_upcase(attempt_complete_flag) %in% c("A"), 1,
+    default = 0),
+
+  der_motor_vehicle_theft_complete	= fcase(
+    trim_upcase(offense_code) %in% c("240") & trim_upcase(attempt_complete_flag) %in% c("C"), 1,
+    default = 0),
+  
+  #Add on the two human trafficking
+  der_human_trafficking_sex = fcase(
+    trim_upcase(offense_code) %in% c("64A"), 1, #64A	Human Trafficking, Commercial Sex Acts
+    default = 0),
+
+  der_human_trafficking_labor = fcase(
+    trim_upcase(offense_code) %in% c("64B"), 1, #64B	Human Trafficking, Involuntary Servitude
+    default = 0) 
+  
+  )
+    
+  return(returndata)
+  
+}
+
+
+recode_weapon <- function(data){
+  
+  returndata <- data %>%
+    mutate(
+
+    der_weapon_recode = fcase(
+
+      weapon_code == "01", NA_character_, #Unarmed:  Missing
+      weapon_code == "11", "firearm", #Firearm:  Firearms
+      weapon_code == "12", "firearm", #Handgun:  Firearms
+      weapon_code == "13", "firearm", #Rifle:  Firearms
+      weapon_code == "14", "firearm", #Shotgun:  Firearms
+      weapon_code == "15", "firearm", #Other Firearm:  Firearms
+      weapon_code == "16", NA_character_, #Lethal Cutting Instrument:  Missing
+      weapon_code == "17", NA_character_, #Club/Blackjack/Brass Knuckles:  Missing
+      weapon_code == "20", "knife", #Knife/Cutting Instrument:  Knives and other cutting instruments
+      weapon_code == "30", "other", #Blunt Object:  Other Dangerous Weapon
+      weapon_code == "35", "other", #Motor Vehicle/Vessel:  Other Dangerous Weapon
+      weapon_code == "40", "hand_fist_feet", #Personal Weapons:  Hands, Fists, Feet
+      weapon_code == "50", "other", #Poison:  Other Dangerous Weapon
+      weapon_code == "60", "other", #Explosives:  Other Dangerous Weapon
+      weapon_code == "65", "other", #Fire/Incendiary Device:  Other Dangerous Weapon
+      weapon_code == "70", "other", #Drugs/Narcotics/Sleeping Pills:  Other Dangerous Weapon
+      weapon_code == "85", "other", #Asphyxiation:  Other Dangerous Weapon
+      weapon_code == "90", "other", #Other:  Other Dangerous Weapon
+      weapon_code == "95", "other", #Unknown:  Other Dangerous Weapon
+      weapon_code == "99", "hand_fist_feet", #None:  Hands, Fists, Feet
+      weapon_code == "11A", "firearm", #Firearm (Automatic):  Firearms
+      weapon_code == "12A", "firearm", #Handgun (Automatic):  Firearms
+      weapon_code == "13A", "firearm", #Rifle (Automatic):  Firearms
+      weapon_code == "14A", "firearm", #Shotgun (Automatic):  Firearms
+      weapon_code == "15A", "firearm", #Other Firearm (Automatic):  Firearms
+      weapon_code == "55", NA_character_, #Pushed or Thrown Out Window:  Missing
+      weapon_code == "75", NA_character_, #Drowning:  Missing
+      weapon_code == "80", NA_character_, #Strangulation - Include Hanging:  Missing
+    
+        
+      default = NA_character_),
+    
+  der_weapon_recode2 = fcase(
+        
+  weapon_code == "01", "other", #Unarmed:  Missing
+  weapon_code == "11", "other", #Firearm:  Other Dangerous Weapon
+  weapon_code == "12", "other", #Handgun:  Other Dangerous Weapon
+  weapon_code == "13", "other", #Rifle:  Other Dangerous Weapon
+  weapon_code == "14", "other", #Shotgun:  Other Dangerous Weapon
+  weapon_code == "15", "other", #Other Firearm:  Other Dangerous Weapon
+  weapon_code == "16", "other", #Lethal Cutting Instrument:  Other Dangerous Weapon
+  weapon_code == "17", "other", #Club/Blackjack/Brass Knuckles:  Other Dangerous Weapon
+  weapon_code == "20", "other", #Knife/Cutting Instrument:  Other Dangerous Weapon
+  weapon_code == "30", "other", #Blunt Object:  Other Dangerous Weapon
+  weapon_code == "35", "other", #Motor Vehicle/Vessel:  Other Dangerous Weapon
+  weapon_code == "40", "non_aggravated", #Personal Weapons:  Non-Aggravated
+  weapon_code == "50", "other", #Poison:  Other Dangerous Weapon
+  weapon_code == "60", "other", #Explosives:  Other Dangerous Weapon
+  weapon_code == "65", "other", #Fire/Incendiary Device:  Other Dangerous Weapon
+  weapon_code == "70", "other", #Drugs/Narcotics/Sleeping Pills:  Other Dangerous Weapon
+  weapon_code == "85", "other", #Asphyxiation:  Other Dangerous Weapon
+  weapon_code == "90", "non_aggravated", #Other:  Non-Aggravated
+  weapon_code == "95", "non_aggravated", #Unknown:  Non-Aggravated
+  weapon_code == "99", "non_aggravated", #None:  Non-Aggravated
+  weapon_code == "11A", "other", #Firearm (Automatic):  Other Dangerous Weapon
+  weapon_code == "12A", "other", #Handgun (Automatic):  Other Dangerous Weapon
+  weapon_code == "13A", "other", #Rifle (Automatic):  Other Dangerous Weapon
+  weapon_code == "14A", "other", #Shotgun (Automatic):  Other Dangerous Weapon
+  weapon_code == "15A", "other", #Other Firearm (Automatic):  Other Dangerous Weapon
+  weapon_code == "55", "other", #Pushed or Thrown Out Window:  Other Dangerous Weapon
+  weapon_code == "75", "other", #Drowning:  Other Dangerous Weapon
+  weapon_code == "80", "other", #Strangulation - Include Hanging:  Other Dangerous Weapon
+    
+      default = "other")    
+    
+    )
+      
+  return(returndata)    
+}
+
+#Create any missing variables after transposing and assign value of 0
+
+generatemissingvarsaftertranspose <- function(indata, inlist){
+
+  #Create the indataset
+  indataset <- indata
+  
+  #Create the variable names
+  
+  raw_1 <- colnames(indataset) %>%
+    as_tibble()
+  
+  #See the list of variables
+  raw_2 <- inlist %>% as_tibble() %>%
+    anti_join(raw_1, by="value")
+    
+  #If there are missings
+  if(nrow(raw_2) > 0 ) {
+    
+    #Loop thru the dataset raw_2
+    for(i in 1:nrow(raw_2)){
+      
+    #Print to the log
+    print(paste0("Creating variable:  ", raw_2[i,"value"] ))
+    
+    #Get the current variable
+    invarsym <- raw_2[i,"value"] %>% pull() %>% rlang:::parse_expr()
+    
+    #Overwrite the dataset
+    indataset <- indataset %>%
+      #Generate all zeros
+      mutate(!!invarsym := 0)
+    
+    #Delete the current invarsym
+    rm(invarsym)
+    invisible(gc())
+    
+    }
+    
+  }
+  
+  #Return the data
+  return(indataset)
+}
+
+#Create list of variables to create
+CONST_RAPE_VARS <- c(
+  
+  "rape_sex_F_A", 
+  "rape_sex_F_C", 
+  "rape_sex_M_A", 
+  "rape_sex_M_C",  
+  "rape_sex_U_A", 
+  "rape_sex_U_C"
+  
+  
+)
+
+CONST_ROBBERY_VARS <- c(
+
+  "robbery_firearm",
+  "robbery_hand_fist_feet",
+  "robbery_knife",
+  "robbery_other"
+)
+
+CONST_AGG_ASSAULT_FIREARM_VARS <- c(
+
+  "agg_assault_firearm",
+  "agg_assault_hand_fist_feet",
+  "agg_assault_knife",
+  "agg_assault_other",
+  "aggravated_assault_victim_count"
+
+)
+
+CONST_AGG_ASSAULT_AGGRAVATED_VARS <- c(
+
+  "assault_non_aggravated",
+  "assault_victim_count"
+
+)
+
+CONST_NM_VARS <- c(
+  "nm_motor_vehicle",
+  "nm_not_motor_vehicle"
+)				   
+
+
+```
+
+
+```{r}
+
+# filter queries by state and year
+state_year_where <- paste0("EXTRACT(YEAR FROM incident_date) = ", CONST_YEAR," AND agencies.state_abbr = '", CONST_STATE,"'")
+
+###############Process one state at a time#######################
+
+log_debug(paste0("STATE: ", CONST_STATE))
+
+####################################################################
+
+
+#Dataset for offenses
+query1 <- paste0("
+ SELECT 
+  agencies.ori,
+  agencies.legacy_ori,
+  EXTRACT(year from nibrs_incident.incident_date) as data_year,
+  nibrs_incident.incident_id,
+  agencies.agency_status,
+  agencies.covered_flag,
+  agencies.dormant_flag,
+  agencies.agency_type_name,
+  agencies.state_id,
+  agencies.state_name,
+  agencies.state_abbr,
+  agencies.state_postal_abbr,
+  agencies.nibrs_start_date,
+  nibrs_offense.offense_id,
+  nibrs_offense.offense_code,
+  lkup_nibrs_offense.name AS offense_name,
+  lkup_nibrs_offense.crime_against,
+  lkup_nibrs_offense.category_name AS offense_category_name,
+  lkup_nibrs_offense.offense_group,
+  nibrs_offense.attempt_complete_code AS attempt_complete_code,
+  nibrs_offense.attempt_complete_code AS attempt_complete_flag,
+  nibrs_incident.incident_date AS incident_date,
+  EXTRACT(year from nibrs_incident.incident_date) as incident_year,
+  EXTRACT(month from nibrs_incident.incident_date) as incident_month,
+  nibrs_offense.location_code,
+  lkup_nibrs_offense.name AS location_name,
+  nibrs_offense.method_of_entry_code,
+  CASE
+      WHEN nibrs_offense.method_of_entry_code IS NULL THEN ' '::bpchar
+      ELSE nibrs_offense.method_of_entry_code
+  END AS method_entry_code,
+  nibrs_offense.num_premises_entered
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    CASE
+        WHEN ref_agency_yearly.is_covered IS TRUE THEN 'Y'::text
+        WHEN ref_agency_yearly.is_covered IS FALSE THEN 'N'::text
+        ELSE ' '::text
+    END AS covered_flag,
+    CASE
+        WHEN ref_agency_yearly.agency_status = 'D'::bpchar THEN 'Y'::text
+        ELSE 'N'::text
+    END AS dormant_flag,
+    ref_agency.nibrs_start_date,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr,
+    ref_agency_yearly.population,
+    ref_agency_type.name AS agency_type_name
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	  LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	  LEFT JOIN ucr_prd.ref_state USING (state_id)
+	  LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  LEFT JOIN ucr_prd.ref_agency_type USING (agency_type_id)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE
+  ) agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) AND (EXTRACT(year from nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_offense USING (incident_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+ WHERE ", state_year_where)
+
+              
+df1 <- time_query(con, query1)
+
+log_dim(df1)
+
+#Use the function to recode all offenses
+df1_1 <- df1 %>%
+  offense_recode() %>%
+  mutate(
+    keep_attempt_completed_offense = fcase(
+      trim_upcase(attempt_complete_flag) %in% c("A", "C"), 1,
+      default = 0),
+    
+    keep_attempt_offense = fcase(
+      trim_upcase(attempt_complete_flag) %in% c("A"), 1,
+      default = 0),
+    
+    keep_completed_offense = fcase(
+      trim_upcase(attempt_complete_flag) %in% c("C"), 1,
+      default = 0),
+    
+    keep_method_entry_code_force = fcase(
+      trim_upcase(method_entry_code) %in% c("F"), 1,
+      default = 0),
+    
+    keep_method_entry_code_noforce = fcase(
+      trim_upcase(method_entry_code) %in% c("N"), 1,
+      default = 0),
+    
+  # -	Count:
+  # .	If the location was a Rental Storage Facility and they entered at least 1 premises, count the number of premises entered
+  # .	Otherwise count as 1
+    
+    keep_burglary_num_premises_entered = fcase(
+      #19	Rental Storage Facility
+      location_code == "19" & !is.na(num_premises_entered), num_premises_entered,
+      default = 1)
+    
+    )
+
+#Check the recodes
+df1_1 %>% checkfunction(der_murder_non_neg_manslaughter, crime_against, offense_code, offense_name)
+df1_1 %>% checkfunction(der_neg_manslaughter, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_collapse_rape, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_robbery, crime_against, offense_code, offense_name)
+df1_1 %>% checkfunction(der_aggravated_assault, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_collapse_simple_assault, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_burglary_b_e, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_collapse_theft, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_motor_vehicle_theft, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_human_trafficking_sex, crime_against, offense_code, offense_name)
+df1_1 %>% checkfunction(der_human_trafficking_labor, crime_against, offense_code, offense_name)
+
+df1_1 %>% checkfunction(der_motor_vehicle_theft_attempt, crime_against, offense_code, offense_name, attempt_complete_flag)
+df1_1 %>% checkfunction(der_motor_vehicle_theft_complete, crime_against, offense_code, offense_name, attempt_complete_flag)
+
+df1_1 %>% checkfunction(keep_attempt_completed_offense, attempt_complete_flag)
+df1_1 %>% checkfunction(keep_attempt_completed_offense, attempt_complete_flag, attempt_complete_code)
+
+df1_1 %>% checkfunction(keep_attempt_offense, attempt_complete_flag)
+df1_1 %>% checkfunction(keep_completed_offense, attempt_complete_flag)
+
+df1_1 %>% checkfunction(keep_method_entry_code_force, method_entry_code)
+df1_1 %>% checkfunction(keep_method_entry_code_noforce, method_entry_code)
+
+df1_1 %>% checkfunction(keep_burglary_num_premises_entered, location_code, location_name, num_premises_entered)
+
+
+#Drop any offenses that are not completed or attempted
+df1_2 <- df1_1 %>%
+  filter(keep_attempt_completed_offense == 1)
+
+log_dim(df1_2)
+log_dim(df1_1)
+
+df1_2 %>% checkfunction(keep_attempt_completed_offense, attempt_complete_flag, attempt_complete_code)
+
+#Loop thru and create summary variables at the incident level using the "der_" offense codes
+glimpse(df1_2)
+
+#Create the incident level variables to detect offenses
+df1_3 <- df1_2 %>%
+  group_by(ori, legacy_ori, nibrs_start_date, incident_id, incident_month, incident_year, attempt_complete_code) %>%
+  summarise(
+    
+    across(.cols = starts_with("der_"),
+           .fns = ~{
+             
+             fcase( any(.x == 1), 1,
+                    default= 0)
+           },
+           .names = "inc_{.col}"
+           )) %>%
+  ungroup()
+
+#Output data to the share
+log_dim(df1_2)
+log_dim(df1_3)
+
+#Note this dataset is at the incident level
+df1_3 %>% 
+  write_csv(gzfile(paste0(filepathout,"raw_all_incidents_", CONST_STATE ,".csv.gz")), na="")
+
+#Next need to use the Offense dataset for burglary
+#Use dataset df1_1 that have latest offense recodes
+df1_4 <- df1_1 %>%
+    #Filter to burglary
+    filter(der_burglary_b_e == 1) %>%
+    #Note only one location type for each offense
+    #19	Rental Storage Facility
+  
+#-	Classify:
+# .	If the offense was completed, stratify by forcible entry or non-forcible entry
+# .	If the offense was attempted, count as "attempted forcible burglary"
+# .	If there was no entry code (F or N) or no attempted/completed flag, skip the incident
+# -	Count:
+# .	If the location was a Rental Storage Facility and they entered at least 1 premises, count the number of premises entered
+# .	Otherwise count as 1
+  
+    mutate(
+      classify_burglary_b_e = fcase(
+        keep_attempt_offense == 1,  "attempted",
+        keep_completed_offense == 1 & keep_method_entry_code_force,   "force",
+        keep_completed_offense == 1 & keep_method_entry_code_noforce, "noforce")
+)
+
+#Check the recodes
+df1_4 %>% checkfunction(classify_burglary_b_e, keep_attempt_offense, keep_completed_offense, keep_method_entry_code_force, keep_method_entry_code_noforce)
+
+#Need to output file 
+#Note this is at the incident level since we subset to der_burglary_b_e
+df1_4 %>%
+  select(incident_id, classify_burglary_b_e, keep_burglary_num_premises_entered, location_code, location_name, num_premises_entered) %>%
+  write_csv(gzfile(paste0(filepathout,"agg_inc_burlglary_completed_force_num_entry_", CONST_STATE ,".csv.gz")), na="")
+ 
+
+#Need a attempt flag for mvt
+df1_5 <- df1_1 %>%
+  #Filter to mvt offenses
+  filter(der_motor_vehicle_theft == 1) %>%
+  select(incident_id, 
+         mvt_keep_attempt_offense   = keep_attempt_offense,  
+         mvt_keep_completed_offense = keep_completed_offense)
+
+glimpse(df1_5)
+
+#Note this dataset is at the incident level subset to mvt
+df1_5 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_inc_mvt_att_comp_flags_", CONST_STATE ,".csv.gz")), na="")
+
+
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+#Next need to add up the victim counts
+
+#Dataset for offenses level by merging victim offenses table
+
+query1_2 <- paste0("
+ SELECT
+  agencies.ori,
+  agencies.legacy_ori,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id AS incident_id,
+  nibrs_incident.incident_date AS incident_date,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS incident_year,
+  EXTRACT(month FROM nibrs_incident.incident_date) AS incident_month,
+  agencies.agency_status,
+  agencies.covered_flag,
+  agencies.dormant_flag,
+  agencies.agency_type_name,
+  nibrs_victim.victim_id,
+  nibrs_victim.victim_type_code,
+  lkup_nibrs_victim_type.name AS victim_type_name,
+  CASE
+       WHEN nibrs_victim.sex_code = 'X'::bpchar THEN ' '::bpchar
+       ELSE nibrs_victim.sex_code
+  END AS sex_code,
+  nibrs_offense.offense_id,
+  agencies.state_id AS state_id,
+  agencies.state_name AS state_name,
+  agencies.state_abbr AS state_abbr,
+  agencies.state_postal_abbr AS state_postal_abbr,
+  nibrs_offense.offense_code,
+  lkup_nibrs_offense.name AS offense_name,
+  lkup_nibrs_offense.crime_against,
+  lkup_nibrs_offense.category_name AS offense_category_name,
+  lkup_nibrs_offense.offense_group,
+  nibrs_offense.attempt_complete_code AS attempt_complete_code,
+  nibrs_offense.attempt_complete_code AS attempt_complete_flag
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    CASE
+        WHEN ref_agency_yearly.is_covered IS TRUE THEN 'Y'::text
+        WHEN ref_agency_yearly.is_covered IS FALSE THEN 'N'::text
+        ELSE ' '::text
+    END AS covered_flag,
+    CASE
+        WHEN ref_agency_yearly.agency_status = 'D'::bpchar THEN 'Y'::text
+        ELSE 'N'::text
+    END AS dormant_flag,
+    ref_agency.nibrs_start_date,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr,
+    ref_agency_yearly.population,
+    ref_agency_type.name AS agency_type_name
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	  LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	  LEFT JOIN ucr_prd.ref_state USING (state_id)
+	  LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  LEFT JOIN ucr_prd.ref_agency_type USING (agency_type_id)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE
+  ) agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) AND (EXTRACT(year from nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim USING (incident_id)
+  LEFT JOIN ucr_prd.nibrs_victim_offense USING (victim_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_victim_type USING (victim_type_code)
+  LEFT JOIN ucr_prd.nibrs_offense USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+ WHERE ", state_year_where)
+
+
+df1_2<- time_query(con, query1_2)
+
+log_dim(df1_2)
+
+df1_2 %>% checkfunction(victim_type_code, victim_type_name)
+
+#Subset to Person victims
+df1_2_1 <- df1_2 %>%
+  #"I" = Individual and "L"  =Law Enforcement Officers
+  filter(victim_type_code %in% c("I","L"))
+
+
+#Next count the number of victims for murder
+df1_2_2 <- df1_2_1 %>%
+  filter(trim_upcase(offense_code) %in% c("09A")) %>% #09A	Murder and Nonnegligent Manslaughter
+  #Make sure we have unique person
+  count(incident_id, victim_id) %>%
+  #Count number of victims at incident level
+  group_by(incident_id) %>%
+  summarise(der_victim_person_counts = n() ) %>% 
+  ungroup()
+
+#Output number of murder victims
+df1_2_2 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_victim_murder_person_counts_", CONST_STATE ,".csv.gz")), na="")
+
+
+#Next count the number of victims for Negligent Manslaughter
+df1_2_2_nm <- df1_2_1 %>%
+  filter(trim_upcase(offense_code) %in% c("09B")) %>% #09B	Negligent Manslaughter
+  #Make sure we have unique person
+  count(incident_id, victim_id) %>%  
+  #Count number of victims at incident level
+  group_by(incident_id) %>%
+  summarise(der_victim_person_counts = n() ) %>% 
+  ungroup()
+
+#Output number of murder victims
+df1_2_2_nm %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_victim_nm_person_counts_", CONST_STATE ,".csv.gz")), na="")
+
+
+#See the gender
+df1_2_1 %>%
+  checkfunction(sex_code)
+
+#Next count the number of victims by gender for Rape
+df1_2_2 <- df1_2_1 %>%
+  filter(trim_upcase(offense_code) %in% c("11A", "11B", "11C")) %>% #Filter to Rape offenses
+  #Make sure we have male and female only
+  #Edit on 20230719, add on the unknown code
+  filter(trim_upcase(sex_code) %in% c("M", "F", "U")) %>%
+  #Make sure we have unique person and by complete status
+  count(incident_id, victim_id, attempt_complete_flag, sex_code) %>%
+  #Some victims may have multiple attempt_complete_flag, if so keep the completed one and drop the attempted
+  group_by(incident_id, victim_id) %>%
+  mutate(der_victim_in_incident = n() ) %>%
+  ungroup() %>%
+  #Code to keep one record
+  mutate(der_keep_record = fcase(
+    #Keep if only one record
+    der_victim_in_incident == 1, 1,
+    #Else if more than one, keep the completed case
+    der_victim_in_incident > 1 & trim_upcase(attempt_complete_flag) == "C", 1,
+    #Else drop
+    default = 0)) %>%
+  #Keep one record
+  filter(der_keep_record == 1) %>%
+  #Do the stratification
+  group_by(incident_id, attempt_complete_flag, sex_code) %>%
+  summarise(count = n() ) %>% 
+  ungroup()
+
+#Spread the data - Need completed or attempted by gender
+df1_2_3 <- df1_2_2 %>%
+  mutate(new_sex_var = paste0("rape_sex_", sex_code, "_", attempt_complete_flag) ) %>%
+  select(-sex_code, -attempt_complete_flag) %>%
+  spread(new_sex_var, count) %>%
+  #Fill in any NA with zeros
+  mutate(
+    
+    across(.cols = starts_with("rape_sex_"),
+           .fns = ~{
+             
+             replace_na(.x, 0)
+             
+           },
+           .names = "{.col}"
+           )
+    
+  )
+
+#See the output 
+glimpse(df1_2_3)
+
+#Make sure that the variables are created and zero filled
+df1_2_3 <- generatemissingvarsaftertranspose(indata=df1_2_3, inlist=CONST_RAPE_VARS)
+
+#Output the rape output
+df1_2_3 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_victim_rape_gender_completed_person_counts_", CONST_STATE ,".csv.gz")), na="")
+
+#Next count the number of victims for human_trafficking_sex
+df1_2_4 <- df1_2_1 %>%
+  filter(trim_upcase(offense_code) %in% c("64A")) %>% #64A	Human Trafficking, Commercial Sex Acts
+  #Make sure we have unique person
+  count(incident_id, victim_id) %>%
+  #Count number of victims at incident level
+  group_by(incident_id) %>%
+  summarise(der_victim_person_counts = n() ) %>% 
+  ungroup()
+
+#Output the human_trafficking_sex output
+df1_2_4 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_victim_human_trafficking_sex_person_counts_", CONST_STATE ,".csv.gz")), na="")
+
+
+#Next count the number of victims for human_trafficking_labor
+df1_2_5 <- df1_2_1 %>%
+  filter(trim_upcase(offense_code) %in% c("64B")) %>% #64B	Human Trafficking, Involuntary Servitude
+  #Make sure we have unique person
+  count(incident_id, victim_id) %>%
+  #Count number of victims at incident level
+  group_by(incident_id) %>%
+  summarise(der_victim_person_counts = n() ) %>% 
+  ungroup()
+
+#Output the human_trafficking_sex output
+df1_2_5 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_victim_human_trafficking_labor_person_counts_", CONST_STATE ,".csv.gz")), na="")
+
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+
+#Need type of force recodes
+#Dataset for Weapon
+
+query_2 <- paste0("
+ SELECT 
+  agencies.ori,
+  EXTRACT(year from nibrs_incident.incident_date) as data_year,
+  nibrs_incident.incident_id AS incident_id,
+  nibrs_offense.attempt_complete_code AS attempt_complete_code,
+  nibrs_incident.incident_date AS incident_date,
+  EXTRACT(month from nibrs_incident.incident_date) as incident_month,
+  agencies.state_id,
+  agencies.state_name,
+  agencies.state_abbr,
+  agencies.state_postal_abbr,
+  nibrs_offense_weapon.weapon_code,
+  lkup_weapon.name AS weapon_name,
+  nibrs_offense.offense_id,
+  nibrs_offense.offense_code,
+  lkup_nibrs_offense.name AS offense_name,
+  lkup_nibrs_offense.crime_against,
+  lkup_nibrs_offense.category_name AS offense_category_name,
+  lkup_nibrs_offense.offense_group
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr,
+    ref_agency_yearly.population
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	  LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	  LEFT JOIN ucr_prd.ref_state USING (state_id)
+	  LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE
+  ) agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) AND (EXTRACT(year from nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_offense USING (incident_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+  LEFT JOIN ucr_prd.nibrs_offense_weapon USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_weapon USING (weapon_code)
+ WHERE ", state_year_where)
+
+df2  <- time_query(con, query_2)
+
+#See the weapon list
+df2 %>% checkfunction(weapon_code, weapon_name)
+
+#Recode the weapon
+df2_1 <- df2 %>%
+  recode_weapon()
+
+#Check the recodes
+df2_1 %>% checkfunction(der_weapon_recode, weapon_code, weapon_name)
+
+#Next need to create indicator at the incident level
+df2_2 <- df2_1 %>%
+  #Filter to offense of robbery
+  filter(trim_upcase(offense_code) %in% c("120")) %>% #120 - Robbery
+  #Create new variable
+  mutate(new_var = paste0("robbery_", der_weapon_recode),
+         one = 1) %>%
+  #Need to create summary of weapon at incident level
+  group_by(incident_id, new_var) %>%
+  summarise(count = sum(one)) %>%
+  ungroup() %>%
+  #Transpose the dataset
+  select(incident_id, new_var, count) %>%
+  spread(key=new_var, value=count) %>%
+  #Need to fill in the missing with 0
+  mutate(
+    
+    across(.cols = starts_with("robbery_"),
+           .fns = ~{
+             
+             replace_na(.x, 0)
+             
+           },
+           .names = "{.col}"
+           )    
+    
+    
+  )
+  
+  #See the output data
+  glimpse(df2_2)
+  
+  #Make sure variables are created
+  df2_2 <- generatemissingvarsaftertranspose(indata=df2_2, inlist=CONST_ROBBERY_VARS )  
+
+  #Output to share
+  df2_2 %>% 
+    write_csv(gzfile(paste0(filepathout,"agg_robbery_weapons_", CONST_STATE ,".csv.gz")), na="")
+
+  #Clear the objects and free up memory
+  cleanup_memory()  
+  
+#Need type of force recodes for person crimes - Assault and Other assault
+#Note the Victim segment have been merge on to get the number of person victims
+#Dataset for Weapon
+
+query_2 <- paste0("
+ SELECT 
+  agencies.ori,
+  EXTRACT(year from nibrs_incident.incident_date) as data_year,
+  nibrs_incident.incident_id AS incident_id,
+  EXTRACT(year from nibrs_incident.incident_date) as incident_year,
+  EXTRACT(month from nibrs_incident.incident_date) as incident_month,
+  agencies.state_id,
+  agencies.state_name,
+  agencies.state_abbr,
+  agencies.state_postal_abbr,
+  nibrs_offense_weapon.weapon_code,
+  lkup_weapon.name AS weapon_name,
+  nibrs_offense.offense_id,
+  nibrs_offense.offense_code,
+  lkup_nibrs_offense.name AS offense_name,
+  lkup_nibrs_offense.crime_against,
+  lkup_nibrs_offense.category_name AS offense_category_name,
+  lkup_nibrs_offense.offense_group,
+  nibrs_victim.victim_id,
+  nibrs_victim.victim_type_code,
+  lkup_nibrs_victim_type.name AS victim_type_name,
+  CASE
+       WHEN nibrs_victim.sex_code = 'X'::bpchar THEN ' '::bpchar
+       ELSE nibrs_victim.sex_code
+  END AS sex_code
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr,
+    ref_agency_yearly.population
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	  LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	  LEFT JOIN ucr_prd.ref_state USING (state_id)
+	  LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE
+  ) agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) AND (EXTRACT(year from nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim USING (incident_id)
+  LEFT JOIN ucr_prd.nibrs_victim_offense USING (victim_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_victim_type USING (victim_type_code)
+  LEFT JOIN ucr_prd.nibrs_offense USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+  LEFT JOIN ucr_prd.nibrs_offense_weapon USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_weapon USING (weapon_code)  
+ WHERE ", state_year_where)
+
+df2 <- time_query(con, query_2)
+
+#Need to subset to person victims
+df2_1 <- df2 %>%
+  #"I" = Individual and "L"  =Law Enforcement Officers
+  filter(victim_type_code %in% c("I","L"))
+
+#See the size of the datasets
+dim(df2_1)
+dim(df2)
+
+df2_1 %>% checkfunction(victim_type_code, victim_type_name)
+
+
+#Recode the weapon
+df2_2 <- df2_1 %>%
+  recode_weapon()
+
+#Check the recodes
+df2_2 %>% checkfunction(der_weapon_recode, weapon_code, weapon_name)
+df2_2 %>% checkfunction(der_weapon_recode2, weapon_code, weapon_name)
+
+#Next need to create indicator at the incident level
+df2_3 <- df2_2 %>%
+  #Filter to offense of Assault
+  filter(trim_upcase(offense_code) %in% c("13A")) #13A	Aggravated Assault
+  #Need to create indicators of how many victim person in an incident and whether the incident contains weapons
+  
+df2_3 %>% checkfunction(offense_code, offense_name)
+
+#Get the person counts for Aggravated Assault
+df2_3_person <- df2_3 %>%
+  #Deduplicate the ids
+  count(incident_id, victim_id) %>%
+  #Now at the incident and victim level data - count the number of victims
+  group_by(incident_id) %>%
+  summarise(aggravated_assault_victim_count = n() ) %>%
+  ungroup()
+
+#See which weapons are involved
+df2_3_weapon <- df2_3 %>%
+  #Deduplicate the ids
+  count(incident_id, der_weapon_recode) %>%
+  mutate(new_var = paste0("agg_assault_", der_weapon_recode) ) %>%
+  select(incident_id, new_var, n) %>% 
+  spread(new_var, n) %>%
+  #Zero filled the variables
+  mutate(
+    
+    #Fix the aggregated assault
+    across(.cols = starts_with("agg_assault_"),
+           .fns = ~{
+             
+             replace_na(.x, 0)
+             
+           },
+           .names = "{.col}"
+           )        
+    
+    
+  )
+  
+#Merge the two files together
+df2_4 <- full_join(df2_3_weapon,
+                   df2_3_person, by = "incident_id")
+
+#See the output
+dim(df2_4)
+dim(df2_3_weapon)
+dim(df2_3_person)
+  
+#See the dataset
+glimpse(df2_4)
+
+#Make sure variables are created
+df2_4 <- generatemissingvarsaftertranspose(indata=df2_4, inlist=CONST_AGG_ASSAULT_FIREARM_VARS )
+
+#Output to share
+df2_4 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_agg_assault_weapon_victim_count_", CONST_STATE ,".csv.gz")), na="")
+
+#Clear some objects
+#Keep df2_2 since we need to use this for assault 
+
+rm(df2, df2_1, df2_3, df2_3_person, df2_3_weapon, df2_4, df2_list)
+invisible(gc())
+
+
+
+#Next need to create indicator at the incident level
+df2_3 <- df2_2 %>%
+  #Filter to offense of Assault
+  filter(trim_upcase(offense_code) %in% c("13B", "13C")) #13B	Simple Assault, 13C	Intimidation
+  #Need to create indicators of how many victim person in an incident and whether the incident contains weapons
+  
+df2_3 %>% checkfunction(offense_code, offense_name)
+
+#Get the person counts for Assault
+df2_3_person <- df2_3 %>%
+  #Deduplicate the ids
+  count(incident_id, victim_id) %>%
+  #Now at the incident and victim level data - count the number of victims
+  group_by(incident_id) %>%
+  summarise(assault_victim_count = n() ) %>%
+  ungroup()
+
+#See which weapons are involved
+df2_3_weapon <- df2_3 %>%
+  #Deduplicate the ids
+  count(incident_id, der_weapon_recode2) %>%
+  mutate(new_var = paste0("assault_", der_weapon_recode2) ) %>%
+  select(incident_id, new_var, n) %>% 
+  spread(new_var, n) %>%
+  #Zero filled the variables
+  mutate(
+    
+    #Fix the aggregated assault
+    across(.cols = starts_with("assault_"),
+           .fns = ~{
+             
+             replace_na(.x, 0)
+             
+           },
+           .names = "{.col}"
+           )        
+    
+    
+  )
+  
+#Merge the two files together
+df2_4 <- full_join(df2_3_weapon,
+                   df2_3_person, by = "incident_id")
+
+#See the output
+log_dim(df2_4)
+log_dim(df2_3_weapon)
+log_dim(df2_3_person)
+  
+#See the dataset
+glimpse(df2_4)
+
+#Make sure variables are created 
+df2_4 <- generatemissingvarsaftertranspose(indata=df2_4, inlist=CONST_AGG_ASSAULT_AGGRAVATED_VARS )
+
+#Output to share
+df2_4 %>% 
+  write_csv(gzfile(paste0(filepathout,"agg_assault_weapon_victim_count_", CONST_STATE ,".csv.gz")), na="")
+
+#Need to delete objects
+rm(df2, df2_1, df2_3, df2_3_person, df2_3_weapon, df2_4, df2_list)
+invisible(gc())
+
+									 
+#Next need to create indicator at the incident level
+df2_3 <- df2_2 %>%
+  #Filter to offense of Negligent Manslaughter
+  filter(trim_upcase(offense_code) %in% c("09B")) %>%  #09B	Negligent Manslaughter
+  #Create the weapon recode
+  mutate(
+    der_weapon_motor_vehicle = fcase(
+      weapon_code == "35", "motor_vehicle", #Motor Vehicle/Vessel,
+      default = "not_motor_vehicle"
+    )
+  )
+  #Need to create indicators of how many victim person in an incident and whether the incident contains weapons
+  
+df2_3 %>% checkfunction(offense_code, offense_name)
+df2_3 %>% checkfunction(der_weapon_motor_vehicle, weapon_code, weapon_name)
+
+#Get the person counts for Negligent Manslaughter
+df2_3_person <- df2_3 %>%
+  #Deduplicate the ids
+  count(incident_id, victim_id)
+
+
+#See which weapons are involved
+df2_3_weapon <- df2_3 %>%
+  #Deduplicate the ids
+  count(incident_id, victim_id, der_weapon_motor_vehicle) %>%
+  mutate(new_var = paste0("nm_", der_weapon_motor_vehicle) ) %>%
+  select(incident_id, victim_id, new_var, n) %>% 
+  spread(new_var, n) %>%
+  #Zero filled the variables
+  mutate(
+    
+    #Fix the Negligent Manslaughter
+    across(.cols = starts_with("nm_"),
+           .fns = ~{
+             
+             replace_na(.x, 0)
+             
+           },
+           .names = "{.col}"
+           )        
+    
+    
+  )
+  
+#Merge the two files together
+df2_4 <- full_join(df2_3_weapon,
+                   df2_3_person, by = c("incident_id", "victim_id"))
+
+#See the output
+log_dim(df2_4)
+log_dim(df2_3_weapon)
+log_dim(df2_3_person)
+  
+#See the dataset
+glimpse(df2_4)
+
+#Make sure variables are created 
+df2_4 <- generatemissingvarsaftertranspose(indata=df2_4, inlist=CONST_NM_VARS )
+
+#Output to share
+df2_4 %>% 
+  select(-n) %>%
+  write_csv(gzfile(paste0(filepathout,"agg_nm_mv_victim_", CONST_STATE ,".csv.gz")), na="")
+
+#Clear the objects and free up memory
+cleanup_memory()   
+```
+
+```{r, echo=FALSE}
+dbDisconnect(con)
+```
+

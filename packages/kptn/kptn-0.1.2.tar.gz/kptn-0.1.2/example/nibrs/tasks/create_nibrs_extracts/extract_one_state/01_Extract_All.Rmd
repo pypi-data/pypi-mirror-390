@@ -1,0 +1,831 @@
+---
+title: "Extract All NIBRS (By State)"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+This Markdown file extracts NIBRS data for use later in the pipeline. To reduce memory requirements, NIBRS data is extracted one state at a time. For each state, three compressed CSV outputs are generated: (1) offender known and victim is a person or law enforcement officer (01_STATE_ABBR_extract.csv.gz), (2) offender known and victim not a person or law enforcement officer (01_STATE_ABBR_victim_other_extract.csv.gz), and (3) offender unknown (01_STATE_ABBR_state_unknown_offenders_extract.csv.gz).
+## Load Data
+
+```{r}
+library(tidyverse)
+library(openxlsx)
+library(DT)
+library(lubridate)
+library(bit64)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+
+#Create a new function to trim and upcase to handle character variables
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+```
+
+
+```{r prg01}
+
+options(knit.duplicate.label = "allow")
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 100,000 rows to determine
+
+
+
+#Use the query from Tableau
+#2020-05-19:  Edit code to do a left join to keep all records and keep only Person and Property crimes
+#2020-05-20:  Edit code to add on nibrs_victim.victim_type_code in (4, 5) for 4=Individual and 5 = Law Enforcement Officers
+
+#Get the state
+
+#input_state <- as.character(input_state_in)
+#JDB: Replace?
+#input_state <- read_csv(paste0(outputPipelineDir, "/Current_State_to_process.csv")) %>% select(state)
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as environment variable")
+}
+
+#Process Offender and Arrestee
+#Data year - note: did find-replace of CONST_YEAR to DATA_YEAR
+DATA_YEAR <- Sys.getenv("DATA_YEAR")
+
+#Get raw data for offender
+raw_off <- read_csv(file=paste0(queried_data_path,"raw_offender_all_cols_", input_state, ".csv.gz"))  %>% 
+  select(incident_id, offender_id, incident_id_offender, offender_seq_num,
+         age_code_offender=offender_age_code, age_num_offender=offender_age_num, sex_code_offender, race_code_offender,
+         ethnicity_code_offender, age_range_low_num_offender, age_range_high_num_offender)
+
+#JDB: Proposed tests (based on AL unless noted):
+#># rows non-zero: nrow(raw_off)>0 ? Perhaps compare to prior year, e.g., if nonzero prior year should be nonzero current year, and/or [# rows prior year] <= [# rows current year] ?
+#>offender id should be unique: any(duplicated(raw_off$offender_id))==FALSE
+#>incident_id and incident_id_offender should be equal: all.equal(raw_off$incident_id,raw_off$incident_id_offender) [add on (?): '==TRUE']... also, do we really need to pull column 2x? If for merging, can we just create outside of SQL pull?
+#>Not sure what age_code==4 means, but always have age_num and age_range_[high|low]_num missing... what's difference b/w this and missing age_code (which also have missing other age vars)?
+#>Seems like if not missing age_num[_offender]: (1) age_range_low_num[_offender]==age_num[_offender] AND age_range_high_num[_offender]==0, OR  (2) age_range_low_num[_offender] < age_num[_offender] < age_range_high_num[_offender]
+#>sex_code[_offender]: no missing/NA values? For AL, we see mix of F, M, U... perhaps test that not all one value / not all U?
+#>race_code[_offender]: need to learn more about codes (e.g., 0 and 8 vs. NA)... perhaps not all missing/NA or not all same value?
+#>ethnicity_code_offender: need to learn more about codes... perhaps not all missing/NA or not all same value?
+
+#Get raw data for arrestee
+raw_arr <- read_csv(file=paste0(queried_data_path,"raw_arrestee_all_cols_",input_state,".csv.gz")) %>% 
+  select(-c(ori, data_year, state_id, state_name, state_abbr, state_postal_abbr))
+
+#JDB: potential tests for arrestees...
+#># rows non-zero: nrow(raw_off)>0 ? Perhaps compare to prior year, e.g., if nonzero prior year should be nonzero current year, and/or [# rows prior year] <= [# rows current year] ?
+#>arrestee id should be unique if not missing/NA: any(duplicated(raw_arr$arrestee_id %>% subset(!is.na(.))))==FALSE
+#>Again, do we need both incident_id and incident_id_arrestee?
+#
+```
+
+See the amount of records for offender and arrestee pulls
+```{r}
+log_debug("See the amount of records for offender and arrestee pulls")
+log_dim(raw_off)
+log_dim(raw_arr)
+```
+
+```{r}
+#Convert merging variables for same type
+raw_off <- raw_off %>%
+  mutate( incident_id = as.numeric(incident_id),
+          tbd_offender_seq_num = as.numeric(offender_seq_num),
+          tbd_age_code_offender = as.character(age_code_offender),
+          tbd_age_num_offender = as.numeric(age_num_offender),
+          tbd_sex_code_offender = trim_upcase(sex_code_offender),
+          tbd_race_code_offender = as.character(race_code_offender))
+
+log_dim(raw_off)
+raw_arr <- raw_arr %>%
+  mutate( incident_id = as.numeric(incident_id),
+          tbd_arrestee_seq_num = as.numeric(arrestee_seq_num),
+          tbd_age_code_arrestee = as.character(age_code_arrestee),
+          tbd_age_num_arrestee = as.numeric(age_num_arrestee),
+          tbd_sex_code_arrestee = trim_upcase(sex_code_arrestee),
+          tbd_race_code_arrestee = as.character(race_code_arrestee)) %>%
+  filter(arrestee_id != 0 & arrestee_seq_num != 0) #Remove the blank arrestee records
+log_dim(raw_arr)
+
+#Verified that missing can be merge if match
+#a)  Match by sequence number and the three demographic variables (sex, age, race). - Do not use ethnicity as mostly missing
+
+off_1 <- raw_off %>%
+  inner_join(raw_arr, by = c("incident_id" = "incident_id",
+                             "tbd_offender_seq_num" = "tbd_arrestee_seq_num",
+                             "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                             "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                             "tbd_sex_code_offender" = "tbd_sex_code_arrestee",
+                             "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_1 <- raw_off %>%
+  anti_join(raw_arr, by = c("incident_id" = "incident_id",
+                            "tbd_offender_seq_num" = "tbd_arrestee_seq_num",
+                            "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                            "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                            "tbd_sex_code_offender" = "tbd_sex_code_arrestee",
+                            "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+remain_arr_1 <- raw_arr %>%
+  anti_join(raw_off, by = c("incident_id" = "incident_id",
+                            "tbd_arrestee_seq_num" = "tbd_offender_seq_num",
+                            "tbd_age_code_arrestee" = "tbd_age_code_offender",
+                            "tbd_age_num_arrestee" = "tbd_age_num_offender",
+                            "tbd_sex_code_arrestee" = "tbd_sex_code_offender",
+                            "tbd_race_code_arrestee" = "tbd_race_code_offender"
+  ))
+
+
+#Check the size
+log_debug("Check the size of dataframes from chunk above: a)  Match by sequence number and the three demographic variables (sex, age, race). - Do not use ethnicity as mostly missing")
+log_dim(raw_off)
+log_dim(raw_arr)
+log_dim(off_1)
+log_dim(remain_off_1)
+log_dim(remain_arr_1)
+
+#b)  Match by three demographic variables (sex, age, race). - Do not use ethnicity as mostly missing and drop seq_num
+off_2 <- remain_off_1 %>%
+  inner_join(remain_arr_1, by = c("incident_id" = "incident_id",
+                                  "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                  "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                                  "tbd_sex_code_offender" = "tbd_sex_code_arrestee",
+                                  "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_2 <- remain_off_1 %>%
+  anti_join(remain_arr_1, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                 "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                                 "tbd_sex_code_offender" = "tbd_sex_code_arrestee",
+                                 "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+remain_arr_2 <- remain_arr_1 %>%
+  anti_join(remain_off_1, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_arrestee" = "tbd_age_code_offender",
+                                 "tbd_age_num_arrestee" = "tbd_age_num_offender",
+                                 "tbd_sex_code_arrestee" = "tbd_sex_code_offender",
+                                 "tbd_race_code_arrestee" = "tbd_race_code_offender"
+  ))
+
+```
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: b)  Match by three demographic variables (sex, age, race). - Do not use ethnicity as mostly missing and drop seq_num")
+log_dim(remain_off_1)
+log_dim(remain_arr_1)
+log_dim(off_2)
+log_dim(remain_off_2)
+log_dim(remain_arr_2)
+
+```
+
+```{r}
+#c)	Match by age and gender only - Drop Race
+off_3 <- remain_off_2 %>%
+  inner_join(remain_arr_2, by = c("incident_id" = "incident_id",
+                                  "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                  "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                                  "tbd_sex_code_offender" = "tbd_sex_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_3 <- remain_off_2 %>%
+  anti_join(remain_arr_2, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                 "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                                 "tbd_sex_code_offender" = "tbd_sex_code_arrestee"
+  ))
+
+
+remain_arr_3 <- remain_arr_2 %>%
+  anti_join(remain_off_2, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_arrestee" = "tbd_age_code_offender",
+                                 "tbd_age_num_arrestee" = "tbd_age_num_offender",
+                                 "tbd_sex_code_arrestee" = "tbd_sex_code_offender"
+  ))
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: c)	Match by age and gender only - Drop Race")
+log_dim(remain_off_2)
+log_dim(remain_arr_2)
+log_dim(off_3)
+log_dim(remain_off_3)
+log_dim(remain_arr_3)
+
+#d)  Match by age and race only - delete sex_code
+off_4 <- remain_off_3 %>%
+  inner_join(remain_arr_3, by = c("incident_id" = "incident_id",
+                                  "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                  "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                                  "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_4 <- remain_off_3 %>%
+  anti_join(remain_arr_3, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                 "tbd_age_num_offender" = "tbd_age_num_arrestee",
+                                 "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+remain_arr_4 <- remain_arr_3 %>%
+  anti_join(remain_off_3, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_arrestee" = "tbd_age_code_offender",
+                                 "tbd_age_num_arrestee" = "tbd_age_num_offender",
+                                 "tbd_race_code_arrestee" = "tbd_race_code_offender"
+  ))
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: d)  Match by age and race only - delete sex_code")
+log_dim(remain_off_3)
+log_dim(remain_arr_3)
+log_dim(off_4)
+log_dim(remain_off_4)
+log_dim(remain_arr_4)
+```
+
+```{r}
+#e)  Match by gender and race - Drop age
+off_5 <- remain_off_4 %>%
+  inner_join(remain_arr_4, by = c("incident_id" = "incident_id",
+                                  "tbd_sex_code_offender" = "tbd_sex_code_arrestee",
+                                  "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_5 <- remain_off_4 %>%
+  anti_join(remain_arr_4, by = c("incident_id" = "incident_id",
+                                 "tbd_sex_code_offender" = "tbd_sex_code_arrestee",
+                                 "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+remain_arr_5 <- remain_arr_4 %>%
+  anti_join(remain_off_4, by = c("incident_id" = "incident_id",
+                                 "tbd_sex_code_arrestee" = "tbd_sex_code_offender",
+                                 "tbd_race_code_arrestee" = "tbd_race_code_offender"
+  ))
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: e)  Match by gender and race - Drop age")
+log_dim(remain_off_4)
+log_dim(remain_arr_4)
+log_dim(off_5)
+log_dim(remain_off_5)
+log_dim(remain_arr_5)
+```
+
+```{r}
+#f) Merge by age
+off_6 <- remain_off_5 %>%
+  inner_join(remain_arr_5, by = c("incident_id" = "incident_id",
+                                  "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                  "tbd_age_num_offender" = "tbd_age_num_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_6 <- remain_off_5 %>%
+  anti_join(remain_arr_5, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_offender" = "tbd_age_code_arrestee",
+                                 "tbd_age_num_offender" = "tbd_age_num_arrestee"
+  ))
+
+
+remain_arr_6 <- remain_arr_5 %>%
+  anti_join(remain_off_5, by = c("incident_id" = "incident_id",
+                                 "tbd_age_code_arrestee" = "tbd_age_code_offender",
+                                 "tbd_age_num_arrestee" = "tbd_age_num_offender"
+  ))
+```
+
+Check the size of objects from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: f) Merge by age")
+log_dim(remain_off_5)
+log_dim(remain_arr_5)
+log_dim(off_6)
+log_dim(remain_off_6)
+log_dim(remain_arr_6)
+```
+
+```{r}
+#g) Merge by race
+off_7 <- remain_off_6 %>%
+  inner_join(remain_arr_6, by = c("incident_id" = "incident_id",
+                                  "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_7 <- remain_off_6 %>%
+  anti_join(remain_arr_6, by = c("incident_id" = "incident_id",
+                                 "tbd_race_code_offender" = "tbd_race_code_arrestee"
+  ))
+
+
+remain_arr_7 <- remain_arr_6 %>%
+  anti_join(remain_off_6, by = c("incident_id" = "incident_id",
+                                 "tbd_race_code_arrestee" = "tbd_race_code_offender"
+  ))
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: g) Merge by race")
+log_dim(remain_off_6)
+log_dim(remain_arr_6)
+log_dim(off_7)
+log_dim(remain_off_7)
+log_dim(remain_arr_7)
+```
+
+```{r}
+#h) Merge by gender
+off_8 <- remain_off_7 %>%
+  inner_join(remain_arr_7, by = c("incident_id" = "incident_id",
+                                  "tbd_sex_code_offender" = "tbd_sex_code_arrestee"
+  ))
+
+
+#Get the unmatched ones
+remain_off_8 <- remain_off_7 %>%
+  anti_join(remain_arr_7, by = c("incident_id" = "incident_id",
+                                 "tbd_sex_code_offender" = "tbd_sex_code_arrestee"
+
+  ))
+
+
+remain_arr_8 <- remain_arr_7 %>%
+  anti_join(remain_off_7, by = c("incident_id" = "incident_id",
+                                 "tbd_sex_code_arrestee" = "tbd_sex_code_offender"
+
+  ))
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: h) Merge by gender")
+log_dim(remain_off_7)
+log_dim(remain_arr_7)
+log_dim(off_8)
+log_dim(remain_off_8)
+log_dim(remain_arr_8)
+```
+
+```{r}
+#i) Do a full join for remaining records by incident id
+
+off_9 <- remain_off_8 %>%
+  inner_join(remain_arr_8, by = c("incident_id" = "incident_id"
+  ))
+
+
+#Get the unmatched ones
+remain_off_9 <- remain_off_8 %>%
+  anti_join(remain_arr_8, by = c("incident_id" = "incident_id"
+  ))
+
+
+remain_arr_9 <- remain_arr_8 %>%
+  anti_join(remain_off_8, by = c("incident_id" = "incident_id"
+  ))
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: i) Do a full join for remaining records by incident id")
+log_dim(remain_off_8)
+log_dim(remain_arr_8)
+log_dim(off_9)
+log_dim(remain_off_9)
+log_dim(remain_arr_9)
+```
+
+```{r}
+#j) Merge all datasets together plus remaining dataset that can not be join
+
+#Work on creating indicator variable for within incident and within offender there is 1 arrestee.  If only one match,
+#then use the record to fill in the missing values
+
+raw_list <- c("off_1", "off_2", "off_3", "off_4", "off_5", "off_6", "off_7", "off_8")
+#print(raw_list)
+
+raw_list <- mget(raw_list)
+off_arr_ind <- bind_rows(raw_list) %>%
+  filter(offender_seq_num != 0) %>% #Do not count the unknown offenders
+  filter(!is.na(offender_seq_num)) %>% #Make sure offender_seq_num is not missing
+  group_by(incident_id,
+           offender_seq_num) %>%
+  #Count how many arrestee are pair up for each offender
+  summarise(tbd_counts = n()) %>%
+  ungroup() %>%
+  mutate(
+            der_off_arr_ind_1_to_1 = case_when(tbd_counts == 1 ~ 1,
+                                               TRUE ~ 0)
+  )
+
+#Check the recodes
+#off_arr_ind %>% checkfunction(der_off_arr_ind_1_to_1, tbd_counts)														  
+
+
+
+
+
+raw_list <- c(ls(pattern="^off_\\d+"), "remain_off_9", "remain_arr_9")
+#print(raw_list)
+
+raw_list <- mget(raw_list)
+df_off_arr <- bind_rows(raw_list) %>%
+  select(-starts_with("tbd_") ) %>%
+  left_join(off_arr_ind, by=c("incident_id", "offender_seq_num")) #Add on the indicator for incident - offender level have 1 arrestee
+```
+
+Check final arrestee and offender dataframes. For example, compare number of records in original offender and arrestee dataframes to final dataframes
+```{r}
+log_debug("Check final arrestee and offender dataframes. For example, compare number of records in original offender and arrestee dataframes to final dataframes")
+log_dim(raw_arr)
+log_dim(raw_off)
+log_dim(off_arr_ind)
+log_dim(df_off_arr)
+df_off_arr %>% checkfunction(der_off_arr_ind_1_to_1)
+```
+
+```{r}
+#Delete the intermediate datasets
+c(ls(pattern="^off"), ls(pattern="^raw"), ls(pattern="^remain"))
+rm(list=c(ls(pattern="^off"), ls(pattern="^raw"), ls(pattern="^remain")) )
+#invisible(gc())
+
+# read in data for arrestee weapon involved
+df2_a_w <- read_csv(file=paste0(queried_data_path,"raw_arrestee_weapon_all_cols_",input_state,".csv.gz"), 
+					col_types = cols(weapon_code = col_character())) %>% 
+  mutate(incident_id = as.integer(incident_id),
+         arrestee_id = as.integer(arrestee_id),
+         weapon_code = as.character(weapon_code))
+
+# dim(df2_a_w)
+# head(df2_a_w)
+# glimpse(df2_a_w)
+
+# read in bias data
+df3_o_bias <- read_csv(file=paste0(queried_data_path, "raw_bias_hate_crime_all_cols_", input_state, ".csv.gz"), 
+					   col_types = cols(bias_code = col_character())) %>% 
+  select(data_year, incident_id, state_abbr, offense_id,
+         bias_code, bias_name, bias_desc) %>% 
+  mutate(incident_id = as.integer(incident_id),
+         offense_id = as.integer(offense_id),
+         bias_code = as.character(bias_code))
+
+# dim(df3_o_bias)
+# head(df3_o_bias)
+# glimpse(df3_o_bias)
+
+# read in weapons data
+df4_weapon <- read_csv(file=paste0(queried_data_path, "raw_weapon_all_cols_", input_state, ".csv.gz"), 
+					   col_types = cols(weapon_code = col_character())) %>% 
+  select(data_year, incident_id, state_abbr, nibrs_weapon_offense_id,
+         weapon_code, weapon_name, shr_flag) %>% 
+  rename(offense_id=nibrs_weapon_offense_id) %>% 
+  mutate(incident_id = as.integer(incident_id),
+         offense_id = as.integer(offense_id),
+         weapon_code = as.character(weapon_code))
+
+# dim(df4_weapon)
+# head(df4_weapon)
+# glimpse(df4_weapon)
+
+#Aggregative and recode various indicators######################################
+
+der_raw_1 <- df2_a_w %>% mutate(raw_arrestee_weapon = case_when(trim_upcase(weapon_code) %in% c("1", "01") ~ 0,
+                                                                is.na(trim_upcase(weapon_code))  ~ NA_real_,
+                                                                TRUE ~ 1))
+#Check Recode
+# checkfunction(der_raw_1, raw_arrestee_weapon, weapon_code, weapon_name)
+
+#Aggregate
+#der_summary_a_w <- der_raw_1 %>% group_by(incident_id, arrestee_id) %>% summarise(der_arrestee_weapon = sum (raw_arrestee_weapon) ) %>% mutate(der_arrestee_weapon_01 = case_when(der_arrestee_weapon == 0 ~ 0,
+#																																																				 
+#Need to aggregate at the incident level
+der_summary_a_w <- der_raw_1 %>% 
+  group_by(incident_id) %>% 
+  summarise(der_arrestee_weapon = sum (raw_arrestee_weapon) ) %>% 
+  ungroup() %>%
+  mutate(der_arrestee_weapon_01 = case_when(der_arrestee_weapon == 0 ~ 0,
+                                            der_arrestee_weapon > 0 ~ 1))
+
+#Check Recode up to 2 per arrestee
+# checkfunction(der_summary_a_w, der_arrestee_weapon_01, der_arrestee_weapon)
+
+#################################################################################
+
+der_raw_2 <- df3_o_bias %>% mutate(raw_bias_code = case_when(bias_code %in% c("88", "99")  ~ 0, #88=None, 99=Unknown
+                                                             TRUE ~ 1))
+#Check Recode
+# checkfunction(der_raw_2, raw_bias_code, bias_code, bias_desc)
+
+#Aggregate
+#der_summary_bias <- der_raw_2 %>% group_by(incident_id, offense_id) %>% summarise(der_bias = sum(raw_bias_code))
+#Aggregate at the incident level
+der_summary_bias <- der_raw_2 %>% 
+  group_by(incident_id) %>% 
+  summarise(der_bias = sum(raw_bias_code)) %>%
+  ungroup()								
+
+#Check Recode up to 5 per offense
+# checkfunction(der_summary_bias, der_bias)
+
+#################################################################################
+
+
+der_raw_3 <- df4_weapon  %>% mutate(raw_weapon_code = case_when(weapon_code %in% c("01", "95", "99")  ~ 0, #1=Unarmed, 19=Unknown, 20=None
+                                                              is.na(weapon_code) ~ NA_real_,
+                                                              TRUE ~ 1))
+#Check Recode
+# checkfunction(der_raw_3, raw_weapon_code, weapon_code, weapon_name)
+
+#Aggregate
+#der_summary_weapon <- der_raw_3 %>% group_by(incident_id, offense_id) %>% summarise(der_weapon = sum(raw_weapon_code))
+
+#Aggregate at incident level
+der_summary_weapon <- der_raw_3 %>% 
+  group_by(incident_id) %>% 
+  summarise(der_weapon = sum(raw_weapon_code)) %>%
+  ungroup()
+#Check Recode up to 3 per offense
+# checkfunction(der_summary_weapon, der_weapon)
+
+#Get only July Data and need to merge on the nibrs_month table
+df0 <- read_csv(file=paste0(queried_data_path, "victim_offense_form_code_N_", input_state, ".csv.gz"))
+
+#Make comparitable variable to merge
+df0 <- df0 %>%
+  mutate(incident_id = as.numeric(incident_id),
+         division_code = as.character(division_code),
+         region_code = as.character(region_code),
+         sex_code_victim = ifelse(is.na(sex_code_victim), " ", sex_code_victim),
+         resident_status_code_victim = 
+           ifelse(is.na(resident_status_code_victim), " ", resident_status_code_victim),
+         method_entry_code = ifelse(is.na(method_entry_code), " ", method_entry_code))
+
+#Create the new method_entry_code variable at the incident level
+
+#Aggregate at incident level
+raw_summary_method_entry_code <- df0 %>% 
+  distinct(incident_id, method_entry_code) %>%
+  mutate(
+    method_entry_code_order = case_when(
+      trim_upcase(method_entry_code) == "F" ~ 1,
+      trim_upcase(method_entry_code) == "N" ~ 2,
+      TRUE ~ 3
+    )
+  )
+
+#Check the recodes
+raw_summary_method_entry_code %>% checkfunction(method_entry_code_order, method_entry_code)
+  
+#Need to keep one code per incident if there are multiple
+#There is two codes for method_entry_code:  F and N
+#Give preference to F then N
+
+raw_summary_method_entry_code2 <- raw_summary_method_entry_code %>%
+  #Sorting by ascending order by default
+  arrange(incident_id, method_entry_code_order) %>%
+  #Group by the incident number
+  group_by(incident_id) %>%
+  mutate(
+    der_row = row_number()
+  ) %>%
+  ungroup() %>%
+  #Keep one record per incident based on hierarchy rule
+  filter(
+    der_row == 1
+  )
+
+#Check the dimension
+log_dim(raw_summary_method_entry_code2)
+log_dim(raw_summary_method_entry_code)
+
+#Keep only the variables needed
+summary_method_entry_code <- raw_summary_method_entry_code2 %>%
+  select(incident_id, method_entry_code) %>% 
+  mutate(incident_id = as.integer64(incident_id))
+         
+df0 <- df0 %>% 
+  #Drop crime_against since we will use offense codes
+  #Need to fix method_entry_code to be an the incident level
+  #select(-crime_against, -method_entry_code)
+  select(-method_entry_code)							
+
+#Merge df0 with df_off_arr(offender and arrestee)
+df1 <- df0 %>%
+  left_join(df_off_arr, by="incident_id")
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: Merge df0 with df_off_arr(offender and arrestee)")
+log_dim(df0)
+log_dim(df_off_arr)
+log_dim(df1)
+```
+
+```{r}
+#Doing joins in dplyr results in NA to have values of 9218868437227407266.  Need to convert to NA
+raw_listnumeric <- map(df1, is.numeric) %>%
+  bind_rows() %>%
+  gather() %>%
+  filter(value == TRUE) %>%
+  pull(key)
+
+#print(raw_listnumeric)
+
+for(i in 1:length(raw_listnumeric)){
+
+  invar <- raw_listnumeric[[i]] %>% rlang:::parse_expr()
+
+  df1 <- df1 %>%
+    mutate(!!invar := case_when(as.character(!!invar) == "9218868437227407266" ~ as.integer64(NA),
+                                TRUE ~ as.integer64(!!invar)))
+
+
+}
+
+
+# dim(df1)
+
+
+raw1 <- df1 %>% group_by(incident_id, victim_id) %>% filter(!is.na(victim_id)) %>% summarize(raw_victim_count = n()) %>% group_by(incident_id) %>% summarise(der_victim_count = n() )
+raw2 <- df1 %>% group_by(incident_id, offender_id) %>% filter(!is.na(offender_id) & offender_seq_num != 0) %>% summarize(raw_offender_count = n()) %>% group_by(incident_id) %>% summarise(der_offender_count = n() ) #Do not count unknown offender (offender_seq_num != 0)
+raw3 <- df1 %>% group_by(incident_id, arrestee_id) %>% filter(!is.na(arrestee_id)) %>% summarize(raw_arrestee_count = n()) %>% group_by(incident_id) %>% summarise(der_arrestee_count = n() )
+
+rawlist <- list(df1, raw1, raw2, raw3)
+
+main1 <- reduce(rawlist, left_join, by="incident_id")
+```
+
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: Create main1 from rawlist")
+log_dim(raw1)
+log_dim(raw2)
+log_dim(raw3)
+log_dim(df1)
+log_dim(main1)
+```
+
+```{r}
+rm(list= c("raw1", "raw2", "raw3") )
+
+#main1_1 <- main1 %>% left_join(der_summary_a_w, by=c("incident_id", "arrestee_id"))
+#Need to summarise at incident level
+main1_1 <- main1 %>% left_join(der_summary_a_w, by=c("incident_id"))									
+```
+
+Check the size of dataframe from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: Create main1_1")
+log_dim(main1)
+log_dim(main1_1)
+```
+
+```{r}
+#main1_2 <- main1_1 %>% left_join(der_summary_bias, by=c("incident_id", "offense_id"))
+#Need to summarise at incident level
+main1_2 <- main1_1 %>% left_join(der_summary_bias, by=c("incident_id"))
+```
+Check the size of dataframe from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: Create main1_2")
+log_dim(main1_1)
+log_dim(main1_2)
+```
+
+```{r}
+#main1_3 <- main1_2 %>% left_join(der_summary_weapon, by=c("incident_id", "offense_id"))
+#Need to summarise at incident level
+main1_3 <- main1_2 %>% left_join(der_summary_weapon, by=c("incident_id"))									
+```
+Check the size of dataframe from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: Create main1_3")
+log_dim(main1_2)
+log_dim(main1_3)
+```
+
+```{r}
+#Merge on the new summary summary_method_entry_code
+main1_4 <- main1_3 %>% 
+  left_join(summary_method_entry_code, by=c("incident_id"))
+
+log_debug("Check the size of dataframes from chunk above: Create main1_4")
+log_dim(main1_4)
+log_dim(main1_3)
+
+main2 <- main1_4 %>% mutate(
+
+  der_off_arr_eq_1 = case_when(der_offender_count == 1 & der_arrestee_count == 1 ~ 1,
+                               TRUE ~ 0),
+
+  #Edit the record only when there is one offender, one vicitm, and one arrestee
+  der_1vic_1off_1arr = case_when(der_victim_count == 1 & der_offender_count == 1 & der_arrestee_count == 1 ~ 1,
+                                 TRUE ~ 0),
+
+
+  #New on 20200729 - Keep eligible agencies only
+  in_univ_elig_state = trim_upper(state_abbr) %in% states,
+
+  der_in_univ_elig =  case_when(
+    trim_upper(agency_status) == "A" &
+      trim_upper(covered_flag) == "N" &
+      trim_upper(dormant_flag) == "N" &
+      trim_upper(agency_type_name) != "FEDERAL" &
+      in_univ_elig_state == TRUE ~ 1,
+    TRUE ~ 0),
+  	#New on 20220803 - Add in code to not drop missing offender_seq_num
+	der_offender_seq_0 = case_when(
+		offender_seq_num == 0 ~ 1,
+		TRUE ~ 0
+	)
+
+)
+
+main2 %>% checkfunction(der_off_arr_eq_1, der_offender_count, der_arrestee_count)
+main2 %>% checkfunction(der_1vic_1off_1arr, der_victim_count, der_offender_count, der_arrestee_count)
+main2 %>% checkfunction(in_univ_elig_state, state_abbr)
+main2 %>% checkfunction(der_in_univ_elig, agency_status, covered_flag, dormant_flag, agency_type_name, in_univ_elig_state)
+
+#remove the datasets
+rm(list=c(ls(pattern="der_.*"), ls(pattern="df.*"), ls(pattern="main1.*"), "rawlist"))
+
+#New on 20200729 - Keep eligible agencies only and
+#New on 20200828 - Drop unknown offenders incidents
+#New on 20201007 - Create datasets for 1) victim is person, 2) victim is non person, 3) Unknown offender Incidents
+
+main3_victim_person <- main2 %>%
+  filter(der_in_univ_elig == 1) %>%
+  filter(der_offender_seq_0 == 0) %>%
+  filter(victim_type_code %in% c("I","L")) %>% #Keep victim is a person or law enforcement officer
+  select(-der_offender_seq_0)
+  
+main3_victim_other <- main2 %>%
+  filter(der_in_univ_elig == 1) %>%
+  filter(der_offender_seq_0 == 0) %>%
+  filter(!(victim_type_code %in% c("I","L"))) %>% #Keep victim is other than a person
+  select(-der_offender_seq_0)	
+  
+main3_unknown_off <- main2 %>%
+  filter(der_in_univ_elig == 1) %>%
+  filter(der_offender_seq_0 == 1) %>%
+  select(-der_offender_seq_0)
+```
+
+Check the size of dataframes from chunk above
+```{r}
+log_debug("Check the size of dataframes from chunk above: Create datasets for 1) victim is person, 2) victim is non person, 3) Unknown offender Incidents")
+log_dim(main2 %>% filter(der_in_univ_elig == 1))
+log_dim(main3_victim_person)
+log_dim(main3_victim_other)
+log_dim(main3_unknown_off)
+```
+
+```{r}
+rm(main2)
+```
+
+```{r output}
+#Output one state per file
+#JDB: Replace paths?
+main3_victim_person %>% write_csv(file=gzfile(paste0(filepathout, "/01_", input_state, "_extract.csv.gz")),  na = "", append=FALSE)
+main3_victim_other %>% write_csv(file=gzfile(paste0(filepathout, "/01_", input_state, "_victim_other_extract.csv.gz")),  na = "", append=FALSE)
+main3_unknown_off %>% write_csv(file=gzfile(paste0(filepathout, "/01_", input_state, "_unknown_offenders_extract.csv.gz")),  na = "", append=FALSE)
+
+
+#Clear the items
+rm(list=c(ls(pattern="^der_"), ls(pattern="^df"), ls(pattern="^main"), ls(pattern="^raw"), ls(pattern="^con")))
+
+```

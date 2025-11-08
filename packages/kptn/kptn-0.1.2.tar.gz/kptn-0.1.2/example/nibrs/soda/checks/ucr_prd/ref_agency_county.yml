@@ -1,0 +1,19 @@
+checks for ucr_prd.ref_agency_county:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['agency_id', 'data_year', 'county_id', 'metro_div_id', 'is_core_city', 'population', 'legacy_county_code', 'legacy_msa_code', 'source_flag']
+        when wrong column type:
+          agency_id: integer
+          data_year: smallint
+          county_id: smallint  
+          metro_div_id: smallint
+          is_core_city: boolean
+          population: integer
+          legacy_county_code: character varying(20)
+          legacy_msa_code: character varying(20)
+          source_flag: character(1)
+  - invalid_count(is_core_city) = 0:
+      valid values: [False, True]
+  - invalid_count(source_flag) = 0:
+      valid values: ['C', 'G', 'L', 'M']

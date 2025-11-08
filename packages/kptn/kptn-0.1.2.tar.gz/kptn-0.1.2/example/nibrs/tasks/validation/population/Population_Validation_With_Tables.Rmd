@@ -1,0 +1,434 @@
+---
+title: "Population Validation With Tables (`r year`)"
+author: "Adam Lee"
+date: "`r Sys.Date()`" 
+output:
+  html_document:
+    toc: true 
+    toc_float: true 
+    toc_depth: 5 
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+
+<!-- Code to get the tables to not overlap with the headers  -->
+
+
+<style type="text/css">
+    div.datatables { height: auto !important;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = FALSE)
+
+library(tidyverse)
+library(readr)
+library(plyr)
+library(dplyr)
+library(readxl)
+library(rlang)
+library(formattable)
+library(scales)
+library(arsenal)
+library(DT)
+library(knitr)
+library(htmltools)
+library(rjson)
+
+`%notin%` <- Negate(`%in%`)
+
+```
+
+# Compare Final Population Estimates to FBI Inputs (>10% disagreement)  
+  
+  
+<font size="4"> 
+
+**Some Reasons Why The Differences Are Above 30%**  
+
+
+
+ + Appears to reflect difference between projected PEP (FBI) vs. actual PEP (RTI)  
+ + This is a CDP - FBI follows very different method of obtaining population than RTI  
+ + Match in PEP (or ACS) no longer exists 
+ + City abolished/dissolved and now part of new area  
+ + County LEA Raking: FBI rakes each county’s PEP (unresidualized) so that the counties sum to its state’s PEP. Curiously, they don’t do this raking for city/place LEAs. Depending on how much the county pops change after raking, this can lead to large discrepancies when comparing final FBI vs. RTI populations  
+ + Vermont SP barracks: FBI assigns each barrack to a county. RTI assigns areas (places/cousubs) based on their site  
+ + City-As-County LEAs / SP-As-County LEAs: Sometimes FBI assigns a non-county-type LEA to a county.  
+ + % Distribution Allocation for County LEAs: In some cases, rather than assigning the county balance to a single LEA, FBI divvies the balance out to city LEAs within that county.  
+      
+</font>
+      
+```{r datprep, include = FALSE}
+# Read in and select the necessary columns from the universe file
+#universeFile <- read_csv("//rtpnfil02/0216153_NIBRS/NIBRS data/External_Files_for_Pipeline/2020/universe/2021-04-27/ref_agency_2020.csv")
+#universeFile <- read_csv("//rtpnfil02/0216153_NIBRS/NIBRS data/External_Files_for_Pipeline/2021/universe/2022-08-01/ref_agency_2021.csv")
+# universe - read in file
+universeFile <- file.path(input_files_folder, paste0("ref_agency_", year, ".csv")) %>%
+  read_csv(guess_max=1e6)
+
+universeFileSelected <- universeFile %>% select(ORI, POPULATION)
+
+# Read in and select the necessary columns from the population file
+#finalPopulationEst <- read_excel("//rtpnfil02/0216153_NIBRS/05_PopulationData/ANNUAL_PROCESS_CODEBASE/ANNUAL_RUNS/2020/DEV_0_1/07_FILE_CREATE/Data/allLEAsCBISummary.xlsx")
+
+finalPopulationEst <- file.path(external_path,file_locs[[year]]$cbi_summary) %>% read_excel()
+
+
+finalPopulationEstSelected <- finalPopulationEst %>% select(ORI, AGENCY_TYPE_NAME,	UCR_AGENCY_NAME,
+                                                                    STATE_NAME, COUNTY_NAME, popResidAgcy_cbi)
+
+
+# Compare the two data frames to make sure the rows match before merge
+checkUniverse <- universeFile %>% select(ORI,	AGENCY_TYPE_NAME,	UCR_AGENCY_NAME,	
+                                         STATE_NAME,	COUNTY_NAME)
+checkPopEstimates <- finalPopulationEst %>% select(ORI,	AGENCY_TYPE_NAME,	UCR_AGENCY_NAME,	
+                                                       STATE_NAME,	COUNTY_NAME)
+compareFiles <- comparedf(checkPopEstimates, checkUniverse)
+print(compareFiles$frame.summary)
+print(compareFiles$vars.summary)
+
+
+# Since the compare looks good, I'm going to now merge the two data frames
+all <- merge(finalPopulationEstSelected, universeFileSelected, by = "ORI")
+
+#Creating the percent difference 
+all$`Percent Difference` <- round(((all$popResidAgcy_cbi - all$POPULATION)
+                                                     /
+                                ((all$popResidAgcy_cbi + all$POPULATION)/2)) * 100,  digits = 1)
+
+# Checking to see how many are outisde the threshold
+allDisagreement <- all %>% filter(abs(`Percent Difference`) >= 10 & AGENCY_TYPE_NAME != "University or College")
+allDisagreement$AGENCY_TYPE_NAME <- as.factor(allDisagreement$AGENCY_TYPE_NAME)
+
+allDisagreement$`Percent Group` <- NA
+```
+
+
+``` {r }
+for(i in 1:nrow(allDisagreement)){
+  
+  ifelse(abs(allDisagreement[i, "Percent Difference"]) >= 10 & abs(allDisagreement[i, "Percent Difference"]) < 20, 
+                        allDisagreement[i, "Percent Group"] <- "10 - 19.9%",
+         ifelse(abs(allDisagreement[i, "Percent Difference"]) >= 20 & abs(allDisagreement[i, "Percent Difference"]) < 30, 
+                        allDisagreement[i, "Percent Group"] <- "20 - 29.9%",
+                ifelse(abs(allDisagreement[i, "Percent Difference"]) >= 30 & abs(allDisagreement[i, "Percent Difference"]) < 40, 
+                        allDisagreement[i, "Percent Group"] <- "30 - 39.9%",
+                       ifelse(abs(allDisagreement[i, "Percent Difference"]) >= 40 & abs(allDisagreement[i, "Percent Difference"]) < 50, 
+                        allDisagreement[i, "Percent Group"] <- "40 - 49.9%",
+                        ifelse(abs(allDisagreement[i, "Percent Difference"]) >= 50, 
+                            allDisagreement[i, "Percent Group"] <- "50% or Greater",
+                                             allDisagreement[i, "Percent Group"] <- "Error")))))
+  
+}
+
+check1 <- allDisagreement %>% filter(`Percent Group` == "Error")
+```
+
+<br/>
+<br/>
+
+
+There are **`r nrow(allDisagreement)` observations** that exceed the 10% threshold
+
+
+
+```{r include = FALSE}
+datatable(allDisagreement)
+```
+
+
+```{r results = 'asis'}
+
+allDisagreementTable <- allDisagreement[order(allDisagreement$`Percent Group`),]
+
+
+pctGroups <- unique(allDisagreementTable$`Percent Group`)
+
+for(j in 1:length(pctGroups)){ 
+  
+        allDisagreementTableJ <- allDisagreementTable %>% filter(`Percent Group` == pctGroups[j]) %>% 
+                                 select(-`Percent Group`)
+        
+        cat("\n")
+        cat(paste("## ", pctGroups[j] , "  "))
+        cat("\n")
+        
+        print(tagList(datatable(allDisagreementTableJ))) 
+
+        cat("\n <br /> \n")
+        cat("\n <br /> \n")
+}
+
+```
+
+
+<br/>
+<br/>
+
+# Identify agencies with greater than 5% year over year change  
+ 
+
+
+
+```{r , include = FALSE}
+
+
+finalPopulationEstSelected <- finalPopulationEst %>% select(ORI,	AGENCY_TYPE_NAME,	UCR_AGENCY_NAME,
+                                                                    STATE_NAME, COUNTY_NAME, popResidAgcy_cbi)
+finalPopulationEstSelected$pop_CurrentYear <- finalPopulationEstSelected$popResidAgcy_cbi
+
+selectedCurrentYear <- finalPopulationEstSelected %>% select(-popResidAgcy_cbi)
+
+# Read in and select the necessary columns from the population file 2019
+# finalPopulationEstPriorYear <- read_excel("//rtpnfil02/0216153_NIBRS/05_PopulationData/ANNUAL_PROCESS_CODEBASE/ANNUAL_RUNS/2019/DEV_0_1/07_FILE_CREATE/Data/allLEAsCBISummary.xlsx")
+
+prevYear <- as.character(as.numeric(year) - 1)
+finalPopulationEstPriorYear <- file.path(external_path,file_locs[[prevYear]]$cbi_summary) %>% read_excel()
+
+
+
+finalPopulationEstPriorYearSelected <- finalPopulationEstPriorYear %>% select(ORI,	popResidAgcy_cbi)
+finalPopulationEstPriorYearSelected$pop_PriorYear <- finalPopulationEstPriorYearSelected$popResidAgcy_cbi
+
+selectedPriorYear <- finalPopulationEstPriorYearSelected %>% select(-popResidAgcy_cbi)
+
+
+# Compare the two data frames to make sure the rows match before merge
+checkCurrentYear <- finalPopulationEst %>% select(ORI,	AGENCY_TYPE_NAME,	UCR_AGENCY_NAME,	
+                                               STATE_NAME,	COUNTY_NAME)
+
+checkPriorYear <- finalPopulationEstPriorYear %>% select(ORI,	AGENCY_TYPE_NAME,	UCR_AGENCY_NAME,	
+                                         STATE_NAME,	COUNTY_NAME)
+
+compareYears <- comparedf(checkCurrentYear, checkPriorYear)
+print(compareYears$frame.summary)
+
+##There are 7709 extra observations on the 2020 file
+#I'm only going to compare the 16911 that are on both files
+
+
+yearOverYear <- merge(selectedCurrentYear, selectedPriorYear, by = "ORI")
+
+#Creating the percent difference 
+yearOverYear$`Percent Difference` <- round(((yearOverYear$pop_CurrentYear - yearOverYear$pop_PriorYear)
+                                                                                /
+                                                            (yearOverYear$pop_PriorYear)) * 100,  digits = 1)
+
+# Checking to see how many are outisde the threshold
+yearOverYearDisagreement <- yearOverYear %>% filter(abs(`Percent Difference`) >= 5)
+
+yearOverYearDisagreement$AGENCY_TYPE_NAME <- as.factor(yearOverYearDisagreement$AGENCY_TYPE_NAME)
+
+```
+
+
+
+
+
+
+<br/>
+<br/>
+
+## Tables for Population `r year` Vs.  Population `r prevYear`  
+
+
+
+
+
+``` {r }
+for(i in 1:nrow(yearOverYearDisagreement)){
+  
+  ifelse(abs(yearOverYearDisagreement[i, "Percent Difference"]) >= 5 & abs(yearOverYearDisagreement[i, "Percent Difference"]) < 10, 
+                        yearOverYearDisagreement[i, "Percent Group"] <- "05 - 9.9%",
+         ifelse(abs(yearOverYearDisagreement[i, "Percent Difference"]) >= 10 & abs(yearOverYearDisagreement[i, "Percent Difference"]) < 20, 
+                        yearOverYearDisagreement[i, "Percent Group"] <- "10 - 19.9%",
+           ifelse(abs(yearOverYearDisagreement[i, "Percent Difference"]) >= 20 & abs(yearOverYearDisagreement[i, "Percent Difference"]) < 30, 
+                          yearOverYearDisagreement[i, "Percent Group"] <- "20 - 29.9%",
+                  ifelse(abs(yearOverYearDisagreement[i, "Percent Difference"]) >= 30 & abs(yearOverYearDisagreement[i, "Percent Difference"]) < 40, 
+                          yearOverYearDisagreement[i, "Percent Group"] <- "30 - 39.9%",
+                         ifelse(abs(yearOverYearDisagreement[i, "Percent Difference"]) >= 40 & abs(yearOverYearDisagreement[i, "Percent Difference"]) < 50, 
+                          yearOverYearDisagreement[i, "Percent Group"] <- "40 - 49.9%",
+                          ifelse(abs(yearOverYearDisagreement[i, "Percent Difference"]) >= 50, 
+                              yearOverYearDisagreement[i, "Percent Group"] <- "50% or Greater",
+                                               yearOverYearDisagreement[i, "Percent Group"] <- "Error"))))))
+  
+}
+
+check2 <- yearOverYearDisagreement %>% filter(`Percent Group` == "Error")
+```
+
+```{r include=FALSE}
+crntYr0 <- yearOverYearDisagreement %>% filter(pop_CurrentYear == 0) %>% select(-`Percent Group`) 
+crntYr0$`Reason for 0 Population` <- "AGENCY_STATUS = D"
+
+prvYr0 <- yearOverYearDisagreement %>% filter(pop_PriorYear == 0) %>% select(-`Percent Group`)
+
+
+not0ForEitherYr <- yearOverYearDisagreement %>% filter(ORI %notin% prvYr0$ORI & ORI %notin% crntYr0$ORI)
+```
+
+
+After removing the observations where the current or previous year population is 0, there are **`r nrow(not0ForEitherYr)` observations** that exceed the 5% threshold  
+
+
+## 0 Population for Current Year  
+
+```{r echo=FALSE}
+
+datatable(crntYr0)
+```
+
+## 0 Population for Previous Year  
+
+```{r echo=FALSE}
+
+datatable(prvYr0)
+```
+
+
+
+```{r include = FALSE}
+datatable(yearOverYearDisagreement)
+```
+
+```{r results = 'asis'}
+
+
+
+yearOverYearDisagreementTable <- not0ForEitherYr[order(not0ForEitherYr$`Percent Group`),]
+
+
+pctGroups <-  unique(yearOverYearDisagreementTable$`Percent Group`)
+
+for(j in 1:length(pctGroups)){ 
+  
+        yearOverYearDisagreementTableJ <- yearOverYearDisagreementTable %>% filter(`Percent Group` == pctGroups[j]) %>% 
+                                 select(-`Percent Group`)
+        
+        cat("\n")
+        cat(paste("## ", pctGroups[j] , "  "))
+        cat("\n")
+        
+        print(tagList(datatable(yearOverYearDisagreementTableJ))) 
+
+        cat("\n <br /> \n")
+        cat("\n <br /> \n")
+}
+
+```
+
+
+
+
+
+# Final aggregated. Compare to PEP (national, regional, state  
+
+
+```{r}
+# Get the necessary columns for analysis
+universeFileSelected <- universeFile %>% select(ORI, REGION_NAME, POPULATION)
+finalPopulationEstSelected <- finalPopulationEst %>% select(ORI, STATE_NAME,	popResidAgcy_cbi)
+
+
+allCurrentYear <- merge(universeFileSelected, finalPopulationEstSelected, by = "ORI")
+
+extraStates <- c("American Samoa", "Canal Zone", "Federal", "Guam", "Mariana Islands", "Other", "Puerto Rico", "U.S. Virgin Islands")
+allCurrentYearStates <- allCurrentYear %>% dplyr::group_by(STATE_NAME) %>% dplyr::summarise(`FBI Population` = sum(POPULATION),
+                                                                              `System Population` = sum(popResidAgcy_cbi)) %>%
+                                                              filter(STATE_NAME %notin% extraStates)
+
+
+extraRegions <- c( "Other", "U.S. Territories")
+allCurrentYearRegions <- allCurrentYear %>% dplyr::group_by(REGION_NAME) %>% dplyr::summarise(`FBI Population` = sum(POPULATION),
+                                                                              `System Population` = sum(popResidAgcy_cbi)) %>%
+                                                                filter(REGION_NAME %notin% extraRegions)
+
+
+#Get the regions to use with PEP data
+getRegions <- allCurrentYear %>% select(STATE_NAME, REGION_NAME) %>% distinct(STATE_NAME, .keep_all = TRUE) %>% 
+                                                              filter(STATE_NAME %notin% extraStates & 
+                                                                     REGION_NAME %notin% extraRegions)
+
+# Read in and select the necessary columns from the pep file
+# pep_location<-"//rtpnfil02/0216153_NIBRS/05_PopulationData/ANNUAL_PROCESS_CODEBASE/ANNUAL_RUNS/2020/DEV_0_1/01_GATHER_DATA/A_PEP/Data/pepAll.RData"
+#pep_location<-"//rtpnfil02/0216153_NIBRS/05_PopulationData/ANNUAL_PROCESS_CODEBASE/ANNUAL_RUNS/2021/DEV_0_1/01_GATHER_DATA/A_PEP/Data/pepAll.RData"
+
+load(paste0(pep_location))
+
+pepStates <- pepAll %>% filter(NAME %in% allCurrentYearStates$STATE_NAME & SUMLEV == "040") %>% select(NAME, paste0("POPESTIMATE", year)) 
+colnames(pepStates)[2] <- "PEP Population"
+
+getRegionsPEP <- merge(pepStates, getRegions, by.x = "NAME", by.y = "STATE_NAME")
+
+pepRegions <- getRegionsPEP %>% dplyr::group_by(REGION_NAME) %>% dplyr::summarise(`PEP Population` = sum(`PEP Population`)) 
+
+#Combine the state datasets
+allStates <- merge(allCurrentYearStates, pepStates, by.x = "STATE_NAME", by.y = "NAME")
+colnames(allStates)[1] <- "Location"
+
+#Combine the region datasets
+allRegions <- merge(allCurrentYearRegions, pepRegions, by = "REGION_NAME")
+colnames(allRegions)[1] <- "Location"
+
+
+#Create National Counts and a way to combine the regional and state data set
+national <- setNames(data.frame(matrix(ncol = 4, nrow = 1)), colnames(allStates))
+national$Location <- "National"
+national$`FBI Population` <- sum(allCurrentYearStates$`FBI Population`)
+national$`System Population` <- sum(allCurrentYearStates$`System Population`)
+national$`PEP Population` <- sum(pepStates$`PEP Population`)
+
+
+pepComparison <- rbind(national, allRegions, allStates)
+
+
+#Creating the percent difference 
+pepComparison$`Percent Difference FBI Vs. System` <- round(((pepComparison$`FBI Population` - pepComparison$`System Population`)
+                                                                                      /
+                                               ((pepComparison$`FBI Population` + pepComparison$`System Population`)/2)) * 100,  digits = 1)
+
+
+
+pepComparison$`Percent Difference FBI Vs. PEP` <- round(((pepComparison$`FBI Population` - pepComparison$`PEP Population`)
+                                                                                   /
+                                   ((pepComparison$`FBI Population` + pepComparison$`PEP Population`)/2)) * 100,  digits = 1)
+
+
+pepComparison$`Percent Difference System Vs. PEP` <- round(((pepComparison$`System Population` - pepComparison$`PEP Population`)
+                                                                                   /
+                                                ((pepComparison$`System Population` + pepComparison$`PEP Population`)/2)) * 100,  digits = 1)
+
+
+```
+
+The color coding is as follows:  
+
+  * Green: 0 - 5 %  
+  * Yellow: 5 - 20 %  
+  * Red: > 20 %  
+  
+  
+  
+
+```{r table3}
+
+
+
+
+datatable(pepComparison) %>%
+  formatStyle("Percent Difference FBI Vs. System",
+              backgroundColor = styleInterval(c(-20,-5,5,20), c('red', 'yellow', 'lightgreen', 'yellow', 'red'))) %>%
+  formatStyle("Percent Difference FBI Vs. PEP",
+              backgroundColor = styleInterval(c(-20,-5,5,20), c('red', 'yellow', 'lightgreen', 'yellow', 'red'))) %>%
+  formatStyle("Percent Difference System Vs. PEP",
+            backgroundColor = styleInterval(c(-20,-5,5,20), c('red', 'yellow', 'lightgreen', 'yellow', 'red')))
+
+
+
+```
+
+
+
+

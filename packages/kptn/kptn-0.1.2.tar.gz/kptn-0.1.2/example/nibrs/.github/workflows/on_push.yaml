@@ -1,0 +1,35 @@
+name: Lint - Push
+on:
+  push:
+
+env:
+  # We need to avoid using NodeJS v20, because it doesn't work with glibc 2.17.
+  # See https://github.com/actions/checkout/issues/1809.
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+jobs:
+  build:
+    runs-on: [self-hosted, cds]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+      - name: build
+        run: |
+          docker compose -f docker-compose.yml build
+
+  lint:
+    runs-on: [self-hosted, cds]
+    needs: build
+    steps:
+      - name: black
+        run: docker compose -f docker-compose.yml run --rm -T prefect black --check .
+        if: always()
+      - name: isort
+        run: docker compose -f docker-compose.yml run --rm -T prefect isort --check .
+        if: always()
+      - name: flake8
+        run: docker compose -f docker-compose.yml run --rm -T prefect flake8
+        if: always()
+      - name: mypy
+        run: docker compose -f docker-compose.yml run --rm -T prefect mypy .
+        if: always()

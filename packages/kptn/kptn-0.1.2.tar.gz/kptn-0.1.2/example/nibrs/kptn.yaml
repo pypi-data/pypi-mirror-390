@@ -1,0 +1,1054 @@
+settings:
+  flows_dir: "."
+  flow_type: stepfunctions
+  db: dynamodb
+
+config:
+  data_year:
+    value: 2022
+    alias: year
+  scratch_dir: 
+    function: tasks.config_funcs:get_scratch_dir()
+  store: 
+    function: tasks.config_funcs:get_store()
+
+graphs:
+
+  nibrs:
+    tasks:
+      external_config:
+      external_dir: [external_config]
+      states_in_database:
+      year_list:
+      universe_created: [year_list]
+      msa_provider: [external_dir]
+      srs_retamm_created: [external_dir, universe_created]
+      officers_imputed: [external_dir, srs_retamm_created]
+      universe_updated: [officers_imputed]
+      pop_totals_updated: [universe_updated]
+      missing_months: [external_dir, year_list, universe_updated]
+      partial_reporters: [missing_months]
+      outliers_detected: [partial_reporters]
+      weights_computed: [outliers_detected, srs_retamm_created, pop_totals_updated]
+      calibrate_variables: [weights_computed]
+      blocks_imputed: [outliers_detected, srs_retamm_created]
+      nibrs_extract_victim_offender_relationship:
+      nibrs_extract_one_state: [states_in_database]
+      nibrs_extract_one_state_property: [states_in_database]
+      items_imputed_part1: [nibrs_extract_one_state, nibrs_extract_victim_offender_relationship, states_in_database]
+      items_imputed_part2_nonperson: [states_in_database, items_imputed_part1]
+      items_imputed_part2_person: [states_in_database, items_imputed_part1]
+      items_imputed_part3: [states_in_database, items_imputed_part2_nonperson, items_imputed_part2_person]
+      dependent_states: [states_in_database]
+      independent_states: [states_in_database]
+      items_imputed_part4_vor: [items_imputed_part3, independent_states]
+      items_imputed_part4_vor_dep: [items_imputed_part4_vor, dependent_states]
+      vic_off_rel_nums:
+      items_imputed_part4_vor_prop: [vic_off_rel_nums, items_imputed_part4_vor_dep, nibrs_extract_one_state_property]
+      indicators_estimated_setup: [states_in_database, nibrs_extract_one_state_property]
+      indicators_estimated_setup_part2_00a_1: [indicators_estimated_setup]
+      indicators_estimated_setup_part2_00a_2: [indicators_estimated_setup_part2_00a_1]
+      setup_part_200b_datasets:
+      indicators_estimated_setup_part2_00b: [setup_part_200b_datasets, indicators_estimated_setup_part2_00a_2, weights_computed, items_imputed_part4_vor_dep]
+      indicator_estimated_setup_part2_weights: [indicators_estimated_setup_part2_00a_2, weights_computed]
+      setup_clean_main_topics:
+      indicator_estimated_setup_part2_00c_clean_main_part1: [setup_clean_main_topics, indicator_estimated_setup_part2_weights, indicators_estimated_setup_part2_00b]
+      indicator_estimated_setup_part2_00c_clean_main_part2: [setup_clean_main_topics, indicator_estimated_setup_part2_00c_clean_main_part1]
+      indicator_estimated_setup_part2_00d_agency_ori: [indicator_estimated_setup_part2_00c_clean_main_part2, msa_provider]
+      indicator_estimated_setup_part2_00c_gv_main: [indicator_estimated_setup_part2_00c_clean_main_part2]
+      tables:
+      estimate_combos:
+      add_col_combos:
+      indicators_estimated_tables_part1_preprocessing: [tables, indicator_estimated_setup_part2_00d_agency_ori, indicator_estimated_setup_part2_00c_gv_main]
+      indicators_estimated_tables_part2_generate_est: [estimate_combos, indicators_estimated_tables_part1_preprocessing]
+      indicators_estimated_tables_part2_create_additional_columns: [add_col_combos, indicators_estimated_tables_part1_preprocessing]
+      indicators_estimated_tables_part3_finalize: [tables, indicators_estimated_tables_part2_generate_est, indicators_estimated_tables_part2_create_additional_columns]
+
+  srs:
+    tasks:
+      external_config:
+      external_dir: [external_config]
+      states_in_database:
+      year_list:
+      universe_created: [external_dir, year_list]
+      srs_retamm_created: [external_dir, universe_created]
+      officers_imputed: [srs_retamm_created]
+      universe_updated: [officers_imputed]
+      pop_totals_updated_srs: [universe_updated]
+      year_queried: [external_dir]
+      missing_months: [external_dir, year_list, universe_updated, year_queried]
+      partial_reporters: [missing_months]
+      outliers_detected: [partial_reporters]
+      srs_weights_created: [outliers_detected, srs_retamm_created, pop_totals_updated_srs]
+      blocks_imputed: [outliers_detected, srs_retamm_created]
+      srs_bystate_converted: [states_in_database]
+      srs_qc_converted: [external_dir, states_in_database, srs_bystate_converted]
+      srs_conversion_finalized: [srs_bystate_converted, blocks_imputed]
+      srs_blocks_imputed: [outliers_detected, srs_qc_converted, srs_conversion_finalized]
+      srs_weights_setup: [srs_weights_created]
+      srs_cleanframe_setup: [srs_weights_created, srs_blocks_imputed]
+      srs_rawframe_setup: [srs_weights_created, srs_blocks_imputed]
+      srs_tables: []
+      srs_estimate_combos: []
+      srs_indicators_estimated_tables_part1_preprocessing: [srs_tables, srs_rawframe_setup, srs_cleanframe_setup, srs_weights_setup]
+      srs_indicators_estimated_tables_part2_generate_est: [srs_estimate_combos, srs_indicators_estimated_tables_part1_preprocessing]
+      srs_indicators_estimated_tables_part3_finalize: [srs_tables, srs_indicators_estimated_tables_part2_generate_est]
+      srs_copula_imputation_step1_tables: []
+      srs_part1_computed: [srs_copula_imputation_step1_tables, srs_indicators_estimated_tables_part3_finalize]
+      srs_part2_groups: [srs_indicators_estimated_tables_part3_finalize]
+      srs_part2_imputed_a: [srs_part1_computed, srs_part2_groups]
+      srs_part2_imputed_b: [srs_part1_computed, srs_part2_groups]
+      srs_part2_imputed_c: [srs_part1_computed, srs_part2_groups]
+      srs_part2_stacked: [srs_part2_imputed_a, srs_part2_imputed_b, srs_part2_imputed_c, srs_copula_imputation_step1_tables]
+      srs_variance_table_list: [srs_part2_stacked, external_config, external_dir]
+      srs_variance_tables_prb: [srs_variance_table_list, external_config, external_dir]
+      srs_copula_imputed_step3_01: [srs_part2_stacked]
+      srs_copula_imputed_step3_02_prb: [srs_copula_imputed_step3_01, srs_variance_tables_prb, srs_weights_created, srs_part2_stacked, srs_weights_setup, srs_indicators_estimated_tables_part3_finalize]
+      srs_copula_imputed_step3_02_variance: [srs_copula_imputed_step3_02_prb, srs_variance_table_list]
+      srs_final_permutations_list: [external_config, external_dir]
+      srs_final_estimates: [srs_final_permutations_list]
+      srs_final_estimates_merged: [external_dir, srs_final_estimates]
+
+tasks:
+  external_config:
+    file: tasks/external_config.py
+    cache_result: true
+    outputs: [external_file_locations.json]
+
+  external_dir:
+    file: tasks/all.py:fetch_external_files
+    cache_result: true
+
+  year_list:
+    file: tasks/all.py:get_years_in_database
+    cache_result: true
+    iterable_item: year
+
+  year_queried:
+    file: tasks_initial/database_queries/queries_by_data_year.R
+
+  msa_provider:
+    file: tasks_initial/MSA_by_provider/100_Create_MSA_provider_file.R
+    outputs:
+    - initial_tasks_output/CIUS_MSA_by_provider_${CONST_YEAR}.csv
+
+  universe_created:
+    file: tasks/all.py:universe_file
+    map_over: year
+    outputs:
+    - initial_tasks_output/orig_ref_agency_${year}.csv
+
+  universe_updated:
+    file: tasks_initial/impute_officers/02_Update_Universe.R
+    outputs:
+    - initial_tasks_output/ref_agency_${year}.csv
+
+  srs_retamm_created:
+    file: tasks/all.py:srs_retamm_file
+
+  officers_imputed:
+    file: tasks_initial/impute_officers/100_Run_01_Impute_Officers.R
+    compute:
+      cpu: 1024
+      memory: 4096
+    outputs:
+    - initial_tasks_output/officer_imputation/ORI_Level_Officer_Imputed_in_model.csv.gz
+
+  pop_totals_updated:
+    file: tasks_initial/impute_officers/103_Update_POP_TOTALS_PERM_YEAR.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - initial_tasks_output/POP_TOTALS_PERM_${YEAR}.csv
+
+  pop_totals_updated_srs:
+    file: tasks_initial/impute_officers/104_Update_POP_TOTALS_PERM_YEAR_SRS.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - initial_tasks_output/POP_TOTALS_PERM_${CONST_YEAR}_SRS.csv
+
+  missing_months:
+    file: tasks/missing_months/100-Run_Program.R
+    map_over: DATA_YEAR
+    outputs:
+    - artifacts/missing_months_${DATA_YEAR}.csv
+
+  partial_reporters:
+    file: tasks/create_partial_reporters/run_partial_reporters_parts1and2.R
+    compute:
+      cpu: 1024
+      memory: 8192
+    outputs:
+    - NIBRS_reporting_pattern_with_reta-mm.csv
+
+  outliers_detected:
+    file: tasks/detect_outliers/100_run_outlier_detection_scripts_v5.R
+    compute:
+      cpu: 1024
+      memory: 8192
+    outputs:
+    - outlier_data/outlier_data_file.csv
+    - outlier_data/Outlier Detection_Longitudinal Analysis_Summary_Tables.xlsx
+
+  weights_computed:
+    file: tasks/compute_weights/00a_Weights_Creation_Main_subSt.R
+    compute:
+      cpu: 2048
+      memory: 16384
+
+  calibrate_variables:
+    file: tasks/compute_weights/Add_on_Calibration_Variables.R
+    compute:
+      cpu: 1024
+      memory: 8192
+
+  blocks_imputed:
+    file: tasks/impute_blocks/100_Run_Block_Imputation.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    outputs:
+    - block_imputation_data/NIBRS_INCIDENT_PLUS_IMPUTED_BLOCK.csv.gz
+
+  srs_weights_created:
+    file: srs/compute_weights/run_srs_weighting.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - srs/weighting/Data/County_Level_Calibration_Variable_File_SRS.csv
+    - srs/weighting/Data/POP_TOTALS_PERM_${CONST_YEAR}_FINAL_SRS.csv
+
+  states_in_database:
+    file: tasks/all.py:get_states_in_database
+    cache_result: true
+    iterable_item: INPUT_STATE
+
+  srs_bystate_converted:
+    file: srs/conversion/1001_Run_SRS_byState.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 1024
+      memory: 6144
+    outputs:
+    - srs/extracts/SRS_${CONST_YEAR}_${CONST_STATE}.csv
+
+  srs_qc_converted:
+    file: srs/all.py:srs_qc_conversion_reports
+    map_over: INPUT_STATE
+
+  srs_conversion_finalized:
+    file: srs/conversion/1002_Run_SRS_Block_Combine.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    outputs:
+    - srs/converted/SRS_NIBRS_BLOCK_IMP_ONLY_MAX.csv
+
+  srs_blocks_imputed:
+    file: srs/block_imputation/run_block_imputation.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - srs/block_imputation/SRS_Imputed.csv
+    - srs/block_imputation/donor_ids_srs_imp.csv
+
+  srs_weights_setup:
+    file: srs/generate_estimates/Setup/100_Run_Process_Weights_and_Permutation.R
+    compute:
+      cpu: 1024
+      memory: 6144
+    outputs:
+    - srs/indicator_table_extracts/ORI_VARIANCE.csv.gz
+
+  srs_cleanframe_setup:
+    file: srs/generate_estimates/Setup/100_Create_Clean_SRS.R
+    outputs:
+    - srs/indicator_table_extracts/cleaned_recoded_SRS.csv.gz
+
+  srs_rawframe_setup:
+    file: srs/generate_estimates/Setup/100_Create_Raw_SRS.R
+    outputs:
+    - srs/indicator_table_extracts/raw_recoded_SRS.csv.gz
+
+  srs_tables:
+    file: srs/all.py:srs_tables_list
+    cache_result: true
+    iterable_item: TABLE_NAME
+
+  srs_estimate_combos:
+    file: srs/all.py:srs_estimate_combos_list
+    cache_result: true
+    iterable_item: TABLE_NAME,EST_NUM
+
+  srs_indicators_estimated_tables_part1_preprocessing:
+    file: srs/generate_estimates/Tables_Core/${TABLE_NAME}/Part1_prepare_datasets.R
+    map_over: TABLE_NAME
+    outputs:
+    - srs/indicator_table_single_intermediate/SRS1a_prep_env.RData
+    - srs/indicator_table_single_intermediate/SRS2a_prep_env.RData
+    - srs/indicator_table_single_intermediate/SRS1araw_prep_env.RData
+
+  srs_indicators_estimated_tables_part2_generate_est:
+    file: srs/generate_estimates/Tables_Core/${TABLE_NAME}/Part2_generate_est.R
+    cli_args: ${EST_NUM}
+    map_over: TABLE_NAME,EST_NUM
+    outputs:
+    - srs/indicator_table_single_intermediate/data_SRS1a_${column}.rds
+    - srs/indicator_table_single_intermediate/data_SRS2a_${column}.rds
+    - srs/indicator_table_single_intermediate/data_SRS1araw_${column}.rds
+
+  srs_indicators_estimated_tables_part3_finalize:
+    file: srs/generate_estimates/Tables_Core/${TABLE_NAME}/Part3_finalize.R
+    map_over: TABLE_NAME
+    outputs:
+    - srs/indicator_table_estimates/Table ${DER_TABLE_NAME}_Reporting_Database.csv
+    - srs/indicator_table_estimates/Table ${DER_TABLE_NAME} ORI.csv.gz
+
+  srs_copula_imputation_step1_tables:
+    file: srs/all.py:srs_copula_step1_tables_list
+    cache_result: true
+    iterable_item: TABLE_NAME
+
+  srs_part1_computed:
+    file: srs/copula_imputation/part1_prep_data/100_run_copula_part1_prep_data.R
+    map_over: TABLE_NAME
+    # outputs:
+    # - 
+
+  srs_part2_groups:
+    file: srs/all.py:srs_get_copula_part2_combos
+    cache_result: true
+    iterable_item: TABLE_NAME,STRAT_VAR
+
+  srs_part2_imputed_a:
+    prefix_args: timeout --verbose 1h
+    file: srs/copula_imputation/part2_impute/100_run_copula_part2_impute.R
+    cli_args: popResidAgcyCounty_cbi>0 & nDemoMissing==0
+    map_over: TABLE_NAME,STRAT_VAR
+
+  srs_part2_imputed_b:
+    prefix_args: timeout --verbose 1h
+    file: srs/copula_imputation/part2_impute/100_run_copula_part2_impute.R
+    cli_args: popResidAgcyCounty_cbi>0 & nDemoMissing>0
+    map_over: TABLE_NAME,STRAT_VAR
+
+  srs_part2_imputed_c:
+    prefix_args: timeout --verbose 1h
+    file: srs/copula_imputation/part2_impute/100_run_copula_part2_impute.R
+    cli_args: popResidAgcyCounty_cbi==0
+    map_over: TABLE_NAME,STRAT_VAR
+
+  srs_part2_stacked:
+    prefix_args: timeout --verbose 30m
+    file: srs/copula_imputation/part2_impute/100_Run_Copula_Stack.R
+    map_over: TABLE_NAME
+    outputs:
+    - srs/copula_imputation/Data/Table_${TABLE_NAME}_Final_Agency_File_Perm_${temp.perm}_Rates_${temp.stratVar}_SRS.csv
+
+  srs_variance_table_list:
+    file: srs/srs_variance_table_list.py
+    cache_result: true
+    iterable_item: TABLE_PROGRAM,DER_CURRENT_PERMUTATION_NUM
+
+  srs_variance_tables_prb:
+    file: srs/srs_variance_tables_prb
+    cache_result: true
+    iterable_item: TABLE_NAME,DER_CURRENT_PERMUTATION_NUM
+
+  srs_copula_imputed_step3_01:
+    file: srs/copula_imputation/part3_generate_prb/01_Create_Template_Indicator_Tabel_Rel_Bias.R
+    outputs:
+    - srs/copula_imputation/PRB/temp_prb_${y}_${x}.rds
+
+  srs_copula_imputed_step3_02_prb:
+    map_over: TABLE_NAME,DER_CURRENT_PERMUTATION_NUM
+    file: srs/copula_imputation/part3_generate_prb/generate_prb.R
+    compute:
+      cpu: 1024
+      memory: 8192
+
+  srs_copula_imputed_step3_02_variance:
+    map_over: TABLE_PROGRAM,DER_CURRENT_PERMUTATION_NUM
+    file: srs/generate_estimates/Variance/100_Run_Table_Programs.R
+    compute:
+      cpu: 1024
+      memory: 8192
+
+  srs_final_permutations_list:
+    file: srs/all.py:srs_get_final_estimation_permutation_list
+    cache_result: true
+    iterable_item: PERMUTATION_NAME
+
+  srs_final_estimates:
+    file: "srs/make_final_dataset/10000 - Make Final Database.R"
+    map_over: PERMUTATION_NAME
+
+  srs_final_estimates_merged:
+    file: srs/all.py:srs_final_estimates_merged
+
+  nibrs_extract_victim_offender_relationship:
+    file: tasks/create_nibrs_extracts/victim_offender_relationship/100-Run_Program.R
+    compute:
+      cpu: 1024
+      memory: 8192
+    outputs:
+    - artifacts/00_Victim_Offender_rel_extract.csv.gz
+
+  nibrs_extract_one_state:
+    file: tasks/create_nibrs_extracts/extract_one_state/100-Run_Program.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - artifacts/01_${CONST_STATE}_extract.csv.gz
+    - artifacts/01_${CONST_STATE}_victim_other_extract.csv.gz
+    - artifacts/01_${CONST_STATE}_unknown_offenders_extract.csv.gz
+
+  nibrs_extract_one_state_property:
+    file: tasks/create_nibrs_extracts/property/100-Run_Program.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - artifacts/00_property_extract_${CONST_STATE}.csv.gz
+
+  items_imputed_part1:
+    file: tasks/impute_items/part1_setup_logical_edits/100_Run_Logical_Edits.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - item_imputation_data/02_${CONST_STATE}_logical_edits.csv.gz
+    - item_imputation_data/Arrestee-Offender_${CONST_STATE}_potential_RACE_data_inconsistency.csv
+
+  items_imputed_part2_nonperson:
+    file: tasks/impute_items/part2_nonperson_victims/100_Run_Nonperson_Victims.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 1024
+      memory: 8192
+    outputs:
+    - item_imputation_data/10_${CONST_STATE}_imputed_arrestee_offender_match.csv.gz
+    - item_imputation_data/11_${CONST_STATE}_offender_for_imputation.csv.gz
+    - item_imputation_data/12_${CONST_STATE}_offender_imputed.csv.gz
+    - item_imputation_data/13_${CONST_STATE}_arrestee_for_imputation.csv.gz
+    - item_imputation_data/14_${CONST_STATE}_arrestee_imputed_final.csv.gz
+    
+  items_imputed_part2_person:
+    file: tasks/impute_items/part2_person_victims/100_Run_Impute_Person_victims.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 1024
+      memory: 8192
+    outputs:
+    - item_imputation_data/03_${CONST_STATE}_imputed_arrestee_offender_match.csv.gz
+    - item_imputation_data/04_${CONST_STATE}_offender_for_imputation.csv.gz
+    - item_imputation_data/05_${CONST_STATE}_offender_imputed.csv.gz
+    - item_imputation_data/06_${CONST_STATE}_victim_for_imputation.csv.gz
+    - item_imputation_data/07_${CONST_STATE}_victim_imputed_final.csv.gz
+    - item_imputation_data/08_${CONST_STATE}_arrestee_for_imputation.csv.gz
+    - item_imputation_data/09_${CONST_STATE}_arrestee_imputed_final.csv.gz
+
+  items_imputed_part3:
+    file: tasks/impute_items/part3_finalize/100_Run_Impute_Final_Steps.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - item_imputation_data/15_${CONST_STATE}_victim_for_imputation.csv.gz
+    - item_imputation_data/16_${CONST_STATE}_victim_imputed_final.csv.gz
+    - item_imputation_data/17_${CONST_STATE}_Combined.csv.gz
+    - item_imputation_data/17_${CONST_STATE}_victim_imputed_final_flag.csv.gz
+    - item_imputation_data/17_${CONST_STATE}_offender_imputed_final_flag.csv.gz
+    - item_imputation_data/17_${CONST_STATE}_arrestee_imputed_final_flag.csv.gz
+
+  dependent_states:
+    file: dependent_states.py
+    cache_result: true
+    iterable_item: INPUT_STATE
+
+  independent_states:
+    file: independent_states.py
+    cache_result: true
+    iterable_item: INPUT_STATE
+
+  items_imputed_part4_vor:
+    file: tasks/impute_items/part4_victim_offender/100-Run_Programs_relationship_id.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - item_imputation_data/01_${CONST_STATE}_recoded_for_imputation.csv.gz
+    - item_imputation_data/04_beforeimp_relationship_id_le3_${CONST_STATE}.csv.gz
+    - item_imputation_data/04_beforeimp_relationship_id_gt3_${CONST_STATE}.csv.gz
+    - item_imputation_data/04_imputed_relationship_id_offender_le3_${CONST_STATE}.csv.gz
+    - item_imputation_data/04_imputed_relationship_id_offender_gt3_${CONST_STATE}.csv.gz
+
+  items_imputed_part4_vor_dep:
+    file: tasks/impute_items/part4_victim_offender/100-Run_Programs_relationship_id.R
+    map_over: INPUT_STATE
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - item_imputation_data/01_${CONST_STATE}_recoded_for_imputation.csv.gz
+    - item_imputation_data/04_beforeimp_relationship_id_le3_${CONST_STATE}.csv.gz
+    - item_imputation_data/04_beforeimp_relationship_id_gt3_${CONST_STATE}.csv.gz
+    - item_imputation_data/04_imputed_relationship_id_offender_le3_${CONST_STATE}.csv.gz
+    - item_imputation_data/04_imputed_relationship_id_offender_gt3_${CONST_STATE}.csv.gz
+
+  vic_off_rel_nums:
+    file: vic_off_rel_nums.py
+    cache_result: true
+    iterable_item: INPUT_NUM
+
+  items_imputed_part4_vor_prop:
+    file: tasks/impute_items/part4_victim_offender/100-Run_Programs_relationship_id_Property.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    map_over: INPUT_NUM
+    outputs:
+    - item_imputation_data/05_beforeimp_relationship_id_${CONST_STATE}.csv.gz
+    - item_imputation_data/05_imputed_relationship_id_offender_propertyoffense_${CONST_STATE}.csv.gz
+
+  indicators_estimated_setup:
+    file: tasks/generate_estimates/Setup_part1_bystate/100_Run_Create_Datasets.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    map_over: INPUT_STATE
+    outputs:
+    - indicator_table_extracts_bystate/NIBRS_LEO_Assaulted_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_1suspected_type_of_drug_1crim_activity_35A_c_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_activity_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_agency_type_cat_1_7_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_agency_type_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_arrest_type_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_arrestee_age_cat_15_17_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_arrestee_age_cat_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_arrestee_gender_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_arrestee_gender_race_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_arrestee_race_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_assignment_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_automobile_stolen_count_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_cat_1_6_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_cat_1_6_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_cat_1_6_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_cat_1_6_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_no_yes_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_no_yes_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_no_yes_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_bias_hate_no_yes_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_clearance_cat_1_2_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_clearance_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_cleared_cat_1_2_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_crim_activity_35A_c_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_crim_activity_drug_poss_npc_35A_c_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_crim_activity_drug_poss_pc_35A_c_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_crim_activity_drug_poss_traff_35A_c_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_drug_narcotic_equipment_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_exception_clearance_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_gang_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_gang_cat_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_gang_cat_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_gang_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_injury_hierarchy2_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_injury_hierarchy_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_injury_no_yes_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_injury_no_yes_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_juvenile_disp_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_1_12_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_1_12_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_1_12_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_1_12_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_10_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_10_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_10_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_10_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_11_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_11_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_11_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_11_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_7_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_7_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_7_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_1_7_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cyberspace_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cyberspace_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cyberspace_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_cyberspace_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_residence_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_residence_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_residence_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_location_residence_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_multiple_arrest_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_offender_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_offender_count_1_2_plus_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_offense_count_1_2_3_plus_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_offense_group_a_1_48_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_offense_group_a_1_48_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_offense_group_a_1_48_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_population_group_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_population_total_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_population_total_elig_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_property_loss_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_property_seized_any_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_property_seized_categories_full_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_property_seized_categories_short_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_col_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_col_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_col_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_col_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_hierarchy_recode_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_recode_4_level_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_recode_4_level_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_recode_4_level_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_raw_weapon_recode_4_level_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_relationship_cat2_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_relationship_cat2_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_relationship_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_relationship_cat_forimp_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_relationship_cat_forimp_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_relationship_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_single_gun_cat_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_single_gun_cat_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_single_multi_firearm_types_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_single_multi_firearm_types_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_suspected_type_of_drug_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_suspected_type_of_drug_crim_activity_35A_c_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_suspected_type_of_drug_seized_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_time_of_day_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_time_of_day_cat_incident_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_time_of_day_cat_report_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_age_cat_15_17_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_age_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_count_1_2_plus_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_gender_race_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_gender_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_murder_non_neg_manslaughter_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_offender_age_1_4_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_offender_gender_1_4_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_offender_race_1_10_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_victim_race_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_no_yes_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_no_yes_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_no_yes_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_no_yes_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_no_yes_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_firearm_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_firearm_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_firearm_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_firearm_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_knives_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_knives_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_knives_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_subset_knives_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat2_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat2_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat2_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat2_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat_inc_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/agg_weapon_yes_cat_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/drug_module_inc_additional_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/nibrs_offense_attempt_complete_flag_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_Injury_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_Time_of_day_population_agency_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_agencies_table_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_all_Offenses_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_all_Offenses_incident_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_all_Offenses_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_all_Offenses_recoded_incident_drug_activity_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_all_arrestee_arrest_code_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_arrest_type_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_arrestee_weapon_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_bias_hate_crime_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_bias_hate_crime_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_bias_hate_crime_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_bias_hate_crime_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_clearance_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_gang_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_gang_offense_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_incident_car_jacking_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_location_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_location_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_offender_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_population_group_counts_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_property_loss_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_property_stolen_count_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_victim_offender_rel_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_weapon_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/raw_weapon_offense_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Hate_Crime_Offenses_recoded_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Hate_Crime_Offenses_recoded_incident_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Hate_Crime_Offenses_recoded_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Hate_Crime_Offenses_recoded_victim_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Offenses_recoded_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Offenses_recoded_arrestee_drug_activity_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Offenses_recoded_drug_activity_arrestee_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Offenses_recoded_drug_activity_incident_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Offenses_recoded_incident_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_Offenses_recoded_offenses_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/recoded_all_recoded_arrestee_arrest_code_${CONST_STATE}.csv.gz
+    - indicator_table_extracts_bystate/unknown_offender_incident_${CONST_STATE}.csv.gz
+
+  indicators_estimated_setup_part2_00a_1:
+    file: tasks/generate_estimates/Setup_part2_merged/00a_Merge_Setup_Outputs_pt1.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - indicator_table_extracts/NIBRS_LEO_Assaulted.csv.gz
+    - indicator_table_extracts/agg_activity_cat_victim.csv.gz
+    - indicator_table_extracts/agg_agency_type_cat.csv.gz
+    - indicator_table_extracts/agg_agency_type_cat_1_7.csv.gz
+    - indicator_table_extracts/agg_arrest_type_arrestee.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_cat_15_17_arrestee.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_cat_arrestee.csv.gz
+    - indicator_table_extracts/agg_arrestee_gender_arrestee.csv.gz
+    - indicator_table_extracts/agg_arrestee_gender_race_arrestee.csv.gz
+    - indicator_table_extracts/agg_arrestee_race_arrestee.csv.gz
+    - indicator_table_extracts/agg_assignment_cat_victim.csv.gz
+    - indicator_table_extracts/agg_bias_hate_cat_1_6.csv.gz
+    - indicator_table_extracts/agg_bias_hate_cat_1_6_arrestee.csv.gz
+    - indicator_table_extracts/agg_bias_hate_cat_1_6_offenses.csv.gz
+    - indicator_table_extracts/agg_bias_hate_cat_1_6_victim.csv.gz
+    - indicator_table_extracts/agg_bias_hate_no_yes.csv.gz
+    - indicator_table_extracts/agg_bias_hate_no_yes_arrestee.csv.gz
+    - indicator_table_extracts/agg_bias_hate_no_yes_offenses.csv.gz
+    - indicator_table_extracts/agg_bias_hate_no_yes_victim.csv.gz
+    - indicator_table_extracts/agg_clearance_cat.csv.gz
+    - indicator_table_extracts/agg_clearance_cat_1_2.csv.gz
+    - indicator_table_extracts/agg_exception_clearance_cat.csv.gz
+    - indicator_table_extracts/agg_gang_cat.csv.gz
+    - indicator_table_extracts/agg_gang_cat_offenses.csv.gz
+    - indicator_table_extracts/agg_gang_cat_victim.csv.gz
+    - indicator_table_extracts/agg_injury_no_yes.csv.gz
+    - indicator_table_extracts/agg_injury_no_yes_victim.csv.gz   
+    - indicator_table_extracts/agg_injury_hierarchy_victim.csv.gz
+    - indicator_table_extracts/agg_injury_hierarchy2_victim.csv.gz   
+    - indicator_table_extracts/agg_juvenile_disp_arrestee.csv.gz
+    - indicator_table_extracts/agg_location_cat.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_10.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_10_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_10_victim.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_7.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_7_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_7_victim.csv.gz
+    - indicator_table_extracts/agg_location_cat_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cat_victim.csv.gz
+    - indicator_table_extracts/agg_multiple_arrest_arrestee.csv.gz
+    - indicator_table_extracts/agg_offender_count_1_2_plus.csv.gz
+    - indicator_table_extracts/agg_offense_count_1_2_3_plus.csv.gz
+    - indicator_table_extracts/agg_offense_group_a_1_48.csv.gz
+    - indicator_table_extracts/agg_offense_group_a_1_48_arrestee.csv.gz
+    - indicator_table_extracts/agg_offense_group_a_1_48_offenses.csv.gz
+    - indicator_table_extracts/agg_population_group_cat.csv.gz
+    - indicator_table_extracts/agg_property_loss.csv.gz
+    - indicator_table_extracts/agg_relationship_cat.csv.gz
+    - indicator_table_extracts/agg_relationship_cat_forimp.csv.gz
+    - indicator_table_extracts/agg_relationship_cat_forimp_victim.csv.gz
+    - indicator_table_extracts/agg_relationship_cat_victim.csv.gz
+    - indicator_table_extracts/agg_time_of_day_cat.csv.gz
+    - indicator_table_extracts/agg_time_of_day_cat_incident.csv.gz
+    - indicator_table_extracts/agg_time_of_day_cat_report.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_15_17_victim.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_victim.csv.gz
+    - indicator_table_extracts/agg_victim_count_1_2_plus.csv.gz
+    - indicator_table_extracts/agg_victim_gender_race_victim.csv.gz
+    - indicator_table_extracts/agg_victim_gender_victim.csv.gz
+    - indicator_table_extracts/agg_victim_offender_age_1_4_victim.csv.gz
+    - indicator_table_extracts/agg_victim_offender_gender_1_4_victim.csv.gz
+    - indicator_table_extracts/agg_victim_offender_race_1_10_victim.csv.gz
+    - indicator_table_extracts/agg_victim_race_victim.csv.gz
+    - indicator_table_extracts/agg_weapon_no_yes.csv.gz
+    - indicator_table_extracts/agg_weapon_no_yes_arrestee.csv.gz
+    - indicator_table_extracts/agg_weapon_no_yes_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_no_yes_victim.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat_arrestee.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat_victim.csv.gz
+    - indicator_table_extracts/raw_Injury.csv.gz
+    - indicator_table_extracts/raw_Time_of_day_population_agency.csv.gz
+    - indicator_table_extracts/raw_agencies_table.csv.gz
+    - indicator_table_extracts/raw_all_Offenses_arrestee.csv.gz
+    - indicator_table_extracts/raw_all_arrestee_arrest_code.csv.gz
+    - indicator_table_extracts/raw_all_Offenses_incident.csv.gz
+    - indicator_table_extracts/raw_all_Offenses_offenses.csv.gz
+    - indicator_table_extracts/raw_all_Offenses_recoded_incident_drug_activity.csv.gz
+    - indicator_table_extracts/raw_arrest_type.csv.gz
+    - indicator_table_extracts/raw_arrestee.csv.gz
+    - indicator_table_extracts/raw_arrestee_weapon.csv.gz
+    - indicator_table_extracts/raw_bias_hate_crime.csv.gz
+    - indicator_table_extracts/raw_bias_hate_crime_arrestee.csv.gz
+    - indicator_table_extracts/raw_bias_hate_crime_offenses.csv.gz
+    - indicator_table_extracts/raw_bias_hate_crime_victim.csv.gz
+    - indicator_table_extracts/raw_clearance.csv.gz
+    - indicator_table_extracts/raw_gang.csv.gz
+    - indicator_table_extracts/raw_gang_offense.csv.gz
+    - indicator_table_extracts/raw_location.csv.gz
+    - indicator_table_extracts/raw_location_offenses.csv.gz
+    - indicator_table_extracts/raw_offender.csv.gz
+    - indicator_table_extracts/raw_population_group_counts.csv.gz
+    - indicator_table_extracts/raw_property_loss.csv.gz
+    - indicator_table_extracts/raw_victim.csv.gz
+    - indicator_table_extracts/raw_victim_offender_rel.csv.gz
+    - indicator_table_extracts/raw_weapon.csv.gz
+    - indicator_table_extracts/raw_weapon_offense.csv.gz
+    - indicator_table_extracts/recoded_all_Hate_Crime_Offenses_recoded_arrestee.csv.gz
+    - indicator_table_extracts/recoded_all_Hate_Crime_Offenses_recoded_incident.csv.gz
+    - indicator_table_extracts/recoded_all_Hate_Crime_Offenses_recoded_offenses.csv.gz
+    - indicator_table_extracts/recoded_all_Hate_Crime_Offenses_recoded_victim.csv.gz
+    - indicator_table_extracts/agg_victim_murder_non_neg_manslaughter_victim.csv.gz
+
+  indicators_estimated_setup_part2_00a_2:
+    file: tasks/generate_estimates/Setup_part2_merged/00a_Merge_Setup_Outputs_pt2.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    outputs:
+    - indicator_table_extracts/recoded_all_Offenses_recoded_arrestee.csv.gz
+    - indicator_table_extracts/recoded_all_recoded_arrestee_arrest_code.csv.gz
+    - indicator_table_extracts/recoded_all_Offenses_recoded_arrestee_drug_activity.csv.gz
+    - indicator_table_extracts/recoded_all_Offenses_recoded_drug_activity_arrestee.csv.gz
+    - indicator_table_extracts/recoded_all_Offenses_recoded_drug_activity_incident.csv.gz
+    - indicator_table_extracts/recoded_all_Offenses_recoded_incident.csv.gz
+    - indicator_table_extracts/recoded_all_Offenses_recoded_offenses.csv.gz
+    - indicator_table_extracts/nibrs_offense_attempt_complete_flag.csv.gz
+    - indicator_table_extracts/agg_drug_narcotic_equipment_cat.csv.gz
+    - indicator_table_extracts/agg_crim_activity_35A_c.csv.gz
+    - indicator_table_extracts/agg_property_seized_categories_full.csv.gz
+    - indicator_table_extracts/agg_property_seized_categories_short.csv.gz
+    - indicator_table_extracts/agg_property_seized_any.csv.gz
+    - indicator_table_extracts/agg_suspected_type_of_drug.csv.gz
+    - indicator_table_extracts/agg_suspected_type_of_drug_seized.csv.gz
+    - indicator_table_extracts/agg_suspected_type_of_drug_crim_activity_35A_c.csv.gz
+    - indicator_table_extracts/agg_1suspected_type_of_drug_1crim_activity_35A_c.csv.gz
+    - indicator_table_extracts/agg_automobile_stolen_count.csv.gz
+    - indicator_table_extracts/raw_property_stolen_count.csv.gz
+    - indicator_table_extracts/agg_location_cat_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_7_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_10_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_no_yes_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_gang_cat_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_relationship_cat2.csv.gz
+    - indicator_table_extracts/agg_relationship_cat2_victim.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_11.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_11_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_11_victim.csv.gz
+    - indicator_table_extracts/agg_location_cat_1_11_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat2.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_firearm.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_knives.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat2_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_firearm_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_knives_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat2_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_firearm_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_knives_offenses.csv.gz
+    - indicator_table_extracts/agg_weapon_yes_cat2_victim.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_firearm_victim.csv.gz
+    - indicator_table_extracts/agg_weapon_subset_knives_victim.csv.gz
+    - indicator_table_extracts/agg_location_cyberspace.csv.gz
+    - indicator_table_extracts/agg_location_cyberspace_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cyberspace_offenses.csv.gz
+    - indicator_table_extracts/agg_location_cyberspace_victim.csv.gz
+    - indicator_table_extracts/agg_crim_activity_drug_poss_traff_35A_c.csv.gz
+    - indicator_table_extracts/agg_crim_activity_drug_poss_pc_35A_c.csv.gz
+    - indicator_table_extracts/agg_crim_activity_drug_poss_npc_35A_c.csv.gz
+    - indicator_table_extracts/drug_module_inc_additional_offenses.csv.gz
+    - indicator_table_extracts/unknown_offender_incident.csv.gz
+    - indicator_table_extracts/agg_offender_cat.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_victim.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_offenses.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_col.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_col_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_col_victim.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_hierarchy_recode_col_offenses.csv.gz
+    - indicator_table_extracts/agg_single_multi_firearm_types_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_single_multi_firearm_types_offenses.csv.gz
+    - indicator_table_extracts/agg_single_gun_cat_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_single_gun_cat_offenses.csv.gz
+    - indicator_table_extracts/agg_location_residence.csv.gz
+    - indicator_table_extracts/agg_location_residence_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_location_residence_offenses.csv.gz
+    - indicator_table_extracts/agg_location_residence_victim.csv.gz
+    - indicator_table_extracts/agg_location_1_12.csv.gz
+    - indicator_table_extracts/agg_location_1_12_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_location_1_12_offenses.csv.gz
+    - indicator_table_extracts/agg_location_1_12_victim.csv.gz
+    - indicator_table_extracts/agg_cleared_cat_1_2.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_recode_4_level.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_recode_4_level_inc_offenses.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_recode_4_level_offenses.csv.gz
+    - indicator_table_extracts/agg_raw_weapon_recode_4_level_victim.csv.gz
+
+  setup_part_200b_datasets:
+    file: setup_part_200b_datasets.py
+    cache_result: true
+    iterable_item: DATASET_TO_GENERATE
+  
+  indicators_estimated_setup_part2_00b:
+    file: tasks/generate_estimates/Setup_part2_merged/100_Run_00b_Create_Datasets.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    map_over: DATASET_TO_GENERATE
+    outputs:
+    - indicator_table_extracts/agg_arrestee_age_cat_12_17_cat_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_cat_victim_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_cat_15_17_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_hierarchy_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_cat_2_uo18_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_hierarchy_victim_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_cat_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_unknown_offender_incident_inc_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_cat_under18_2_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_12_17_cat_victim_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_age_round_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_15_17_victim_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_gender_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_2_uo18_victim_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_gender_race_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_under18_2_victim_imp.csv.gz
+    - indicator_table_extracts/agg_arrestee_race_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_age_cat_victim_imp.csv.gz
+    - indicator_table_extracts/agg_juvenile_disp_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_age_round_victim_imp.csv.gz
+    - indicator_table_extracts/agg_multiple_arrest_arrestee_imp.csv.gz
+    - indicator_table_extracts/agg_victim_eth_race_victim_imp.csv.gz
+    - indicator_table_extracts/agg_offender_age_12_plus_missing_unk_inc_inc_imp.csv.gz
+    - indicator_table_extracts/agg_victim_ethnicity_victim_imp.csv.gz
+    - indicator_table_extracts/agg_offender_age_missing_inc_imp.csv.gz
+    - indicator_table_extracts/agg_victim_gender_race_victim_imp.csv.gz
+    - indicator_table_extracts/agg_offender_cat_12_17_inc_imp.csv.gz
+    - indicator_table_extracts/agg_victim_gender_victim_imp.csv.gz
+    - indicator_table_extracts/agg_offender_cat_18_plus_inc_imp.csv.gz
+    - indicator_table_extracts/agg_victim_offender_age_1_4_victim_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_cat2_imp.csv.gz
+    - indicator_table_extracts/agg_victim_offender_gender_1_4_victim_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_cat2_victim_imp.csv.gz
+    - indicator_table_extracts/agg_victim_offender_race_1_10_victim_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_cat_forimp.csv.gz
+    - indicator_table_extracts/agg_victim_race_victim_imp.csv.gz
+    - indicator_table_extracts/agg_relationship_cat_imp.csv.gz
+
+  indicator_estimated_setup_part2_weights:
+    file: tasks/generate_estimates/Setup_part2_merged/100_Run_Process_Weights_and_Permutation.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - indicator_table_extracts/ORI_VARIANCE.csv.gz
+    - indicator_table_extracts/ORI_weights.csv.gz
+
+  setup_clean_main_topics:
+    file: setup_clean_main_topics.py
+    cache_result: true
+    iterable_item: SOURCE_TYPE
+
+  indicator_estimated_setup_part2_00c_clean_main_part1:
+    file: tasks/generate_estimates/Setup_part2_merged/clean_main.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    map_over: SOURCE_TYPE
+
+  indicator_estimated_setup_part2_00c_clean_main_part2:
+    file: tasks/generate_estimates/Setup_part2_merged/clean_main_2.R
+    compute:
+      cpu: 4096
+      memory: 30720
+    map_over: SOURCE_TYPE
+
+  indicator_estimated_setup_part2_00d_agency_ori:
+    file: tasks/generate_estimates/Setup_part2_merged/101_Run_Setup_Agency_ORI.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - indicator_table_extracts/ori_agency_type_cat_1_7.csv.gz
+    - indicator_table_extracts/ori_msa_cat.csv.gz
+    - indicator_table_extracts/ori_population_group_cat.csv.gz
+
+  indicator_estimated_setup_part2_00c_gv_main:
+    file: tasks/generate_estimates/Setup_part2_merged/00c_Create_Firearm_Datasets.R
+    compute:
+      cpu: 2048
+      memory: 16384
+    outputs:
+    - indicator_table_extracts/cleaned_recoded_all_Firearm_Offenses_recoded_offenses.csv.gz
+    - indicator_table_extracts/agg_number_of_victims_firearm_cat.csv.gz
+    - indicator_table_extracts/cleaned_recoded_all_Firearm_Offenses_recoded_incident.csv.gz
+
+  tables:
+    file: tables.py
+    cache_result: true
+    iterable_item: DER_TABLE_NAME,TABLE_FOLDER,INNER_TABLE_FOLDER
+
+  estimate_combos:
+    file: estimate_combos.py
+    cache_result: true
+    iterable_item: DER_TABLE_NAME,EST_NUM
+
+  add_col_combos:
+    file: add_col_combos.py
+    cache_result: true
+    iterable_item: DER_TABLE_NAME,COLUMN_NUM
+
+  indicators_estimated_tables_part1_preprocessing: 
+    file: tasks/generate_estimates/${TABLE_FOLDER}/${INNER_TABLE_FOLDER}/Part1_prepare_datasets.R
+    map_over: DER_TABLE_NAME,TABLE_FOLDER,INNER_TABLE_FOLDER
+    compute:
+      cpu: 4096
+      memory: 30720
+
+  indicators_estimated_tables_part2_generate_est: 
+    file: tasks/generate_estimates/Tables_Shared_Scripts/generate_estimates.R
+    cli_args: ${EST_NUM}
+    map_over: DER_TABLE_NAME,EST_NUM
+    compute:
+      cpu: 4096
+      memory: 30720
+
+  indicators_estimated_tables_part2_create_additional_columns: 
+    file: tasks/generate_estimates/Tables_Shared_Scripts/create_additional_columns.R
+    cli_args: ${COLUMN_NUM}
+    map_over: DER_TABLE_NAME,COLUMN_NUM
+    compute:
+      cpu: 4096
+      memory: 30720
+    group_size: 500
+
+  indicators_estimated_tables_part3_finalize: 
+    file: tasks/generate_estimates/${TABLE_FOLDER}/${INNER_TABLE_FOLDER}/Part3_finalize.R
+    map_over: DER_TABLE_NAME,TABLE_FOLDER,INNER_TABLE_FOLDER
+    compute:
+      cpu: 4096
+      memory: 30720

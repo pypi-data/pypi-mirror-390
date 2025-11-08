@@ -1,0 +1,312 @@
+---
+title: '11_Create_Data_Offender_Imputation_Cleared-non-person'
+author: "Philip Lee"
+date: "November 4, 2020"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r program11}
+library(tidyverse)
+library(DT)
+library(lubridate)
+
+options(knit.duplicate.label = "allow")
+
+
+#Read in the current state
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as enviroment variable")
+}
+
+
+#Read in the logical edit dataset
+raw_main <- logical_edits_frame %>%
+  filter(der_data_subset %in% c(2, 4)  )
+glimpse(raw_main)
+
+
+  raw_main %>% checkfunction(
+    der_data_subset, der_arrestee_offender_same, der_incident_cleared, der_victim_person, der_victim_non_person, der_victim_person_unknown_off
+  )
+
+#Bring in the imputed file
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/10_", input_state,"_imputed_arrestee_offender_match.csv.gz"))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars(base=raw_main, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num", "arrestee_seq_num"))
+
+#Check data is expected:
+raw1 %>% filter(der_arrestee_offender_same == 1) %>% checkfunction(der_arrestee_offender_same,sex_code_offender2)
+raw1 %>% filter(der_arrestee_offender_same == 1) %>% checkfunction(der_arrestee_offender_same,age_num_offender2)
+raw1 %>% filter(der_arrestee_offender_same == 1) %>% checkfunction(der_arrestee_offender_same,race_code_offender2)
+raw1 %>% filter(der_arrestee_offender_same == 1) %>% checkfunction(der_arrestee_offender_same,sex_code_arrestee2)
+raw1 %>% filter(der_arrestee_offender_same == 1) %>% checkfunction(der_arrestee_offender_same,age_num_arrestee2)
+raw1 %>% filter(der_arrestee_offender_same == 1) %>% checkfunction(der_arrestee_offender_same,race_code_arrestee2)
+
+
+  #Dedepuliate the data for victim and arrestee for each offender
+#raw1 is the main dataset to process
+
+#####################################Process arrestee############################################
+
+raw2_arrestee <- raw1 %>%
+  group_by(incident_id, offender_seq_num, arrestee_seq_num,  sex_code_arrestee2, age_num_arrestee2, ethnicity_code_arrestee2, race_code_arrestee2) %>%
+  arrange( incident_id, offender_seq_num, arrestee_seq_num,  sex_code_arrestee2, age_num_arrestee2, ethnicity_code_arrestee2, race_code_arrestee2) %>%
+  mutate(raw_first_row = row_number() == 1) %>%
+  filter(raw_first_row == TRUE) %>%
+  ungroup() %>%
+  select(  incident_id, offender_seq_num, arrestee_seq_num,  sex_code_arrestee2, age_num_arrestee2, ethnicity_code_arrestee2, race_code_arrestee2)
+
+log_dim(raw1)
+log_dim(raw2_arrestee)
+
+datatable(raw2_arrestee %>% select(incident_id, offender_seq_num, arrestee_seq_num,  sex_code_arrestee2, age_num_arrestee2, ethnicity_code_arrestee2, race_code_arrestee2) %>% head(30))
+
+datatable(raw2_arrestee %>% select(incident_id, offender_seq_num, arrestee_seq_num,  sex_code_arrestee2, age_num_arrestee2, ethnicity_code_arrestee2, race_code_arrestee2) %>% filter(is.na(sex_code_arrestee2) | is.na(age_num_arrestee2)) %>%
+            head(50))
+
+#Get the mean of arrestee's age
+final_arrestee_age <- raw2_arrestee %>%
+        filter(!is.na(arrestee_seq_num)) %>% #Filter out the records with no arrestee
+        group_by(incident_id, offender_seq_num) %>%
+        summarise(mean_age_arrestee = mean(age_num_arrestee2, na.rm=TRUE)) %>%
+        ungroup()
+
+#Get Number of arrestee per offender
+raw_arrestee_count <- raw2_arrestee %>%
+              filter(!is.na(arrestee_seq_num)) %>% #Filter out the records with no arrestee
+              count(incident_id,offender_seq_num, arrestee_seq_num) %>% #Get the number of unique SEQ_NUM - NOTE:  20201020 - NEW CODE.
+              group_by(incident_id, offender_seq_num) %>%
+              summarise(num_arrestee_per_offender = n()) %>%
+              ungroup()
+
+
+#Get the count of gender
+final_arrestee_gender <- raw2_arrestee %>%
+        count(incident_id, offender_seq_num, sex_code_arrestee2) %>%
+        spread(sex_code_arrestee2, n, fill=0) %>%
+        select(incident_id, offender_seq_num, count_male_arrestee = `1`, count_female_arrestee = `2`) %>%
+        ungroup()
+
+#Get the count of race
+final_arrestee_race <- raw2_arrestee %>%
+        mutate(race_code_arrestee3 = case_when(race_code_arrestee2 == 1 ~ 1, #"count_white_arrestee",
+                                               race_code_arrestee2 == 2 ~ 2, # "count_black_arrestee",
+                                               race_code_arrestee2 %in% c(3,4,5,6,7,8,9,98) ~ 3 )) %>% # "count_othrace_arrestee")) %>%
+        count(incident_id, offender_seq_num,  race_code_arrestee3) %>%
+        spread(race_code_arrestee3, n, fill=0) %>%
+        select(incident_id, offender_seq_num, `1`, `2`, everything()) %>%
+        ungroup()
+
+
+glimpse(final_arrestee_race)
+
+#Do check for count_othrace_arrestee
+if(any(colnames(final_arrestee_race) %in% c("3"))) {
+
+  #Subset to 1st 5 columns
+  final_arrestee_race <- final_arrestee_race[,1:5]
+
+  names(final_arrestee_race) <- c("incident_id", "offender_seq_num", "count_white_arrestee", "count_black_arrestee", "count_othrace_arrestee")
+}else{
+
+  #Subset to 1st 4 columns
+  final_arrestee_race <- final_arrestee_race[,1:4]
+  #Give column names
+  names(final_arrestee_race) <- c("incident_id", "offender_seq_num", "count_white_arrestee", "count_black_arrestee")
+  #Create the missing variable count_othrace_arrestee
+  final_arrestee_race <- final_arrestee_race %>%
+    mutate(count_othrace_arrestee = 0) %>%
+    select(incident_id, offender_seq_num, count_white_arrestee, count_black_arrestee, count_othrace_arrestee)
+}
+
+##################################################################################################
+
+#####################################Process Offense code############################################
+
+log_dim(raw1)
+final_offense_code <- createoffenserecodeindicator(data=raw1, type="offender", deduptype="victim") %>%
+  select(incident_id, offender_seq_num, !!!(paste0(listofoffensesrecoded,"_offender") %>% rlang:::parse_exprs()) ) %>%
+  #Deduplicate to the person of interest
+  group_by(incident_id, offender_seq_num) %>%
+  mutate(raw_first_row = row_number() == 1) %>%
+  filter(raw_first_row == TRUE) %>%
+  ungroup() %>%
+  select(-raw_first_row)
+
+log_dim(final_offense_code)
+glimpse(final_offense_code)
+
+
+
+##################################################################################################
+
+
+#Create the final dataset
+
+listofvars = raw1 %>% select(
+incident_id,
+state_id,
+division_code,
+region_code,
+population_group_id,
+victim_type_code,
+offender_seq_num,
+der_bias,
+der_off_arr_eq_1,
+sex_code_offender2,
+cargo_theft_flag2,
+suburban_area_flag2,
+method_entry_code2,
+# crime_against2,
+der_weapon2,
+race_code_offender2,
+ethnicity_code_offender2,
+age_num_offender2,
+der_arrestee_weapon2,
+#offense_code2,
+der_incident_cleared
+
+
+) %>% colnames() %>% rlang::parse_exprs()
+
+listofvars
+
+#NEW on 20200701:  After talking with Amang, we want the best match between offender and arrestee records, so will add on the variable der_off_arr_count_flag which sums up the following indicator variables (0 if not match and 1 for match between offender and arrestee non-missing and not unknown values):
+#der_off_arr_ethnicity_flag, der_off_arr_age_flag, der_off_arr_sex_flag, der_off_arr_race_flag
+
+Data <- raw1 %>% arrange(incident_id, offender_seq_num) %>%
+        group_by(incident_id, offender_seq_num) %>%
+        mutate(raw_first = row_number() == 1) %>%
+        filter(raw_first == TRUE) %>%
+        select(!!!listofvars) %>%
+        ungroup()
+
+log_dim(raw1)
+log_dim(Data)
+
+listofdataset <- c("Data", ls(pattern="final_"))
+listofdataset
+
+raw_tobemerge <- mget(listofdataset)
+
+final_data0 <- reduce(raw_tobemerge, left_join, by=c("incident_id", "offender_seq_num"))
+
+#Double Check Merges is expected
+log_debug("Checking dimensions after left join")
+log_dim(Data)
+
+log_dim(final_arrestee_age)
+# dim(final_arrestee_ethnicity)
+log_dim(final_arrestee_gender)
+log_dim(final_arrestee_race)
+log_dim(final_offense_code)
+log_dim(final_data0)
+
+
+listofdataset <- c("final_data0", "raw_arrestee_count")
+
+raw_tobemerge2 <- mget(listofdataset)
+
+#Merge on the counts of interest at the incident level
+final_data <- reduce(raw_tobemerge2, left_join, by = c("incident_id", "offender_seq_num"))
+
+log_dim(raw_arrestee_count)
+log_dim(final_data)
+
+#Apply the missings to zero count variables, when the variable is zero and the counts of victim/offender does not match the total reported for the demographic variable
+
+rowsumsna <- partial(rowSums, na.rm=TRUE)
+
+final_data2 <- final_data %>% mutate(
+
+  #Get the totals
+  raw_count_gender_arrestee = rowsumsna(.[,c("count_male_arrestee", "count_female_arrestee") ]),
+
+  raw_count_race_arrestee = rowsumsna(.[,c("count_white_arrestee", "count_black_arrestee", "count_othrace_arrestee")])
+
+  # raw_count_hispanic_arrestee = rowsumsna(.[,c("count_hispanic_arrestee", "count_not_hispanic_arrestee")]),
+
+
+
+
+)
+
+checkfunction(final_data2, raw_count_gender_arrestee, count_male_arrestee, count_female_arrestee)
+checkfunction(final_data2, raw_count_race_arrestee, count_white_arrestee, count_black_arrestee, count_othrace_arrestee)
+# checkfunction(final_data2, raw_count_hispanic_arrestee, count_hispanic_arrestee, count_not_hispanic_arrestee)
+
+
+
+final_data3 <- final_data2 %>%
+  filter(!is.na(offender_seq_num)) %>%
+  mutate(
+
+################################################arrestee#######################################
+
+  #Gender
+
+  count_male_arrestee = case_when(  (num_arrestee_per_offender != raw_count_gender_arrestee) &
+                                   count_male_arrestee == 0  ~ NA_real_,
+                                   TRUE ~ count_male_arrestee),
+
+  count_female_arrestee = case_when( (num_arrestee_per_offender != raw_count_gender_arrestee) &
+                                   count_female_arrestee == 0  ~ NA_real_,
+                                   TRUE ~ count_female_arrestee),
+  #Race
+
+  count_white_arrestee = case_when( (num_arrestee_per_offender != raw_count_race_arrestee) &
+                                   count_white_arrestee == 0 ~ NA_real_,
+                                   TRUE ~ count_white_arrestee),
+
+  count_black_arrestee = case_when( (num_arrestee_per_offender != raw_count_race_arrestee) &
+                                   count_black_arrestee == 0 ~ NA_real_,
+                                   TRUE ~ count_black_arrestee),
+
+  count_othrace_arrestee = case_when((num_arrestee_per_offender != raw_count_race_arrestee) &
+                                   count_othrace_arrestee == 0 ~ NA_real_,
+                                 TRUE ~ count_othrace_arrestee)
+
+  #Hispanic
+  # count_hispanic_arrestee = case_when( (num_arrestee_per_offender != raw_count_hispanic_arrestee) &
+  #                                    count_hispanic_arrestee == 0 ~ NA_real_,
+  #                                TRUE ~ count_hispanic_arrestee),
+  #
+  # count_not_hispanic_arrestee = case_when( (num_arrestee_per_offender != raw_count_hispanic_arrestee) &
+  #                                    count_not_hispanic_arrestee == 0 ~ NA_real_,
+  #                                TRUE ~ count_not_hispanic_arrestee),
+
+
+
+
+
+)
+
+checkfunction(final_data3, count_male_arrestee,     count_female_arrestee,                       num_arrestee_per_offender, raw_count_gender_arrestee)
+checkfunction(final_data3, count_white_arrestee,    count_black_arrestee,  count_othrace_arrestee, num_arrestee_per_offender, raw_count_race_arrestee)
+# checkfunction(final_data3, count_hispanic_arrestee, count_not_hispanic_arrestee,                 num_arrestee_per_offender, raw_count_hispanic_arrestee)
+
+
+
+
+#Drop the raw variables
+# final_data4 <- final_data3 %>% select(-starts_with("raw_count"), -count_hispanic_arrestee, -count_not_hispanic_arrestee,
+#                                       -count_hispanic_victim, -count_not_hispanic_victim) %>%
+#   filter(!is.na(arrestee_seq_num))
+
+final_data4 <- final_data3 %>% select(-starts_with("raw_count")) %>%
+  filter(!is.na(offender_seq_num))
+
+
+
+#Output the dataset
+
+
+final_data4 %>% write_csv_logging(paste0(mainpath, "11_", input_state, "_offender_for_imputation.csv.gz"), na = "")
+
+
+```

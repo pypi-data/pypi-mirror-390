@@ -1,0 +1,165 @@
+---
+title: "NIBRS_Imputation_item_Missing"
+author: "Amang Sukasih / Edited by: Philip Lee"
+date: "11/04/2020"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+
+```{r program05}
+options(max.print=100000)
+options(tibble.print_max = 1000)
+#set.seed(414425)
+#Make set.seed = NA to produce consistent results on rerun
+set.seed=NA
+library(dplyr)
+library(dbplyr)
+library(tidyverse)
+library(haven)
+library(mice)
+library(miceadds)
+library(VIM)
+library(naniar)
+library(visdat)
+library(ggplot2)
+library(writexl)
+library(foreign)
+
+options(knit.duplicate.label = "allow")
+#KJ - swap to pipeline location (comment out here; comes from run program)
+#source("workflow/tasks/impute_items/0-Common_functions_for_imputation.R")
+#Create the continuous summary counts variables for offense indicator used for MICE
+#source("workflow/tasks/impute_items/NIBRS_Offense_function.r")
+
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+md.pattern <- partial(md.pattern, plot=FALSE)
+
+
+# input_state <- read_csv(paste0(mainpath, "/Current_State_to_process.csv")) %>% select(state)
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as enviroment variable")
+}
+
+NIBRS <- read_csv_logging(paste0(inputmainpath, "04_", input_state, "_offender_for_imputation.csv.gz"))
+
+#Drop ethnicity
+NIBRS <- NIBRS %>%
+  select(-ethnicity_code_offender2) %>%
+  #Drop Victim type ID since there are multiple victims
+  select(-victim_type_code)
+
+
+NIBRS$incident_id	<- as.factor(NIBRS$incident_id	)
+NIBRS$state_id	<- as.factor(NIBRS$state_id	)
+NIBRS$division_code	<- as.factor(NIBRS$division_code	)
+NIBRS$region_code	<- as.factor(NIBRS$region_code	)
+NIBRS$population_group_id	<- as.factor(NIBRS$population_group_id	)
+#NIBRS$victim_type_code	<- as.factor(NIBRS$victim_type_code	)
+NIBRS$offender_seq_num	<- as.factor(NIBRS$offender_seq_num	)
+NIBRS$der_bias	<- as.factor(NIBRS$der_bias	)
+NIBRS$der_off_arr_eq_1	<- as.factor(NIBRS$der_off_arr_eq_1	)
+NIBRS$sex_code_offender2	<- as.factor(NIBRS$sex_code_offender2	)
+NIBRS$cargo_theft_flag2	<- as.factor(NIBRS$cargo_theft_flag2	)
+NIBRS$suburban_area_flag2	<- as.factor(NIBRS$suburban_area_flag2	)
+NIBRS$method_entry_code2	<- as.factor(NIBRS$method_entry_code2	)
+#NIBRS$crime_against2	<- as.factor(NIBRS$crime_against2	)
+NIBRS$der_weapon2	<- as.factor(NIBRS$der_weapon2	)
+NIBRS$race_code_offender2	<- as.factor(NIBRS$race_code_offender2	)
+#NIBRS$ethnicity_code_offender2	<- as.factor(NIBRS$ethnicity_code_offender2	)
+NIBRS$der_arrestee_weapon2	<- as.factor(NIBRS$der_arrestee_weapon2	)
+NIBRS$der_incident_cleared	<- as.factor(NIBRS$der_incident_cleared	)
+
+NIBRS$der_off_assault_hom_offender <- as.factor(NIBRS$der_off_assault_hom_offender)
+NIBRS$der_off_kidnapping_ht_offender <- as.factor(NIBRS$der_off_kidnapping_ht_offender)
+NIBRS$der_off_sex_offender <- as.factor(NIBRS$der_off_sex_offender)
+NIBRS$der_off_arson_bur_vand_offender <- as.factor(NIBRS$der_off_arson_bur_vand_offender)
+NIBRS$der_off_mvt_rob_offender <- as.factor(NIBRS$der_off_mvt_rob_offender)
+NIBRS$der_off_other_property_offender <- as.factor(NIBRS$der_off_other_property_offender)
+NIBRS$der_off_other_society_offender <- as.factor(NIBRS$der_off_other_society_offender)
+
+#Check the data
+log_dim(NIBRS)
+summary(NIBRS)
+
+#md2 <- as.data.frame(md.pattern(NIBRS))
+md2 <- as.data.frame(md.pattern(NIBRS)) %>% mutate(id = rownames(.))
+
+#Check if imputation is needed
+raw_numbercheck <- md2[1,] %>%
+  mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+  select(new_id) %>%
+  as.double() #Get the number of cells that are non-empty
+raw_numberrows <- nrow(NIBRS) %>% as.double() #Get the number of total records
+
+#If true then output dataset and no imputation needed
+if(raw_numbercheck == raw_numberrows |
+
+   #Check if any imputation is needed for offender variables
+   (any(is.na(NIBRS$sex_code_offender2)) == FALSE &
+    any(is.na(NIBRS$race_code_offender2)) == FALSE &
+    any(is.na(NIBRS$age_num_offender2)) == FALSE )) {
+
+
+NIBRS %>%
+    select(incident_id,offender_seq_num, sex_code_offender2,race_code_offender2,age_num_offender2) %>%
+    write_csv_logging(paste0(mainpath, "05_", input_state, "_offender_imputed.csv.gz"), na="" )
+
+NIBRS %>%    
+    write_csv_logging(paste0(mainpath, "05_", input_state, "_offender_mice.csv.gz"), na="" )	
+
+    log_debug("Imputation NOT needed.")
+}else{
+    log_debug("Imputation IS needed.")
+write_xlsx_logging(md2, paste0(miscpathout ,"05_mdpattern2_", input_state, ".xlsx"))
+
+init1 = mice(NIBRS, maxit=0)
+meth1 = init1$method
+pred1 = init1$predictorMatrix
+
+## MODEL 1 (only offender demographic vars were imputed, and summary of victim demog vars were used as predictors)
+
+
+incpreds <- c("sex_code_offender2","race_code_offender2","age_num_offender2")
+predQuick1 <- quickpred(NIBRS, minpuc = 0.25, include = incpreds)
+predQuick1[,c("incident_id","offender_seq_num")] <- 0 #Will not use variables as predictor by making 0
+
+write_xlsx_logging(as.data.frame(predQuick1), paste0(miscpathout, "05_predQuick1_", input_state, ".xlsx"))
+
+meth1
+
+
+
+#imp1 = mice(NIBRS, pred=predQuick1, meth=meth1, m=1, seed=414425, maxit=15)
+imp1 = mice(NIBRS, pred=predQuick1, meth="pmm", m=1, seed=414425, maxit=15)
+
+#plot(imp1,c("sex_code_offender2","race_code_offender2","age_num_offender2"))
+NIBRS1 <- complete(imp1,1)
+#NIBRS2 <- complete(imp1,2)
+#NIBRS3 <- complete(imp1,3)
+#NIBRS4 <- complete(imp1,4)
+#NIBRS5 <- complete(imp1,5)
+
+check0 <- NIBRS[1:100,]
+write_xlsx_logging(check0,paste0(miscpathout, "05_check0_", input_state, ".xlsx"))
+
+check1 <- NIBRS1[1:100,]
+write_xlsx_logging(check1, paste0(miscpathout, "05_check1_", input_state, ".xlsx"))
+
+NIBRS1 <- as.data.frame(NIBRS1)
+
+Sex_offd_imputed <- NIBRS1  %>% select(incident_id,offender_seq_num, sex_code_offender2,race_code_offender2,age_num_offender2) #Let try a tibble
+glimpse(Sex_offd_imputed)
+
+Sex_offd_imputed %>% write_csv_logging(paste0(mainpath, "05_", input_state, "_offender_imputed.csv.gz"), na="" )
+
+NIBRS1 %>%    
+    write_csv_logging(paste0(mainpath, "05_", input_state, "_offender_mice.csv.gz"), na="" )	
+
+}
+
+
+```

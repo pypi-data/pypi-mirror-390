@@ -1,0 +1,21 @@
+checks for lkup_nibrs_relationship:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['relationship_code', 'name', 'relationship_type_id', 'sort_order', 'is_domestic']
+        when wrong column type:
+          relationship_code: character(2)
+          name: character varying(100)
+          relationship_type_id: smallint
+          sort_order: smallint
+          is_domestic: boolean
+  - invalid_count(relationship_code) = 0:
+      valid values: ['AQ', 'BE', 'BG', 'CF', 'CH', 'CS', 'EE', 'ER', 'FR', 'GC', 'GP', 'HR', 'IL', 'NE', 'OF', 'OK', 'PA', 'RU', 'SB', 'SC', 'SE', 'SP', 'SS', 'ST', 'VO', 'XR', 'XS', 'CO', 'FP', 'FC']
+  - invalid_count(name) = 0:
+      valid values: ['Homosexual Relationship', 'Relationship Unknown', 'Victim Was Acquaintance', 'Victim Was Babysittee', 'Victim Was Boyfriend/Girlfriend', 'Victim Was Child', 'Victim Was Child of Boyfriend or Girlfriend', 'Victim Was Common-Law Spouse', 'Victim Was Ex-Relationship (Ex-Boyfriend/Girlfriend)', 'Victim Was Friend', 'Victim Was Grandchild', 'Victim Was Grandparent', 'Victim Was In-law', 'Victim Was Neighbor', 'Victim Was Offender', 'Victim Was Other Family Member', 'Victim Was Parent', 'Victim Was Sibling', 'Victim Was Spouse', 'Victim Was Stepchild', 'Victim Was Stepparent', 'Victim Was Stepsibling', 'Victim Was Stranger', 'Victim was Employee', 'Victim was Employer', 'Victim was Ex-Spouse', 'Victim was Otherwise Known', 'Cohabitant (non-intimate relationship)', 'Victim was Foster Parent', 'Victim was Foster Child']
+  - invalid_count(relationship_type_id) = 0:
+      valid values: [1, 2, 3, 4]
+  - invalid_count(sort_order) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+  - invalid_count(is_domestic) = 0:
+      valid values: [False, True]

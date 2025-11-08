@@ -1,0 +1,397 @@
+---
+title: '5_Create_Combine_File'
+author: "Philip Lee"
+date: "April 9, 2024"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(DBI)
+library(DT)
+library(lubridate)
+library(data.table)
+library(openxlsx)
+library(readxl)
+
+
+
+#Create some functions
+tablena <- partial(table, useNA = "ifany")
+table_func <- partial(table, useNA="ifany")
+sum_func <- partial(sum, na.rm=TRUE)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+trim <- partial(trimws, which="both")
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+
+
+```
+
+
+```{r}
+
+#####################################################################
+
+#Get the list of files to be read in
+CONST_FILE_LIST <- list.files(path=filepathout, pattern = "Combined_NIBRS_SRS_Offense_Totals_\\d+.csv", recursive = TRUE, full.names = TRUE)
+
+#See the list of files
+print(CONST_FILE_LIST)
+
+#Loop thru and get the files
+raw_merge <- map(CONST_FILE_LIST, ~{
+  
+  #Read the file
+  tbd_1 <- fread(paste0(.x))
+  
+  #Next need to get the variables that ends in a year
+  tbd_year_vars <- tbd_1 %>%
+    colnames() %>%
+    as_tibble() %>%
+    mutate(
+      der_keep = fcase(
+        str_detect(string=value, pattern="\\d{4}$"), 1,
+        default = 0
+      ), 
+      der_drop_var = fcase(
+        str_detect(string=value, pattern="^der_switch_over_to_returna_\\d{4}"), 1,
+        str_detect(string=value, pattern="^MO_\\d{4}"), 1,
+        default = 0                           
+    )) %>%
+    #Keep the variables of interest
+    filter(der_keep == 1) %>%
+    filter(der_drop_var == 0) %>%
+    select(value) %>%
+    pull()
+  
+  #Print the variables
+  print(tbd_year_vars)
+  
+  #Next need to overwrite any negative values to 0
+  returnfile <- tbd_1 %>%
+    mutate(
+      one = 1,
+      #Fix the negative values
+      across(
+        .cols = any_of(tbd_year_vars), 
+        .fns = ~{
+          fcase(
+            #Make the negative numbers to 0
+            .x < 0, 0, 
+            #Otherwise keep the value as is
+            one == 1, as.double(.x)
+          ) 
+        }
+      )
+    )
+  
+  
+  #Return the list
+  return(returnfile)
+  
+})
+
+#Next need to merge the file together and need to use full join
+raw_merge2 <- reduce(raw_merge, full_join, by=c("ORI", "STATE", "UCR_AGENCY_NAME"))
+
+#See the dimension
+dim(raw_merge2)
+
+#Check to see if ORI is unique
+tbd_check <- raw_merge2 %>%
+  count(ORI)
+
+#See any ORIs that are in the dataset more than once
+tbd_check %>% filter(n > 1) %>% checkfunction(ORI)
+
+#Want to create a dataset of deduplicate ORI
+CONST_UNIQUE_ORI <- raw_merge2 %>%
+  distinct(ORI)
+
+#Declare the final dataset 
+final_combined_annual <- raw_merge2
+
+#Delete the old objects
+rm(list=c(ls(pattern="raw_"), ls(pattern="tbd_")))
+  
+
+######################Next need to get the largest COUNTY and Judicial District by ORI for the current year##################
+
+DATA_YEAR_MAX <- CONST_YEAR_MAX
+DATA_YEAR_MIN <- CONST_YEAR_MIN
+
+#See the max and min years
+print(DATA_YEAR_MAX)
+print(DATA_YEAR_MIN)
+
+#Create the connection object
+con <- dbConnect(RPostgres::Postgres())
+
+#Next need the county information
+#Want ucr_prd.ref_county (use state_id and county_id) 
+query_county <- paste0(
+  "select distinct 
+    data_year,
+    agency_id,
+    county_id,
+    is_core_city,
+    population as population_ref_agency_county
+  from ucr_prd.ref_agency_county
+  where data_year >= ", DATA_YEAR_MIN, " and data_year <= ", DATA_YEAR_MAX)
+
+#Run the query
+db_ref_agency_county <- time_query(con, query_county) %>%
+  as_tibble()
+
+#Need to save the latest version
+db_ref_agency_county2 <- db_ref_agency_county %>%
+  group_by(agency_id) %>%
+  mutate(
+    der_keep_year = fcase(
+      data_year == max(data_year, na.rm=TRUE), 1,
+      default = 0
+    )
+  ) %>%
+  ungroup()
+
+#Check the recodes
+db_ref_agency_county2 %>% checkfunction(der_keep_year, data_year)
+
+#Filter to the most recent year
+finaldb_ref_agency_county <- db_ref_agency_county2 %>%
+  filter(der_keep_year == 1)
+
+#Check the dim
+dim(finaldb_ref_agency_county)
+dim(db_ref_agency_county2)
+
+#Main population variable to use is  population_ref_agency_county
+finaldb_ref_agency_county2 <- finaldb_ref_agency_county %>%
+  group_by(data_year, agency_id) %>%
+  mutate(
+    
+    der_keep_year_county = fcase(
+      population_ref_agency_county == max(population_ref_agency_county, na.rm=TRUE), 1,
+      default = 0)
+    
+  ) %>%
+  ungroup()
+
+#Filter to keep the county
+finaldb_ref_agency_county3 <- finaldb_ref_agency_county2 %>%
+  filter(der_keep_year_county == 1)
+
+#Check the dim
+dim(finaldb_ref_agency_county3)
+dim(finaldb_ref_agency_county2)
+
+#Using finaldb_ref_agency_county3, need to get the ori and legacy_ori variables
+query_ref_agency <- paste0(
+  "select distinct 
+    agency_id,
+    ori,
+    legacy_ori,
+    judicial_district_code
+  from ucr_prd.ref_agency")
+
+#Run the query
+db_query_ref_agency <- time_query(con, query_ref_agency) %>%
+  as_tibble()
+
+#Check the size
+dim(db_query_ref_agency)
+
+#Using finaldb_ref_agency_county3 and db_query_ref_agency need to add on the ORI variables
+raw_db_merge <- finaldb_ref_agency_county3 %>%
+  left_join(db_query_ref_agency, by=c("agency_id"))
+
+#Check the dim
+dim(raw_db_merge)
+dim(finaldb_ref_agency_county3)
+dim(db_query_ref_agency)
+
+#Using raw_db_merge, need to filter to agencies we want (CONST_UNIQUE_ORI)
+tbd_good <- CONST_UNIQUE_ORI %>%
+  inner_join(raw_db_merge, by=c("ORI" = "ori"))
+
+tbd_bad <- CONST_UNIQUE_ORI %>%
+  anti_join(raw_db_merge, by=c("ORI" = "ori"))
+
+#Combine the datasets
+raw_db_merge2 <- bind_rows(tbd_good, tbd_bad)
+
+#Check the size
+dim(raw_db_merge2)
+dim(tbd_good)
+dim(tbd_bad)
+
+#Delete the tbd_
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#If there are any deduplicate left, keep the one with the lowest county_id
+raw_db_merge3 <- raw_db_merge2 %>%
+  group_by(ORI) %>%
+  mutate(
+    der_number_records = n(),
+    
+    #Keep the record with the lowest county_id
+    der_keep_year_county2 = fcase(
+      der_number_records == 1, 1, #Keep if only one record
+      der_number_records > 1 & (county_id == min(county_id, na.rm=TRUE)), 1,
+      default = 0
+    )
+  ) %>%
+  ungroup()
+
+#Check the recodes work
+raw_db_merge3 %>% checkfunction(der_number_records, der_keep_year_county2)
+
+#See the agencies with more than one record
+raw_db_merge3 %>%
+  filter(der_number_records > 1) %>%
+  datatable()
+
+#Deduplicate the record
+raw_db_merge4 <- raw_db_merge3 %>%
+  filter(der_keep_year_county2 == 1)
+
+#Check the size
+dim(raw_db_merge4)
+dim(final_combined_annual)
+dim(raw_db_merge3)
+
+#Need to add on the judicial districts to the file
+query_ref_judicial_district <- paste0(
+  "select 
+  judicial_district_code,
+  name as judicial_district_name
+  
+  from ucr_prd.ref_judicial_district")
+  
+
+#Run the query
+db_ref_judicial_district <- time_query(con, query_ref_judicial_district) %>%
+  as_tibble()
+
+#See the dim
+dim(db_ref_judicial_district)
+
+#Merge to raw_db_merge4
+raw_db_merge5 <- raw_db_merge4 %>%
+  left_join(db_ref_judicial_district, by="judicial_district_code")
+
+#Check the dim
+dim(raw_db_merge5)
+dim(raw_db_merge4)
+dim(db_ref_judicial_district)
+
+
+#Need to add on the county to the file
+query_ref_county <- paste0(
+  "select 
+  county_id,
+  name as county_name
+  from ucr_prd.ref_county")
+  
+
+#Run the query
+db_ref_county <- time_query(con, query_ref_county) %>%
+  as_tibble()
+
+#See the dim
+dim(db_ref_county)
+
+#Merge to raw_db_merge5
+raw_db_merge6 <- raw_db_merge5 %>%
+  left_join(db_ref_county, by="county_id")
+
+#Check the dim
+dim(raw_db_merge6)
+dim(raw_db_merge5)
+dim(db_ref_county)
+
+#Disconnect from database
+dbDisconnect(con)
+
+#Declare the final dataset
+final_db_info <- raw_db_merge6
+
+#Delete the objects we don't need
+rm(list=c(ls(pattern="^db_"), ls(pattern="^finaldb_"), ls(pattern="^raw_")))
+invisible(gc())
+
+#Next need to get the GOVID_2023 and govtype_2023 variables
+final_govid <- read_excel(path="data/Govid.xlsx") %>%
+  #Keep non-missing GOVID
+  filter(!is.na(GOVID_2023)) %>%
+  select(ORI, GOVID_2023, govtype_2023)
+
+#See the dim
+dim(final_govid)
+
+#Need to merge the following
+  #final_govid for govid 
+  #final_db_info for county judicial district info
+  #final_combined_annual for crime counts
+
+
+#Using final_db_info and final_combined_annual
+final_output <- final_combined_annual %>%
+  full_join(
+    final_db_info %>%
+      select(
+        data_year_agn_info = data_year,
+        ORI,
+        COUNTY = county_name,
+        Judicial_District = judicial_district_name), by=c("ORI")
+      ) 
+
+#See the dimension
+dim(final_output)
+dim(final_combined_annual)
+dim(final_db_info)
+
+#Merge on the govid by ORI if available
+final_output2 <- final_output %>%
+  left_join(final_govid %>% mutate(tbd_govid = 1), by=c("ORI"))
+
+#Check the size
+dim(final_output2)
+dim(final_output)
+dim(final_govid)
+
+#See how many merges
+final_output2 %>% checkfunction(tbd_govid)
+
+#Next need to put the variables in order
+final_output3 <- final_output2 %>%
+  select(GOVID_2023, data_year_agn_info, ORI, STATE, AGENCY_NAME = UCR_AGENCY_NAME, COUNTY,
+         govtype_2023, Judicial_District, 
+         #Any variables that ends in a 4 year digit
+         matches(match="\\d{4}$")
+         )
+
+
+#Output the dataset
+final_output3 %>%
+  write_csv(paste0(filepathout, "BJS_Grant.csv"), na="")
+
+
+
+
+
+
+
+```

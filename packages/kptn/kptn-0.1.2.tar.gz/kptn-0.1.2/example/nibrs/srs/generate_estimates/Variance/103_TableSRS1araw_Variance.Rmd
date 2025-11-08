@@ -1,0 +1,433 @@
+---
+title: '103_TableSRS1araw_Variance'
+author: "Philip Lee"
+date: "February 25, 2022"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DBI)
+library(DT)
+library(lubridate)
+#library(dplyr)
+#library(dbplyr)
+#library(rlang)
+library(ReGenesees)
+library(survey)
+library(data.table)
+
+# if (DER_CURRENT_PERMUTATION_NUM==""){
+#   simpleError("Set DER_CURRENT_PERMUTATION_NUM as enviroment variable")
+#   DER_CURRENT_PERMUTATION_NUM <- Sys.getenv("DER_CURRENT_PERMUTATION_NUM")
+# }
+
+
+#source("../POP_Total_code_assignment.R")
+read_csv_main <- partial(read_csv, guess_max = 10) #For now, read thru the 1st 10 rows to determine variable type
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+write.csv0 <- partial(write.csv, row.names = FALSE, na ="0")
+write.csv <- partial(write.csv, row.names = FALSE, na ="")
+
+```
+
+
+```{r}
+##########################Set the variables for table #######################
+DER_TABLE_NAME = "SRS1araw"
+DER_TABLE_NAME_FOR_PRB_BLANK = "SRS1a"
+#############################################################################
+
+log_debug("Program Start")
+#Read in the main datasets to be used for the table
+
+#Per request need to use SRS1a with the block imputed data over the raw data
+raw_main0 <- read_csv(file=gzfile(paste0(final_path, "Table ", DER_TABLE_NAME_FOR_PRB_BLANK, " ORI.csv.gz")))
+log_debug("Read in ORI file")
+
+#Will need to keep using the raw version of the database														
+main_reporting_db <- read_csv(file=paste0(final_path, "Table ", DER_TABLE_NAME, "_Reporting_Database.csv")) %>%
+  POPUALATION_VARIABLE_FUNCTION()
+log_debug("Read in reporting DB")
+
+#Create a dataset to rename the t_ variables from SRS1a to SRS1araw
+raw_rename_data <- colnames(raw_main0) %>%
+  as_tibble() %>%
+  mutate(
+    der_keep = str_detect(string = value, pattern = DER_TABLE_NAME_FOR_PRB_BLANK)
+  ) %>%
+  #Filter when true
+  filter(der_keep == TRUE) %>%
+  #rename the variable
+  rename(original_name  = value) %>%
+  #Create the new name 
+  mutate(
+    new_name = str_replace_all(string = original_name, pattern = DER_TABLE_NAME_FOR_PRB_BLANK, replacement=DER_TABLE_NAME)
+  )
+
+#Loop thru and rename the dataset
+raw_main <- raw_main0
+
+for(i in 1:nrow(raw_rename_data)){
+  
+  #Get the current name
+  tbd_original_name = raw_rename_data[i, "original_name"] %>% pull() %>% rlang:::parse_expr()
+  
+  #Get the new name
+  tbd_new_name = raw_rename_data[i, "new_name"] %>% pull() %>% rlang:::parse_expr()
+  
+  #Rename the variables
+  raw_main <- raw_main %>%
+    rename(
+      !!tbd_new_name := !!tbd_original_name
+    )
+  
+  #Delete the tbd objects
+  rm(tbd_original_name, tbd_new_name)
+  invisible(gc())
+
+}
+
+#Delete objects not needed
+rm(raw_main0, raw_rename_data)
+invisible(gc())
+
+#Need to create dataset raw_main for the remaining program																   
+
+#Merge on the information from the weight dataset
+main0 <- merge_on_weights_variance(raw_main)
+
+log_dim(raw_main)
+log_dim(main0)
+
+#Need to create the main dataset with some tweaks
+main01 <- main0 %>%
+  #Need to rename the weight variable
+  rename(tbd_weight = weight) %>%
+  mutate(
+    tbd_weight_gt0 = fcase(tbd_weight > 0, 1,
+                        is.na(tbd_weight), NA_real_,
+                        default = 0),
+    weight = fcase(
+      #If the weight for the geographic permutation is greater than 0, then use the population proportion variable, propMult
+      tbd_weight_gt0 == 1, propMult
+    )    											   
+  ) 
+		   
+#Check the recodes
+main01 %>% checkfunction(tbd_weight, tbd_weight_gt0)
+main01 %>% checkfunction(weight, tbd_weight_gt0, propMult)
+
+#Create the main data object
+main <- main01 %>%
+  select(-tbd_weight, -tbd_weight_gt0, -propMult)
+
+#Check to see if the weight variable from the ORI level dataset for variance has the same amount of records as raw_main
+main %>%
+  mutate(check_merge = case_when(!is.na(weight) ~ 1,
+                                 TRUE ~ 0)) %>%
+  checkfunction(check_merge)
+log_dim(raw_main)
+
+#Delete raw_main
+rm(raw_main, main0, main01)
+invisible(gc())
+
+#Read in the Percent Relative Bias file - for the original table but need to NA since we don't need confidence intervals for the raw data
+main_prb <- readRDS(paste0(input_copula_prb_folder, "/Relative_Bias_Estimates_", DER_TABLE_NAME_FOR_PRB_BLANK, "_", DER_CURRENT_PERMUTATION_NUM, ".rds")) %>%
+  #Need to blank out the estimates
+  mutate(
+    percent_relative_bias = NA_real_,
+    PRB_ACTUAL = NA_real_,
+    der_all_counts = NA_real_,
+    
+    #Update the table variable for merging
+    table = DER_TABLE_NAME
+  )
+
+#Get the variables we want to do the variances on
+der_variables_variance <- main %>%
+  create_table_variables() %>%
+################Filter any variables not needed###################################################################
+  mutate(der_cleared_cells = case_when(TRUE ~ 0))
+######################################################################################################################
+
+
+############Drop any rows that are not in the final indicator tables (i.e. all 0 rows by design)#####################
+der_drop_rows <- c(NA)
+######################################################################################################################
+#From reporting database drop any row
+main_reporting_db2 <- main_reporting_db %>%
+  drop_rows_from_table(der_drop_rows)
+
+log_dim(main_reporting_db)
+log_dim(main_reporting_db2)
+
+#From any variables drop any row variables
+der_variables_variance2 <- der_variables_variance  %>%
+  drop_rows_from_table(der_drop_rows)
+
+log_dim(der_variables_variance)
+log_dim(der_variables_variance2)
+
+#Clean up the database by making the cells in der_cleared_cells to have the DER_NA_CODE
+main_reporting_db3 <- main_reporting_db2 %>%
+  left_join(der_variables_variance2, by=c("table", "section", "row", "column")) %>%
+  clear_cells_from_table()
+
+#Need to get the variables for processing
+der_list_of_variables_variance <- der_variables_variance2 %>%
+  #Keep variables identified for variance estimation
+  filter(der_cleared_cells == 0) %>%
+  select(variable_name) %>%
+  pull()
+
+#See the list of variables
+print(der_list_of_variables_variance)
+
+#########################Calculate the Total Standard error
+
+
+#Need to split out the variables to loop thru 100 at a time to prevent an error message
+der_list_of_variables_variance_total_list <- der_list_of_variables_variance %>%
+  as_tibble() %>%
+  #Rename value to variable
+  rename(variable = value) %>%
+  #Assign a row to each variable
+  mutate(row = row_number()) %>%
+  #Get the quotient to split up processing by 500
+  mutate(row_split = row %/% 500) %>%
+  #Split by row_split to create a list 
+  split(.$row_split) 
+
+#Use map to create a list object to hold results
+der_list_TOTAL_SE <- map(der_list_of_variables_variance_total_list, ~ {
+   
+  #Create a formula for processing
+  der_list_of_variables_variance_formula <- paste("~",paste(.x$variable %>% unlist(),collapse="+")) %>% as.formula()                    
+  #Call the function
+  returndata <- TOTAL_SE_FUNCTION(indata=main, invar=der_list_of_variables_variance_formula, inmainprb=main_prb)
+             
+  #Return the data
+  return(returndata)
+	 
+						
+})
+
+#Combined the results
+final_TOTAL_SE <- bind_rows(der_list_TOTAL_SE)
+
+#Remove objects
+rm(der_list_TOTAL_SE, der_list_of_variables_variance_total_list)
+invisible(gc())
+  
+#######################Calculate the Rate
+#Using main_reporting_db3 - Identify the cells where estimate_type_detail_rate is not missing or have the DER_NA_CODE
+
+
+final_RATE_SE <- RATE_SE_FUNCTION(indatabase=main_reporting_db3, intotalse=final_TOTAL_SE, inmainprb=main_prb) %>%
+  select(table, section, row, column, estimate_type_num, 
+         estimate_standard_error, estimate_prb, estimate_bias, estimate_rmse,
+         estimate_upper_bound, estimate_lower_bound, 
+         relative_standard_error, relative_rmse, !!DER_PRB_VARIABLE_IND_SYMBOL,
+         tbd_estimate, estimate_unweighted, population_estimate_unweighted)
+  
+  
+#######################Calculate the Percentages standard error
+#der_list_of_variables_variance is the list of variables that needs to do the variance estimation
+
+#Need to filter out the DER_NA_CODE to not do percentages
+raw_percentage_1 <- der_list_of_variables_variance %>%
+  as_tibble() %>%
+  rename(raw_variable = value) %>%
+   #Create the additional variables
+    mutate(variable = str_match(string=raw_variable, pattern=DER_TABLE_PATTERN_STRING)[,1],
+           table   = str_match(string=raw_variable, pattern=DER_TABLE_PATTERN_STRING)[,2],
+           section = str_match(string=raw_variable, pattern=DER_TABLE_PATTERN_STRING)[,3] %>% as.numeric(),
+           row     = str_match(string=raw_variable, pattern=DER_TABLE_PATTERN_STRING)[,4] %>% as.numeric(),
+           column  = str_match(string=raw_variable, pattern=DER_TABLE_PATTERN_STRING)[,5] %>% as.numeric())
+
+#Identify the variables to not do percentages
+raw_percentage_drop <- main_reporting_db3 %>%
+    #Filter to percentages and DER_NA_CODE
+    filter(estimate_type_num == 2 & estimate == DER_NA_CODE) %>%
+    select(variable_name)
+
+#raw_percentage_2 contains the variables that are not the DER_NA_CODE for percentages
+raw_percentage_2 <- raw_percentage_1 %>%
+  anti_join(raw_percentage_drop, by=c("variable"="variable_name"))
+
+#Note we already drop some variables from the cleaning above, so the totals will not add up
+log_dim(raw_percentage_1)
+log_dim(raw_percentage_2)
+log_dim(raw_percentage_drop)
+														  
+	
+##################################Edit code for each table on how to define the denominator #########################  
+
+#Create new object
+raw_percentage_3 <- raw_percentage_2
+
+if(nrow(raw_percentage_3) > 0){
+
+#It is a must to use for loop here since tribble for row wise processing has to be done manually
+for(i in 1:nrow(raw_percentage_3)){
+  
+  #Get the variables
+  raw_variable_row    <- raw_percentage_3[i,"row"] %>% pull()
+  raw_variable_column <- raw_percentage_3[i,"column"]  %>% pull()
+
+  
+##################################Edit code for each table on how to define the denominator #########################  
+
+#Offense count
+
+
+  #Skip if not found
+  if(!exists("raw_denominator")){
+    #Clear the objects for next round
+    rm(raw_variable_row, raw_variable_column)
+    invisible(gc())    
+    
+    next
+  }
+
+
+  #Create the new variable
+  raw_percentage_3[i,"raw_denominator"] <-toString(raw_denominator)
+  
+  #Clear the objects for next round
+  rm(raw_denominator, raw_variable_row, raw_variable_column)
+  invisible(gc())
+  
+}
+}
+  
+##################################################################################################################### 
+
+#Need to split out the variables to loop thru 500 at a time to prevent an error message
+der_list_of_variables_variance_percentage_list <- raw_percentage_3 %>%
+  #Assign a row to each variable
+  mutate(row = row_number()) %>%
+  #Get the quotient to split up processing by 500
+  mutate(row_split = row %/% 500) %>%
+  #Split by row_split to create a list 
+  split(.$row_split) 
+
+#Use map to create a list object to hold results
+der_list_PERCENTAGE_SE <- map(der_list_of_variables_variance_percentage_list, ~ {
+
+  #Call the function
+  returndata <- PERCENTAGE_SE_FUNCTION(indata=main, 
+                                        invar_denom=.x, 
+                                        intotalse=final_TOTAL_SE, 
+                                        inprb=main_prb)
+             
+  #Return the data
+  return(returndata)
+                        
+})
+
+
+#Combine the datasets together
+final_PERCENTAGE_SE <- der_list_PERCENTAGE_SE %>%
+  bind_rows()
+												
+  
+#Remove objects
+rm(raw_percentage_1, raw_percentage_2, raw_percentage_3, raw_percentage_drop,
+   der_list_PERCENTAGE_SE, der_list_of_variables_variance_percentage_list)
+invisible(gc())
+
+####################Need to get the unweighted counts using the main dataset
+der_list_unweighted_counts <- map(der_list_of_variables_variance, ~{
+
+  #Call the function
+  returndata <- TOTAL_COUNT_FUNCTION(indata=main, 
+                                     invar=.x)
+             
+  #Return the data
+  return(returndata)  
+				 
+  
+})
+
+final_UNWEIGHTED_COUNTS <- bind_rows(der_list_unweighted_counts) %>%
+  select(-variable)
+
+
+#Clean up the reporting database
+#The datasets to use are main_reporting_db3 for most recent database
+#final_TOTAL_SE - for final count SE
+#final_RATE_SE - for final rate SE
+#final_PERCENTAGE_SE - for final percentage SE
+
+#Combined the final SE datasets
+final_estimate <- bind_rows(final_TOTAL_SE, final_RATE_SE, final_PERCENTAGE_SE) %>%
+  select(table, section, row, column, estimate_type_num, 
+         estimate_standard_error, estimate_prb, estimate_bias, estimate_rmse,
+         estimate_upper_bound, estimate_lower_bound, 
+         relative_standard_error, relative_rmse, !!DER_PRB_VARIABLE_IND_SYMBOL,
+         tbd_estimate, estimate_unweighted, population_estimate_unweighted)
+		 
+
+#Merge on the unweighted counts to all 3 estimate types
+final_estimate2 <- final_estimate %>%
+  left_join(final_UNWEIGHTED_COUNTS, by=c("table", "section", "row", "column"))
+
+log_dim(final_estimate)
+log_dim(final_estimate2)
+
+final_main_reporting_db <- main_reporting_db3 %>%
+  left_join(final_estimate2, by=c("table", "section", "row", "column", "estimate_type_num"))  %>%
+		 #Overwrite the estimate with tbd_estimate
+		 mutate(estimate = case_when(estimate == DER_NA_CODE ~  DER_NA_CODE,
+                                 TRUE ~ tbd_estimate)) %>%
+     mutate(estimate = case_when(is.na(estimate) ~  0,
+                                 TRUE ~ estimate),
+     #For this table (i.e. raw data - make sure that the analysis_weight_name has a value of one to indicate unweighted counts)
+            analysis_weight_name = "one")
+
+#Look thru and fix estimates
+for(i in 1:length(final_variance_vars)){
+  
+  #Current variable
+  invar <- final_variance_vars[[i]] %>% rlang:::parse_expr()
+  
+  final_main_reporting_db <- final_main_reporting_db %>%
+    mutate(!!invar := case_when(estimate == DER_NA_CODE ~  DER_NA_CODE,
+                                        TRUE ~ !!invar))
+  
+  
+}
+
+
+log_dim(main_reporting_db3)
+log_dim(final_estimate2)
+log_dim(final_main_reporting_db)         
+
+
+final_error<- final_main_reporting_db %>%
+  filter(round(tbd_estimate,2) != round(estimate,2))
+
+final_error %>%
+  DT:::datatable()
+
+#Output any difference to file
+if(nrow(final_error) > 0 ){
+  final_error %>%
+  write.csv(paste0(final_path,"Table ", DER_TABLE_NAME, "_Reporting_Database_Estimate_no_match_variance_", DER_CURRENT_PERMUTATION_NUM,".csv"))
+}
+
+log_debug("Pre-write out")
+final_main_reporting_db %>%
+  write.csv(paste0(final_path_after_variance,"Table ", DER_TABLE_NAME, "_Reporting_Database_After_Variance_", DER_CURRENT_PERMUTATION_NUM,".csv"))
+log_debug("Program end")
+```

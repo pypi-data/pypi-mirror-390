@@ -1,0 +1,18 @@
+checks for lkup_nibrs_cleared_exceptionally:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['cleared_exceptionally_code', 'name', 'description', 'sort_order']
+        when wrong column type:
+          cleared_exceptionally_code: character(1)
+          name: character varying(100)
+          description: character varying(300)
+          sort_order: smallint
+  - invalid_count(cleared_exceptionally_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'N']
+  - invalid_count(name) = 0:
+      valid values: ['Death of Offender', 'In Custody of Other Jurisdiction', 'Juvenile/No Custody', 'Not Applicable', 'Prosecution Declined', 'Victim Refused to Cooperate']
+  - invalid_count(description) = 0:
+      valid values: ['Death of Offender', 'In Custody of Other Jurisdiction', 'Juvenile/No Custody (the handling of a juvenile without taking him/her into custody, but rather by oral or written notice given to the parents or legal guardian in a case involving a minor offense, such as petty larceny)', 'Not Applicable (not cleared exceptionally)', 'Prosecution Declined (by the prosecutor for a reason other than lack of probable cause)', 'Victim Refused to Cooperate (in the prosecution)']
+  - invalid_count(sort_order) = 0:
+      valid values: [1, 2, 3, 4, 5, 6]

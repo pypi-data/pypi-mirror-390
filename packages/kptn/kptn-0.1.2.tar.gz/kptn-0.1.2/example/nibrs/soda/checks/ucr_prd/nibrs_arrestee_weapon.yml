@@ -1,0 +1,10 @@
+checks for nibrs_arrestee_weapon:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['arrestee_id', 'weapon_code',]
+        when wrong column type:
+          arrestee_id: bigint
+          weapon_code: character varying(3)
+  - invalid_count(weapon_code) = 0:
+      valid values: ['01', '11', '11A', '12', '12A', '13', '13A', '14', '14A', '15', '15A', '16', '17']

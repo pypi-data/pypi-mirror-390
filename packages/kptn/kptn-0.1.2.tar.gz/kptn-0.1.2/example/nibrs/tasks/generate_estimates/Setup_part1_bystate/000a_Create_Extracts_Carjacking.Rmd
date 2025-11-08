@@ -1,0 +1,393 @@
+---
+title: '1-Create Extracts'
+author: "Philip Lee"
+date: "March 22, 2023"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(DT)
+library(lubridate)
+library(data.table)
+
+
+#Create some functions
+tablena <- partial(table, useNA = "ifany")
+table_func <- partial(table, useNA="ifany")
+sum_func <- partial(sum, na.rm=TRUE)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+trim <- partial(trimws, which="both")
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+cleanup_memory <- function(){
+  
+  #Get the list of objects
+  tbd_list <- c(ls(pattern="^df", envir=.GlobalEnv), ls(pattern="^query", envir=.GlobalEnv))
+  print("Removing objects:  ")
+  print(as.character(tbd_list))
+
+  #Remove the objects
+  rm(list=c(as.character(tbd_list)), envir=.GlobalEnv)
+ 
+  #Free up memory
+  gc()
+   
+}
+
+#Function to recode offenses
+#Write the function for the SRS offense recodes.
+#Note this is the order of the SRS hierarchy rule
+
+offense_recode <- function(data){
+  
+  returndata <- data %>% mutate(
+    
+
+  der_robbery	= case_when(
+    trim_upcase(offense_code) %in% c("120") ~ 1,
+    TRUE ~ 0)
+  
+  )
+    
+  return(returndata)
+  
+}
+
+
+```
+
+
+```{r}
+##########################################################################################
+
+input_state <- Sys.getenv("INPUT_STATE")
+
+##########################################################################################
+
+# read in offenses data
+df1 <- read_csv(file=paste0(queried_data_path, "offense_attempt_complete_", input_state, ".csv.gz"), 
+                col_types = cols(offense_code = col_character(), location_code =  col_character()))
+
+log_dim(df1)
+
+#Use the function to recode all offenses
+df1_1 <- df1 %>%
+  offense_recode() %>%
+  mutate(
+    keep_attempt_completed_offense = case_when(
+      trim_upcase(attempt_complete_code) %in% c("A", "C") ~ 1,
+      TRUE ~ 0),
+    
+    keep_attempt_offense = case_when(
+      trim_upcase(attempt_complete_code) %in% c("A") ~ 1,
+      TRUE ~ 0),
+    
+    keep_completed_offense = case_when(
+      trim_upcase(attempt_complete_code) %in% c("C") ~ 1,
+      TRUE ~ 0)
+    )
+
+#Check the recodes
+df1_1 %>% checkfunction(der_robbery, crime_against, offense_code, offense_name)
+
+#Delete the object
+rm(df1)
+invisible(gc())
+
+#Using dataset df1_1 get the number of incidents
+#Note since dataset is merge with the nibrs_offense table and up to 10 offenses we want to deduplicate to get the total number of unique incidents
+
+df1_2 <- df1_1 %>%
+  count(incident_id)
+
+#This will have the number of unique incidents
+log_dim(df1_2)
+
+#Delete the object
+rm(df1_2)
+invisible(gc())
+
+#Get the total number of robberies, completed and attempted
+final_inc_robbery <- df1_1 %>%
+  #Filter to Robbery
+  filter(der_robbery == 1) %>%
+  #Make sure only one incident id counts as a safety check
+  group_by(incident_id) %>%
+  mutate(raw_first = row_number() == 1 ) %>%
+  ungroup() %>%
+  #Keep one instance
+  filter(raw_first == TRUE)
+
+
+final_inc_robbery %>% checkfunction(der_robbery)  
+final_inc_robbery %>% checkfunction(der_robbery, attempt_complete_code)  
+
+#Delete the object
+rm(df1_1)
+invisible(gc()) 
+  
+#Next need dataset for person
+#Dataset for offenses level by merging victim offenses table
+df1_2 <- read_csv(file=paste0(queried_data_path,"raw_offenses_all_cols_",input_state,".csv.gz"), 
+                  col_types = cols(offense_code = col_character())) %>% 
+  select(-c(location_code, location_name))
+
+
+#See the size of the dataset
+log_dim(df1_2)
+
+#Check the victim type
+df1_2 %>% checkfunction(victim_type_code, victim_type_name)
+
+
+#Subset to Person victims
+df1_2_1 <- df1_2 %>%
+  #I = Individual and L  =Law Enforcement Officers
+  filter(victim_type_code %in% c("I","L")) %>%
+  #Recode to Robbery
+  offense_recode() %>%
+  filter(der_robbery == 1) 
+
+#Check the victim type - Note this is the number of person victims
+df1_2_1 %>% checkfunction(der_robbery, attempt_complete_code, victim_type_code, victim_type_name)
+
+#Delete the object
+rm(df1_2)
+invisible(gc()) 
+
+#We need the number of incidents, but each incident may have up to 999 victims, so we need to transform the data
+
+final_victim_robbery <- df1_2_1 %>%
+  #Need to group some variables
+  #Note the attempt_complete_flag is on the offense segment
+  group_by(incident_id, attempt_complete_code, victim_type_name) %>%
+  summarise(count = n() ) %>%
+  ungroup() %>%
+  #Create new variable
+  mutate(new_var = paste0("victim_", victim_type_name)) %>%
+  #Drop the victim_type_name for transposing
+  select(-victim_type_name) %>%
+  #Transpose the dataset
+  spread(key = new_var, value = count)
+
+#See the dataset
+glimpse(final_victim_robbery)
+
+#Make dynamic, get the victim_ variables
+raw_column <- colnames(final_victim_robbery) %>%
+  as_tibble() %>%
+  #Using regular expression want the pattern that starts with victim and [,2] is to get the pattern match results
+  mutate(keepvar = str_match(string=.$value,pattern="(victim_\\w+)")[,2]) %>%
+  #Filter to the variables
+  filter(!is.na(keepvar)) %>%
+  select(value) %>%
+  pull()
+
+#See the variables
+raw_column
+
+#Using the frame work tidyeval to dynamic insert variables
+final_victim_robbery %>% 
+  checkfunction(attempt_complete_code, 
+                !!!(raw_column %>% rlang:::parse_exprs()))
+
+#Get Total Robberies of Persons
+final_victim_robbery %>% 
+  log_dim()
+
+
+#Get Completed Robberies of Persons
+final_victim_robbery %>% 
+  filter(trim_upcase(attempt_complete_code) == "C") %>%
+  log_dim()
+
+#Delete the objects
+rm(df1_2_1)
+invisible(gc()) 
+
+#Need the property segment
+#Dataset for Property 
+
+
+#Write query for Property 
+df3 <- read_csv(file=paste0(queried_data_path,"raw_property_",input_state,".csv.gz"), 
+                col_types = cols(prop_desc_code = col_character()))
+
+  #See the property codes
+  df3 %>% checkfunction(prop_loss_code, prop_loss_desc)
+  df3 %>% checkfunction(prop_desc_code, prop_desc_name)
+  
+  #Note that variable stolen_count (i.e. at incident_id) is the same number for all property segment (i.e. up to 10), it is just replicated for each property entry
+  
+  
+  #Need to subset to vehicles of choice
+  df3_1 <- df3 %>%
+    #Filter to vehicle of interest
+    # 3	Automobile
+    # 5	Buses
+    # 28	Recreational Vehicles
+    # 37	Trucks
+    # 24	Other Motor Vehicles
+    filter(trim_upcase(prop_desc_code) %in% c('03', '05', '28', '37', '24') ) %>%
+    #Create recodes of vehicles
+    #Note sometimes case_when takes a long time to process - Use data.table fcase is much faster and efficent
+    mutate(
+      raw_veh_truck_bus_theft = fcase(
+        prop_desc_code %in% c(
+         '05',	#Buses
+         '28',	#Recreational Vehicles
+         '37'	#Trucks          
+        ), 1,
+        default = 0),
+      
+      raw_veh_other = fcase(
+        prop_desc_code %in% c(
+        '24'	#Other Motor Vehicles        
+        ), 1,
+        default = 0),     
+      
+      raw_veh_auto = fcase(
+        prop_desc_code %in% c(
+        '03'	#Automobile       
+        ), 1,
+        default = 0),
+      
+      raw_veh_any = fcase(
+        prop_desc_code %in% c(
+         '05',	#Buses
+         '28',	#Recreational Vehicles
+         '37',	#Trucks               
+         '24',	#Other Motor Vehicles          
+         '03'	#Automobile       
+        ), 1,
+        default = 0)
+      
+)
+  #Check the recodes
+  df3_1 %>% checkfunction(raw_veh_any,
+                          raw_veh_truck_bus_theft,
+                          raw_veh_other,
+                          raw_veh_auto,
+                          prop_desc_code, prop_desc_name)
+  
+  
+
+  #Delete the datasets
+  rm(df3)
+  invisible(gc())  
+  
+  #Next need to summarise the counts at the incident_id level
+  final_inc_vehicles <- df3_1 %>%
+    group_by(incident_id) %>%
+    summarise(
+      #Get the totals
+      across(
+        .cols = starts_with("raw_veh"),
+        .fns = ~{
+          #Get the summarise counts
+          sum(.x)
+        },
+        .names = "{.col}"
+        
+        
+      )) %>%
+    ungroup()
+  
+  #See the counts
+  final_inc_vehicles %>% checkfunction(raw_veh_any)
+  
+  #Need to create the stolen counts using data file df3_1
+  df3_2 <- df3_1 %>%
+    #5	Recovered (to impound property that was previously stolen)
+    #7	Stolen/Etc. (includes bribed, defrauded, embezzled, extorted, ransomed, robbed, etc.)
+    filter(prop_loss_code %in% c(5, 7)) 
+  
+ #Next need to summarise the counts at the incident_id level
+  final_inc_stolen_vehicles <- df3_2 %>%
+    group_by(incident_id) %>%
+    summarise(
+      #Get the totals
+      across(
+        .cols = starts_with("raw_veh"),
+        .fns = ~{
+          #Get the summarise counts
+          sum(.x)
+        },
+        .names = "stolen_{.col}"
+        
+        
+      )) %>%
+    ungroup()
+  
+  #See the dataset
+  glimpse(final_inc_stolen_vehicles)
+  
+  #Delete the datasets
+  rm(df3_1, df3_2)
+  invisible(gc())   
+    
+  #See the final datasets
+  ls(pattern="final_")
+
+#Use the following datasets to answer remaining questions
+# "final_inc_robbery" - incident level with robbery offense       
+# "final_victim_robbery" - contains the victim counts
+# "final_inc_vehicles"- contains the count of vehicles at the incident level      
+# "final_inc_stolen_vehicles" - contains the count of stolen or recovered vehicles at the incident level       
+
+
+#Robberies of Persons where the Vehicle Property Type is Stolen or recovered
+raw_data <- final_victim_robbery %>%
+  left_join(final_inc_stolen_vehicles, by = "incident_id")
+                      
+#See the log_dim 
+log_dim(raw_data)
+log_dim(final_victim_robbery)
+log_dim(final_inc_stolen_vehicles)
+
+#See the number of incidents by vehicle counts
+raw_data %>% checkfunction(victim_Individual, stolen_raw_veh_any)
+  
+#Robberies of Persons where the Vehicle Property Type is Stolen below
+raw_data %>% 
+  filter(victim_Individual >=1 & stolen_raw_veh_any >= 1) %>%
+  log_dim()
+
+#Completed Robberies of Persons where the Vehicle Property Type is Stolen or recovered
+raw_data %>% checkfunction(attempt_complete_code, victim_Individual, stolen_raw_veh_any)
+  
+#Completed Robberies of Persons with Vehicle Property Type below
+raw_data %>% 
+  filter(trim_upcase(attempt_complete_code) == "C" &  victim_Individual >=1 & stolen_raw_veh_any >= 1) %>%
+  log_dim()
+
+#Completed Robberies of Persons with Vehicle Property Type below that are stolen or recovered
+final0 <- raw_data %>% 
+      filter(trim_upcase(attempt_complete_code) == "C" &  victim_Individual >=1 & stolen_raw_veh_any >= 1) 
+  
+#Get the incident_id with these characteristics
+final <- final0 %>%
+  distinct(incident_id) %>%
+  mutate(der_car_jacking_incident = 1)
+
+#See the log_dimensions
+log_dim(final0)
+log_dim(final)
+
+#Output to share
+final %>% write_csv(gzfile(paste0(der_bystate_file_path,"raw_incident_car_jacking_",input_state,".csv.gz")), na="")
+
+```
+
+

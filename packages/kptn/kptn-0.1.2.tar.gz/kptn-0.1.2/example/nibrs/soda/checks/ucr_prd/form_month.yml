@@ -1,0 +1,19 @@
+checks for form_month:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['data_year', 'form_month_id', 'agency_id', 'data_month', 'month_included_in', 'form_code', 'is_zero_report']
+        when wrong column type:
+          data_year: smallint
+          form_month_id: bigint
+          agency_id: integer
+          data_month: smallint
+          month_included_in: numeric(2,0)
+          form_code: character(1)
+          is_zero_report: boolean
+  - invalid_count(data_month) = 0:
+      valid values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+  - invalid_count(form_code) = 0:
+      valid values: ['A', 'C', 'F', 'H', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'E']
+  - invalid_count(is_zero_report) = 0:
+      valid values: [False, True]

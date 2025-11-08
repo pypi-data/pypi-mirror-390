@@ -1,0 +1,28 @@
+{
+  "requiredEnv": [
+    "STACK_NAME",
+    "RSRC_SUFFIX",
+    "PREFECT_IMAGE"
+  ],
+  "ecrRepos": {
+    "stackName": "{{STACK_NAME}}Foundation-{{RSRC_SUFFIX}}",
+    "repos": [
+      {
+        "outputKey": "authProxyRepo",
+        "image": "nginx",
+        "buildPath": "./lib/AuthProxyStack"
+      },
+      {
+        "outputKey": "flowRunnerRepo",
+        "image": "flow-runner",
+        "buildPath": ".."
+      },
+      {
+        "outputKey": "prefectWebServerRepo",
+        "image": "prefect",
+        "buildPath": "./lib/PrefectWebServerStack",
+        "buildArgs": "PREFECT_IMAGE={{PREFECT_IMAGE}}"
+      }
+    ]
+  }
+}

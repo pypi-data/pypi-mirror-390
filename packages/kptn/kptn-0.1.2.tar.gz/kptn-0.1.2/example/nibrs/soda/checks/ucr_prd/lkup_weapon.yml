@@ -1,0 +1,33 @@
+checks for lkup_weapon:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['weapon_code', 'name', 'used_for_shr', 'used_for_nibrs_offense', 'used_for_nibrs_arrestee', 'weap_hier_level', 'sort_order', 'shr_hier_level', 'weapon_category_id']
+        when wrong column type:
+          weapon_code: character varying(3)
+          name: character varying(100)
+          used_for_shr: boolean
+          used_for_nibrs_offense: boolean
+          used_for_nibrs_arrestee: boolean
+          weap_hier_level: smallint
+          sort_order: smallint
+          shr_hier_level: smallint
+          weapon_category_id: smallint
+  - invalid_count(weapon_code) = 0:
+      valid values: ['01', '11', '11A', '12', '12A', '13', '13A', '14', '14A', '15', '15A', '16', '17', '20', '21', '21A', '22', '22A', '23', '23A', '24', '24A', '25', '25A', '30', '35', '40', '50', '55', '60', '65', '70', '75', '80', '85', '90', '95', '99']
+  - invalid_count(name) = 0:
+      valid values: ['Asphyxiation', 'Blunt Object', 'Club/Blackjack/Brass Knuckles', 'Drowning', 'Drugs/Narcotics/Sleeping Pills', 'Explosives', 'Fire/Incendiary Device', 'Firearm', 'Firearm (Automatic)', 'Handgun', 'Handgun (Automatic)', 'Knife/Cutting Instrument', 'Lethal Cutting Instrument', 'Motor Vehicle/Vessel', 'None', 'Other', 'Other Firearm', 'Other Firearm (Automatic)', 'Personal Weapons', 'Poison', 'Pushed or Thrown Out Window', 'Rifle', 'Rifle (Automatic)', 'Shotgun', 'Shotgun (Automatic)', 'Strangulation - Include Hanging', 'Unarmed', 'Unknown']
+  - invalid_count(used_for_shr) = 0:
+      valid values: [False, True]
+  - invalid_count(used_for_nibrs_offense) = 0:
+      valid values: [False, True]
+  - invalid_count(used_for_nibrs_arrestee) = 0:
+      valid values: [False, True]
+  - invalid_count(weap_hier_level) = 0:
+      valid values: [1, 2, 3, 4, 5]
+  - invalid_count(sort_order) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 51, 52, 53, 54, 55, 56]
+  - invalid_count(shr_hier_level) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  - invalid_count(weapon_category_id) = 0:
+      valid values: [1, 2, 3, 4, 5]

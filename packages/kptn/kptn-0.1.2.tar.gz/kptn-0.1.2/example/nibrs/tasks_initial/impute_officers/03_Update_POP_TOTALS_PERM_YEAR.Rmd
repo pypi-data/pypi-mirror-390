@@ -1,0 +1,524 @@
+---
+title: "03_Update_POP_TOTALS_PERM_YEAR"
+author: "Philip Lee"
+date: "March 22, 2023"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r}
+
+###-------------------------------------------------------------------------------
+### Identify the permutation to subset by geographic permutation
+###-------------------------------------------------------------------------------
+
+CONST_GEO_PERM_LIMIT <- 1000
+
+
+###-------------------------------------------------------------------------------
+
+###-------------------------------------------------------------------------------
+### Read the libraries
+###-------------------------------------------------------------------------------
+
+library(tidyverse)
+library(readxl)
+library(DT)
+
+###-------------------------------------------------------------------------------
+
+
+###-------------------------------------------------------------------------------
+
+#CONST_YEAR <- Sys.getenv("DATA_YEAR")
+CONST_OUTPUT <- paste0(outputPipelineDir, "/initial_tasks_output/")
+
+###-------------------------------------------------------------------------------
+
+
+###Create additional functions
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+
+###-------------------------------------------------------------------------------
+
+#Query the database 
+#Work on the NIBRS data
+con <- dbConnect(RPostgres::Postgres())
+
+query1 <- paste0("
+ SELECT
+  ref_agency.agency_id,
+  ref_agency_status.data_year,
+  ref_agency.ori,
+  ref_agency.legacy_ori,
+  ref_agency_yearly.is_nibrs
+ FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+  LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+  LEFT JOIN ucr_prd.ref_state USING (state_id)
+  LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+  LEFT JOIN ucr_prd.ref_agency_type USING (agency_type_id)
+ WHERE ref_agency_status.data_year IS NOT NULL
+       AND ref_agency_yearly.is_nibrs IS TRUE
+       AND ref_agency_status.data_year = ", CONST_YEAR)
+
+#Do the query
+raw_df1 <- time_query(con, query1)
+
+#Disconnect from database
+dbDisconnect(con)
+
+#See the dimension
+log_dim(raw_df1)
+table(raw_df1$is_nibrs, useNA = "always")
+
+#Read in universe file with the imputed officer counts
+raw_universe <- read_csv(paste0(CONST_OUTPUT, "ref_agency_", CONST_YEAR, ".csv"))
+
+#Need to recode the variables and keep eligible agencies
+#Create the eligible variable - using the UNIVERSE file for consistency
+raw_universe2 <- raw_universe %>%
+  mutate(
+    
+    
+    der_national = fcase(
+      
+      toupper(trimws(STATE_ABBR, which="both")) == "AL", 1, #Alabama
+      toupper(trimws(STATE_ABBR, which="both")) == "AK", 1, #Alaska
+      toupper(trimws(STATE_ABBR, which="both")) == "AZ", 1, #Arizona
+      toupper(trimws(STATE_ABBR, which="both")) == "AR", 1, #Arkansas
+      toupper(trimws(STATE_ABBR, which="both")) == "CA", 1, #California
+      toupper(trimws(STATE_ABBR, which="both")) == "CO", 1, #Colorado
+      toupper(trimws(STATE_ABBR, which="both")) == "CT", 1, #Connecticut
+      toupper(trimws(STATE_ABBR, which="both")) == "DE", 1, #Delaware
+      toupper(trimws(STATE_ABBR, which="both")) == "DC", 1, #District of Columbia
+      toupper(trimws(STATE_ABBR, which="both")) == "FL", 1, #Florida
+      toupper(trimws(STATE_ABBR, which="both")) == "GA", 1, #Georgia
+      toupper(trimws(STATE_ABBR, which="both")) == "HI", 1, #Hawaii
+      toupper(trimws(STATE_ABBR, which="both")) == "ID", 1, #Idaho
+      toupper(trimws(STATE_ABBR, which="both")) == "IL", 1, #Illinois
+      toupper(trimws(STATE_ABBR, which="both")) == "IN", 1, #Indiana
+      toupper(trimws(STATE_ABBR, which="both")) == "IA", 1, #Iowa
+      toupper(trimws(STATE_ABBR, which="both")) == "KS", 1, #Kansas
+      toupper(trimws(STATE_ABBR, which="both")) == "KY", 1, #Kentucky
+      toupper(trimws(STATE_ABBR, which="both")) == "LA", 1, #Louisiana
+      toupper(trimws(STATE_ABBR, which="both")) == "ME", 1, #Maine
+      toupper(trimws(STATE_ABBR, which="both")) == "MD", 1, #Maryland
+      toupper(trimws(STATE_ABBR, which="both")) == "MA", 1, #Massachusetts
+      toupper(trimws(STATE_ABBR, which="both")) == "MI", 1, #Michigan
+      toupper(trimws(STATE_ABBR, which="both")) == "MN", 1, #Minnesota
+      toupper(trimws(STATE_ABBR, which="both")) == "MS", 1, #Mississippi
+      toupper(trimws(STATE_ABBR, which="both")) == "MO", 1, #Missouri
+      toupper(trimws(STATE_ABBR, which="both")) == "MT", 1, #Montana
+      toupper(trimws(STATE_ABBR, which="both")) == "NB", 1, #Nebraska
+      toupper(trimws(STATE_ABBR, which="both")) == "NV", 1, #Nevada
+      toupper(trimws(STATE_ABBR, which="both")) == "NH", 1, #New Hampshire
+      toupper(trimws(STATE_ABBR, which="both")) == "NJ", 1, #New Jersey
+      toupper(trimws(STATE_ABBR, which="both")) == "NM", 1, #New Mexico
+      toupper(trimws(STATE_ABBR, which="both")) == "NY", 1, #New York
+      toupper(trimws(STATE_ABBR, which="both")) == "NC", 1, #North Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "ND", 1, #North Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "OH", 1, #Ohio
+      toupper(trimws(STATE_ABBR, which="both")) == "OK", 1, #Oklahoma
+      toupper(trimws(STATE_ABBR, which="both")) == "OR", 1, #Oregon
+      toupper(trimws(STATE_ABBR, which="both")) == "PA", 1, #Pennsylvania
+      toupper(trimws(STATE_ABBR, which="both")) == "RI", 1, #Rhode Island
+      toupper(trimws(STATE_ABBR, which="both")) == "SC", 1, #South Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "SD", 1, #South Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "TN", 1, #Tennessee
+      toupper(trimws(STATE_ABBR, which="both")) == "TX", 1, #Texas
+      toupper(trimws(STATE_ABBR, which="both")) == "UT", 1, #Utah
+      toupper(trimws(STATE_ABBR, which="both")) == "VT", 1, #Vermont
+      toupper(trimws(STATE_ABBR, which="both")) == "VA", 1, #Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WA", 1, #Washington
+      toupper(trimws(STATE_ABBR, which="both")) == "WV", 1, #West Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WI", 1, #Wisconsin
+      toupper(trimws(STATE_ABBR, which="both")) == "WY", 1, #Wyoming
+      default =  0),
+    
+    #Create the eligible flag
+    in_univ_elig_state = fcase(
+      der_national %in% c(1), 1,
+      default = 0),
+    
+    
+    der_in_univ_elig_no_year =  fcase(
+      trim_upper(AGENCY_STATUS) == "A" &
+        trim_upper(COVERED_FLAG) == "N" &
+        trim_upper(DORMANT_FLAG) == "N" &
+        trim_upper(AGENCY_TYPE_NAME) != "FEDERAL" &
+        in_univ_elig_state == 1,  1,
+      default = 0),    
+    
+    #Create count of officers
+    der_POP_officer_num = rowSums(.[,c("PE_MALE_OFFICER_COUNT", "PE_FEMALE_OFFICER_COUNT")], na.rm=TRUE),
+    
+    der_population_group = fcase(
+      
+      POPULATION_GROUP_ID == 3, 1, #Cities 1,000,000 or over:  Cities and counties 100,000 or over
+      POPULATION_GROUP_ID == 4, 1, #Cities from 500,000 thru 999,999:  Cities and counties 100,000 or over
+      POPULATION_GROUP_ID == 5, 1, #Cities from 250,000 thru 499,999:  Cities and counties 100,000 or over
+      POPULATION_GROUP_ID == 6, 1, #Cities from 100,000 thru 249,999:  Cities and counties 100,000 or over
+      POPULATION_GROUP_ID == 7, 2, #Cities from 50,000 thru 99,999:  Cities and counties 25,000-99,999
+      POPULATION_GROUP_ID == 8, 2, #Cities from 25,000 thru 49,999:  Cities and counties 25,000-99,999
+      POPULATION_GROUP_ID == 9, 3, #Cities from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+      POPULATION_GROUP_ID == 10, 4, #Cities from 2,500 thru 9,999:  Cities and counties under 10,000
+      POPULATION_GROUP_ID == 11, 4, #Cities under 2,500:  Cities and counties under 10,000
+      POPULATION_GROUP_ID == 13, 1, #Non-MSA counties 100,000 or over:  Cities and counties 100,000 or over
+      POPULATION_GROUP_ID == 14, 2, #Non-MSA counties from 25,000 thru 99,999:  Cities and counties 25,000-99,999
+      POPULATION_GROUP_ID == 15, 3, #Non-MSA counties from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+      POPULATION_GROUP_ID == 16, 4, #Non-MSA counties under 10,000:  Cities and counties under 10,000
+      POPULATION_GROUP_ID == 17, 5, #Non-MSA State Police:  State police
+      POPULATION_GROUP_ID == 19, 1, #MSA counties 100,000 or over:  Cities and counties 100,000 or over
+      POPULATION_GROUP_ID == 20, 2, #MSA counties from 25,000 thru 99,999:  Cities and counties 25,000-99,999
+      POPULATION_GROUP_ID == 21, 3, #MSA counties from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+      POPULATION_GROUP_ID == 22, 4, #MSA counties under 10,000:  Cities and counties under 10,000
+      POPULATION_GROUP_ID == 23, 5, #MSA State Police:  State police
+      default = NA_real_),    
+    
+    der_agency_type_1_7 = fcase(
+      
+      trim_upper(AGENCY_TYPE_NAME) == "CITY", 1, #City:  City
+      trim_upper(AGENCY_TYPE_NAME) == "TRIBAL", 6, #Tribal:  Tribal agencies
+      trim_upper(AGENCY_TYPE_NAME) == "OTHER", 5, #Other:  Other state agencies
+      trim_upper(AGENCY_TYPE_NAME) == "UNIVERSITY OR COLLEGE", 3, #University or College:  University or college
+      trim_upper(AGENCY_TYPE_NAME) == "OTHER STATE AGENCY", 5, #Other State Agency:  Other state agencies
+      trim_upper(AGENCY_TYPE_NAME) == "STATE POLICE", 4, #State Police:  State police
+      trim_upper(AGENCY_TYPE_NAME) == "UNKNOWN", NA_real_, #Unknown:  Unknown
+      trim_upper(AGENCY_TYPE_NAME) == "COUNTY", 2, #County:  County
+      trim_upper(AGENCY_TYPE_NAME) == "FEDERAL", 7, #Federal:  Federal agencies
+      default = NA_real_)
+  )
+
+#Check the recodes
+raw_universe2 %>% checkfunction(der_national, STATE_ABBR)  
+raw_universe2 %>% checkfunction(in_univ_elig_state, der_national, STATE_ABBR)  
+raw_universe2 %>% checkfunction(der_in_univ_elig_no_year, AGENCY_STATUS, COVERED_FLAG, DORMANT_FLAG, AGENCY_TYPE_NAME, in_univ_elig_state)  
+raw_universe2 %>% checkfunction(der_POP_officer_num, PE_MALE_OFFICER_COUNT, PE_FEMALE_OFFICER_COUNT)
+raw_universe2 %>% checkfunction(der_population_group, POPULATION_GROUP_ID,POPULATION_GROUP_DESC)
+raw_universe2 %>% checkfunction(der_agency_type_1_7, AGENCY_TYPE_NAME)
+
+#Subset to eligible agencies
+raw_universe3 <- raw_universe2 %>%
+  filter(der_in_univ_elig_no_year == 1)
+
+#Check the dim
+log_dim(raw_universe3)
+log_dim(raw_universe2)
+
+
+#Merge on the NIBRS database output raw_df1
+tbd_good <- raw_universe3 %>%
+  inner_join(raw_df1 %>% mutate(der_in_nibrs = 1), by=c("ORI"="ori"))
+
+tbd_bad <- raw_universe3 %>%
+  anti_join(raw_df1, by=c("ORI"="ori"))
+
+tbd_good2 <- tbd_bad %>%
+  inner_join(raw_df1 %>% mutate(der_in_nibrs = 1), by=c("LEGACY_ORI"="legacy_ori"))
+
+tbd_bad2 <- tbd_bad %>%
+  anti_join(raw_df1, by=c("LEGACY_ORI"="legacy_ori"))
+
+#Bind the data
+raw_universe4 <- bind_rows(tbd_good, tbd_good2, tbd_bad2)
+
+#Check the dim
+log_dim(raw_universe3)
+log_dim(raw_universe4)
+log_dim(tbd_good)
+log_dim(tbd_bad)
+log_dim(tbd_good2)
+log_dim(tbd_bad2)
+
+#Compare this to the REPORTING_TYPE flag
+raw_universe4 %>% checkfunction(REPORTING_TYPE, der_in_nibrs)
+
+#Create the main dataset
+main <- raw_universe4
+
+#Delete the raw and tbd data data
+rm(list=ls(pattern="raw_"))
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Read in the pseudo-ori file
+raw_pop <- read_excel(file.path(external_path,file_locs[[CONST_YEAR]]$cbi_summary_county))
+
+#Check the dim
+log_dim(raw_pop)
+
+#Deduplicate in case
+raw_pop <- raw_pop %>%
+  group_by(ORI, state, county) %>%
+  mutate(raw_total = n()) %>%
+  ungroup() %>%
+  #Make the keep criteria
+  mutate(raw_keep = case_when(
+    raw_total == 1 ~ TRUE,
+    raw_total > 1 & popResidAgcyCounty_cbi > 0 ~ TRUE 
+    )) %>%
+  filter(raw_keep == TRUE) %>%
+  select(-raw_total, -raw_keep)
+
+#Check the dim
+log_dim(raw_pop)
+
+#See the number of unique ORIs
+raw_test_ori_counts <- raw_pop %>% 
+  distinct(ORI)
+
+#See the number of ORIs
+log_dim(raw_test_ori_counts)
+
+#Rename to not overwrite
+names(raw_pop) <- toupper(paste0("POP_", colnames(raw_pop)))
+
+#Need to rename some variables to keep consistent with processing
+raw_pop<- raw_pop %>%
+  rename(
+MSA_NAME_COUNTY	=        POP_MSA_NAME_COUNTY,	
+JUDICIAL_DISTRICT_NAME = POP_JUDICIAL_DISTRICT_NAME,
+FIELD_OFFICE_NAME =      POP_FIELD_OFFICE_NAME,
+METRO_DIVISION_COUNTY =  POP_METRO_DIVISION_COUNTY)
+  
+#Merge the files using main and raw_pop
+tbd_good_1 <- main %>%
+  inner_join(raw_pop, by = c("ORI" = "POP_ORI") )
+
+tbd_anti_1 <- main %>%
+  anti_join(raw_pop, by = c("ORI" = "POP_ORI") )
+
+#Check the dimension
+log_dim(main)
+log_dim(tbd_good_1)
+log_dim(tbd_anti_1)
+
+#Merge by ORI from universe file
+tbd_good_2 <- tbd_anti_1 %>%
+  inner_join(raw_pop, by = c("LEGACY_ORI" = "POP_LEGACY_ORI") )
+
+tbd_anti_2 <- tbd_anti_1 %>%
+  anti_join(raw_pop, by = c("LEGACY_ORI" = "POP_LEGACY_ORI") )
+
+#Check the dim
+log_dim(tbd_good_2)
+log_dim(tbd_anti_2)
+
+#Bind the dataset together
+raw_2 <- bind_rows(
+  tbd_good_1 %>% mutate(der_in_pop = 1), 
+  tbd_good_2 %>% mutate(der_in_pop = 1), 
+  tbd_anti_2 %>% mutate(der_in_pop = 0))
+
+#Check the dim
+log_dim(main)
+log_dim(raw_2)
+
+raw_2 %>%
+  checkfunction(der_in_pop)
+
+
+#Check to see if not merge because population counts are 0
+tbd_anti_2 %>%
+  checkfunction(POPULATION)
+
+tbd_anti_2 %>%
+  filter(POPULATION > 0) %>%
+  print() %>%
+  datatable()
+
+#Will Use JD's variables 
+for_counts0 <- raw_2 %>%
+    group_by(ORI) %>%
+    mutate(tbd_county_counts = n() ) %>% 
+    ungroup() %>%
+    mutate(
+    #Need to code the der_in_msa_county_name status variable using MSA_NAME_COUNTY
+    der_in_msa_county_name = fcase(
+      
+      #Going to code the following as not in MSA
+      trim_upcase(MSA_NAME_COUNTY) %in% c("NOT SPECIFIED", "NOT AVAILABLE"), "N",
+      #For the remaining ones, code as yes including Not Specified;Peoria, IL
+      !is.na(MSA_NAME_COUNTY), "Y"),  
+    
+  #Create new der_msa variable using RTI's definition from the population task
+  
+  
+  #Update on 20240506 - Use the population task MSA_NAME_COUNTY variable as the main variable to determine MSA status
+  der_in_msa = fcase(
+      trim_upcase(der_in_msa_county_name) == "Y", 1, # National Size MSA Counties  
+      
+      (POPULATION_GROUP_ID == 3 | #Cities 1,000,000 or over  
+      POPULATION_GROUP_ID == 9 | #Cities from 10,000 thru 24,999
+      POPULATION_GROUP_ID == 6 | #Cities from 100,000 thru 249,999
+      POPULATION_GROUP_ID == 10 | #Cities from 2,500 thru 9,999
+      POPULATION_GROUP_ID == 8 | #Cities from 25,000 thru 49,999
+      POPULATION_GROUP_ID == 5 | #Cities from 250,000 thru 499,999
+      POPULATION_GROUP_ID == 7 | #Cities from 50,000 thru 99,999
+      POPULATION_GROUP_ID == 4 | #Cities from 500,000 thru 999,999
+      POPULATION_GROUP_ID == 11)  #Cities under 2,500
+      & trim_upcase(der_in_msa_county_name) == "N", 2, # National Size Cities outside MSA    
+      
+      trim_upcase(der_in_msa_county_name) == "N", 3, #National Size Non-MSA Counties
+      
+      default = 4), #Missing         
+
+    #New need to adjust the police employment variable to account for the pseudo-ori merge
+    der_POP_officer_num_orig = der_POP_officer_num,
+  
+    der_POP_officer_num = der_POP_officer_num_orig / tbd_county_counts
+    )  %>%
+  #Need to create a new der_in_msa variable that assign based on ORI level
+    group_by(ORI, der_in_msa) %>%
+    mutate(tbd_in_msa_ori_pop_sum = sum(POP_POPRESIDAGCYCOUNTY_CBI, na.rm=TRUE)  ) %>% 
+    ungroup() 
+
+#Figure out the which version of der_in_msa to assign which ORI
+tbd_for_counts0 <- for_counts0 %>%
+  group_by(ORI) %>%
+  mutate(
+  
+    #Keep the record at the ORI level where the tbd_in_msa_ori_pop_sum variable is the largest
+    tbd_in_msa_keep = fcase(
+      max(tbd_in_msa_ori_pop_sum, na.rm = TRUE) == tbd_in_msa_ori_pop_sum, 1,
+      default = 0
+    )
+  ) %>%
+  ungroup() %>%
+  #Keep the largest population record within ORI by the der_in_msa group
+  filter(tbd_in_msa_keep == 1) %>%
+  #Deduplicate the record
+  distinct(ORI, der_in_msa) %>%
+  rename(der_in_msa_singleori = der_in_msa) %>%
+  #Deduplicate if there are still more than one record
+  group_by(ORI) %>%
+  mutate(
+    #Want the lowest level first
+    tbd_keep = fcase(
+      min(der_in_msa_singleori, na.rm=TRUE) == der_in_msa_singleori, 1,
+      default = 0
+    )
+  ) %>%
+  ungroup() %>%
+  #Keep the 1 record
+  filter(tbd_keep == 1) %>%
+  select(-tbd_keep)
+
+#Create the for_counts dataset
+for_counts <- for_counts0 %>%
+  left_join(tbd_for_counts0, by=c("ORI"))
+  
+#Check the dim
+log_dim(for_counts)
+log_dim(for_counts0)
+log_dim(tbd_for_counts0)  
+
+#Check recodes
+for_counts %>% checkfunction(der_in_msa_county_name, MSA_NAME_COUNTY)
+for_counts %>% checkfunction(der_in_msa, POPULATION_GROUP_ID, POPULATION_GROUP_DESC, der_in_msa_county_name)
+for_counts %>% checkfunction(der_POP_officer_num, der_POP_officer_num_orig, tbd_county_counts)
+for_counts %>% checkfunction(der_in_msa_singleori)
+
+#Need to delete the temporary datasets
+rm(list=ls(pattern="raw_"))
+rm(list=ls(pattern="tbd_"))
+rm(for_counts0)
+invisible(gc())
+
+#Read in the POP_TOTALS_PERM_YEAR file to update the officer variables
+raw_population <- read_csv(file.path(external_path,file_locs[[CONST_YEAR]]$population))
+log_dim(raw_population)
+
+#Need to subset to the original permutation to the get the code for subsetting
+main_population <- raw_population %>%
+  filter(PERMUTATION_NUMBER < CONST_GEO_PERM_LIMIT) %>%
+  select(PERMUTATION_NUMBER, PERMUTATION_NUMBER_DESC )
+
+#Check the dimension
+log_dim(main_population)
+
+#Reference the data use to generate the officer counts by geographic permutations
+#Note the for_counts data is at the pseudo-ori level
+#Note the variable der_POP_officer_num_orig is at the ORI level
+
+main_data <- for_counts
+
+
+final <- map2_dfr(.x=main_population$PERMUTATION_NUMBER,
+                  .y=main_population$PERMUTATION_NUMBER_DESC, 
+                  ~{
+  
+  #Subset to current permutation
+  tbd_1 <- main_data %>%
+    filter(!!!(.y %>% rlang:::parse_exprs()) )
+  
+  #Next need to keep one agency per geographic permutation
+  tbd_2 <- tbd_1 %>%
+    #Keep the first instance
+    group_by(ORI) %>%
+    mutate(der_rowcounter = row_number() ) %>%
+    ungroup() %>%
+    filter(der_rowcounter == 1)
+       
+  #Need to sum up the number of imputed TOTAL_OFFICERS      
+  final_1 <- tbd_2 %>% summarise(DER_POP_OFFICER_NUM_WEIGHTED = sum(der_POP_officer_num_orig, na.rm=TRUE))
+  
+  #Need to sum up the number of imputed TOTAL_OFFICERS in NIBRS   
+  final_2 <- tbd_2 %>% 
+    filter(der_in_nibrs == 1) %>%
+    summarise(DER_POP_OFFICER_NUM = sum(der_POP_officer_num_orig, na.rm=TRUE))
+  
+  #Create the return data
+  returndata <- bind_cols(final_1, final_2) %>%
+    mutate(
+      ORIG_PERMUTATION_NUMBER = .x
+    )
+  
+  #Return the data
+  return(returndata)
+                    
+                    
+})
+
+#Check the dimension
+log_dim(main_population)
+log_dim(final)
+
+
+#Using raw_population, drop the officer variables if detected
+CONST_OFFICER_VARS <- c("DER_POP_OFFICER_NUM", "DER_POP_OFFICER_NUM_WEIGHTED")
+                    
+if(any(colnames(raw_population) %in% c(CONST_OFFICER_VARS))){
+  
+  #Drop the variables
+  log_debug("Dropping the Officer variables from the population file")
+  
+  raw_population2 <- raw_population %>%
+    select(!!!paste0("-", CONST_OFFICER_VARS) %>% rlang:::parse_exprs())
+}else{
+  raw_population2 <- raw_population
+}
+
+#Using raw_population2, add on the imputed officer variables
+raw_population3 <- raw_population2 %>%
+  left_join(final, by = "ORIG_PERMUTATION_NUMBER")
+         
+#Check the merge       
+log_dim(raw_population3)
+log_dim(raw_population2)
+log_dim(final)
+
+#Output to share
+raw_population3 %>%
+  write_csv(paste0(CONST_OUTPUT, "POP_TOTALS_PERM_", CONST_YEAR, ".csv"))
+```

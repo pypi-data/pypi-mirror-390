@@ -1,0 +1,438 @@
+---
+title: '01-Process Weights and permutation variable'
+author: "Philip Lee"
+date: "August 25, 2020"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DBI)
+library(DT)
+library(lubridate)
+library(readxl)
+library(data.table)
+#library(dplyr)
+#library(dbplyr)
+#library(rlang)
+
+#Read in the common functions to be used in R
+#source(here::here("tasks/impute_items/0-Common_functions_for_imputation.R"))
+#source("POP_Total_code_assignment.R")
+
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+write.csv0 <- partial(write.csv, row.names = FALSE, na ="0")
+write.csv <- partial(write.csv, row.names = FALSE, na ="")
+
+#Function to make the der_national variable
+
+create_der_national <- function(indata){
+
+returndata <- indata %>%
+  mutate(
+
+      der_national = fcase(
+
+      toupper(trimws(STATE_ABBR, which="both")) == "AL", 1, #Alabama
+      toupper(trimws(STATE_ABBR, which="both")) == "AK", 1, #Alaska
+      toupper(trimws(STATE_ABBR, which="both")) == "AZ", 1, #Arizona
+      toupper(trimws(STATE_ABBR, which="both")) == "AR", 1, #Arkansas
+      toupper(trimws(STATE_ABBR, which="both")) == "CA", 1, #California
+      toupper(trimws(STATE_ABBR, which="both")) == "CO", 1, #Colorado
+      toupper(trimws(STATE_ABBR, which="both")) == "CT", 1, #Connecticut
+      toupper(trimws(STATE_ABBR, which="both")) == "DE", 1, #Delaware
+      toupper(trimws(STATE_ABBR, which="both")) == "DC", 1, #District of Columbia
+      toupper(trimws(STATE_ABBR, which="both")) == "FL", 1, #Florida
+      toupper(trimws(STATE_ABBR, which="both")) == "GA", 1, #Georgia
+      toupper(trimws(STATE_ABBR, which="both")) == "HI", 1, #Hawaii
+      toupper(trimws(STATE_ABBR, which="both")) == "ID", 1, #Idaho
+      toupper(trimws(STATE_ABBR, which="both")) == "IL", 1, #Illinois
+      toupper(trimws(STATE_ABBR, which="both")) == "IN", 1, #Indiana
+      toupper(trimws(STATE_ABBR, which="both")) == "IA", 1, #Iowa
+      toupper(trimws(STATE_ABBR, which="both")) == "KS", 1, #Kansas
+      toupper(trimws(STATE_ABBR, which="both")) == "KY", 1, #Kentucky
+      toupper(trimws(STATE_ABBR, which="both")) == "LA", 1, #Louisiana
+      toupper(trimws(STATE_ABBR, which="both")) == "ME", 1, #Maine
+      toupper(trimws(STATE_ABBR, which="both")) == "MD", 1, #Maryland
+      toupper(trimws(STATE_ABBR, which="both")) == "MA", 1, #Massachusetts
+      toupper(trimws(STATE_ABBR, which="both")) == "MI", 1, #Michigan
+      toupper(trimws(STATE_ABBR, which="both")) == "MN", 1, #Minnesota
+      toupper(trimws(STATE_ABBR, which="both")) == "MS", 1, #Mississippi
+      toupper(trimws(STATE_ABBR, which="both")) == "MO", 1, #Missouri
+      toupper(trimws(STATE_ABBR, which="both")) == "MT", 1, #Montana
+      toupper(trimws(STATE_ABBR, which="both")) == "NB", 1, #Nebraska
+      toupper(trimws(STATE_ABBR, which="both")) == "NV", 1, #Nevada
+      toupper(trimws(STATE_ABBR, which="both")) == "NH", 1, #New Hampshire
+      toupper(trimws(STATE_ABBR, which="both")) == "NJ", 1, #New Jersey
+      toupper(trimws(STATE_ABBR, which="both")) == "NM", 1, #New Mexico
+      toupper(trimws(STATE_ABBR, which="both")) == "NY", 1, #New York
+      toupper(trimws(STATE_ABBR, which="both")) == "NC", 1, #North Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "ND", 1, #North Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "OH", 1, #Ohio
+      toupper(trimws(STATE_ABBR, which="both")) == "OK", 1, #Oklahoma
+      toupper(trimws(STATE_ABBR, which="both")) == "OR", 1, #Oregon
+      toupper(trimws(STATE_ABBR, which="both")) == "PA", 1, #Pennsylvania
+      toupper(trimws(STATE_ABBR, which="both")) == "RI", 1, #Rhode Island
+      toupper(trimws(STATE_ABBR, which="both")) == "SC", 1, #South Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "SD", 1, #South Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "TN", 1, #Tennessee
+      toupper(trimws(STATE_ABBR, which="both")) == "TX", 1, #Texas
+      toupper(trimws(STATE_ABBR, which="both")) == "UT", 1, #Utah
+      toupper(trimws(STATE_ABBR, which="both")) == "VT", 1, #Vermont
+      toupper(trimws(STATE_ABBR, which="both")) == "VA", 1, #Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WA", 1, #Washington
+      toupper(trimws(STATE_ABBR, which="both")) == "WV", 1, #West Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WI", 1, #Wisconsin
+      toupper(trimws(STATE_ABBR, which="both")) == "WY", 1, #Wyoming
+      default = 0)
+  )
+
+  #Return the data
+  return(returndata)
+
+}
+
+
+```
+
+
+```{r}
+
+######################Process the universe file for additional variables##############################
+#universe - read in file
+#raw_universe_path <- list.files(paste0(CONST_DEPENDENCY_UNIVERSE), pattern=paste0(CONST_YEAR,".xlsx"))[[1]]
+#print(raw_universe_path)
+
+#Read the Universe file for additional variables
+univ_ori <-file.path(input_files_path, paste0("ref_agency_", CONST_YEAR, ".csv")) %>%
+  fread() %>% select(ORI, LEGACY_ORI, REGION_CODE, STATE_ABBR)
+
+
+
+####################################################################################
+
+
+#Just need to create the "ORI_VARIANCE.csv.gz" and make sure that the variables needed for copula and variance are on the file
+raw_main_cal <- fread(paste0(weight_path, "County_Level_Calibration_Variable_File_SRS.csv"))
+
+#It looks like we need the following variables for "ORI_VARIANCE.csv.gz"
+# select(ori, !!DER_WEIGHT_VARIABLE_SYMBOL, !!DER_ORI_WEIGHT_GROUP_SYMBOL, !!DER_ORI_WEIGHT_DESCRIPT_GROUP_SYMBOL, matches("^V\\d+_\\w+")) %>%
+
+#Need to keep the correct variables 
+raw_main_cal2 <- raw_main_cal %>%
+  #Create number of agency covered
+  group_by(ORI_universe) %>%
+  mutate(
+    der_ori_county = n()
+  ) %>%
+  ungroup() %>%								  
+  select(
+    ORI_universe, #This variable was used in weighting - need to create ori for merging to single level ORI file
+    county,
+    #Any variables for doing the geographic permutation subset
+    REGION_CODE,
+    STATE_ABBR,
+    METRO_DIVISION_COUNTY,
+    #population variables
+    popResidAgcyCounty_cbi,
+    der_ori_county,
+    #propPOP1,						  
+	propMult,		 
+#Need the following variable for the judicial district cross (state, division, regional, national) for variance estimation
+    crossNum,
+    #The calibration variables
+    matches("^V\\d+_\\w+")
+  )
+
+#See the dimensions
+dim(raw_main_cal)
+dim(raw_main_cal2)
+
+#Need the following variables from the weighting file
+# JDWgt,
+# wgtGpJD,
+# wgtGpJDDesc,
+raw_jd <- fread(paste0(weight_path, "weights_jd_cal_srs_altcombs_col_srs.csv"))
+
+raw_jd2 <- raw_jd %>%
+  select(
+    ORI_universe, #This variable was used in weighting - need to create ori for merging to single level ORI file
+    county,
+    JUDICIAL_DISTRICT_NAME,
+    JDWgt,
+    wgtGpJD,
+    wgtGpJDDesc
+  )
+
+#Read in MSA
+raw_msa <- fread(paste0(weight_path, "weights_MSA_cal_srs_altcombs_col_srs.csv"))
+
+raw_msa2 <- raw_msa %>%
+  select(
+    ORI_universe, #This variable was used in weighting - need to create ori for merging to single level ORI file
+    county,
+    MSA_NAME_COUNTY,
+    MSAWgt,
+    wgtGpMSA,
+    wgtGpMSADesc
+    
+  )
+
+
+#Read in FO
+raw_fo <- fread(paste0(weight_path, "weights_FO_cal_srs_altcombs_col_srs.csv"))
+
+raw_fo2 <- raw_fo %>%
+  select(
+    ORI_universe, #This variable was used in weighting - need to create ori for merging to single level ORI file
+    county,
+    FIELD_OFFICE_NAME,
+    FOWgt,
+    wgtGpFO,
+    wgtGpFODesc
+  )
+
+#Merge the weighting files together
+raw_weight <- reduce(mget(c("raw_jd2", "raw_msa2", "raw_fo2")), full_join, by=c("ORI_universe", "county"))
+
+#Check to see if the dimensions are correct
+dim(raw_weight)
+dim(raw_jd2)
+dim(raw_msa2)
+dim(raw_fo2)
+
+#Declare the raw_final_weight_original for remaining code
+raw_final_weight_original <- raw_weight %>%
+  group_by(ORI_universe) %>%
+  mutate(der_ori_counts = n() ) %>%
+  ungroup()
+
+
+####Next do the join between the raw_final_weight_original and raw_main_cal2 files
+#Try to process the raw_final_weight_original by single record and more than one record
+#Single record do not need county and more than one record will use county as critera
+
+raw_final_weight_original_only1 <- raw_final_weight_original %>% filter(der_ori_counts == 1)
+raw_final_weight_original_mt1   <- raw_final_weight_original %>% filter(der_ori_counts > 1)
+
+#Check the size
+dim(raw_final_weight_original)
+dim(raw_final_weight_original_only1)
+dim(raw_final_weight_original_mt1)
+
+#Using raw_final_weight_original_only1 do the processing without using the county variable for better merges
+
+tbd_good_1 <- raw_final_weight_original_only1 %>%
+  inner_join(raw_main_cal2 %>% select(-county), by=c("ORI_universe"))
+
+tbd_bad_1 <- raw_final_weight_original_only1 %>%
+  anti_join(raw_main_cal2 %>% select(-county), by=c("ORI_universe"))
+
+#Stack the data together
+raw_final_weight_original_only1_final <- bind_rows(tbd_good_1, tbd_bad_1)
+
+dim(raw_final_weight_original_only1_final)
+dim(raw_final_weight_original_only1)
+dim(tbd_good_1)
+dim(tbd_bad_1)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Dataset to use:  raw_final_weight_original_only1_final
+
+#Next process the raw_final_weight_original_mt1 dataset
+
+#Using raw_final_weight_original_mt1 do the processing the county variable for better merges
+
+tbd_good_1 <- raw_final_weight_original_mt1 %>%
+  inner_join(raw_main_cal2, by=c("ORI_universe", "county"))
+
+tbd_bad_1 <- raw_final_weight_original_mt1 %>%
+  anti_join(raw_main_cal2, by=c("ORI_universe", "county"))
+
+#For the oris in tbd_bad_1, need to add on the     REGION_CODE and STATE_ABBR
+
+#Merge by LEGACY ORI next on the ORI Universe file
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(univ_ori %>% select(-ORI), by=c("ORI_universe" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(univ_ori  %>% select(-ORI), by=c("ORI_universe" = "LEGACY_ORI"))
+
+
+#Stack the data together
+raw_final_weight_original_mt1_final <- bind_rows(tbd_good_1, tbd_good_2, tbd_bad_2)
+
+dim(raw_final_weight_original_mt1_final)
+dim(raw_final_weight_original_mt1)
+dim(tbd_good_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Stack the two datasets together raw_final_weight_original_only1_final and raw_final_weight_original_mt1_final to have all the information on one dataset
+
+final_weight <- bind_rows(raw_final_weight_original_only1_final, 
+                          raw_final_weight_original_mt1_final
+                          )
+
+glimpse(final_weight)
+
+#Make sure the datasets have the same amount of rows
+dim(final_weight)
+dim(raw_final_weight_original)
+dim(raw_main_cal2)
+
+
+#Final dataset to use is final_weight for the weights
+rm(list=ls(pattern="raw_final_"))
+invisible(gc())
+
+
+#Using dataset final_weight create the der_national variable
+final2 <- final_weight %>%
+  create_der_national() %>%
+  #Create the ori and ORI variable
+  mutate(ori = ORI_universe,
+         ORI = ORI_universe) 
+
+#Check the recodes
+final2 %>% checkfunction(der_national, STATE_ABBR)
+
+#Using final2 need to add on the POPULATION_GROUP_ID variable and create variables
+#der_in_msa_county_name
+#der_in_msa
+
+#Commented out
+#univ_ori_selected <- file.path(external_path,file_locs[[CONST_YEAR]]$universe) %>%
+#  fread() %>% select(ORI, LEGACY_ORI, POPULATION_GROUP_DESC, POPULATION_GROUP_ID)
+
+univ_ori_selected <-file.path(input_files_path, paste0("ref_agency_", CONST_YEAR, ".csv")) %>%
+  fread() %>% select(ORI, LEGACY_ORI, POPULATION_GROUP_DESC, POPULATION_GROUP_ID)
+
+tbd_good_1 <- final2 %>%
+  inner_join(univ_ori_selected %>% select(-LEGACY_ORI), by=c("ORI"))
+
+tbd_bad_1 <- final2 %>%
+  anti_join(univ_ori_selected %>% select(-LEGACY_ORI), by=c("ORI"))
+
+#For the oris in tbd_bad_1, need to add on the     REGION_CODE and STATE_ABBR
+
+#Merge by LEGACY ORI next on the ORI Universe file
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(univ_ori_selected %>% select(-ORI), by=c("ORI" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(univ_ori_selected  %>% select(-ORI), by=c("ORI" = "LEGACY_ORI"))
+
+
+#Stack the data together
+final3 <- bind_rows(tbd_good_1, tbd_good_2, tbd_bad_2)
+
+dim(final3)
+dim(final2)
+dim(tbd_good_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Next using final3, recode the in msa variable
+final4 <- final3 %>%
+   mutate(
+    #Need to code the der_in_msa_county_name status variable using MSA_NAME_COUNTY
+    der_in_msa_county_name = fcase(
+      
+      #Going to code the following as not in MSA
+      trim_upcase(MSA_NAME_COUNTY) %in% c("NOT SPECIFIED", "NOT AVAILABLE"), "N",
+      #For the remaining ones, code as yes including Not Specified;Peoria, IL
+      !is.na(MSA_NAME_COUNTY), "Y"),  
+  
+  #Create new der_in_msa  variable
+   # der_in_msa = fcase(
+   # 
+   #  (POPULATION_GROUP_ID == 3 | #Cities 1,000,000 or over  
+   #  POPULATION_GROUP_ID == 9 | #Cities from 10,000 thru 24,999
+   #  POPULATION_GROUP_ID == 6 | #Cities from 100,000 thru 249,999
+   #  POPULATION_GROUP_ID == 10 | #Cities from 2,500 thru 9,999
+   #  POPULATION_GROUP_ID == 8 | #Cities from 25,000 thru 49,999
+   #  POPULATION_GROUP_ID == 5 | #Cities from 250,000 thru 499,999
+   #  POPULATION_GROUP_ID == 7 | #Cities from 50,000 thru 99,999
+   #  POPULATION_GROUP_ID == 4 | #Cities from 500,000 thru 999,999
+   #  POPULATION_GROUP_ID == 11)  #Cities under 2,500
+   #  & trim_upcase(der_in_msa_county_name) == "Y" , 1, # National Size MSA Counties   
+   #  
+   #  (POPULATION_GROUP_ID == 19 | #MSA counties 100,000 or over:  Cities and counties 100,000 or over
+   #  POPULATION_GROUP_ID == 21 | #MSA counties from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+   #  POPULATION_GROUP_ID == 20 | #MSA counties from 25,000 thru 99,999:  Cities and counties 25,000-99,999
+   #  POPULATION_GROUP_ID == 22 | #MSA counties under 10,000:  Cities and counties under 10,000
+   #  POPULATION_GROUP_ID == 23) , #MSA State Police:  State police
+   #  1, #"National Size MSA Counties"
+   #  
+   #  (POPULATION_GROUP_ID == 3 | #Cities 1,000,000 or over  
+   #  POPULATION_GROUP_ID == 9 | #Cities from 10,000 thru 24,999
+   #  POPULATION_GROUP_ID == 6 | #Cities from 100,000 thru 249,999
+   #  POPULATION_GROUP_ID == 10 | #Cities from 2,500 thru 9,999
+   #  POPULATION_GROUP_ID == 8 | #Cities from 25,000 thru 49,999
+   #  POPULATION_GROUP_ID == 5 | #Cities from 250,000 thru 499,999
+   #  POPULATION_GROUP_ID == 7 | #Cities from 50,000 thru 99,999
+   #  POPULATION_GROUP_ID == 4 | #Cities from 500,000 thru 999,999
+   #  POPULATION_GROUP_ID == 11)  #Cities under 2,500
+   #  & trim_upcase(der_in_msa_county_name) == "N" , 2, # National Size Cities outside MSA    
+   #  
+   #  (POPULATION_GROUP_ID == 13 | #Non-MSA counties 100,000 or over:  Cities and counties 100,000 or over
+   #  POPULATION_GROUP_ID == 15 | #Non-MSA counties from 10,000 thru 24,999:  Cities and counties 10,000-24,999       
+   #  POPULATION_GROUP_ID == 14 | #Non-MSA counties from 25,000 thru 99,999:  Cities and counties 25,000-99,999
+   #  POPULATION_GROUP_ID == 16 | #Non-MSA counties under 10,000:  Cities and counties under 10,000
+   #  POPULATION_GROUP_ID == 17) ,  #Non-MSA State Police:  State police
+   #  3, #National Size Non-MSA Counties
+   #    
+   #  default = 4) #Missing    
+  
+  #Update on 20240506 - Use the population task MSA_NAME_COUNTY variable as the main variable to determine MSA status
+  der_in_msa = fcase(
+      trim_upcase(der_in_msa_county_name) == "Y", 1, # National Size MSA Counties  
+      
+      (POPULATION_GROUP_ID == 3 | #Cities 1,000,000 or over  
+      POPULATION_GROUP_ID == 9 | #Cities from 10,000 thru 24,999
+      POPULATION_GROUP_ID == 6 | #Cities from 100,000 thru 249,999
+      POPULATION_GROUP_ID == 10 | #Cities from 2,500 thru 9,999
+      POPULATION_GROUP_ID == 8 | #Cities from 25,000 thru 49,999
+      POPULATION_GROUP_ID == 5 | #Cities from 250,000 thru 499,999
+      POPULATION_GROUP_ID == 7 | #Cities from 50,000 thru 99,999
+      POPULATION_GROUP_ID == 4 | #Cities from 500,000 thru 999,999
+      POPULATION_GROUP_ID == 11)  #Cities under 2,500
+      & trim_upcase(der_in_msa_county_name) == "N", 2, # National Size Cities outside MSA    
+      
+      trim_upcase(der_in_msa_county_name) == "N", 3, #National Size Non-MSA Counties
+      
+      default = 4) #Missing        
+  
+    )
+
+#Check recodes
+final4 %>% checkfunction(der_in_msa_county_name, MSA_NAME_COUNTY)
+final4 %>% checkfunction(der_in_msa, POPULATION_GROUP_ID, POPULATION_GROUP_DESC, der_in_msa_county_name)
+  
+#This dataset is for Variance estimation
+final4 %>%
+  write_csv(gzfile(paste0(der_file_path, "ORI_VARIANCE.csv.gz")))
+
+
+
+```

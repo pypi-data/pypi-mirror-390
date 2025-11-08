@@ -1,0 +1,12 @@
+checks for lkup_nibrs_drug:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['drug_code', 'name']
+        when wrong column type:
+          drug_code: character(1)
+          name: character varying(100)
+  - invalid_count(drug_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'U', 'X']
+  - invalid_count(name) = 0:
+      valid values: ['Barbiturates', 'Cocaine', 'Crack Cocaine', 'Hashish', 'Heroin', 'LSD', 'Marijuana', 'Meth/ Amphetamines', 'More Than 3 Types', 'Morphine', 'Opium', 'Other Depressants', 'Other Drugs', 'Other Hallucingens', 'Other Narcotics', 'Other Stimulants', 'PCP', 'Unknown']

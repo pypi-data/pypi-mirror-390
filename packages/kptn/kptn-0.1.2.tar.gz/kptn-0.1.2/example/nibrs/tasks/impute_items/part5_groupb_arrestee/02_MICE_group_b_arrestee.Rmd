@@ -1,0 +1,410 @@
+---
+title: "02_MICE_group_b_arrestee"
+output: html_document
+date: "2025-06-02"
+---
+
+```{r program01}
+options(max.print=100000)
+options(tibble.print_max = 1000)
+#Make set.seed = NA to produce consistent results on rerun
+set.seed=NA
+
+library(tidyverse)
+library(data.table)
+library(readxl)
+library(data.table)
+library(DT)
+library(mice)
+library(miceadds)
+library(VIM)
+#library(car)
+library(writexl)
+
+  
+#Need to read in the MICE dataset from part 1
+set1_fin <- map_dfr(states, ~{
+  
+  #Read in the dataset
+  raw_data <- read_csv(paste0(mainpath, "01_", .x, "_mice_group_b_arrestee.csv.gz")) %>%
+    #Create state indicator
+    mutate(
+      STATE_ABBR = .x,
+      ethnicity_state_group=fcase(
+        .x %in% eth_states_1, 1,
+        .x %in% eth_states_2, 2,
+        .x %in% eth_states_3, 3)
+    )
+  
+  #Return the data
+  return(raw_data)
+   
+})
+
+#Variables to factor for imputation models
+raw_list_vars_factors <- c(
+  "arrest_type_code",
+  "AGENCY_TYPE_NAME",
+  "SUBURBAN_AREA_FLAG",
+  "POPULATION_GROUP_DESC",
+  "sex_code2",
+  "race_code2",
+  "ethnicity_code2",
+  "offense_code"
+)
+forimp <- map_dfr(states, ~{
+  #Read in the dataset
+  raw_data <- read_csv(paste0(mainpath, "01b_", .x, "_forimp.csv.gz")) %>%
+    mutate(
+      across(
+        .cols=any_of(raw_list_vars_factors),
+        .fns = ~{ as.factor(.x) }
+      ),
+      age_code = as.numeric(age_code)
+    )
+  #Return the data
+  return(raw_data)
+})
+forimp3 <- map_dfr(states, ~{
+  #Read in the dataset
+  raw_data <- read_csv(paste0(mainpath, "01c_", .x, "_forimp3.csv.gz")) %>%
+    mutate(
+      across(
+        .cols=any_of(raw_list_vars_factors),
+        .fns = ~{ as.factor(.x) }
+      )
+    )
+  #Return the data
+  return(raw_data)
+})
+
+#Get the universe file
+universe <- read_csv_logging(paste0(inputPipelineDir,"/initial_tasks_output/ref_agency_",CONST_YEAR,".csv")) %>%
+  select(ORI,LEGACY_ORI,AGENCY_STATUS,COVERED_FLAG,DORMANT_FLAG,AGENCY_TYPE_NAME,STATE_ABBR,
+         DIVISION_CODE,SUBURBAN_AREA_FLAG,POPULATION_GROUP_DESC,STATE_NAME)
+
+# Agency level counts
+agency_level_counts <- read_rds(file.path(external_path,file_locs[[CONST_YEAR]]$cbi_summary_agency))
+```
+
+```{r}
+#Create state-level distribution of ethnicity for the zero-pop agencies
+#It wouldn't be useful for SET1 since those are already imputed
+#separately by state (percentages would be constant within a state)
+state_level_counts <- agency_level_counts %>%
+  group_by(STATE_NAME) %>%
+  summarize(across(
+    .cols = c(starts_with("num_Eth"),popResidAgcy_cbi),
+         .fns = ~sum(.x)
+    )
+  )
+
+state_level_counts2 <- state_level_counts %>%
+  mutate(
+    across(
+      .cols =starts_with("num_"),
+      #.fns  = ~{ (.x/popResidAgcyCounty_cbi) * 100 },
+      .fns  = ~{ ifelse(popResidAgcy_cbi>0, .x/popResidAgcy_cbi, 0) }, #Do not want to multiply by 100
+      .names = "state_pct_{.col}"
+      
+    )
+  )
+
+
+state_level_counts2_rename <- state_level_counts2 %>%
+  colnames() %>%
+  as_tibble() %>%
+  mutate(
+    keep = fcase(
+      str_detect(string=value, pattern=regex("^state_pct_num", ignore_case=TRUE)), 1,
+      default = 0
+    )
+  ) %>%
+  filter(keep == 1) %>%
+  select(value) %>%
+  #Create the new variable rename
+  mutate(
+    newvalue = fcase(
+      #Detect ^pct_num pattern
+      str_detect(string=value, pattern=regex("^state_pct_num", ignore_case=TRUE)),     
+      str_replace(string=value, pattern=regex("^state_pct_num", ignore_case=TRUE), replacement="state_pct")
+    )
+  )
+
+#Loop thru and do rename
+state_level_counts3 <- state_level_counts2 
+
+#Using raw_psuedo_ori_rename, loop thru and rename
+for(i in 1:nrow(state_level_counts2_rename)){
+  
+  #Create the loop variables
+  loop_newvar = state_level_counts2_rename[i, "newvalue"] %>% pull() %>% rlang:::parse_expr()
+  loop_oldvar = state_level_counts2_rename[i, "value"]  %>% pull() %>% rlang:::parse_expr()
+  
+  state_level_counts3 <- state_level_counts3 %>%
+    rename(
+      !!(loop_newvar) := !!(loop_oldvar)
+    )
+  
+  #Delete the variables
+  rm(loop_newvar, loop_oldvar)
+  invisible(gc())
+  
+}
+
+st_xwalk <- universe %>% distinct(STATE_NAME,STATE_ABBR)
+
+state_level_counts4 <- state_level_counts3 %>%
+  left_join(st_xwalk,by=c("STATE_NAME")) %>%
+  select(STATE_ABBR,starts_with("state_pct"))
+
+#Set 2: Ethnicity
+set2 <- forimp3 %>% select(-race_code2,-sex_code2,-age_code2,-imp_group,-STATE_ABBR) %>%
+  left_join(set1_fin,by=c("groupb_arrestee_id"))
+
+impute_set2 <- function(ST_GRP){
+  
+  temp <- set2 %>%
+    filter(ethnicity_state_group==ST_GRP)
+  
+  #University-College: No age/income distribution
+  univ_college <- temp %>% filter(imp_group==1) %>%
+    select(-starts_with(c("pct_Age","pct_Income")))
+  md1 <- as.data.frame(md.pattern(univ_college,plot=FALSE)) %>% mutate(id = rownames(.))
+  raw_numbercheck1 <- md1[1,] %>%
+    mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+    select(new_id) %>%
+    as.double()
+  raw_numberrows1 <- nrow(univ_college) %>% as.double()
+  
+  #Tribal: No population distribution for age/sex/race/ethnicity
+  tribal <- temp %>% filter(imp_group==2) %>%
+    select(-starts_with("pct_"))
+  md2 <- as.data.frame(md.pattern(tribal,plot=FALSE)) %>% mutate(id = rownames(.))
+  raw_numbercheck2 <- md2[1,] %>%
+    mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+    select(new_id) %>%
+    as.double()
+  raw_numberrows2 <- nrow(tribal) %>% as.double()
+  
+  #Zero-pop: No population distribution for age/sex/race/ethnicity
+  zero_pop <- temp %>% filter(imp_group==3) %>%
+    left_join(state_level_counts4,by=c("STATE_ABBR")) %>%
+    select(-starts_with("pct_"))
+  md3 <- as.data.frame(md.pattern(zero_pop,plot=FALSE)) %>% mutate(id = rownames(.))
+  raw_numbercheck3 <- md3[1,] %>%
+    mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+    select(new_id) %>%
+    as.double()
+  raw_numberrows3 <- nrow(zero_pop) %>% as.double()
+  
+  #Rest: Everything else
+  rest <- temp %>% filter(imp_group==4) %>%
+    select(-popResidAgcy_cbi) #This was causing problem with matrix inversion
+  md4 <- as.data.frame(md.pattern(rest,plot=FALSE)) %>% mutate(id = rownames(.))
+  raw_numbercheck4 <- md4[1,] %>%
+    mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+    select(new_id) %>%
+    as.double()
+  raw_numberrows4 <- nrow(rest) %>% as.double()
+  
+  #University or College
+  if(raw_numbercheck1 == raw_numberrows1 |
+     
+     #Check if any imputation is needed for offender variables
+     (any(is.na(univ_college$ethnicity_code2)) == FALSE )) {
+    
+    univ_college1 <- univ_college %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+  }else{
+    init1 <- mice(univ_college, maxit=0)
+    meth1 <- init1$method
+    pred1 <- init1$predictorMatrix
+    incpreds1 <- c("offense_code","SUBURBAN_AREA_FLAG")
+    predQuick1 <- quickpred(univ_college, minpuc = 0.25, include=incpreds1)
+    predQuick1[,c("groupb_arrestee_id","age_ii","sex_ii","race_ii","ethnicity_ii","STATE_ABBR")] <- 0
+    imp1 <- tryCatch(
+      {
+        imp1 <- mice(univ_college, pred=predQuick1, meth="pmm", m=1, seed=414425, maxit=15)
+      },
+      error=function(cond){
+        
+        log_debug("Switching to CART for univ_college")
+        
+        imp1 <- mice(univ_college, pred=predQuick1, meth="cart", m=1, seed=414425, maxit=15)
+        
+        return(imp1)
+      }
+    )
+    
+    print(imp1$method[c("ethnicity_code2")])
+
+    univ_college1 <- complete(imp1,1) %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+    
+  }
+  #Tribal
+  if(raw_numbercheck2 == raw_numberrows2 |
+     
+     #Check if any imputation is needed for offender variables
+     (any(is.na(tribal$ethnicity_code2)) == FALSE )) {
+    
+    tribal1 <- tribal %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+  }else{
+    init2 <- mice(tribal, maxit=0)
+    meth2 <- init2$method
+    pred2 <- init2$predictorMatrix
+    incpreds2 <- c("offense_code")
+    predQuick2 <- quickpred(tribal, minpuc = 0.25, include=incpreds2)
+    predQuick2[,c("groupb_arrestee_id","age_ii","sex_ii","race_ii","ethnicity_ii","STATE_ABBR")] <- 0
+    imp2 <- tryCatch(
+      {
+        imp2 <- mice(tribal, pred=predQuick2, meth="pmm", m=1, seed=414425, maxit=15)
+      },
+      error=function(cond){
+        
+        log_debug("Switching to CART for tribal")
+        
+        imp2 <- mice(tribal, pred=predQuick2, meth="cart", m=1, seed=414425, maxit=15)
+        
+        return(imp2)
+      }
+    )
+    
+    print(imp2$method[c("ethnicity_code2")])
+    
+    tribal1 <- complete(imp2,1) %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+
+  }
+  
+  #Zero-Pop
+  if(raw_numbercheck3 == raw_numberrows3 |
+     
+     #Check if any imputation is needed for offender variables
+     (any(is.na(zero_pop$ethnicity_code2)) == FALSE )) {
+    
+    zero_pop1 <- zero_pop %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+  }else{
+    init3 <- mice(zero_pop, maxit=0)
+    meth3 <- init3$method
+    pred3 <- init3$predictorMatrix
+    incpreds3 <- c("offense_code","SUBURBAN_AREA_FLAG")
+    predQuick3 <- quickpred(zero_pop, minpuc = 0.25, include=incpreds3)
+    predQuick3[,c("groupb_arrestee_id","age_ii","sex_ii","race_ii","ethnicity_ii","STATE_ABBR","AGENCY_TYPE_NAME")] <- 0
+    
+    imp3 <- tryCatch(
+      {
+        imp3 <- mice(zero_pop, pred=predQuick3, meth="pmm", m=1, seed=414425, maxit=15)
+      },
+      error=function(cond){
+        
+        log_debug("Switching to CART for zero_pop")
+        
+        imp3 <- mice(zero_pop, pred=predQuick3, meth="cart", m=1, seed=414425, maxit=15)
+        
+        return(imp3)
+      }
+    )
+    
+    print(imp3$method[c("ethnicity_code2")]) 
+    
+    zero_pop1 <- complete(imp3,1) %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+    
+  }
+  
+  #Rest
+  if(raw_numbercheck4 == raw_numberrows4 |
+     
+     #Check if any imputation is needed for offender variables
+     (any(is.na(rest$ethnicity_code2)) == FALSE )) {
+    
+    rest1 <- rest %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+  }else{
+    init4 <- mice(rest, maxit=0)
+    meth4 <- init4$method
+    pred4 <- init4$predictorMatrix
+    incpreds4 <- c("offense_code","SUBURBAN_AREA_FLAG")
+    predQuick4 <- quickpred(rest, minpuc = 0.25, include=incpreds4)
+    predQuick4[,c("groupb_arrestee_id","age_ii","sex_ii","race_ii","ethnicity_ii","STATE_ABBR")] <- 0
+    
+    imp4 <- tryCatch(
+      {
+        imp4 <- mice(rest, pred=predQuick4, meth="pmm", m=1, seed=414425, maxit=15)
+      },
+      error=function(cond){
+        
+        log_debug("Switching to CART for rest")
+        
+        imp4 <- mice(rest, pred=predQuick4, meth="cart", m=1, seed=414425, maxit=15)
+        
+        return(imp4)
+      }
+    )
+    
+    print(imp4$method[c("ethnicity_code2")])
+    
+    rest1 <- complete(imp4,1) %>%
+      select(groupb_arrestee_id,ethnicity_code2,imp_group)
+
+  }
+  
+  imp_all2 <- bind_rows(univ_college1,tribal1,zero_pop1,rest1) %>%
+    select(groupb_arrestee_id,ethnicity_code2,imp_group)
+  
+  return(imp_all2)
+  
+}
+
+set2_imp <- map(c(1:3),impute_set2)
+set2_fin <- bind_rows(set2_imp)
+
+set2_fin %>% checkfunction(ethnicity_code2)
+
+#Final
+final_imp <- set2 %>% select(-ethnicity_code2,-imp_group) %>%
+  left_join(set2_fin,by=c("groupb_arrestee_id")) %>%
+  select(groupb_arrestee_id,sex_code2,age_code2,race_code2,ethnicity_code2,imp_group)
+
+final <- forimp %>% select(-sex_code2,-race_code2,-age_code2,-ethnicity_code2) %>% 
+  left_join(final_imp,by=c("groupb_arrestee_id"))
+
+
+foroutput <- final %>%
+  mutate(
+    age_num_i = age_code2,
+    
+    sex_code_i = case_when(
+      sex_code2 == 1 ~ "M",
+      sex_code2 == 2 ~ "F"
+    ),
+    
+    race_code_i = case_when(
+      race_code2 == 1 ~ "W",
+      race_code2 == 2 ~ "B",
+      race_code2 == 3 ~ "I",
+      race_code2 == 4 ~ "A",
+      race_code2 == 5 ~ "P",
+      race_code2 == 6 ~ "M"
+    ),
+    
+    ethnicity_code_i = case_when(
+      ethnicity_code2 == 1 ~ "H",
+      ethnicity_code2 == 2 ~ "N",
+      ethnicity_code2 == 3 ~ "M"
+    )
+)
+
+foroutput %>% checkfunction(sex_code,sex_code_i)
+foroutput %>% checkfunction(race_code,race_code_i)
+foroutput %>% checkfunction(age_code,age_num_i)
+foroutput %>% checkfunction(ethnicity_code,ethnicity_code_i)
+
+foroutput2 <- foroutput %>%
+  select(ori,legacy_ori,groupb_arrestee_id,sex_code_i,race_code_i,age_num_i,ethnicity_code_i) %>%
+  write_csv_logging(paste0(mainpath, "02_mice_group_b_arrestee.csv.gz"), na="" )
+```

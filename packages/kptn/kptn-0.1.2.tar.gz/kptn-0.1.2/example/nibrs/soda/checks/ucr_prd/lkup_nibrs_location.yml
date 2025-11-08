@@ -1,0 +1,15 @@
+checks for lkup_nibrs_location:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['location_code', 'name', 'sort_order']
+        when wrong column type:
+          location_code: character(2)
+          name: character varying(100)
+          sort_order: smallint
+  - invalid_count(location_code) = 0:
+      valid values: ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '37', '38', '39', '40', '41', '42', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58']
+  - invalid_count(name) = 0:
+      valid values: ['ATM Separate from Bank', 'Abandoned/Condemned Structure', 'Air/Bus/Train Terminal', 'Amusement Park', 'Arena/Stadium/Fairgrounds/Coliseum', 'Auto Dealership New/Used', 'Bank/Savings and Loan', 'Bar/Nightclub', 'Camp/Campground', 'Church/Synagogue/Temple/Mosque', 'Commercial/Office Building', 'Community Center', 'Construction Site', 'Convenience Store', 'Cyberspace', 'Daycare Facility', 'Department/Discount Store', 'Dock/Wharf/Freight/Modal Terminal', 'Drug Store/Doctor''''s Office/Hospital', 'Farm Facility', 'Field/Woods', 'Gambling Facility/Casino/Race Track', 'Government/Public Building', 'Grocery/Supermarket', 'Highway/Road/Alley/Street/Sidewalk', 'Hotel/Motel/Etc.', 'Industrial Site', 'Jail/Prison/Penitentiary/Corrections Facility', 'Lake/Waterway/Beach', 'Liquor Store', 'Military Installation', 'Not Specified', 'Other/Unknown', 'Park/Playground', 'Parking/Drop Lot/Garage', 'Rental Storage Facility', 'Residence/Home', 'Rest Area', 'Restaurant', 'School-College/University', 'School-Elementary/Secondary', 'School/College', 'Service/Gas Station', 'Shelter-Mission/Homeless', 'Shopping Mall', 'Specialty Store', 'Tribal Lands']
+  - invalid_count(sort_order) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 98, 99]

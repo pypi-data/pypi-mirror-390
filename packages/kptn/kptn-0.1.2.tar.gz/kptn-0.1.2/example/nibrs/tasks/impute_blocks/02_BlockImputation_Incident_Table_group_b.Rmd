@@ -1,0 +1,181 @@
+---
+title: '02_BlockImputation_Incident_Table_group_b'
+author: "Philip Lee"
+date: "April 17, 2025"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(dplyr)
+library(dbplyr)
+library(tidyverse)
+library(bit64) #Use for making the NAs for the large numbers created by a known bug in R
+library(DT)
+library(lubridate)
+library(data.table)
+
+set.seed(414425)
+#KJ: read in in the main run program
+read_csv <- partial(read_csv, guess_max = 100000) #For now, read thru the 1st 100,000 rows to determine variable type
+write.csv <- partial(write.csv, na = "", row.names = FALSE)
+
+```
+
+<!-- ------------------------------------------------------------------------------- -->
+<!--  Create the database connection. -->
+
+```{r}
+
+#Read in data from query that contains all the incidents in the provided year
+
+#Get all the group_b_arrestee
+tbd_all_group_b_files <- list.files(path=queried_data_path, pattern="raw_all_arrestee_group_b_\\w{2}\\.csv.gz") 
+
+#Print the files
+print(tbd_all_group_b_files)
+
+
+df1 <- map_dfr(tbd_all_group_b_files, ~{
+  
+  returndata <- fread(paste0(queried_data_path, .x), 
+                      select = c("ori", "nibrs_start_date", "groupb_arrestee_id", "arrest_date"))
+  
+  #Return the data
+  return(returndata)
+  
+})
+
+log_dim(df1)
+head(df1)
+glimpse(df1)
+
+#Read in the block imputed file
+#raw_blockimp <- read_csv(paste0(outblockimp, "donorids.csv"))
+raw_blockimp <- fread(paste0(inblockimp, "donorids.csv"))
+
+log_dim(raw_blockimp)
+glimpse(raw_blockimp)
+
+#Need to transform the above data from wide to long
+raw_blockimp2 <- raw_blockimp %>%
+  gather(key="month", value="value", -ori, -ori.don)%>%
+  #Filter to non-missing entries
+  filter(!is.na(value)) %>%
+  mutate(
+    der_month = case_when(
+      trim_upcase(month) == 'JAN' ~ 1,
+      trim_upcase(month) == 'FEB' ~ 2,
+      trim_upcase(month) == 'MAR' ~ 3,
+      trim_upcase(month) == 'APR' ~ 4,
+      trim_upcase(month) == 'MAY' ~ 5,
+      trim_upcase(month) == 'JUN' ~ 6,
+      trim_upcase(month) == 'JUL' ~ 7,
+      trim_upcase(month) == 'AUG' ~ 8,
+      trim_upcase(month) == 'SEP' ~ 9,
+      trim_upcase(month) == 'OCT' ~ 10,
+      trim_upcase(month) == 'NOV' ~ 11,
+      trim_upcase(month) == 'DEC' ~ 12)
+  )
+
+log_dim(raw_blockimp)
+log_dim(raw_blockimp2)
+glimpse(raw_blockimp2)
+
+#Check the recodes
+raw_blockimp2 %>%
+  checkfunction(der_month, month)
+
+#Create the derived variable on df1
+df1_2 <- df1 %>% 
+  mutate(der_month = month(ymd(arrest_date) ))
+
+df1_2 %>%
+  checkfunction(der_month, arrest_date)
+
+#df1_2 holds all the groupb_arrestee_id plus recodes
+
+#Need to create the imputed block and call it df1_3
+df1_3<- raw_blockimp2 %>%
+  #Do a join using the donor ori and match with the incident month
+  left_join(df1_2, by=c("ori.don"="ori", "der_month") ) %>%
+  #Drop with no arrestee id
+  filter(!is.na(groupb_arrestee_id))
+
+#NEW:  need to do the following on the raw data (i.e. df1_2)
+#1:  Need to drop any incidents that are before the NIBRS start date
+#2:  Need to drop any incidents that are missing (i.e. RETA MM flag = 0) or low outliers 
+
+#Need to get list of ori and incident ids that are low outliers and missing months
+
+df_raw_data1 <- df1_2 %>%
+  left_join(raw_blockimp2, by=c("ori"="ori", "der_month"))
+
+#Check to see if the number of records are the same
+log_dim(df_raw_data1)
+log_dim(df1_2)
+log_dim(raw_blockimp2)
+
+#Check to see which values are flagged
+df_raw_data1 %>% checkfunction(value)
+
+#Create flag to handle dropping of data
+df_raw_data2 <- df_raw_data1 %>%
+  mutate(
+    der_drop_missing_month_low_outlier = fcase(value %in% c(1,2), 1, 
+                                               default = 0),
+    
+    der_drop_inc_bf_nsd = fcase(arrest_date < nibrs_start_date, 1,
+                                               default = 0)
+  )
+
+#Check the recodes
+df_raw_data2 %>% checkfunction(der_drop_missing_month_low_outlier, value)
+df_raw_data2 %>% checkfunction(der_drop_inc_bf_nsd, nibrs_start_date, arrest_date)
+df_raw_data2 %>% checkfunction(der_drop_inc_bf_nsd)
+
+#Next need to drop the flagged incidents
+final_raw_data_keep <- df_raw_data2 %>%
+  filter(der_drop_missing_month_low_outlier == 0 & der_drop_inc_bf_nsd == 0)
+
+#Check the size
+log_dim(final_raw_data_keep)
+log_dim(df_raw_data2)
+
+final_raw_data_keep %>% checkfunction(der_drop_missing_month_low_outlier, der_drop_inc_bf_nsd)
+
+
+#Stack the original data final_raw_data_keep and block imputed data df1_3 together
+final <- bind_rows(final_raw_data_keep %>% mutate(der_imputed_arrestee = 0), 
+                   df1_3 %>% mutate(der_imputed_arrestee = 1))
+
+log_dim(final)
+log_dim(final_raw_data_keep)
+log_dim(df1_3)
+
+#See the number of records
+final %>%
+  checkfunction(der_imputed_arrestee)
+
+#Keep selected variables for output
+final2 <- final %>%
+  select(ori, groupb_arrestee_id, der_imputed_arrestee)
+
+#Check to see if there are any duplicate records for ori and groupb_arrestee_id combination
+raw_check <- final2 %>%
+  group_by(ori, groupb_arrestee_id) %>%
+  summarise(raw_count = n() ) %>%
+  ungroup() 
+  
+raw_check %>%
+  checkfunction(raw_count)
+
+final2 <- final2 %>% 
+  filter(!is.na(ori)) %>%
+  arrange(ori,groupb_arrestee_id)
+
+#Output the dataset to the share
+final2 %>% write.csv(gzfile(paste0(outblockimp, "NIBRS_GROUP_B_ARRESTEE_PLUS_IMPUTED_BLOCK.csv.gz")))
+
+```

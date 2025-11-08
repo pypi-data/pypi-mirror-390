@@ -1,0 +1,34 @@
+
+# This docker-compose file is designed to contain the base shared configuration
+# for dev and CI.
+#
+# - dev: See docker-compose.override.yml for additional dev configuration. The
+#   override file is loaded automatically when running `docker-compose`
+#   commands. Place the following dev configuration in the override file, not
+#   this file:
+#     - Read/write bind mounts. We want read/write bind mounts in dev for
+#       convenience, but we want to avoid them in CI to prevent permission
+#       problems in our GitLab CI runner.
+#     - Exposed ports. We want to expose ports to the host in dev for
+#       convenience, but we want to avoid doing that in CI to prevent errors
+#       from trying to listen to the same port as another process running on the
+#       CI machine.
+#
+# - CI: We don't currently have additional configuration for CI. We must
+#   explicitly specify the compose file using `docker-compose -f
+#   docker-compose.yml up` to avoid automatically picking up the override file.
+#   If we do eventually add CI-specific configuration, it should go in
+#   `docker-compose.ci.yml`, and we'd run `docker-compose -f
+#   docker-compose.yml -f docker-compose.ci.yml up`.
+
+services:
+  prefect:
+    build: ./
+    image: nibrs-estimation-pipeline
+    environment:
+      WORKING_DIR: /code
+      SCRATCH_DIR: /scratch
+      EXTERNAL_STORE: s3://nibrs-estimation-externals
+      ARTIFACT_STORE: /store/artifacts
+      LOG_THRESHOLD: DEBUG
+    working_dir: /code

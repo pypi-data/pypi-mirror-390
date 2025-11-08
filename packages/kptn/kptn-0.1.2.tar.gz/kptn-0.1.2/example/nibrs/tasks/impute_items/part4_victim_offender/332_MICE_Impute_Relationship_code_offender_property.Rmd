@@ -1,0 +1,915 @@
+---
+title: "332_MICE_Impute_Relationship_code_offender_property"
+author: "Philip Lee & Amang Sukasih"
+date: "04/22/2024"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+
+```{r program332}
+options(max.print=100000)
+options(tibble.print_max = 1000)
+#set.seed(414425)
+#Make set.seed = NA to produce consistent results on rerun
+set.seed=NA
+library(dplyr)
+library(dbplyr)
+library(tidyverse)
+library(haven)
+library(mice)
+library(miceadds)
+library(VIM)
+library(naniar)
+library(visdat)
+library(ggplot2)
+library(writexl)
+library(foreign)
+library(DT)
+library(lubridate)
+
+options(knit.duplicate.label = "allow")
+
+#KJ - swap to pipeline location (comment out here; comes from run program)
+#source(here::here("tasks/impute_items/0-Common_functions_for_imputation.R"))
+#source("../NIBRS_function.R")
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+
+# input_state <- read_csv(paste0(mainpath, "/Current_State_to_process.csv")) %>% select(state)
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as enviroment variable")
+}
+
+#Create a version of a clean up vector of states
+input_state_vector <- trimws(str_split(input_state, pattern=",") %>% unlist(), which="both")
+
+#Create a underscore filled state vector for output
+input_state_flat <- str_flatten(string=input_state_vector, collapse="_")
+
+#Create a function to read in a list of states
+process_states <- function(indata){
+  
+  raw_data <- map_dfr(indata, ~fread(.x) %>% mutate(across(starts_with("age_code"),as.character)))
+  
+  #Return the data
+  return( data.frame(raw_data))
+  
+  
+}
+
+write_out_by_state <- function(inliststate, indata, inoutpath, inwriteprefix){
+
+  #Use map to write out the data
+	map(inliststate, ~{
+	  
+	  indata %>%
+	    filter(state_abbr %in% .x) %>%
+	    write_csv_logging(paste0(inoutpath, "/", inwriteprefix, .x, ".csv.gz"), na="")
+	    
+	  
+	})
+}
+
+#Create a function to get the list of files
+gather_files <- function(inputlist, inputpath, inputprefix){
+  
+  tbd_1 <-  str_split(string=inputlist, pattern=",") %>%
+    unlist() %>%
+    as_tibble() %>%
+    #Note the state is now in the variable value
+    mutate(
+      der_path = paste0(inputpath,"/", inputprefix, trimws(value ,which="both"), ".csv.gz")
+    ) %>%
+    #Filter to not missing
+    filter(!is.na(der_path)) %>%
+    select(der_path) %>%
+    pull()
+  
+  #Return the object
+  return(tbd_1)
+  
+  
+}
+
+gather_files_pre_suffix <- function(inputlist, inputpath, inputprefix, inputsuffix){
+  
+  tbd_1 <-  str_split(string=inputlist, pattern=",") %>%
+    unlist() %>%
+    as_tibble() %>%
+    #Note the state is now in the variable value
+    mutate(
+      der_path = paste0(inputpath,"/", inputprefix, trimws(value ,which="both"), inputsuffix ,".csv.gz")
+    ) %>%
+    #Filter to not missing
+    filter(!is.na(der_path)) %>%
+    select(der_path) %>%
+    pull()
+  
+  #Return the object
+  return(tbd_1)
+  
+  
+}
+
+
+#Bring in the raw property segments for the state
+tbd_list <- gather_files(inputlist=input_state, inputpath=artifacts_path, inputprefix="00_property_extract_")
+
+#See the list of files
+print(tbd_list)
+
+#raw_property <- fread(paste0(artifacts_path, "00_property_extract_", input_state, ".csv.gz"))
+raw_property <- process_states(indata=tbd_list)
+
+#Delete the temp data
+rm(tbd_list)
+invisible(gc())
+
+#Call the property function to recode the property into collapsed categories
+raw_property2 <- create_property_recodes(indata=raw_property)
+
+#Check the recodes
+raw_property2 %>% checkfunction(der_property_1_10, prop_desc_code ,prop_desc_name)
+
+#Check the 0/1 indicator for the property categories at the incident level
+final_property_inc_ind <- create_property_incident_ind(indata=raw_property2)
+
+#Next need to use raw_property2 and create an indicator for the property loss value
+raw_property2 %>% checkfunction(prop_loss_code, prop_loss_name)
+
+#Need to create variables for the values of the property loss
+final_property_inc_loss <- create_propertyloss_incident_ind(indata=raw_property2)
+
+#Delete the raw data
+rm(list=ls(pattern="raw_"))
+invisible(gc())
+
+#Need to read in the logical_edits data that contains the victim offense variables
+#Bring in the raw property segments for the state
+tbd_list <- gather_files_pre_suffix(inputlist=input_state, inputpath=inputmainpath, inputprefix="02_", inputsuffix="_logical_edits")
+
+#See the list of files
+print(tbd_list)
+
+#raw_logicaledit <- fread(paste0(inputmainpath, "02_", input_state, "_logical_edits.csv.gz"))
+raw_logicaledit <- process_states(indata=tbd_list)
+
+#Delete the temp data
+rm(tbd_list)
+invisible(gc())
+
+
+#Using raw_logicaledit, need to deduplicate the data to be at the victim offense level
+raw_logicaledit2 <- raw_logicaledit %>%
+  distinct(data_year, ori, incident_id, victim_id, victim_seq_num, victim_type_code,
+           offense_id, offense_code, offense_name, crime_against)
+
+
+#Check the dim
+log_dim(raw_logicaledit2)    
+log_dim(raw_logicaledit)   
+  
+#Next need to recode the variables
+raw_logicaledit3 <- property_offense_recode(data=raw_logicaledit2)
+
+#Check the recodes
+raw_logicaledit3 %>% checkfunction(der_against_property, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_arson, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_bribery, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_burglary_b_e, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_counterf_forgery, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_destruction_damage_vand, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_embezzlement, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_extortion_black_mail, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_fraud_offenses, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_larceny_theft, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_motor_vehicle_theft, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_stolen_property_offenses, crime_against, offense_code, offense_name)
+raw_logicaledit3 %>% checkfunction(der_property_crime_all, crime_against, offense_code, offense_name)
+
+
+#Need to aggregate at the incident_id and victim_id
+final_victim_property_offense <- create_propertyoffense_incidentvictim_ind(indata=raw_logicaledit3)
+
+#See the dimension
+log_dim(final_victim_property_offense)
+log_dim(raw_logicaledit3)
+
+#Delete the raw data
+rm(list=ls(pattern="raw_"))
+invisible(gc())
+
+#Next need to read in the VOR dataset
+# Pre-imputed data (all cases: 1 - 4)
+
+#Bring in the raw property segments for the state
+tbd_list <- gather_files_pre_suffix(inputlist=input_state, inputpath=inputmainpath, inputprefix="01_", inputsuffix="_recoded_for_imputation")
+
+#See the list of files
+print(tbd_list)
+
+
+#raw_NIBRS <- data.frame(fread_logging(paste0(inputmainpath, "01_", input_state, "_recoded_for_imputation.csv.gz")))
+raw_NIBRS <- process_states(indata=tbd_list)
+
+#Delete the temp data
+rm(tbd_list)
+invisible(gc())
+
+#Have the following datasets
+#raw_NIBRS is the original VOR dataset
+#final_property_inc_ind - contains information on the property categories involved
+#final_property_inc_loss - contains information on the property loss value involved
+#final_victim_property_offense - contains information on the victim property offenses
+
+#Create a dataset called NIBRS by merging on the datasets
+raw_NIBRS2 <- raw_NIBRS %>%
+  #Need to code which incident reported property so create an indicator variable
+  left_join(final_property_inc_ind %>% mutate(tbd_in_property = 1), by=c("incident_id")) %>%
+  left_join(final_property_inc_loss, by=c("incident_id")) %>%
+  left_join(final_victim_property_offense, by=c("incident_id", "victim_id")) %>%
+  #Need to 0 filled the derived from the above datasets since some records did not involved property
+  #Except for final_property_inc_loss, since we will impute missing values
+  mutate(
+    across(
+      .cols =
+        any_of(
+          c(
+            paste0(CONST_ALL_PROPERTY_LEVEL_RECODES, "_ind"), 
+            paste0(CONST_ALL_VICTIM_PROPERTY_OFFENSES, "_offense") 
+          )
+        ), 
+      .fns = ~{
+        replace_na(data=.x, replace=0)
+      }
+      )
+  ) %>%
+  mutate(
+    one = 1, 
+    
+    der_final_property_value2 = fcase(
+      is.na(tbd_in_property), -1, #No property reported in incident
+      one == 1, der_final_property_value
+    )
+  )
+
+  #Check the recodes
+  raw_NIBRS2 %>% checkfunction(der_final_property_value2, tbd_in_property, der_final_property_value)
+
+  #Drop any variable not needed or create any final variables
+  
+
+#Check the dimension
+log_dim(raw_NIBRS2)
+log_dim(raw_NIBRS)
+log_dim(final_property_inc_ind)
+log_dim(final_property_inc_loss)
+log_dim(final_victim_property_offense)
+
+#Delete the data not needed
+rm(list=ls(pattern="final_"))
+invisible(gc())
+
+
+table(raw_NIBRS2[,c("der_incident_cleared")],exclude=NULL)
+table(raw_NIBRS2[,c("der_data_subset")],exclude=NULL)
+
+log_debug("Checking dimensions of NIBRS")
+log_dim(raw_NIBRS2)
+# Subset to clear incident only and any incident with at least one property offense
+raw_NIBRS3 <- raw_NIBRS2 %>% filter(der_data_subset %in% c(1,3) & der_against_property_offense == 1) %>% #Impute 2: clear incident only where victims are person.
+	select(-der_against_property_offense, 
+	       #Drop any variables not needed
+	       -one,
+	       -der_final_property_value,
+	       -tbd_in_property,
+	       #Old offense variables 
+	       -der_any_person_offense,
+	       -der_off2_assault_hom,
+        -der_off2_kidnapping_ht,
+        -der_off2_sex,
+        -der_off2_arson_bur_vand,
+        -der_off2_mvt_rob,
+        -der_off2_other_property
+)
+
+log_debug("Checking dimensions of NIBRS after filter")
+log_dim(raw_NIBRS2)
+log_dim(raw_NIBRS3)
+
+	#Replace the old demographic variables with the imputed version from Version 3 - 1
+
+	#Write function to handle the processing of the imputed data to match current variable names
+
+	processimputeddata <- function(type){
+
+	  #Declare the symbols
+	  inseq       = paste0(type, "_seq_num") %>% rlang:::parse_expr()
+	  insex       = paste0("sex_code_", type, "_i") %>% rlang:::parse_expr()
+	  inrace      = paste0("race_code_", type, "_i") %>% rlang:::parse_expr()
+	  inage       = paste0("age_num_", type, "_i") %>% rlang:::parse_expr()
+
+	  renamesex   = paste0("sex_code_", type, "2") %>% rlang:::parse_expr()
+	  renamerace  = paste0("race_code_", type, "2") %>% rlang:::parse_expr()
+	  renameage   = paste0("age_num_", type, "2") %>% rlang:::parse_expr()
+
+	  #Read the file
+	  #raw1 <- data.frame(fread_logging(paste0(artifactsmainpath, "17_", input_state, "_", type, "_imputed_final_flag.csv.gz")))
+	  
+	  #Create a list of dataset to process
+	  tbd_list <- gather_files_pre_suffix(inputlist=input_state, inputpath=artifactsmainpath, inputprefix="17_", inputsuffix=paste0("_", type, "_imputed_final_flag"))
+	  
+	  #Call the function to gather the datasets
+	  raw0 <- process_states(indata=tbd_list)
+	  
+	  #Create the recodes
+	  raw1 <- raw0 %>%
+		select(
+			   #Keep ID variables
+			   incident_id,	!!inseq,
+			   #Demographics variables
+			   !!insex,	!!inrace,	!!inage) %>%
+
+		#recreate the sex variable
+		mutate(!!insex := case_when(trim_upper(!!insex)  == "M" ~ 1,
+									trim_upper(!!insex)  == "F" ~ 2,
+									TRUE ~ NA_real_)
+		) %>%
+		rename(
+			 !!renamesex  := !!insex,
+			 !!renamerace := !!inrace,
+			 !!renameage  := !!inage)
+	  
+	  #Return the object
+	  return(raw1)
+
+	}
+
+	imp_victim <- processimputeddata(type="victim")
+	imp_offender <- processimputeddata(type="offender")
+	imp_arrestee <- processimputeddata(type="arrestee") %>%
+	  rename(arrestee_seq_num2 = arrestee_seq_num)
+
+	glimpse(imp_victim)
+	glimpse(imp_offender)
+	glimpse(imp_arrestee)
+
+	#Replace the variables
+  log_debug("Checking dimensions of NIBRS after processimputeddata")
+  log_dim(raw_NIBRS3)
+
+	raw_NIBRS4 <- replacedemovars2(base=raw_NIBRS3, imputed=imp_victim, mergeonby=c("incident_id", "victim_seq_num"))
+	raw_NIBRS4 <- replacedemovars2(base=raw_NIBRS4, imputed=imp_offender, mergeonby=c("incident_id", "offender_seq_num"))
+	raw_NIBRS4 <- replacedemovars2(base=raw_NIBRS4, imputed=imp_arrestee, mergeonby=c("incident_id", "arrestee_seq_num2"))
+
+  log_debug("Checking dimensions of NIBRS after replacedemovars2")
+  log_dim(raw_NIBRS4)
+
+	#Delete the imputed datasets
+	remove(list=ls(pattern="^imp_"))
+	invisible(gc())
+	
+	#Next need to read in the imputed data from the victim offender's person data
+	imp_vor_person_files <- list.files(path=mainpath, pattern = paste0("^04_imputed_relationship_code_offender_")) %>%
+	  as_tibble() %>%
+	  mutate(
+	    der_state = str_match(string=value, pattern="_(\\w{2})\\.csv\\.gz$")[,2]
+	  ) %>%
+	  filter(der_state %in% input_state_vector) %>%
+	  select(value) %>%
+	  pull()
+	
+	#See the files read in
+  log_debug("See the imputed files read in ")
+  print(imp_vor_person_files)
+  
+	#Get the data
+	imp_vor_person <- map_dfr(imp_vor_person_files, ~{
+	  
+    returndata <- fread(paste0(mainpath, .x), 
+  	                            select=c("incident_id", "victim_id", "offender_id"))
+    
+    #Return the data
+    return(returndata)
+	  
+	})	
+	
+	#Check the dimension
+	log_dim(imp_vor_person)
+	
+	#Using imp_vor_person and raw_NIBRS4, need to exclude the VOR that has been previously imputed
+	raw_NIBRS5 <- raw_NIBRS4 %>%
+	  anti_join(imp_vor_person, by=c("incident_id", "offender_id", "victim_id"))
+
+  #Check the dimension
+	log_dim(raw_NIBRS5)
+	log_dim(raw_NIBRS4)
+	log_dim(imp_vor_person)
+	
+	#Delete the imputed objects
+	rm(list=ls(pattern="imp_"))
+	invisible(gc())
+	
+	#Next need to create the relationship variable
+	#Will update the below code:
+	raw_NIBRS6 <- raw_NIBRS5 %>% mutate(
+  der_relationship_raw = fcase(
+          relationship_code == "AQ" , 3, #Victim Was Acquaintance:  Outside family but known to victim
+          relationship_code == "BE" , 3, #Victim Was Babysittee:  Outside family but known to victim
+          relationship_code == "BG" , 1, #Victim Was Boyfriend/Girlfriend:  Intimate partner
+		      relationship_code == "CF" , 2, #Victim Was Child of Boyfriend or Girlfriend:  Other family          
+          relationship_code == "CH" , 2, #Victim Was Child:  Other family
+          relationship_code == "CS" , 1, #Victim Was Common-Law Spouse:  Intimate partner
+          relationship_code == "EE" , 3, #Victim was Employee:  Outside family but known to victim
+          relationship_code == "ER" , 3, #Victim was Employer:  Outside family but known to victim
+          relationship_code == "FR" , 3, #Victim Was Friend:  Outside family but known to victim
+          relationship_code == "GC" , 2, #Victim Was Grandchild:  Other family
+          relationship_code == "GP" , 2, #Victim Was Grandparent:  Other family
+
+          relationship_code == "IL" , 2, #Victim Was In-law:  Other family
+          relationship_code == "NE" , 3, #Victim Was Neighbor:  Outside family but known to victim
+          relationship_code == "OF" , 2, #Victim Was Other Family Member:  Other family
+          relationship_code == "OK" , 3, #Victim was Otherwise Known:  Outside family but known to victim
+          relationship_code == "PA" , 2, #Victim Was Parent:  Other family
+          relationship_code == "RU" , 6, #Relationship Unknown:  Unknown relationship
+          relationship_code == "SB" , 2, #Victim Was Sibling:  Other family
+          relationship_code == "SC" , 2, #Victim Was Stepchild:  Other family
+          relationship_code == "SE" , 1, #Victim Was Spouse:  Intimate partner
+          relationship_code == "SP" , 2, #Victim Was Stepparent:  Other family
+          relationship_code == "SS" , 2, #Victim Was Stepsibling:  Other family
+          relationship_code == "ST" , 4, #Victim Was Stranger:  Stranger
+          relationship_code == "VO" , 5, #Victim Was Offender:  Victim was Offender
+          relationship_code == "XS" , 1, #Victim was Ex-Spouse:  Intimate partner
+          relationship_code == "XR" , 1, #Victim Was Ex-Relationship (Ex-Boyfriend/Girlfriend):  Intimate partner
+		      #Update to handle new relationship_code codes
+          relationship_code == "CO", 3,  #Cohabitant (non-intimate relationship) (relationship_code = CO):  Outside family but known to victim
+          relationship_code == "FP", 3,  #Victim was Foster Parent (relationship_code=FP):  Outside family but known to victim
+          relationship_code == "FC", 3,   #Victim was Foster Child (relationship_code=FC):  Outside family but known to victim		      		  
+          default = NA_real_),
+
+		#Need to update der_relationship to make der_relationship == 6, #Relationship Unknown:  Unknown relationship to missing for imputation when
+		#1.  count_offd == 1 Cleared case, single offender
+		#2.  der_arrestee_offender_same == 1 Cleared case, multiple offenders and the imputed offender can be linked to an arrestee
+
+		der_relationship = case_when(
+			der_relationship_raw == 6 & count_offd == 1 ~ NA_real_,
+			der_relationship_raw == 6 & der_arrestee_offender_same == 1 ~ NA_real_,
+			TRUE ~ der_relationship_raw
+		)
+	)
+
+	#Check the recodes 
+	raw_NIBRS6 %>% checkfunction(der_relationship, der_relationship_raw, count_offd, der_arrestee_offender_same)
+	raw_NIBRS6 %>% checkfunction(der_relationship, relationship_code)	
+	
+	#For validation purposes - need to output these datasets to identify the missings
+	write_out_by_state(inliststate= input_state_vector, indata=raw_NIBRS6, inoutpath=mainpath, inwriteprefix="05_beforeimp_relationship_code_")
+	
+	#Drop the der_relationship_raw and relationship_code variables from raw_NIBRS6
+	raw_NIBRS7 <- raw_NIBRS6 %>%
+	  select(-der_relationship_raw, 
+	         -relationship_code)
+	
+	
+	#Next need to declare which variables are factors.
+	glimpse(raw_NIBRS7)
+	summary(raw_NIBRS7)
+	
+	raw_list_factors <- c(
+    "incident_id",
+    "victim_seq_num",
+    "offender_seq_num",
+    "der_off2_other_society",
+    #"state_abbr",
+    #"ori",
+    #"month_num",
+    "der_data_subset",
+    #"data_year",
+    "offender_id",
+    "victim_id",
+    "arrestee_id2",
+    #"count_arr",
+    #"count_offd",
+    #"count_vic",
+    #"count_offs",
+    "one_level_incident",
+    "sex_code_offender2",
+    "sex_code_victim2",
+    "race_code_offender2",
+    "race_code_victim2",
+    #"age_num_offender2",
+    #"age_num_victim2",
+    "der_off_arr_ind_1_to_1",
+    "der_arrestee_offender_same",
+    "arrest_type_code2",
+    "cargo_theft_flag2",
+    "cleared_except_code",
+    "cleared_except_code2",
+    "crime_against2",
+    "der_arrestee_weapon2",
+    "der_bias",
+    "der_incident_cleared",
+    "der_weapon2",
+    "division_code",
+    "method_entry_code2",
+    "population_group_id",
+    "region_code",
+    "resident_code2",
+    "resident_status_code_victim2",
+    "state_id",
+    "suburban_area_flag2",
+    "victim_type_code",
+    #"count_same",
+    "arrestee_seq_num2",
+    "sex_code_arrestee2",
+    "race_code_arrestee2",
+    #"age_num_arrestee2",
+    "der_arrestee_flag",
+    "der_property_cat_1_ind",
+    "der_property_cat_2_ind",
+    "der_property_cat_3_ind",
+    "der_property_cat_4_ind",
+    "der_property_cat_5_ind",
+    "der_property_cat_6_ind",
+    "der_property_cat_7_ind",
+    "der_property_cat_8_ind",
+    "der_property_cat_9_ind",
+    "der_property_cat_10_ind",
+    "der_arson_offense",
+    "der_bribery_offense",
+    "der_burglary_b_e_offense",
+    "der_counterf_forgery_offense",
+    "der_destruction_damage_vand_offense",
+    "der_embezzlement_offense",
+    "der_extortion_black_mail_offense",
+    "der_fraud_offenses_offense",
+    "der_larceny_theft_offense",
+    "der_motor_vehicle_theft_offense",
+    "der_stolen_property_offenses_offense",
+    "der_property_crime_all_offense",
+    #"der_final_property_value2",
+    "der_relationship"
+	  )
+	
+	#Declare the factor variables
+	raw_NIBRS8 <- raw_NIBRS7 %>%
+	  mutate(
+	    across(
+	      .cols = any_of(raw_list_factors),
+	      .fns = ~{
+	        as.factor(.x)
+	      }
+	    )
+	  )
+	
+	#Check the summary
+	summary(raw_NIBRS8)
+	
+	#checkfunction(raw_NIBRS8,relationship_code)
+	checkfunction(raw_NIBRS8,der_data_subset)
+	checkfunction(raw_NIBRS8,sex_code_offender2)
+	checkfunction(raw_NIBRS8,race_code_offender2)
+	checkfunction(raw_NIBRS8,age_num_offender2)
+	checkfunction(raw_NIBRS8,sex_code_victim2)
+	checkfunction(raw_NIBRS8,race_code_victim2)
+	checkfunction(raw_NIBRS8,age_num_victim2)
+	checkfunction(raw_NIBRS8,der_arrestee_flag,sex_code_arrestee2)
+	checkfunction(raw_NIBRS8,der_arrestee_flag,race_code_arrestee2)
+	checkfunction(raw_NIBRS8,der_arrestee_flag,age_num_arrestee2)
+	
+	#Declare the NIBRS for the rest of the program
+	#Note will impute the property value first (i.e. der_final_property_value2 ) then the relationship variable (i.e. "der_relationship")
+	raw_NIBRS9 <- raw_NIBRS8 %>%
+	  mutate(tbd_row_number = row_number())
+	
+	#Declare dataset to check
+	NIBRS_CHECK             <- raw_NIBRS9  
+	
+	#Check the dimension
+	log_dim(raw_NIBRS9)
+	log_dim(raw_NIBRS8)	
+	
+	#Need to create a version of NIBRS that excludes the 0 (i.e. property that have values of legitimate 0), 
+	#-1 (i.e. the incident with no property loss ), 
+	#1 (i.e. the pending inventory), 
+	# and drug seized code values (i.e. seized drugs that have missing values according to NIBRS specifications)
+	
+	NIBRS_PROPERTY_SET_ASIDE    <- raw_NIBRS9 %>% 
+	  filter(der_final_property_value2 %in% c(-1, 0, 1, CONST_DRUG_SEIZED_CODE))  
+	
+	NIBRS_FIRST_RUN    <- raw_NIBRS9 %>% 
+	  anti_join(NIBRS_PROPERTY_SET_ASIDE, by=c("incident_id"))
+	  
+	#Check the dimension
+	log_dim(raw_NIBRS9)
+	log_dim(NIBRS_FIRST_RUN)
+	log_dim(NIBRS_PROPERTY_SET_ASIDE)
+	
+	
+	#Check the property values
+	# NIBRS %>% checkfunction(der_property_cat_1_ind ,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_2_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_3_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_4_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_5_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_6_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_7_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_8_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_9_ind,der_final_property_value2)
+	# NIBRS %>% checkfunction(der_property_cat_10_ind,der_final_property_value2)
+	
+	
+	#Delete the raw objects
+	rm(list=ls(pattern="raw_"))
+	invisible(gc())
+	
+	#Create function to edit predQuick1
+	edit_predQuick1 <- function(indata){
+	  
+  	#Edit the indata output
+  	#offense_code2 is commented out since it was drop in the 301 program
+  	indata[,c("data_year","incident_id","offender_id","victim_id","arrestee_id2",
+  				  "offender_seq_num","victim_seq_num","arrestee_seq_num2","cleared_except_code",
+  				  "der_incident_cleared","der_arrestee_offender_same","der_off_arr_ind_1_to_1",
+  				  "state_abbr", "ori",  "month_num", 
+  				  
+  				  #Add on additional variables since they are highly correlated
+            #Any arrestee variables since offender variables are present
+            "der_arrestee_weapon2", "sex_code_arrestee2", "race_code_arrestee2", "age_num_arrestee2", 
+  				  
+  				  #count_same is offender and arrestee that can be link and count_offs is number of offense in incident
+  				  "count_same", "count_offs"
+  				  
+  				  )] <- 0
+  
+  
+  	indata[c("data_year"),] <- 0
+  	indata[c("incident_id"),] <- 0
+  	indata[c("offender_id"),] <- 0
+  	indata[c("victim_id"),] <- 0
+  	indata[c("arrestee_id2"),] <- 0
+  	indata[c("offender_seq_num"),] <- 0
+  	indata[c("victim_seq_num"),] <- 0
+  	indata[c("arrestee_seq_num2"),] <- 0
+  	indata[c("count_arr"),] <- 0
+  	indata[c("count_offd"),] <- 0
+  	indata[c("count_vic"),] <- 0
+  	indata[c("count_offs"),] <- 0
+  	indata[c("one_level_incident"),] <- 0
+  	indata[c("der_off_arr_ind_1_to_1"),] <- 0
+  	indata[c("der_arrestee_offender_same"),] <- 0
+  	indata[c("arrest_type_code2"),] <- 0
+  	indata[c("cleared_except_code"),] <- 0
+  	indata[c("age_num_arrestee2"),] <- 0
+  	indata[c("state_abbr"),] <- 0
+  	indata[c("ori"),] <- 0
+  	indata[c("month_num"),] <- 0
+  
+  	#New code to handle arrestee
+  	indata[,c("count_arr","der_arrestee_weapon2","der_arrestee_flag")] <- 0
+  	
+  	#Do not use the tbd_row_number  variable
+  	indata[,c("tbd_row_number")] <- 0	  
+	  
+	  #Return the indata
+  	return(indata)
+  	
+	}
+		
+  	#Declare the predicators
+  	incpreds <- c(
+  	        #The original variables
+  	        "der_off2_other_society",
+  				  #Include sex variables for offender and victim
+  				  "sex_code_offender2", "sex_code_victim2",
+  				  
+  				  #Force the count of the offenders, since we combined the offender counts to make one program
+				  #Otherwise there are small pool of donors if split
+  				  "count_offd",
+  				  
+  				  #Additional variables from the property segment
+            "der_arson_offense",
+            "der_bribery_offense",
+            "der_burglary_b_e_offense",
+            "der_counterf_forgery_offense",
+            "der_destruction_damage_vand_offense",
+            "der_embezzlement_offense",
+            "der_extortion_black_mail_offense",
+            "der_fraud_offenses_offense",
+            "der_larceny_theft_offense",
+            "der_motor_vehicle_theft_offense",
+            "der_stolen_property_offenses_offense",
+            "der_property_crime_all_offense"
+  				  )
+  	
+	  
+  #Quick look before imputation
+  #There is two versions of:  cleared_except_code and cleared_except_code2
+  glimpse(NIBRS_CHECK)
+  
+  md2 <- as.data.frame(md.pattern(NIBRS_CHECK)) %>% mutate(id = rownames(.))
+  
+  #Check if imputation is needed
+  raw_numbercheck <- md2[1,] %>%
+    mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+    select(new_id) %>%
+    as.double() #Get the number of cells that are non-empty
+  raw_numberrows <- nrow(NIBRS_CHECK) %>% as.double() #Get the number of total records
+  
+  #Create the flag indicators
+  CONST_FIRST_RUN_FLAG  = 0
+  CONST_SECOND_RUN_FLAG = 0
+  
+
+	#If true then output dataset and no imputation needed
+	if(raw_numbercheck == raw_numberrows |
+
+	#Check if any imputation is needed for offender variables
+	(any(is.na(NIBRS_CHECK$der_relationship)) == FALSE))
+	{
+
+	returndata <- NIBRS_CHECK %>%
+		select("incident_id","offender_seq_num","arrestee_seq_num2","victim_seq_num","der_relationship",
+			   "offender_id","arrestee_id2", "victim_id",
+			   "state_abbr", "ori",  "month_num") 
+	
+  	write_out_by_state(inliststate= input_state_vector, indata=returndata, inoutpath=mainpath, inwriteprefix="05_imputed_relationship_code_offender_propertyoffense_")
+	  
+	  
+	}else{
+	  
+  #Before adding on relationship
+	write_xlsx_logging(md2,paste0(miscpathout ,"mdpattern_relationship_code_propertyoffense_", input_state_flat, "_offender.xlsx"))
+
+  	#Run MICE on NIBRS_FIRST_RUN to impute the property values
+    #Run if there is data
+  	if(nrow(NIBRS_FIRST_RUN) > 0){
+    
+  	  #Create indicator 
+  	  CONST_FIRST_RUN_FLAG = 1
+  	  
+    	init1 = mice(NIBRS_FIRST_RUN, maxit=0)
+    	meth1 = init1$method
+    	pred1 = init1$predictorMatrix
+    
+      #Run the quickpred
+    	predQuick1 <- quickpred(NIBRS_FIRST_RUN, minpuc=0.25, include=incpreds)
+    	
+    
+    	#Edit the predQuick1
+      predQuick1 <- edit_predQuick1(indata = predQuick1)
+    
+    
+    	#Write out the predQuick information
+    	write_xlsx_logging(as.data.frame(predQuick1), paste0(miscpathout, "predQuick_der_relationship_propertyoffense_firstrun_",input_state_flat,"_offender.xlsx"))
+    
+    	#Edit some information and declare which method to use for der_relationship
+    	meth2 <- meth1
+    	meth2[c("incident_id","offender_seq_num","victim_seq_num","der_incident_cleared",
+    			"der_arrestee_offender_same","der_off_arr_ind_1_to_1","race_code_arrestee2","count_arr",
+    			"state_abbr", "ori",  "month_num"
+    			)] <- c(rep("",11))
+    
+    	#Declare pmm for the der_relationship
+    	meth2[c("der_relationship")] <- c(rep("pmm",1))
+    
+    	#Add on how to impute the der_final_property_value2 variable
+    	meth2[c("der_final_property_value2")] <- c(rep("pmm",1))
+    	meth2
+    
+    	#Write out workbook
+    	meth2_out <- as.data.frame(meth2)
+    	meth2_out$id <- row.names(meth2_out) 
+    	write_xlsx_logging(meth2_out %>% select(id, meth2), paste0(miscpathout, "meth_relationship_code_propertyoffense_firstrun_",input_state_flat,"_offender.xlsx"))
+    
+    	#Run MICE
+    	#imp = mice(NIBRS_FIRST_RUN, pred=predQuick1, meth=meth2, m=1, seed=156738, maxit=5)
+    	#Use pmm for any missing
+    	imp = mice(NIBRS_FIRST_RUN, pred=predQuick1, meth="pmm", m=1, seed=156738, maxit=5)
+    
+    	#Combine the data
+    	final_NIBRS_FIRST_RUN <- complete(imp,1)
+    
+    	#Check the dim
+    	log_dim(NIBRS_FIRST_RUN)
+    	log_dim(final_NIBRS_FIRST_RUN)
+    	  
+    	#Need to set aside final_NIBRS_FIRST_RUN
+    	#Delete objects not needed
+    	rm(init1, meth1, pred1, 
+    	   #incpreds - keep this
+    	   predQuick1,
+    	   meth1, meth2, meth2_out,
+    	   imp 
+    	   )
+    	invisible(gc())
+  	
+  	}else{
+  	  #Make a file with final_NIBRS_FIRST_RUN with all blanks
+  	  final_NIBRS_FIRST_RUN <- NIBRS_CHECK[c(0),]
+  	}
+	
+  #Start of MICE imputation for the remaining cases:  NIBRS_PROPERTY_SET_ASIDE
+	#Need to drop the property value since it will be highly correlated with the property categories
+	  
+    #Run if there is data
+  	if(nrow(NIBRS_PROPERTY_SET_ASIDE) > 0){	 
+  	  
+  	  #Create indicator 
+  	  CONST_SECOND_RUN_FLAG = 1  	  
+  	  
+  	  #Need to create NIBRS_PROPERTY_SET_ASIDE2 that combine the data of final_NIBRS_FIRST_RUN
+  	  #and NIBRS_PROPERTY_SET_ASIDE, but drop der_final_property_value2
+  	  
+  	 NIBRS_PROPERTY_SET_ASIDE2 <- NIBRS_PROPERTY_SET_ASIDE %>%
+    	  select(-der_final_property_value2)
+  	  
+  	 #Check the dimension
+  	 log_dim(NIBRS_PROPERTY_SET_ASIDE2)
+  	 log_dim(NIBRS_PROPERTY_SET_ASIDE)
+  	 
+  	  
+    	#Delete NIBRS_PROPERTY_SET_ASIDE
+    	rm(NIBRS_PROPERTY_SET_ASIDE)
+    	invisible(gc())
+    	
+    	init1 = mice(NIBRS_PROPERTY_SET_ASIDE2, maxit=0)
+    	meth1 = init1$method
+    	pred1 = init1$predictorMatrix
+    
+      #Run the quickpred
+    	predQuick1 <- quickpred(NIBRS_PROPERTY_SET_ASIDE2, minpuc=0.25, include=incpreds)
+    	
+    	#Edit the predQuick1
+      predQuick1 <- edit_predQuick1(indata = predQuick1)
+    
+    	#Write out the predQuick information
+    	write_xlsx_logging(as.data.frame(predQuick1), paste0(miscpathout, "predQuick_der_relationship_propertyoffense_secondrun_",input_state_flat,"_offender.xlsx"))
+    
+    	#Edit some information and declare which method to use for der_relationship
+    	meth2 <- meth1
+    	meth2[c("incident_id","offender_seq_num","victim_seq_num","der_incident_cleared",
+    			"der_arrestee_offender_same","der_off_arr_ind_1_to_1","race_code_arrestee2","count_arr",
+    			"state_abbr", "ori",  "month_num"
+    			)] <- c(rep("",11))
+    
+    	#Need to use pmm for der_relationship
+    	meth2[c("der_relationship")] <- c(rep("pmm",1))
+    	meth2
+    
+    
+    	#Write out workbook
+    	meth2_out <- as.data.frame(meth2)
+    	meth2_out$id <- row.names(meth2_out) 
+    	write_xlsx_logging(meth2_out %>% select(id, meth2), paste0(miscpathout, "meth_relationship_code_propertyoffense_secondrun_",input_state_flat,"_offender.xlsx"))
+    
+    	#Run MICE
+    	#imp = mice(NIBRS_PROPERTY_SET_ASIDE2, pred=predQuick1, meth=meth2, m=1, seed=156738, maxit=5)
+    	imp = mice(NIBRS_PROPERTY_SET_ASIDE2, pred=predQuick1, meth="pmm", m=1, seed=156738, maxit=5)
+    	
+    	#Finishing the impuation
+    	final_NIBRS_SECOND_RUN <- complete(imp,1)
+    	
+  	}else{
+  	  #Make a file with final_NIBRS_SECOND_RUN with all blanks
+  	  final_NIBRS_SECOND_RUN <- NIBRS_CHECK[c(0),]  	  
+  	}	
+	
+	#Combine the data together
+	
+	#If the second program runs then want to use final_NIBRS_SECOND_RUN
+  NIBRSimp <- bind_rows(final_NIBRS_FIRST_RUN, final_NIBRS_SECOND_RUN)
+	
+	#Check the dimension
+	log_dim(NIBRS_CHECK)
+	log_dim(NIBRSimp)
+	log_dim(final_NIBRS_FIRST_RUN)
+	log_dim(final_NIBRS_SECOND_RUN)
+	
+	#Check the data
+	summary(NIBRSimp)
+	glimpse(NIBRSimp)
+
+	checkfunction(NIBRSimp,der_relationship)
+
+	NIBRSimp2b  <- NIBRSimp %>%
+	  select("incident_id","offender_seq_num","arrestee_seq_num2","victim_seq_num","der_relationship",
+						   "offender_id",     "arrestee_id2",     "victim_id",
+						   "state_abbr", "ori",  "month_num" )
+
+	# NIBRSimp2b %>% write_csv_logging(paste0(mainpath, "05_imputed_relationship_code_offender_propertyoffense_", input_state, ".csv.gz"), na="")
+	write_out_by_state(inliststate= input_state_vector, indata=NIBRSimp2b, inoutpath=mainpath, inwriteprefix="05_imputed_relationship_code_offender_propertyoffense_")
+
+  #Check the dimension
+  log_dim(NIBRS_CHECK)
+  log_dim(NIBRSimp2b)
+
+	}
+
+
+
+
+```

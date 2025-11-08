@@ -1,0 +1,1930 @@
+---
+title: "SEARCH Validation All States"
+author: "Adam Lee"
+date: "`r Sys.Date()`" 
+output:
+  html_document:
+    toc: true 
+    toc_float: true 
+    toc_depth: 5 
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+ 
+
+<!-- Code to get the tables to not overlap with the headers  -->
+
+<style type="text/css">
+    div.datatables { height: auto !important;}
+</style>
+
+<font size="4"> 
+
+**A few things to note about the analysis below:**  
+
+ + Agencies with less than 15 total occurrences for a data element are excluded from the analysis. This was done to ensure proportions were based on a reasonable number of cases. Exclusions to this apply to the following data elements:  
+    - Tab 8: Bias Motivation  
+    - Tab 32: Additional Justifiable Homicide Circumstances  
+    - Tab 47: Age of Arrestee    
+    - Tab 49: Race of Arrestee  
+      * Filtered to agencies with 10 or more instances  
+    
+
+ + The table color coding indicates if an agency is flagged for having a proportion of unknown/unexpected values greater than  **75th Percentile + k*IQR** . The values/colors for k are as follows  
+    - Blue: k = 2  
+    - Pink: k = 1.5  
+    - Teal: k = 1  
+    - Orange: k = 0.5  
+ + If an agency is flagged for a higher value of k, then it is also flagged at the lower levels. 
+    - For example, if an agency is pink that means it has been flagged at the k=1.5, k=1, and k=0.5 levels    
+ + If you do not see the k= dotted lines on the plot it means the value is outside the possible proportion range  
+
+</font>
+
+  
+  
+ 
+ 
+ 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#rm(list=ls())
+
+library(tidyverse)
+library(openxlsx)
+library(DBI)
+library(DT)
+library(lubridate)
+library(readxl)
+library(tidyr)
+library(formattable)
+library(ggplot2)
+library(knitr)
+library(htmltools)
+library(Cairo)
+library(grid)
+library(gridExtra)
+library(dplyr)
+library(rlang)
+
+`%notin%` <- Negate(`%in%`)
+
+#reviewSearch Function - Aggregates outliers with 100% of cases having unknown/unexpected values. Aggregates and outputs
+#agencies in datatables by total number of outliers.
+#Parameters:
+# df_review - dataframe - dataframe "*_excel" subset by total > 15 & proportion == 1
+reviewSearch <- function(df_review) {
+  cat('\n##', 'Agencies with 100% of cases having unknown/unexpected value  ', '\n')
+  #Checks if dataframe is empty
+  if (nrow(df_review)  > 0 ){
+    
+    #Create "Total Group" variable from "Total"
+    for(i in 1:nrow(df_review)){
+           ifelse(df_review[i, "Total"] >= 15 & df_review[i, "Total"] < 20, 
+                          df_review[i, "Total Group"] <- "Total: 15 - 19",
+             ifelse(df_review[i, "Total"] >= 20 & df_review[i, "Total"] < 30, 
+                          df_review[i, "Total Group"] <- "Total: 20 - 29",
+                    ifelse(df_review[i, "Total"] >= 30 & df_review[i, "Total"] < 40, 
+                          df_review[i, "Total Group"] <- "Total: 30 - 39",
+                      ifelse(df_review[i, "Total"] >= 40 & df_review[i, "Total"] < 50, 
+                          df_review[i, "Total Group"] <- "Total: 40 - 49",
+                          ifelse(df_review[i, "Total"] >= 50, 
+                              df_review[i, "Total Group"] <- "Total: 50+",
+                                               df_review[i, "Total Group"] <- "Error")))))
+    }
+    
+    #Sort dataframe by total group size, save as new dataframe
+    reviewTable <- df_review[order(df_review$`Total Group`),]
+    
+    #collapse to total groups
+    tblGroups <- unique(reviewTable$`Total Group`)
+    
+    #for each table group,
+    for(j in 1:length(tblGroups)){ 
+      
+      #Select j table group, drop table group variable
+      reviewTableJ <- df_review %>% 
+        filter(`Total Group` == tblGroups[j]) %>% 
+        select(-`Total Group`)
+      
+      #sort by total size, descending
+      reviewTable_final <- reviewTableJ[order(-reviewTableJ$Total),]
+      
+      #Print Table:
+      cat("\n")
+      cat(paste("### ", tblGroups[j] , "  "))
+      cat("\n")
+      print(tagList(datatable(reviewTable_final))) 
+      cat("\n <br /> \n")
+      cat("\n <br /> \n")
+    }
+}
+  #If dataframe is empty, then return empty datatable object
+  else {
+    datatable(df_review)
+  }
+}
+
+#finalSEARCH_log Function: Produces scatter plots with IQR threshold overlays, prints data table "agencyTbl" of agencies color coded by IQR thresholds, and "df_flagged"
+#Parameters:
+#   pctVariable - string - variable/incident name (e.g., "Proportion of Incidents Involving Cargo Theft")
+#   df_iqr - dataframe - subset of *_excel where n >15 and proportion NE 0 or 1.
+#   df_review - dataframe - subset of *_excel where n >15 and proportion == 1.
+#Output:
+#   p1/p2 - output -  ggplot density plots by IQR thresholds
+#   agencyTbl - output - agencies color coded by IQR thresholds
+#   critical_df - output - summary statistics defining IQR and K*IQR thresholds
+#   df_flagged - global dataframe - extreme values table saved as an global object to be stored in *_excel_final
+
+finalSEARCH_log <- function(pctVariable, df_iqr, df_review){  
+  
+  #Set color coding
+  tableNplotColors <-  c("#E69F00", "#009E73", "#CC79A7", "#0072B2")
+  
+  #sort desc
+  df_iqr <- df_iqr %>% arrange(desc(`Log Proportion`))
+  
+  #Get IQR, 75th Percentile, 25th Percentile, and percentile +/- K*IQR
+  df_iqr[1:3,"Percentile Names"] <- c("IQR", "75th Percentile", "25th Percentile")
+  
+  df_iqr[1:3,"Percentiles"] <- c(round(IQR(df_iqr$`Log Proportion`), digits = 4), 
+                                 round(quantile(df_iqr$`Log Proportion`,3/4), digits = 4),  
+                                 round(quantile(df_iqr$`Log Proportion`,1/4), digits = 4))
+  
+  df_iqr[1:4, "K's"] <- c("K = 0.5", "K = 1", "K = 1.5", "K = 2")
+  
+  df_iqr[1:4,"25th Percentile - k*IQR"] <- c(round(df_iqr$Percentiles[3] - 0.5*df_iqr$Percentiles[1], digits = 4),
+                                             round(df_iqr$Percentiles[3] - 1.0*df_iqr$Percentiles[1], digits = 4),
+                                             round(df_iqr$Percentiles[3] - 1.5*df_iqr$Percentiles[1], digits = 4),
+                                             round(df_iqr$Percentiles[3] - 2.0*df_iqr$Percentiles[1], digits = 4))
+  
+  df_iqr[1:4,"75th Percentile + k*IQR"] <- c(round(df_iqr$Percentiles[2] + 0.5*df_iqr$Percentiles[1], digits = 4),
+                                             round(df_iqr$Percentiles[2] + 1.0*df_iqr$Percentiles[1], digits = 4),
+                                             round(df_iqr$Percentiles[2] + 1.5*df_iqr$Percentiles[1], digits = 4),
+                                             round(df_iqr$Percentiles[2] + 2.0*df_iqr$Percentiles[1], digits = 4))
+  
+  df_iqr[,"Exp(75th Percentile + k*IQR)"] <- round(exp(df_iqr[,"75th Percentile + k*IQR"]), digits = 4)
+  
+  df_iqr <- as.data.frame(df_iqr)
+  
+  cat("\n <br /> \n")
+  cat("\n <br /> \n")
+  cat("\n <br /> \n")
+  cat("\n <br /> \n")
+  cat('\n##', 'Final Plot and Tables  ', '\n')
+  
+  #set ggplot themes
+  t<-theme_set(theme_bw())
+  t<-theme_update(        
+    panel.grid.minor.x=element_blank(),
+    panel.grid.major.x=element_blank(),
+    panel.grid.minor.y=element_blank(),
+    panel.grid.major.y=element_blank(),
+    panel.background=element_blank(),
+    strip.background=element_rect(fill="white"),
+    legend.position="bottom",
+    legend.direction="horizontal",
+    legend.justification="center",
+    legend.box.just="center",
+    plot.title=element_text(size = rel(1.2)),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank()
+  )
+  # Save GGplot object to generate legend
+  p<-ggplot(df_iqr, aes(x=df_iqr[[pctVariable]])) + 
+    geom_density(color="black",fill="black",alpha=.1)  +
+    scale_x_continuous(expand=c(0,0),limits=c(0,1),breaks=seq(0,1,by=0.1),labels=percent)+
+    geom_vline(aes(xintercept=df_iqr[1,"Exp(75th Percentile + k*IQR)"], color='K = .5'),   # Ignore NA values for mean
+               linetype="dashed", size=1) +
+    geom_vline(aes(xintercept=df_iqr[2,"Exp(75th Percentile + k*IQR)"], color='K = 1'),   # Ignore NA values for mean
+               linetype="dashed", size=1) +
+    geom_vline(aes(xintercept=df_iqr[3,"Exp(75th Percentile + k*IQR)"], color="K = 1.5"),   # Ignore NA values for mean
+               linetype="dashed", size=1) + 
+    geom_vline(aes(xintercept=df_iqr[4,"Exp(75th Percentile + k*IQR)"], color="K = 2"),   # Ignore NA values for mean
+               linetype="dashed", size=1) + 
+    scale_color_manual(name='Legend',
+                       values=c('K = .5'=tableNplotColors[1], 'K = 1'=tableNplotColors[2], "K = 1.5"=tableNplotColors[3], "K = 2" = tableNplotColors[4])) +
+    ylab("") +
+    #xlim(0,1) +
+    xlab("")
+
+  #K*IQR threshold Legend
+  g_legend<-function(a.gplot){
+    tmp <- ggplot_gtable(ggplot_build(a.gplot))
+    leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+    legend <- tmp$grobs[[leg]]
+    return(legend)
+  }
+  legend <- g_legend(p)
+
+  #Density Histogram Plot
+  p1<-ggplot(df_iqr, aes(x=df_iqr[[pctVariable]])) + 
+    stat_density(fill="black",alpha=.2)  +
+    scale_x_continuous(expand=c(0,0.02), limits=c(0,1), breaks=seq(0,1,by=0.1), labels=percent)+
+    geom_vline(aes(xintercept=df_iqr[1,"Exp(75th Percentile + k*IQR)"], color='K = .5'),   # Ignore NA values for mean
+               linetype="dashed", size=1) +
+    geom_vline(aes(xintercept=df_iqr[2,"Exp(75th Percentile + k*IQR)"], color='K = 1'),   # Ignore NA values for mean
+               linetype="dashed", size=1) +
+    geom_vline(aes(xintercept=df_iqr[3,"Exp(75th Percentile + k*IQR)"], color="K = 1.5"),   # Ignore NA values for mean
+               linetype="dashed", size=1) + 
+    geom_vline(aes(xintercept=df_iqr[4,"Exp(75th Percentile + k*IQR)"], color="K = 2"),   # Ignore NA values for mean
+               linetype="dashed", size=1) + 
+    scale_color_manual(guide=FALSE, name='Legend',
+                       values=c('K = .5'=tableNplotColors[1], 'K = 1'=tableNplotColors[2], "K = 1.5"=tableNplotColors[3], "K = 2" = tableNplotColors[4])) +
+    ylab("") +
+    #xlim(0,1) +
+    xlab("")
+
+  #Density (Top Down) Jitter Plot
+  p2<-ggplot(df_iqr, aes(x=df_iqr[[pctVariable]])) + 
+    scale_x_continuous(expand=c(0,0.02),limits=c(0,1),breaks=seq(0,1,by=0.1),labels=percent)+
+    geom_jitter(data = df_iqr, aes(x = df_iqr[[pctVariable]], y = 0), height = 0.5,alpha=0.2) +
+    geom_vline(aes(xintercept=df_iqr[1,"Exp(75th Percentile + k*IQR)"], color='K = .5'),   # Ignore NA values for mean
+               linetype="dashed", size=1) +
+    geom_vline(aes(xintercept=df_iqr[2,"Exp(75th Percentile + k*IQR)"], color='K = 1'),   # Ignore NA values for mean
+               linetype="dashed", size=1) +
+    geom_vline(aes(xintercept=df_iqr[3,"Exp(75th Percentile + k*IQR)"], color="K = 1.5"),   # Ignore NA values for mean
+               linetype="dashed", size=1) + 
+    geom_vline(aes(xintercept=df_iqr[4,"Exp(75th Percentile + k*IQR)"], color="K = 2"),   # Ignore NA values for mean
+               linetype="dashed", size=1) + 
+    scale_color_manual(guide=FALSE, name='Legend',
+                       values=c('K = .5'=tableNplotColors[1], 'K = 1'=tableNplotColors[2], "K = 1.5"=tableNplotColors[3], "K = 2" = tableNplotColors[4])) +
+    ylab("") +
+    #xlim(0,1) +
+    xlab(paste0("\n",pctVariable))
+
+  # CairoPNG("test.png", width=8, height=6, units="in", res=500)  
+  
+  #Combine ggplot objects and print
+  grid.arrange(arrangeGrob(p1,p2,legend,nrow=3, heights=unit.c(unit(0.55, "npc"), unit(0.35, "npc"), unit(0.1, "npc"))))
+
+  #Create Agency datatable
+  #Table 1 for agencies
+  agency_df <- df_iqr %>% select(`Agency Name`:`Log Proportion`) 
+
+  #Get the color cuts for the table
+  color_cuts_75 <- c(df_iqr[1:4,"Exp(75th Percentile + k*IQR)"])
+
+  #Create the final table with color cuts from the 75th percentile + K*IQR  
+  agencyTbl <- agency_df %>% datatable(options = list(paging = TRUE,## paginate the output
+                                                      pageLength = 10,  ## number of rows to output for each page
+                                                      columnDefs = list(list(className = 'dt-center',
+                                                                             targets = c(seq(1,ncol(agency_df))))),
+                                                      scrollY = TRUE,   ## enable scrolling on Y axis
+                                                      scrollX = TRUE   ## enable scrolling on X axis
+  )) %>% 
+    formatStyle(pctVariable,
+                target = 'row',
+                backgroundColor = styleInterval(color_cuts_75, c('white', tableNplotColors[1], tableNplotColors[2], tableNplotColors[3],
+                tableNplotColors[4])),
+                fontWeight = styleInterval(color_cuts_75[1], c('weight', 'bold')))
+  #Print datatable
+  print(htmltools::tagList(agencyTbl))
+  
+  
+  #Table 2 for the critical values
+  critical_df <- df_iqr %>% select(`Percentile Names`:`Exp(75th Percentile + k*IQR)`) 
+  critical_df <- critical_df[1:4,]
+  #Create the final table with color cuts from the 75th percentile + K*IQR  
+  criticalTbl <- critical_df %>% datatable(options = list(paging = TRUE,## paginate the output
+                                                          pageLength = 10,  ## number of rows to output for each page
+                                                          columnDefs = list(list(className = 'dt-center',
+                                                                                 targets = c(seq(1,ncol(critical_df))))),
+                                                          scrollY = TRUE,   ## enable scrolling on Y axis
+                                                          scrollX = TRUE   ## enable scrolling on X axis
+  )) 
+  #Print datatable
+  print(htmltools::tagList(criticalTbl))
+  
+  #Create Flag that groups values by K*IQR thresholds
+  critical_values <- critical_df$`Exp(75th Percentile + k*IQR)`
+  df_iqr$`Flagged At` <- ifelse(df_iqr[[pctVariable]] > critical_values[4], "K = 2",
+                                      ifelse(df_iqr[[pctVariable]] > critical_values[3], "K = 1.5",
+                                             ifelse(df_iqr[[pctVariable]] > critical_values[2], "K = 1",
+                                                    ifelse(df_iqr[[pctVariable]] > critical_values[1], "K = 0.5",
+                                                           "None")))) 
+  df_combined <- rbind(df_review, df_iqr) 
+    
+  k_levels <- c(NA, "K = 2", "K = 1.5", "K = 1", "K = 0.5")
+  
+  #Return to global environment, subset values at IQR*K levels
+  df_flagged <<- df_combined %>% filter(`Flagged At` %in% k_levels)
+}
+
+#To maintain memory, only save the following global variables after processing each crime
+keep <- c("%notin%", "keep", "validation_input_path", "reviewSearch", "finalSEARCH_log", "finalSEARCH_sqrt",
+          "incident_excel_final", "cargo_excel_final", "cleared_excel_final", "attempted_excel_final", "bias_excel_final", "unknown_loc_excel_final", "year",
+          "unknown_prop_excel_final", "vic_age_excel_final", "vic_sex_excel_final", "vic_race_excel_final", "unkn_agg_excel_final", "add_hom_excel",
+          "add_hom_excel_final","off_age_excel_final", "off_sex_excel_final", "off_race_excel_final", "arr_age_excel_final", "arr_race_review")
+
+```
+
+  
+  
+
+# Tab 2A: Cargo Theft  
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Cargo_Theft_2A <-read_csv(file=gzfile(paste0(validation_input_path, "2A_Cargo_Theft.csv.gz")))  
+
+cargo_sum <- Cargo_Theft_2A %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, cargo_theft_flag) %>%
+  dplyr::summarise(count = n()) 
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+cargo_excel <- cargo_sum %>% spread(key = cargo_theft_flag, value = count) %>% #select(-`<NA>`)
+  select(ucr_agency_name, ori, state_abbr, N, Y)
+
+colnames(cargo_excel) <- c("Agency Name", "ORI","State Abbreviation", "No", "Yes")
+
+cargo_excel$Total <- rowSums(cargo_excel[,4:ncol(cargo_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+cargo_excel[is.na(cargo_excel)] <- 0
+
+#Calculate Proportions
+cargo_excel$`Proportion of Incidents Involving Cargo Theft` <- ifelse(cargo_excel$Total == 0, 0 ,round(cargo_excel$Yes/cargo_excel$Total, digits = 4))
+
+cargo_iqr <- cargo_excel %>% filter(Total > 15 & `Proportion of Incidents Involving Cargo Theft` %notin% c(0,1))
+
+cargo_review <- cargo_excel %>% filter(Total > 15 & `Proportion of Incidents Involving Cargo Theft` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(cargo_review)
+datatable(cargo_iqr)
+
+  #plot the pre-transformed data
+ggplot(cargo_iqr, aes(x=`Proportion of Incidents Involving Cargo Theft`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Incidents Involving Cargo Theft")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch(cargo_review)
+
+#Transform the Proportion
+cargo_iqr$`Log Proportion` <- round(log(cargo_iqr$`Proportion of Incidents Involving Cargo Theft`), digits = 4)
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Incidents Involving Cargo Theft", cargo_iqr, cargo_review)
+
+cargo_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Incidents Involving Cargo Theft`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Incidents Involving Cargo Theft`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+  
+  
+
+
+# Tab 3: Incident Time     
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Incident_Time_3 <-read_csv(file=gzfile(paste0(validation_input_path, "3_Incident_Time.csv.gz")))  
+
+incidnet_sum <- Incident_Time_3 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, incident_hour) %>%
+  dplyr::summarise(count = n()) 
+
+
+incident_excel <- incidnet_sum %>% spread(key = incident_hour, value = count) %>% select(-`<NA>`)
+
+#colnames(incident_excel)
+colnames(incident_excel) <- c("Agency Name", "ORI", "State Abbreviation", "00:00-01:00", "01:00-02:00", "02:00-03:00", "03:00-04:00", "04:00-05:00",
+                              "05:00-06:00","06:00-07:00", "07:00-08:00", "08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
+                              "13:00-14:00","14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00", "18:00-19:00", "19:00-20:00",
+                              "20:00-21:00","21:00-22:00", "22:00-23:00", "23:00-24:00")
+
+incident_excel$Total <- rowSums(incident_excel[,4:ncol(incident_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+incident_excel[is.na(incident_excel)] <- 0
+
+#Calculate Proportions
+incident_excel$`Proportion of Incidents Occuring at Midnight` <- ifelse(incident_excel$Total == 0, 0 ,
+                                                               round(incident_excel$`00:00-01:00`/incident_excel$Total, digits = 4))
+
+incident_iqr <- incident_excel %>% filter(Total > 15 & `Proportion of Incidents Occuring at Midnight` %notin% c(0,1))
+
+incident_review <- incident_excel %>% filter(Total > 15 & `Proportion of Incidents Occuring at Midnight` == 1)
+
+
+```
+
+```{r include=FALSE}
+
+datatable(incident_review)
+datatable(incident_iqr)
+
+#plot the pre-transformed data
+ggplot(incident_iqr, aes(x=`Proportion of Incidents Occuring at Midnight`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Incidents Occuring at Midnight")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch(incident_review)
+
+#Transform the Proportion
+incident_iqr$`Log Proportion` <- round(log(incident_iqr$`Proportion of Incidents Occuring at Midnight`), digits = 4)
+
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log(pctVariable = "Proportion of Incidents Occuring at Midnight", incident_iqr, incident_review)
+
+
+
+
+
+
+incident_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Incidents Occuring at Midnight`, `Flagged At`)%>% 
+                                            arrange(desc(`Proportion of Incidents Occuring at Midnight`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+  
+  
+
+
+# Tab 4: Cleared Exceptionally     
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Cleared_Exceptionally_4 <-read_csv(file=gzfile(paste0(validation_input_path, "4_Cleared_Exceptionally.csv.gz")))  
+
+
+# arrestee_count_ind == 1 ~ 2, #Cleared by Arrest
+#     der_cleared_exceptionally == 1 ~ 1, #Cleared Exceptionally
+#     der_not_cleared == 1 ~ 3 #Not Cleared
+
+Cleared_Exceptionally_4$der_cleared_char <- ifelse(Cleared_Exceptionally_4$der_cleared == 1, "Cleared Exceptionally", 
+                                                      ifelse(Cleared_Exceptionally_4$der_cleared == 2, "Cleared by Arrest",
+                                                             ifelse(Cleared_Exceptionally_4$der_cleared == 3, "Not Cleared", "Error")))
+
+
+cleared_sum <- Cleared_Exceptionally_4 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr.x, der_cleared_char) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(cleared_sum) <- c("Agency Name", "ORI", "State Abbreviation", "der_cleared_char", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+cleared_excel <- cleared_sum %>% spread(key = der_cleared_char, value = count)
+
+cleared_excel$Total <- rowSums(cleared_excel[,4:ncol(cleared_excel)], na.rm = TRUE)
+
+
+#Replace all Na's with 0
+cleared_excel[is.na(cleared_excel)] <- 0
+
+#Calculate Proportions
+cleared_excel$`Proportion Cleared Exceptionally` <- ifelse(cleared_excel$Total == 0, 0 , 
+                                                  round(cleared_excel$`Cleared Exceptionally`/cleared_excel$Total, digits = 4))
+
+
+cleared_iqr <- cleared_excel %>% filter(Total > 15 & `Proportion Cleared Exceptionally` %notin% c(0,1))
+
+cleared_review <- cleared_excel %>% filter(Total > 15 & `Proportion Cleared Exceptionally` == 1)
+
+
+```
+
+```{r include=FALSE}
+
+datatable(cleared_review)
+datatable(cleared_iqr)
+
+#plot the pre-transformed data
+ggplot(cleared_iqr, aes(x=`Proportion Cleared Exceptionally`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion Cleared Exceptionally")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch(cleared_review)
+
+#Transform the Proportion
+cleared_iqr$`Log Proportion` <- round(log(cleared_iqr$`Proportion Cleared Exceptionally`), digits = 4)
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log(pctVariable = "Proportion Cleared Exceptionally", cleared_iqr, cleared_review)
+
+
+cleared_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion Cleared Exceptionally`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion Cleared Exceptionally`))
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 6: Attempted Incidents     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Attempted_Incidents_6 <-read_csv(file=gzfile(paste0(validation_input_path, "6_Attempted_Incidents.csv.gz")))  
+
+attempted_sum <- Attempted_Incidents_6 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, attempt_complete_flag) %>%
+  dplyr::summarise(count = n()) 
+
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+attempted_excel <- attempted_sum %>% spread(key = attempt_complete_flag, value = count)
+
+colnames(attempted_excel) <- c("Agency Name", "ORI", "State Abbreviation",	"Attempted",	"Completed")
+
+attempted_excel$Total <- rowSums(attempted_excel[,4:ncol(attempted_excel)], na.rm = TRUE)
+
+
+#Replace all Na's with 0
+attempted_excel[is.na(attempted_excel)] <- 0
+
+#Calculate Proportions
+attempted_excel$`Proportion of Attempted Incidents` <- ifelse(attempted_excel$Total == 0, 0 , 
+                                                     round(attempted_excel$Attempted/attempted_excel$Total, digits = 4))
+
+
+
+
+attempted_iqr <- attempted_excel %>% filter(Total > 15 & `Proportion of Attempted Incidents` %notin% c(0,1))
+
+attempted_review <- attempted_excel %>% filter(Total > 15 & `Proportion of Attempted Incidents` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(attempted_review)
+datatable(attempted_iqr)
+
+  #plot the pre-transformed data
+ggplot(attempted_iqr, aes(x=`Proportion of Attempted Incidents`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Attempted Incidents")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( attempted_review)
+
+#Transform the Proportion
+attempted_iqr$`Log Proportion` <- round(log(attempted_iqr$`Proportion of Attempted Incidents`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Attempted Incidents", attempted_iqr, attempted_review)
+
+
+attempted_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Attempted Incidents`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Attempted Incidents`))
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 8: Bias Motivation     
+
+<font size="4"> 
+
+There should not be any cleared incidents with unknown bias. For this reason, we are flagging all instances and not limiting it to a minimum of 15 instances.  
+</font>
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+Bias_Motivation_8A <-read_csv(file=gzfile(paste0(validation_input_path, "8A_Bias_Motivation.csv.gz")))  
+
+
+Cleared_Exceptionally_4 <-read_csv(file=gzfile(paste0(validation_input_path, "4_Cleared_Exceptionally.csv.gz")))  
+
+
+Cleared_Exceptionally_4$der_cleared_char <- ifelse(Cleared_Exceptionally_4$der_cleared == 1, "Cleared Exceptionally", 
+                                                      ifelse(Cleared_Exceptionally_4$der_cleared == 2, "Cleared by Arrest",
+                                                             ifelse(Cleared_Exceptionally_4$der_cleared == 3, "Not Cleared", "Error")))
+
+cleared_bias <- merge(Bias_Motivation_8A, Cleared_Exceptionally_4, by = "incident_id") %>% 
+                              filter(der_cleared_char %in% c("Cleared by Arrest", "Cleared Exceptionally") & 
+                                          bias_desc == "Unknown (offender's motivation not known)") %>%
+                                  select(-bias_code, -bias_name,  -der_cleared)
+
+
+
+bias_sum <- cleared_bias %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name.x, ori.x, state_abbr.x,  bias_desc, der_cleared_char ) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(bias_sum) <- c("Agency Name", "ORI", "State Abbreviation", "Bias Description", "der_cleared_char", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+bias_excel <- bias_sum %>% spread(key = der_cleared_char, value = count)
+
+bias_excel$Total <- rowSums(bias_excel[,5:ncol(bias_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+bias_excel[is.na(bias_excel)] <- 0
+
+
+for(i in 1:nrow(bias_excel)){
+  
+  ifelse(bias_excel[i, "Total"] > 0 & bias_excel[i, "Total"] < 10, 
+                        bias_excel[i, "Total Group"] <- "Total: 0 - 9",
+         ifelse(bias_excel[i, "Total"] >= 10 & bias_excel[i, "Total"] < 20, 
+                        bias_excel[i, "Total Group"] <- "Total: 10 - 19",
+           ifelse(bias_excel[i, "Total"] >= 20 & bias_excel[i, "Total"] < 30, 
+                        bias_excel[i, "Total Group"] <- "Total: 20 - 29",
+                  ifelse(bias_excel[i, "Total"] >= 30 & bias_excel[i, "Total"] < 40, 
+                        bias_excel[i, "Total Group"] <- "Total: 30 - 39",
+                    ifelse(bias_excel[i, "Total"] >= 40 & bias_excel[i, "Total"] < 50, 
+                        bias_excel[i, "Total Group"] <- "Total: 40 - 49",
+                        ifelse(bias_excel[i, "Total"] >= 50, 
+                            bias_excel[i, "Total Group"] <- "Total: 50+",
+                                             bias_excel[i, "Total Group"] <- "Error"))))))
+  
+}
+
+check1 <- bias_excel %>% filter(`Total Group` == "Error")
+
+datatable(bias_excel) 
+  
+
+bias_excel_final <- bias_excel %>%  select(-`Total Group`) %>% arrange(desc(Total))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+biasTable <- bias_excel[order(bias_excel$`Total Group`),]
+
+
+tblGroups <- unique(biasTable$`Total Group`)
+
+for(j in 1:length(tblGroups)){ 
+  
+        biasTableJ <- biasTable %>% filter(`Total Group` == tblGroups[j]) %>% 
+                                 select(-`Total Group`)
+        
+        cat("\n")
+        cat(paste("### ", tblGroups[j] , "  "))
+        cat("\n")
+        
+        print(tagList(datatable(biasTableJ))) 
+
+        cat("\n <br /> \n")
+        cat("\n <br /> \n")
+        cat("\n <br /> \n")
+        cat("\n <br /> \n")
+}
+
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 9: Unknown Location Type     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Unknown_Location_Type_9 <-read_csv(file=gzfile(paste0(validation_input_path, "9_Unknown_Location_Type.csv.gz")))  
+
+nonResidence <- c("Abandoned/Condemned Structure","Air/Bus/Train Terminal","Amusement Park","Arena/Stadium/Fairgrounds/Coliseum","ATM Separate from Bank","Auto Dealership New/Used","Bank/Savings and Loan","Bar/Nightclub","Camp/Campground","Church/Synagogue/Temple/Mosque","Commercial/Office Building","Community Center","Construction Site","Convenience Store","Cyberspace","Daycare Facility","Department/Discount Store","Dock/Wharf/Freight/Modal Terminal","Drug Store/Doctor's Office/Hospital","Farm Facility","Field/Woods","Gambling Facility/Casino/Race Track","Government/Public Building","Grocery/Supermarket","Highway/Road/Alley/Street/Sidewalk","Hotel/Motel/Etc.","Industrial Site","Jail/Prison/Penitentiary/Corrections Facility","Lake/Waterway/Beach","Liquor Store","Other/Unknown","Park/Playground","Parking/Drop Lot/Garage","Rental Storage Facility","Residence/Home","Rest Area","Restaurant","School-College/University","School-Elementary/Secondary","School/College","Service/Gas Station","Shelter-Mission/Homeless","Shopping Mall","Specialty Store","Tribal Lands")
+
+Unknown_Location_Type_9$new_location <- ifelse(Unknown_Location_Type_9$location_name == "Residence/Home", "Residence",
+                                                  ifelse(Unknown_Location_Type_9$location_name == "Other/Unknown", "Other",
+                                                         ifelse(Unknown_Location_Type_9$location_name %in% nonResidence, "Non-Residence", "NA")))
+
+#Make sure ifelses worked properly
+Unknown_Loc_test<- Unknown_Location_Type_9 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(new_location, location_name) %>% 
+  dplyr::summarise()
+
+unknown_loc_sum <- Unknown_Location_Type_9 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, new_location) %>%
+  dplyr::summarise(count = n()) 
+
+
+colnames(unknown_loc_sum) <- c("Agency Name", "ORI", "State Abbreviation",	"new_location", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+unknown_loc_excel <- unknown_loc_sum %>% spread(key = new_location, value = count)
+
+unknown_loc_excel$Total <- rowSums(unknown_loc_excel[,4:ncol(unknown_loc_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+unknown_loc_excel[is.na(unknown_loc_excel)] <- 0
+
+#Calculate Proportions
+unknown_loc_excel$`Proportion of  Unknown Location Type` <- ifelse(unknown_loc_excel$Total == 0, 0 ,
+                                                      round(unknown_loc_excel$Other/unknown_loc_excel$Total, digit = 4))
+
+
+unknown_loc_iqr <- unknown_loc_excel %>% filter(Total > 15 & `Proportion of  Unknown Location Type` %notin% c(0,1))
+
+unknown_loc_review <- unknown_loc_excel %>% filter(Total > 15 & `Proportion of  Unknown Location Type` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(unknown_loc_review)
+datatable(unknown_loc_iqr)
+
+  #plot the pre-transformed data
+ggplot(unknown_loc_iqr, aes(x=`Proportion of  Unknown Location Type`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of  Unknown Location Type")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( unknown_loc_review)
+
+#Transform the Proportion
+unknown_loc_iqr$`Log Proportion` <- round(log(unknown_loc_iqr$`Proportion of  Unknown Location Type`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of  Unknown Location Type", unknown_loc_iqr, unknown_loc_review)
+
+unknown_loc_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of  Unknown Location Type`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of  Unknown Location Type`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+  
+  
+
+# Tab 15: Unknown Property Type     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Unknown_Property_Type_15 <-read_csv(file=gzfile(paste0(validation_input_path, "15_Unknown_Property_Type.csv.gz")))  
+
+
+unknown_prop_sum <- Unknown_Property_Type_15 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, prop_desc_name) %>%
+  dplyr::summarise(count = n() ) 
+
+colnames(unknown_prop_sum) <- c("Agency Name", "ORI", "State Abbreviation",	"prop_desc_name", "count")
+
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+unknown_prop_excel <- unknown_prop_sum %>% spread(key = prop_desc_name, value = count) %>% select(-`<NA>`)
+
+unknown_prop_excel$Total <- rowSums(unknown_prop_excel[,4:ncol(unknown_prop_excel)], na.rm = TRUE)
+
+
+
+#Replace all Na's with 0
+unknown_prop_excel[is.na(unknown_prop_excel)] <- 0
+
+#Calculate Proportions
+unknown_prop_excel$`Proportion of Other or Unknown` <- ifelse(unknown_prop_excel$Total == 0, 0 ,
+                                                       round(unknown_prop_excel$Other/unknown_prop_excel$Total, digits = 4))
+
+
+unknown_prop_iqr <- unknown_prop_excel %>% filter(Total > 15 & `Proportion of Other or Unknown` %notin% c(0,1))
+
+unknown_prop_review <- unknown_prop_excel %>% filter(Total > 15 & `Proportion of Other or Unknown` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(unknown_prop_review)
+datatable(unknown_prop_iqr)
+
+  #plot the pre-transformed data
+ggplot(unknown_prop_iqr, aes(x=`Proportion of Other or Unknown`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Other or Unknown")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( unknown_prop_review)
+
+#Transform the Proportion
+unknown_prop_iqr$`Log Proportion` <- round(log(unknown_prop_iqr$`Proportion of Other or Unknown`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Other or Unknown", unknown_prop_iqr, unknown_prop_review)
+
+unknown_prop_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Other or Unknown`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Other or Unknown`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 26: Victim Age     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Victim_Age_26 <-read_csv(file=gzfile(paste0(validation_input_path, "26_Victim_Age.csv.gz")))  
+
+vic_age_sum <- Victim_Age_26 %>% 
+  mutate(age_num = as.numeric(age_num)) %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, age_code, age_num) %>%
+  dplyr::summarise(count = n() ) 
+
+vic_age_sum <- vic_age_sum %>% replace(is.na(.), 0)
+
+colnames(vic_age_sum) <- c("Agency Name", "ORI", "State Abbreviation", "age_code", "age_num", "count")
+
+# Need to update to correct are groups
+vic_age_group <- vic_age_sum %>% 
+  mutate(
+    # Create categories
+    `Age Group` = case_when(
+      age_code == "99" | age_num >= 65   ~ "65+",
+      age_code %in% c("00","NS") ~ "Unknown",
+      age_code %in% c("NN","NB","BB") | age_num < 10 ~ "< 10",
+      age_num %in% c(10,11,12)    ~ "10-12",
+      age_num %in% c(13, 14)    ~ "13-14",
+      age_num == 15 ~ "15",
+      age_num == 16 ~ "16",
+      age_num == 17 ~ "17",
+      age_num == 18 ~ "18",
+      age_num == 19 ~ "19",
+      age_num == 20 ~ "20",
+      age_num == 21 ~ "21",
+      age_num == 22 ~ "22",
+      age_num == 23 ~ "23",
+      age_num == 24 ~ "24",
+      age_num >= 25 & age_num < 30 ~ "25-29",
+      age_num >= 30 & age_num < 35 ~ "30-34",
+      age_num >= 35 & age_num < 40 ~ "35-39",
+      age_num >= 40 & age_num < 45 ~ "40-44",
+      age_num >= 45 & age_num < 50 ~ "45-49",
+      age_num >= 50 & age_num < 55 ~ "50-54",
+      age_num >= 55 & age_num < 60 ~ "55-59",
+      age_num >= 60 & age_num < 65 ~ "60-64",
+      TRUE ~ "ERROR"
+    ),
+    # Convert to factor
+    `Age Group` = factor(
+      `Age Group`,
+      level = c("< 10", "10-12", "13-14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65+", "Unknown", "ERROR")
+    )
+  )
+
+# check to make sure no NAs in new group
+#vic_age_group %>% filter(`Age Group` == "ERROR") %>% nrow()
+check <- vic_age_group %>% filter(`Age Group` == "ERROR" | is.na(`Age Group`) == TRUE)
+
+#Check proper labeling
+vic_age_group_test <- vic_age_group %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(age_code, age_num, `Age Group`) %>% 
+  dplyr::summarise()
+
+
+
+vic_age_group_sum <- vic_age_group %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(`Agency Name`, ORI, `State Abbreviation`, `Age Group`) %>%
+  dplyr::summarise(counts = sum(count)) 
+
+#Make sure the total counts match
+#sum(vic_age_sum$count)
+#sum(vic_age_group_sum$counts)
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+
+vic_age_excel <- vic_age_group_sum %>% spread(key = `Age Group`, value = counts) #Failing to produce missing
+# vic_age_excel <- vic_age_group_sum %>% pivot_wider(names_from = `Age Group`, values_from = counts, names_expand=TRUE)
+
+vic_age_excel$Total <- rowSums(vic_age_excel[,4:ncol(vic_age_excel)], na.rm = TRUE)
+
+
+#Replace all Na's with 0
+vic_age_excel[is.na(vic_age_excel)] <- 0
+
+#Calculate Proportions
+vic_age_excel$`Proportion of Unknown Age` <- ifelse(vic_age_excel$Total == 0, 0 ,
+                                    round(vic_age_excel$Unknown/vic_age_excel$Total, digits = 4))
+
+
+vic_age_iqr <- vic_age_excel %>% filter(Total > 15 & `Proportion of Unknown Age` %notin% c(0,1))
+
+vic_age_review <- vic_age_excel %>% filter(Total > 15 & `Proportion of Unknown Age` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(vic_age_review)
+datatable(vic_age_iqr)
+
+  #plot the pre-transformed data
+ggplot(vic_age_iqr, aes(x=`Proportion of Unknown Age`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Age")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch(vic_age_review)
+
+#Transform the Proportion
+vic_age_iqr$`Log Proportion` <- round(log(vic_age_iqr$`Proportion of Unknown Age`), digits = 4)
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Age", vic_age_iqr, vic_age_review)
+
+vic_age_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Age`, `Flagged At`)  %>%
+                                           arrange(desc(`Proportion of Unknown Age`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 27: Victim Sex     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Victim_Sex_27 <-read_csv(file=gzfile(paste0(validation_input_path, "27_Victim_Sex.csv.gz")))  
+
+
+vic_sex_sum <- Victim_Sex_27 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, sex_code) %>%
+  dplyr::summarise(count = n() ) 
+
+
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+vic_sex_excel <- vic_sex_sum %>% spread(key = sex_code, value = count)
+
+colnames(vic_sex_excel) <- c("Agency Name", "ORI", "State Abbreviation",	"Female",	"Male",	"Unknown")
+
+vic_sex_excel$Total <- rowSums(vic_sex_excel[,4:ncol(vic_sex_excel)], na.rm = TRUE)
+
+
+
+
+
+#Replace all Na's with 0
+vic_sex_excel[is.na(vic_sex_excel)] <- 0
+
+#Calculate Proportions
+vic_sex_excel$`Proportion of Unknown Sex` <- ifelse(vic_sex_excel$Total == 0, 0 ,
+                                    round(vic_sex_excel$Unknown/vic_sex_excel$Total, digits = 4))
+
+vic_sex_iqr <- vic_sex_excel %>% filter(Total > 15 & `Proportion of Unknown Sex` %notin% c(0,1))
+
+vic_sex_review <- vic_sex_excel %>% filter(Total > 15 & `Proportion of Unknown Sex` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(vic_sex_review)
+datatable(vic_sex_iqr)
+
+  #plot the pre-transformed data
+ggplot(vic_sex_iqr, aes(x=`Proportion of Unknown Sex`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Sex")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( vic_sex_review)
+
+#Transform the Proportion
+vic_sex_iqr$`Log Proportion` <- round(log(vic_sex_iqr$`Proportion of Unknown Sex`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Sex", vic_sex_iqr, vic_sex_review)
+
+vic_sex_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Sex`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Unknown Sex`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 28: Victim Race     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Victim_Race_28 <-read_csv(file=gzfile(paste0(validation_input_path, "28_Victim_Race.csv.gz")))  
+
+
+vic_race_sum <- Victim_Race_28 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, race_desc) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(vic_race_sum) <- c("Agency Name", "ORI", "State Abbreviation",	"race_desc", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+vic_race_excel <- vic_race_sum %>% spread(key = race_desc, value = count)
+
+
+vic_race_excel$Total <- rowSums(vic_race_excel[,4:ncol(vic_race_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+vic_race_excel[is.na(vic_race_excel)] <- 0
+
+#Calculate Proportions
+vic_race_excel$`Proportion of Unknown Race` <- ifelse(vic_race_excel$Total == 0, 0 ,
+                                     round(vic_race_excel$Unknown/vic_race_excel$Total, digits = 4))
+
+vic_race_iqr <- vic_race_excel %>% filter(Total > 15 & `Proportion of Unknown Race` %notin% c(0,1))
+
+vic_race_review <- vic_race_excel %>% filter(Total > 15 & `Proportion of Unknown Race` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(vic_race_review)
+datatable(vic_race_iqr)
+
+  #plot the pre-transformed data
+ggplot(vic_race_iqr, aes(x=`Proportion of Unknown Race`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Race")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( vic_race_review)
+
+#Transform the Proportion
+vic_race_iqr$`Log Proportion` <- round(log(vic_race_iqr$`Proportion of Unknown Race`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Race", vic_race_iqr, vic_race_review)
+
+vic_race_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Race`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Unknown Race`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+  
+  
+
+# Tab 31: Unknown Agg Asslt Circ  
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Unknown_Agg_Asslt_Circ_31 <- read_csv(file=gzfile(paste0(validation_input_path, "31_Unknown_Agg_Asslt_Circ.csv.gz")))  
+
+#unique(Unknown_Agg_Asslt_Circ_31$offense_code)
+
+unkn_agg_sum <- Unknown_Agg_Asslt_Circ_31 %>%
+  filter(offense_code == "13A") %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, circumstance_name) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(unkn_agg_sum) <- c("Agency Name", "ORI", "State Abbreviation", "circumstance_name", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+unkn_agg_excel <- unkn_agg_sum %>% spread(key = circumstance_name, value = count)
+
+unkn_agg_excel$Total <- rowSums(unkn_agg_excel[,4:ncol(unkn_agg_excel)], na.rm = TRUE)
+
+
+#Replace all Na's with 0
+unkn_agg_excel[is.na(unkn_agg_excel)] <- 0
+
+#Calculate Proportions
+unkn_agg_excel$`Proportion of Unknown Agg Asslt` <- ifelse(unkn_agg_excel$Total == 0, 0 , 
+                                     round(unkn_agg_excel$`Other Circumstances`/unkn_agg_excel$Total, digits = 4))
+
+unkn_agg_iqr <- unkn_agg_excel %>% filter(Total > 15 & `Proportion of Unknown Agg Asslt` %notin% c(0,1))
+
+unkn_agg_review <- unkn_agg_excel %>% filter(Total > 15 & `Proportion of Unknown Agg Asslt` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(unkn_agg_review)
+datatable(unkn_agg_iqr)
+
+  #plot the pre-transformed data
+ggplot(unkn_agg_iqr, aes(x=`Proportion of Unknown Agg Asslt`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Agg Asslt")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( unkn_agg_review)
+
+#Transform the Proportion
+unkn_agg_iqr$`Log Proportion` <- round(log(unkn_agg_iqr$`Proportion of Unknown Agg Asslt`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Agg Asslt", unkn_agg_iqr, unkn_agg_review)
+
+unkn_agg_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Agg Asslt`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Unknown Agg Asslt`))
+
+# unkn_agg_excel_final <- unkn_agg_iqr %>% mutate(`Flagged At`=NA) %>% select(`Agency Name`:`Proportion of Unknown Agg Asslt`, `Flagged At`)  %>% 
+#                                             arrange(desc(`Proportion of Unknown Agg Asslt`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+
+# Tab 32: Additional Justifiable Homicide Circumstances  
+
+<font size="4"> 
+
+There should not be any cleared incidents with unknown circumstances. For this reason, we are flagging all instances and not limiting it to a minimum of 15 instances.  
+
+</font>
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results = 'asis'}
+ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_32 <-read_csv(file=gzfile(paste0(validation_input_path,
+                                                                               "32_ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES.csv.gz")))  
+
+ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_32$der_cleared_char <- 
+                        ifelse(ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_32$der_cleared == 1, "Cleared Exceptionally", 
+                                      ifelse(ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_32$der_cleared == 2, "Cleared by Arrest",
+                                             ifelse(ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_32$der_cleared == 3, "Not Cleared", "Error")))
+
+
+cleared_add_hom <- ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_32 %>% 
+                              filter(der_cleared_char %in% c("Cleared by Arrest", "Cleared Exceptionally") & 
+                                           circumstance_name == "Unknown Circumstances") %>% 
+                              select(ucr_agency_name.x, ori.x,  state_abbr, circumstance_name, der_cleared_char)
+
+
+
+add_hom_sum <- cleared_add_hom %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name.x, ori.x, state_abbr, circumstance_name, der_cleared_char ) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(add_hom_sum) <- c("Agency Name", "ORI", "State Abbreviation", "Circumstance Name", "der_cleared_char", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+add_hom_excel <- add_hom_sum %>% spread(key = der_cleared_char, value = count)
+
+
+
+add_hom_excel$Total <- rowSums(add_hom_excel[,4:ncol(add_hom_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+add_hom_excel[is.na(add_hom_excel)] <- 0
+
+
+for(i in 1:nrow(add_hom_excel)){
+  
+  ifelse(add_hom_excel[i, "Total"] > 0 & add_hom_excel[i, "Total"] < 9, 
+                        add_hom_excel[i, "Total Group"] <- "Total: 0 - 9",
+         ifelse(add_hom_excel[i, "Total"] >= 10 & add_hom_excel[i, "Total"] < 20, 
+                        add_hom_excel[i, "Total Group"] <- "Total: 10 - 19",
+           ifelse(add_hom_excel[i, "Total"] >= 20 & add_hom_excel[i, "Total"] < 30, 
+                        add_hom_excel[i, "Total Group"] <- "Total: 20 - 29",
+                  ifelse(add_hom_excel[i, "Total"] >= 30 & add_hom_excel[i, "Total"] < 40, 
+                        add_hom_excel[i, "Total Group"] <- "Total: 30 - 39",
+                    ifelse(add_hom_excel[i, "Total"] >= 40 & add_hom_excel[i, "Total"] < 50, 
+                        add_hom_excel[i, "Total Group"] <- "Total: 40 - 49",
+                        ifelse(add_hom_excel[i, "Total"] >= 50, 
+                            add_hom_excel[i, "Total Group"] <- "Total: 50+",
+                                             add_hom_excel[i, "Total Group"] <- "Error"))))))
+  
+}
+
+# check1 <- add_hom_excel %>% filter(`Total Group` == "Error")
+
+datatable(add_hom_excel) 
+  
+
+
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+<!-- # ```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'} -->
+<!-- #  -->
+<!-- # add_hom_excelTable <- add_hom_excel[order(add_hom_excel$`Total Group`),] -->
+<!-- #  -->
+<!-- #  -->
+<!-- # tblGroups <- unique(add_hom_excelTable$`Total Group`) -->
+<!-- #  -->
+<!-- # for(j in 1:length(tblGroups)){  -->
+<!-- #    -->
+<!-- #         biasTableJ <- add_hom_excelTable %>% filter(`Total Group` == tblGroups[j]) %>%  -->
+<!-- #                                  select(-`Total Group`) -->
+<!-- #          -->
+<!-- #         cat("\n") -->
+<!-- #         cat(paste("### ", tblGroups[j] , "  ")) -->
+<!-- #         cat("\n") -->
+<!-- #          -->
+<!-- #         print(tagList(datatable(biasTableJ)))  -->
+<!-- #  -->
+<!-- #         cat("\n <br /> \n") -->
+<!-- #         cat("\n <br /> \n") -->
+<!-- # } -->
+<!-- # ``` -->
+
+  
+  
+
+# Tab 37: Offender Age  
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Offender_Age_37 <-read_csv(file=gzfile(paste0(validation_input_path, "37_Offender_Age.csv.gz")))  
+
+
+off_age_sum <- Offender_Age_37 %>%
+  mutate(age_num = as.numeric(age_num)) %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, age_code, age_num) %>%
+  dplyr::summarise(count = n() ) 
+
+off_age_sum <- off_age_sum %>% replace(is.na(.), 0)
+
+colnames(off_age_sum) <- c("Agency Name", "ORI", "State Abbreviation", "age_code", "age_num", "count")
+
+
+# Need to update to correct are groups
+off_age_group <- off_age_sum %>% 
+  mutate(
+    # Create categories
+    `Age Group` = case_when(
+      age_code == "99" | age_num >= 65   ~ "65+",
+      age_code %in% c("00", "NS") ~ "Unknown",
+      age_code %in% c("NN", "NB", "BB") | age_num < 10 ~ "< 10",
+      age_num %in% c(10,11,12)    ~ "10-12",
+      age_num %in% c(13, 14)    ~ "13-14",
+      age_num == 15 ~ "15",
+      age_num == 16 ~ "16",
+      age_num == 17 ~ "17",
+      age_num == 18 ~ "18",
+      age_num == 19 ~ "19",
+      age_num == 20 ~ "20",
+      age_num == 21 ~ "21",
+      age_num == 22 ~ "22",
+      age_num == 23 ~ "23",
+      age_num == 24 ~ "24",
+      age_num >= 25 & age_num < 30 ~ "25-29",
+      age_num >= 30 & age_num < 35 ~ "30-34",
+      age_num >= 35 & age_num < 40 ~ "35-39",
+      age_num >= 40 & age_num < 45 ~ "40-44",
+      age_num >= 45 & age_num < 50 ~ "45-49",
+      age_num >= 50 & age_num < 55 ~ "50-54",
+      age_num >= 55 & age_num < 60 ~ "55-59",
+      age_num >= 60 & age_num < 65 ~ "60-64",
+      TRUE ~ "ERROR"
+    ),
+    # Convert to factor
+    `Age Group` = factor(
+      `Age Group`,
+      level = c("< 10", "10-12", "13-14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65+", "Unknown", "ERROR")
+    )
+  )
+
+# check to make sure no NAs in new group
+check <- off_age_group %>% filter(`Age Group` == "ERROR" | is.na(`Age Group`) == TRUE)
+
+#Check proper labeling
+off_age_group_test <- off_age_group %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(age_code, age_num, `Age Group`) %>% 
+  dplyr::summarise()
+
+
+
+off_age_group_sum <- off_age_group %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(`Agency Name`, ORI, `State Abbreviation`,  `Age Group`) %>%
+  dplyr::summarise(counts = sum(count)) 
+
+#Make sure the total counts match
+#sum(off_age_sum$count)
+#sum(off_age_group_sum$counts)
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+off_age_excel <- off_age_group_sum %>% spread(key = `Age Group`, value = counts)
+
+off_age_excel$Total <- rowSums(off_age_excel[,4:ncol(off_age_excel)], na.rm = TRUE)
+
+
+#Replace all Na's with 0
+off_age_excel[is.na(off_age_excel)] <- 0
+
+#Calculate Proportions
+off_age_excel$`Proportion of Unknown Age` <- ifelse(off_age_excel$Total == 0, 0 ,
+                                    round(off_age_excel$Unknown/off_age_excel$Total, digits = 4))
+
+
+off_age_iqr <- off_age_excel %>% filter(Total > 15 & `Proportion of Unknown Age` %notin% c(0,1))
+
+off_age_review <- off_age_excel %>% filter(Total > 15 & `Proportion of Unknown Age` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(off_age_review)
+datatable(off_age_iqr)
+
+  #plot the pre-transformed data
+ggplot(off_age_iqr, aes(x=`Proportion of Unknown Age`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Age")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( off_age_review)
+
+#Transform the Proportion
+off_age_iqr$`Log Proportion` <- round(log(off_age_iqr$`Proportion of Unknown Age`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Age", off_age_iqr, off_age_review)
+
+off_age_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Age`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Unknown Age`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+  
+  
+
+# Tab 38: Offender Sex     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Offender_Sex_38 <-read_csv(file=gzfile(paste0(validation_input_path, "38_Offender_Sex.csv.gz")))  
+
+
+off_sex_sum <- Offender_Sex_38 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, sex_code) %>%
+  dplyr::summarise(count = n() ) 
+
+
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+off_sex_excel <- off_sex_sum %>% spread(key = sex_code, value = count)
+
+colnames(off_sex_excel) <- c("Agency Name", "ORI", "State Abbreviation",	"Female",	"Male",	"Unknown")
+
+off_sex_excel$Total <- rowSums(off_sex_excel[,4:ncol(off_sex_excel)], na.rm = TRUE)
+
+
+
+
+
+#Replace all Na's with 0
+off_sex_excel[is.na(off_sex_excel)] <- 0
+
+#Calculate Proportions
+off_sex_excel$`Proportion of Unknown Sex` <- ifelse(off_sex_excel$Total == 0, 0 ,
+                                    round(off_sex_excel$Unknown/off_sex_excel$Total, digits = 4))
+
+off_sex_iqr <- off_sex_excel %>% filter(Total > 15 & `Proportion of Unknown Sex` %notin% c(0,1))
+
+off_sex_review <- off_sex_excel %>% filter(Total > 15 & `Proportion of Unknown Sex` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(off_sex_review)
+datatable(off_sex_iqr)
+
+  #plot the pre-transformed data
+ggplot(off_sex_iqr, aes(x=`Proportion of Unknown Sex`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Sex")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( off_sex_review)
+
+#Transform the Proportion
+off_sex_iqr$`Log Proportion` <- round(log(off_sex_iqr$`Proportion of Unknown Sex`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Sex", off_sex_iqr, off_sex_review)
+
+off_sex_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Sex`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Unknown Sex`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+  
+  
+
+# Tab 39: Offender Race     
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Offender_Race_39 <-read_csv(file=gzfile(paste0(validation_input_path, "39_Offender_Race.csv.gz")))  
+
+
+off_race_sum <- Offender_Race_39 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, race_desc) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(off_race_sum) <- c("Agency Name", "ORI", "State Abbreviation",	"race_desc", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+off_race_excel <- off_race_sum %>% spread(key = race_desc, value = count)
+
+
+off_race_excel$Total <- rowSums(off_race_excel[,4:ncol(off_race_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+off_race_excel[is.na(off_race_excel)] <- 0
+
+#Calculate Proportions
+off_race_excel$`Proportion of Unknown Race` <- ifelse(off_race_excel$Total == 0, 0 ,
+                                     round(off_race_excel$Unknown/off_race_excel$Total, digits = 4))
+
+off_race_iqr <- off_race_excel %>% filter(Total > 15 & `Proportion of Unknown Race` %notin% c(0,1))
+
+off_race_review <- off_race_excel %>% filter(Total > 15 & `Proportion of Unknown Race` == 1)
+
+####################################################################################
+
+```
+
+```{r include=FALSE}
+
+datatable(off_race_review)
+datatable(off_race_iqr)
+
+  #plot the pre-transformed data
+ggplot(off_race_iqr, aes(x=`Proportion of Unknown Race`)) + 
+    geom_density(alpha=.2) +
+    xlab("Proportion of Unknown Race")
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+
+#Run the review table and pre-transformed plot function
+reviewSearch( off_race_review)
+
+#Transform the Proportion
+off_race_iqr$`Log Proportion` <- round(log(off_race_iqr$`Proportion of Unknown Race`), digits = 4)
+
+
+
+
+#Get the final data set, table, and plot
+finalSEARCH_log("Proportion of Unknown Race", off_race_iqr, off_race_review)
+
+off_race_excel_final <- df_flagged %>% select(`Agency Name`:`Proportion of Unknown Race`, `Flagged At`)  %>% 
+                                            arrange(desc(`Proportion of Unknown Race`))
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+  
+  
+
+# Tab 47: Age of Arrestee 
+
+<font size="4"> 
+
+Any instance where the age of arrestee is less than 13 or greater than 89 are flagged as potential outliers. For this reason, we are flagging all instances and not limiting it to a minimum of 15 instances.  
+
+</font>
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+Arrestee_Age_47 <-read_csv(file=gzfile(paste0(validation_input_path, "47_Arrestee_Age.csv.gz")))  
+
+
+
+arr_age_sum <- Arrestee_Age_47 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, age_code, age_num) %>%
+  dplyr::summarise(count = n() ) 
+
+arr_age_sum <- arr_age_sum %>% replace(is.na(.), 0)
+
+colnames(arr_age_sum) <- c("Agency Name", "ORI", "State Abbreviation", "age_code", "age_num", "count")
+
+
+
+# Need to update to correct are groups
+arr_age_group <- arr_age_sum %>% 
+  mutate(
+    # Create categories
+    `Age Group` = case_when(
+      age_code == "99" | age_num >= 90   ~ "90+",
+      age_code %in% c("00", "NS") ~ "Unknown",
+      age_code %in% c("NN", "NB", "BB") | age_num < 13 ~ "< 13",
+      age_num %in% c(13, 14)    ~ "13-14",
+      age_num == 15 ~ "15",
+      age_num == 16 ~ "16",
+      age_num == 17 ~ "17",
+      age_num == 18 ~ "18",
+      age_num == 19 ~ "19",
+      age_num == 20 ~ "20",
+      age_num == 21 ~ "21",
+      age_num == 22 ~ "22",
+      age_num == 23 ~ "23",
+      age_num == 24 ~ "24",
+      age_num >= 25 & age_num < 30 ~ "25-29",
+      age_num >= 30 & age_num < 35 ~ "30-34",
+      age_num >= 35 & age_num < 40 ~ "35-39",
+      age_num >= 40 & age_num < 45 ~ "40-44",
+      age_num >= 45 & age_num < 50 ~ "45-49",
+      age_num >= 50 & age_num < 55 ~ "50-54",
+      age_num >= 55 & age_num < 60 ~ "55-59",
+      age_num >= 60 & age_num < 65 ~ "60-64",
+      age_num >= 65 & age_num < 90 ~ "65-89",
+      TRUE ~ "ERROR"
+    ),
+    # Convert to factor
+    `Age Group` = factor(
+      `Age Group`,
+      level = c("< 13", "13-14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-89", "90+", "Unknown", "ERROR")
+  ))
+
+
+
+# check to make sure no NAs in new group
+#arr_age_sum %>% filter(is.na(`Age Group`) == FALSE) %>% nrow()
+check <- arr_age_group %>% filter(`Age Group` == "ERROR" | is.na(`Age Group`) == TRUE)
+#Check proper labeling
+arr_age_group_test <- arr_age_group %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(age_code, age_num, `Age Group`) %>% 
+  dplyr::summarise()
+
+
+
+arr_age_group_sum <- arr_age_group %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(`Agency Name`, ORI, `State Abbreviation`, `Age Group`) %>%
+  dplyr::summarise(counts = sum(count)) 
+
+#Make sure the total counts match
+#sum(arr_age_sum$count)
+#sum(arr_age_group_sum$counts)
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+arr_age_excel <- arr_age_group_sum %>% spread(key = `Age Group`, value = counts)
+
+arr_age_excel$Total <- rowSums(arr_age_excel[,4:ncol(arr_age_excel)], na.rm = TRUE)
+
+
+#Replace all Na's with 0
+arr_age_excel[is.na(arr_age_excel)] <- 0
+
+#Calculate Proportions
+arr_age_excel$`% Less Than 13 or Greater Than 89` <- ifelse(arr_age_excel$Total == 0, 0 ,
+                                    round(((arr_age_excel$`< 13` + arr_age_excel$`90+`)/arr_age_excel$Total)*100, digits = 2))
+
+arr_age_excel_non_zero <- arr_age_excel %>% filter(`% Less Than 13 or Greater Than 89` != 0)
+####################################################################################
+
+for(i in 1:nrow(arr_age_excel_non_zero)){
+  
+  ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] > 0 & 
+           arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] < 5, 
+                        arr_age_excel_non_zero[i, "Percent Group"] <- "0 - 04.99%",
+           ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] >= 5 & 
+           arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] < 10, 
+                        arr_age_excel_non_zero[i, "Percent Group"] <- "05 - 09.99%",
+             ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] >= 10 & 
+               arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] < 20, 
+                            arr_age_excel_non_zero[i, "Percent Group"] <- "10 - 19.99%",
+               ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] >= 20 & 
+                      arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] < 30, 
+                            arr_age_excel_non_zero[i, "Percent Group"] <- "20 - 29.99%",
+                      ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] >= 30 & 
+                             arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] < 40, 
+                            arr_age_excel_non_zero[i, "Percent Group"] <- "30 - 39.99%",
+                            ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] >= 40 & 
+                                    arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] < 50, 
+                            arr_age_excel_non_zero[i, "Percent Group"] <- "40 - 49.99%",
+                            ifelse(arr_age_excel_non_zero[i, "% Less Than 13 or Greater Than 89"] >= 50, 
+                                arr_age_excel_non_zero[i, "Percent Group"] <- "50% or Greater",
+                                                 arr_age_excel_non_zero[i, "Percent Group"] <- "Error")))))))
+  
+}
+
+check1 <- arr_age_excel_non_zero %>% filter(`Percent Group` == "Error")
+
+datatable(arr_age_excel_non_zero)
+
+arr_age_excel_final <- arr_age_excel_non_zero %>%  select(-`Percent Group`) %>% arrange(desc(`% Less Than 13 or Greater Than 89`))
+
+  
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+arr_age_excel_non_zero_tbl <- arr_age_excel_non_zero[order(arr_age_excel_non_zero$`Percent Group`),]
+
+
+pctGroups <- unique(arr_age_excel_non_zero_tbl$`Percent Group`)
+
+for(j in 1:length(pctGroups)){ 
+  
+        allDisagreementTableJ <- arr_age_excel_non_zero_tbl %>% filter(`Percent Group` == pctGroups[j]) %>% 
+                                 select(-`Percent Group`)
+        
+        cat("\n")
+        cat(paste("### ", pctGroups[j] , "  "))
+        cat("\n")
+        
+        print(tagList(datatable(allDisagreementTableJ))) 
+
+
+}
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))
+```
+
+
+  
+  
+
+
+# Tab 49: Race of Arrestee  
+
+<font size="4"> 
+
+Any agency that has the race of the arrestee as 100% unknown for more than 10 instances is flagged as an outlier.  
+
+</font>
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results ='asis'}
+Arrestee_Race_49 <-read_csv(file=gzfile(paste0(validation_input_path, "49_Arrestee_Race.csv.gz")))  
+
+
+
+arr_race_sum <- Arrestee_Race_49 %>%
+  #Need to group by ori and the derived to get counts
+  dplyr::group_by(ucr_agency_name, ori, state_abbr, race_desc) %>%
+  dplyr::summarise(count = n()) 
+
+colnames(arr_race_sum) <- c("Agency Name", "ORI", "State Abbreviation",	"race_desc", "count")
+
+# The arguments to spread():
+# - data: Data object
+# - key: Name of column containing the new column names
+# - value: Name of column containing values
+arr_race_excel <- arr_race_sum %>% spread(key = race_desc, value = count)
+ 
+
+arr_race_excel$Total <- rowSums(arr_race_excel[,4:ncol(arr_race_excel)], na.rm = TRUE)
+
+#Replace all Na's with 0
+arr_race_excel[is.na(arr_race_excel)] <- 0
+
+#Calculate Proportions
+arr_race_excel$`Proportion of Unknown Race` <- ifelse(arr_race_excel$Total == 0, 0 ,
+                                     round(arr_race_excel$Unknown/arr_race_excel$Total, digits = 4))
+
+arr_race_review <- arr_race_excel %>% filter(Total > 10 & `Proportion of Unknown Race` == 1)
+
+cat('\n##', 'Agencies with 100% of cases having unknown/unexpected value  ', '\n')
+  
+
+arr_race_review <- arr_race_review[order(-arr_race_review$Total),]
+
+#Output the table with Proportions of 100
+arr_race_review %>% datatable(options = list(paging = TRUE,## paginate the output
+                                         pageLength = 10,  ## number of rows to output for each page
+                                         columnDefs = list(list(className = 'dt-center',
+                                                                targets = c(seq(1,ncol(arr_race_review))))),
+                                         scrollY = TRUE,   ## enable scrolling on Y axis
+                                         scrollX = TRUE   ## enable scrolling on X axis
+  )) 
+
+# Clean everything but what I need for excel
+rm(list=(ls()[ls() %notin% keep]))  
+```
+
+
+```{r include=FALSE}
+
+
+work_book <- createWorkbook()
+
+addWorksheet(work_book, sheetName="2A Cargo Theft")
+addWorksheet(work_book, sheetName="3 Incident Time")
+addWorksheet(work_book, sheetName="4 Cleared Exceptionally")
+addWorksheet(work_book, sheetName="6 Attempted Incidents")
+addWorksheet(work_book, sheetName="8 Bias Motivation")
+addWorksheet(work_book, sheetName="9 Unknown Location Type")
+addWorksheet(work_book, sheetName="15 Unknown Property Type")
+addWorksheet(work_book, sheetName="26 Victim Age")
+addWorksheet(work_book, sheetName="27 Victim Sex")
+addWorksheet(work_book, sheetName="28 Victim Race")
+addWorksheet(work_book, sheetName="31 Unknown Agg Asslt Circ")
+addWorksheet(work_book, sheetName="32 Addtl Justifiable Homicide")
+addWorksheet(work_book, sheetName="37 Offender Age")
+addWorksheet(work_book, sheetName="38 Offender Sex")
+addWorksheet(work_book, sheetName="39 Offender Race")
+addWorksheet(work_book, sheetName="47 Age of Arrestee")
+addWorksheet(work_book, sheetName="49 Race of Arrestee")
+
+writeData(work_book, "2A Cargo Theft", cargo_excel_final)
+writeData(work_book, "3 Incident Time", incident_excel_final)
+writeData(work_book, "4 Cleared Exceptionally", cleared_excel_final)
+writeData(work_book, "6 Attempted Incidents", attempted_excel_final)
+writeData(work_book, "8 Bias Motivation", bias_excel_final)
+writeData(work_book, "9 Unknown Location Type", unknown_loc_excel_final)
+writeData(work_book, "15 Unknown Property Type", unknown_prop_excel_final )
+writeData(work_book, "26 Victim Age", vic_age_excel_final)
+writeData(work_book, "27 Victim Sex", vic_sex_excel_final)
+writeData(work_book, "28 Victim Race", vic_race_excel_final)
+writeData(work_book, "31 Unknown Agg Asslt Circ", unkn_agg_excel_final)
+writeData(work_book, "32 Addtl Justifiable Homicide", add_hom_excel)
+writeData(work_book, "37 Offender Age", off_age_excel_final)
+writeData(work_book, "38 Offender Sex", off_sex_excel_final)
+writeData(work_book, "39 Offender Race", off_race_excel_final)
+writeData(work_book, "47 Age of Arrestee", arr_age_excel_final)
+writeData(work_book, "49 Race of Arrestee", arr_race_review)
+
+saveWorkbook(work_book,
+             file= paste0(validation_input_path, year, " Search Validation.xlsx"),
+             overwrite = TRUE)
+
+```
+

@@ -1,0 +1,99 @@
+---
+title: "Novel Method - LEAs with Mean Crime Counts GTE 50"
+author: "JD Bunker"
+date: "12/12/2022"
+geometry: margin=0.5in
+graphics: yes
+output: 
+  pdf_document:
+    fig_crop: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intro
+
+This program generates plots for the multi-step outlier detection method for agencies with a mean total monthly crime count greater than 50 crimes per month.
+
+## Read in NIBRS data 
+
+```{r loadData,warning=FALSE,message=FALSE,results=FALSE}
+library(tidyverse)
+library(openxlsx)
+library(ggplot2)
+#library(dtw)
+#install.packages('factoextra')
+library(factoextra)
+library(data.table)
+library(fpc)
+library(moments)
+
+
+#Get rid of unneeded datasets/values
+rm(nibrs,nibrs_allYrs_long,nibrs_groups,nibrsRaw,
+   medianCounts_cs_allYrs,
+   statsORI_allYrs,
+   minPop_allYrs,
+   monthsDF,
+   rtiGroups_allYrs,rtiGroups_allYrs_byGp,
+   percentiles_allC_allYrs,percentiles_otherc_allYrs,
+   percentiles_part1p_allYrs,percentiles_part1v_allYrs)
+rm(list=c(paste0("nibrs_",nibrsYrs,"_long"),
+          paste0("statsORI_",nibrsYrs),
+          paste0("rtiGroup_",nibrsYrs),
+          paste0("percentiles_allC_",nibrsYrs),
+          paste0("percentiles_part1p_",nibrsYrs),
+          paste0("percentiles_part1v_",nibrsYrs),
+          paste0("percentiles_otherc_",nibrsYrs),
+          paste0("oris_",nibrsYrs)))
+```
+
+
+## Subset to LEAs with mean monthly crime count GTE 50 
+```{r taskDat}
+
+taskDat <- nibrs_allYrs_long2 %>%
+  subset(meanCount_allC_allYrs>50) %>%
+  subset(nMonths_allC_allYrs>=12) %>%
+  subset(!is.na(count_allC)) %>%
+  select(ori,month_num_abs,repMonth_num,ucr_agency_name,nibrs_agn_population,
+         rtiGroup_code,rtiGroup_desc,rtiGroups_allYrs_desc,
+         nibrs_agn_agency_type_name,count_allC,crimeRate_allC) %>%
+  mutate(crimeVal=count_allC,
+         crimeVar="Counts") %>%
+  #Modifying group to more easily fit in plots
+  mutate(rtiGroup_desc=rtiGroup_desc %>% as.character() %>% 
+           str_replace_all(string=.,
+                           pattern=c("(: |counties )"),
+                           replacement=c("\\1\n"))) %>%
+  arrange(ori,month_num_abs)
+
+oriList <- taskDat$ori %>% unique()
+
+nORI <- length(oriList)
+```
+
+
+```{r novelCounts_GTE50,fig.height=8,fig.width=8,warning=FALSE,message=FALSE,results=FALSE}
+
+set.seed(1)
+novelCounts_GTE50 <- runNovelMethod_v5(taskDat,
+                                       clustVars=count_allC,
+                                       clustLab="overall crime counts",
+                                       idVar=ori,oriList,indexVar=month_num_abs,
+                                       cval_MAD=3.5,run_novel=TRUE,
+                                       plot=TRUE)
+
+```
+
+```{r summary}
+
+novelCounts_GTE50 %>% 
+  select(ori,patternAB_novel) %>% 
+  subset(duplicated(.)==FALSE) %>% 
+  group_by(patternAB_novel) %>% 
+  summarize(n=n())
+
+```

@@ -1,0 +1,12 @@
+checks for lkup_nibrs_injury:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['injury_code', 'name']
+        when wrong column type:
+          injury_code: character(1)
+          name: character varying(100)
+  - invalid_count(injury_code) = 0:
+      valid values: ['B', 'G', 'I', 'L', 'M', 'N', 'O', 'T', 'U']
+  - invalid_count(name) = 0:
+      valid values: ['Apparent Broken Bones', 'Gunshot Wound', 'Loss of Teeth', 'Minor Injury', 'None', 'Other Major Injury', 'Possible Internal Injury', 'Severe Laceration', 'Unconscious']

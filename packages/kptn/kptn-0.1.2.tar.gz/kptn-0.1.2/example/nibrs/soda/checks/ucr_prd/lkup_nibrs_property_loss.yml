@@ -1,0 +1,15 @@
+checks for lkup_nibrs_property_loss:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['prop_loss_code', 'name', 'description']
+        when wrong column type:
+          prop_loss_code: smallint
+          name: character varying(100)
+          description: character varying(300)
+  - invalid_count(prop_loss_code) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8]
+  - invalid_count(name) = 0:
+      valid values: ['Burned', 'Counterfeited/Forged', 'Destroyed/Damaged/Vandalized', 'None', 'Recovered', 'Seized', 'Stolen/Etc', 'Unknown']
+  - invalid_count(description) = 0:
+      valid values: ['Burned (includes damage caused in fighting the fire)', 'Counterfeited/Forged', 'Destroyed/Damaged/Vandalized', 'None', 'Recovered (to impound property that was previously stolen)', 'Seized (to impound property that was not previously stolen)', 'Stolen/Etc. (includes bribed, defrauded, embezzled, extorted, ransomed, robbed, etc.)', 'Unknown']

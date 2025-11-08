@@ -1,0 +1,1226 @@
+---
+title: '00-Create Datasets'
+author: "Philip Lee"
+date: "March 22, 2022"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+#Update on 20200803:
+#1.  Free up memory by deleting dataset and queries object after processing
+#2.  Make the in_univ variable for subsetting to eligible agencies if needed on task
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DBI)
+library(DT)
+library(lubridate)
+#library(dplyr)
+#library(dbplyr)
+#library(rlang)
+library(readxl)
+
+#This function will clear up the memory for any object that starts with df and query
+#Clear the memory
+
+input_state <- Sys.getenv("INPUT_STATE")
+
+cleanup_memory <- function(){
+  
+  #Get the list of objects
+  tbd_list <- c(ls(pattern="^df", envir=.GlobalEnv), ls(pattern="^query", envir=.GlobalEnv))
+  print("Removing objects:  ")
+  print(as.character(tbd_list))
+
+  #Remove the objects
+  rm(list=c(as.character(tbd_list)), envir=.GlobalEnv)
+ 
+  #Free up memory
+  gc()
+   
+}
+
+#Simple function to check recodes
+checkfunction <- function(data, ...){
+  #log_debug(paste0("CHECKFUNCTION with args: ",toString(as.list(match.call())[-1])))
+  groupbyinput <- rlang:::enquos(...)
+  grouped_data <- data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() )
+  datatable( grouped_data %>% print())
+  log_debug(twodlist_tostring(grouped_data))
+}
+
+#A cleaning function to trim writespace on both sides of the string and also to upcase the string
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+
+######################################################################################################################################
+
+######################################################################################################################################
+
+```
+
+
+```{r}
+
+#Basic statement to subset to year of interest
+der_where_query = paste0("EXTRACT(year FROM nibrs_incident.incident_date) = ",  CONST_YEAR,
+                         " AND agencies.state_abbr = '",input_state,"'")
+
+
+#Set up the NIBRS connection object to the NIBRS database
+con <- dbConnect(RPostgres::Postgres())
+
+```
+
+# Tab 4: Dataset for arrestee
+
+```{r }
+#Dataset for arrestee
+
+ 
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+
+query1 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_arrestee.arrestee_id
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	  SELECT
+	   ref_agency.ucr_agency_name,
+	   ref_agency.ori,
+	   ref_agency.legacy_ori,
+	   ref_agency.agency_id,
+	   ref_agency_status.data_year,
+	   ref_agency_status.agency_status,
+	   ref_agency_yearly.is_nibrs,
+	   ref_state.state_id,
+     ref_state.name AS state_name,
+     ref_state.abbr AS state_abbr,
+     ref_state.postal_abbr AS state_postal_abbr
+	  FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE
+	   ) agencies 
+         ON ((nibrs_incident.agency_id = agencies.agency_id)
+         AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_arrestee nibrs_arrestee USING (incident_id)
+ WHERE ", der_where_query )
+    
+                  
+    #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+raw1 <- time_query(con, query1)
+    
+    #See if there are any arrestee
+    raw2 <- raw1 %>%
+      #Need to drop the missing arrestee id
+      filter(!is.na(arrestee_id)) %>%
+      #Need to summarise the data at the ori and incident level
+      group_by(ori, ucr_agency_name,incident_id, arrestee_id, state_abbr) %>%
+      summarise(count = n()) %>%
+      ungroup()
+  
+    #Summarise at the ORI and incident_id level
+raw3 <- raw2 %>%
+      group_by(ori, ucr_agency_name, state_abbr, incident_id) %>%
+      summarise(arrestee_count = sum(count)) %>%
+      ungroup() %>%
+      mutate(arrestee_count_ind = case_when(
+        arrestee_count >= 1 ~ 1,
+        TRUE ~ 0))
+
+#Bind the rows to create one dataset
+df1 <- raw3
+
+#wv <- filter(df1, ori %in% c("WV0130100", "WV0500100", "WV0090000"))
+
+#Dataset for incident circumstance
+
+  
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query2 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_incident.cleared_exceptionally_code as cleared_except_code,
+  lkup_nibrs_cleared_exceptionally.name as cleared_except_name,
+  lkup_nibrs_cleared_exceptionally.description as cleared_except_desc
+ FROM ucr_prd.nibrs_incident
+  LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr,
+    ref_agency_yearly.population 
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	   LEFT JOIN ucr_prd.ref_submitting_agency USING (agency_id)
+     LEFT JOIN ucr_prd.ref_agency_type USING (agency_type_id)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	  agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.lkup_nibrs_cleared_exceptionally USING (cleared_exceptionally_code)
+ WHERE ", der_where_query)
+    
+                  
+    #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df2 <- time_query(con, query2)
+
+df2_1 <- df2 %>%
+  mutate(der_cleared_exceptionally = case_when(
+    trim_upcase(cleared_except_code) %in% c("A", "B", "C", "D", "E") ~ 1,
+    TRUE ~ 0),
+        der_not_cleared = case_when(
+    trim_upcase(cleared_except_code) %in% c("N") ~ 1,
+    TRUE ~ 0)   
+    )
+ 
+
+#Check recodes
+df2_1 %>% checkfunction(der_cleared_exceptionally, der_not_cleared, cleared_except_code, cleared_except_desc)
+
+#Combine the results from df1 and df2_1
+df2_2 <- df2_1 %>%
+  left_join(df1, by=c("ori","ucr_agency_name", "incident_id"))
+
+#Simple check to make sure that the merges went as expected (i.e. no one to many or many to many merges.)
+log_dim(df2_2)
+log_dim(df2_1)
+log_dim(df1)
+
+#Create new variable summarising at the incident level
+df2_3 <- df2_2 %>%
+  mutate(der_cleared = case_when(
+    arrestee_count_ind == 1 ~ 2, #Cleared by Arrest
+    der_cleared_exceptionally == 1 ~ 1, #Cleared Exceptionally
+    der_not_cleared == 1 ~ 3 #Not Cleared
+  ) 
+)
+
+#Check recodes
+df2_3 %>% checkfunction(der_cleared, arrestee_count_ind, der_cleared_exceptionally, der_not_cleared)
+
+#Using df2_3 aggregate the counts at the ORI level
+# df2_4 <- df2_3 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, der_cleared) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df2_3 %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/4_Cleared_Exceptionally_",input_state,".csv.gz")), na="")
+  
+#To read in the gzfile used the following command:
+#dataname <-read_csv(file=gzfile(paste0("file path", "file_name")))  
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+
+```
+
+
+# Tab 2A: Cargo Theft
+
+```{r}
+#Dataset for 2A Cargo Theft
+
+#Create a list object to hold the results
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query2a <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  CASE
+      WHEN nibrs_incident.is_cargo_theft IS TRUE THEN 'Y'::bpchar
+      WHEN nibrs_incident.is_cargo_theft IS FALSE THEN 'N'::bpchar
+      ELSE NULL::bpchar
+  END AS cargo_theft_flag
+ FROM ucr_prd.nibrs_incident
+  LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr,
+    ref_agency_yearly.population 
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	  agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+  df2A <- time_query(con, query2a)
+  
+
+#Using df2A aggregate the counts at the ORI level
+# df2A_ori <- df2A %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, cargo_theft_flag) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df2A %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/2A_Cargo_Theft_",input_state, ".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+
+# Tab 3: Incident Time  
+
+```{r}
+#Dataset for 3 Incident Time
+
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query3 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_incident.incident_hour
+FROM ucr_prd.nibrs_incident
+  LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	  agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df3 <- time_query(con, query3)
+
+#Using df3 aggregate the counts at the ORI level
+# df3_ori <- df3 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, incident_hour) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df3 %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/3_Incident_Time_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+
+# Tab 6: Attempted Incidents  
+
+```{r}
+#Dataset for 6 Attempted Incidents
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query6 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_offense.offense_id,
+  nibrs_offense.attempt_complete_code AS attempt_complete_flag
+FROM ucr_prd.nibrs_incident
+  LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency_status.agency_status,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	 WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	  agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_offense USING (incident_id)      
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df6 <- time_query(con, query6)
+
+#Using df6 aggregate the counts at the ORI level
+# df6_ori <- df6 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, offense_id, attempt_complete_flag) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df6 %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/6_Attempted_Incidents_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+# Tab 8A: Bias Motivation  
+
+
+```{r}
+#Dataset for 8A Bias Motivation
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query8A <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  lkup_bias.bias_code,
+  lkup_bias.category AS bias_name,
+  lkup_bias.description AS bias_desc
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_offense USING (incident_id)
+  LEFT JOIN ucr_prd.nibrs_bias_motivation USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_bias USING (bias_code)
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df8A <- time_query(con, query8A)
+  
+#Output dataset to share for further processing
+df8A %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/8A_Bias_Motivation_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+
+
+# Tab 9: Unknown Location Type  
+
+```{r}
+#Dataset for 9 Unknown Location Type
+
+#Copy and paste cleaned up queries.
+  #Note that the queries have no quotes (i.e "") and parentheses
+  
+query9 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_offense.offense_id,
+  lkup_nibrs_location.location_code,
+  lkup_nibrs_location.name AS location_name
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_offense nibrs_offense USING (incident_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+  LEFT JOIN ucr_prd.lkup_nibrs_location USING (location_code)
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df9 <- time_query(con, query9)
+  
+ 
+#Using df9 aggregate the counts at the ORI level
+# df9_ori <- df9 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori,) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df9 %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/9_Unknown_Location_Type_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+```
+
+
+# Tab 15: Unknown Property Type
+  
+
+```{r}
+#Dataset for 15 Unknown Property Type
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query15 <- paste0("
+ SELECT
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_property_description.prop_desc_code,
+  lkup_nibrs_property_description.name as prop_desc_name
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_property USING (incident_id)
+  LEFT JOIN ucr_prd.nibrs_property_description USING (property_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_property_description USING (prop_desc_code)
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df15 <- time_query(con, query15)
+  
+#Using df15 aggregate the counts at the ORI level
+# df15_ori <- df15 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori,) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df15 %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/15_Unknown_Property_Type_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+```
+
+
+
+# Tab 26: Victim Age  
+
+
+```{r}
+#Dataset for 26 Victim Age
+
+  
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query26 <- paste0("
+ SELECT
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_victim.age_code AS age_code,
+  CASE
+      WHEN nibrs_victim.age_code = ANY (ARRAY['NN'::bpchar, 'NB'::bpchar, 'BB'::bpchar, '00'::bpchar, 'NS'::bpchar, '99'::bpchar]) THEN NULL::bpchar
+      ELSE nibrs_victim.age_code
+  END AS age_num,
+  nibrs_victim.victim_id,
+  nibrs_victim.victim_type_code
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim nibrs_victim using (incident_id)
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df26 <- time_query(con, query26)
+  
+#Using df26 aggregate the counts at the ORI level
+# df26_ori <- df26 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(victim_id) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df26 %>%
+  #Subset to victim_type_id "I" (Individual) and "L" (Law Enforcement Officer)
+  filter(victim_type_code %in% c("I", "L")) %>% 
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/26_Victim_Age_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+```
+
+
+# Tab 27: Victim Sex  
+
+```{r}
+#Dataset for 27 Victim Sex
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query27 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  CASE
+      WHEN nibrs_victim.sex_code = 'X'::bpchar THEN ' '::bpchar
+      ELSE nibrs_victim.sex_code
+   END AS sex_code,
+  nibrs_victim.victim_id,
+  nibrs_victim.victim_type_code
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim nibrs_victim using (incident_id)
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df27 <- time_query(con, query27)
+  
+#Using df27 aggregate the counts at the ORI level
+# df27_ori <- df27 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, ) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df27 %>%
+  #Subset to victim_type_id 4 (Individual) and 5 (Law Enforcement Officer)
+  filter(victim_type_code %in% c("I", "L")) %>% 
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/27_Victim_Sex_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+```
+
+# Tab 28: Victim Race  
+
+```{r}
+#Dataset for 28 Victim Race
+
+query28 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_victim.race_code,
+  CAST(lkup_race.description AS TEXT) AS race_desc,
+  nibrs_victim.victim_id,
+  nibrs_victim.victim_type_code
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim nibrs_victim using (incident_id)
+  LEFT JOIN ucr_prd.lkup_race USING (race_code)
+ WHERE ", der_where_query)
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+  df28 <- time_query(con, query28)
+  
+#Using df28 aggregate the counts at the ORI level
+# df28_ori <- df28 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, ) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df28 %>%
+  #Subset to victim_type_code I (Individual) and L (Law Enforcement Officer)
+  filter(victim_type_code %in% c("I","L")) %>%   
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/28_Victim_Race_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+```
+
+
+# Tab 31 Unknown Agg Asslt Circ  
+
+
+```{r}
+#Dataset for 31 Unknown Agg Asslt Circ
+
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+  
+query31 <- paste0("
+ SELECT
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_victim.victim_id AS victim_id,
+  nibrs_victim.victim_type_code,
+  lkup_nibrs_circumstance.circumstance_code,
+  lkup_nibrs_circumstance.name AS circumstance_name,
+  lkup_nibrs_circumstance.type AS circumstance_type,
+  nibrs_offense.offense_code,
+  lkup_nibrs_offense.name AS offense_name,
+  lkup_nibrs_offense.category_name AS offense_category_name,
+  lkup_nibrs_offense.offense_group,
+  nibrs_victim_offense.offense_id AS offense_id
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim USING (incident_id)
+  LEFT JOIN ucr_prd.nibrs_victim_offense USING (victim_id)
+  LEFT JOIN ucr_prd.nibrs_offense USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+  LEFT JOIN ucr_prd.nibrs_victim_circumstance USING (victim_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_circumstance USING (circumstance_code)
+ WHERE ", der_where_query )
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df31 <- time_query(con, query31)
+  
+#May want to see if victim_type_code = I or L is required to report this (i.e. person).
+unique(df31$victim_type_code)
+
+df31 %>% checkfunction(victim_type_code, circumstance_code, circumstance_type, circumstance_name)
+
+df31 %>% checkfunction(offense_code, offense_category_name, offense_name)
+
+df31_off_seq <- df31 %>% filter(victim_type_code %in% c("I", "L"))
+
+df31_off_seq %>% checkfunction(offense_code, offense_category_name, offense_name)
+
+#Using df31 aggregate the counts at the ORI level
+# df31_ori <- df31 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, ) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df31_off_seq %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/31_Unknown_Agg_Asslt_Circ_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+
+
+# Tab 32: ADDITIONAL JUSTIFIABLE HOMICIDE CIRCUMSTANCES  
+
+```{r}
+Cleared_Exceptionally_4 <- read_csv(file=gzfile(paste0(validation_input_path, "/4_Cleared_Exceptionally_",input_state,".csv.gz")))  %>% 
+                            filter(der_cleared %in% c(1,2))
+
+
+#Dataset for 32 ADDITIONAL JUSTIFIABLE HOMICIDE CIRCUMSTANCES
+
+  #Copy and paste cleaned up queries.
+  #Note that the queries have no quotes (i.e "") and parentheses
+query32 <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  lkup_nibrs_circumstance.circumstance_code,
+  lkup_nibrs_circumstance.name AS circumstance_name,
+  lkup_nibrs_circumstance.type AS circumstance_type,
+  nibrs_offense.offense_code,
+  lkup_nibrs_offense.name AS offense_name,
+  lkup_nibrs_offense.category_name AS offense_category_name,
+  lkup_nibrs_offense.offense_group,
+  nibrs_victim_offense.offense_id AS offense_id
+FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_victim USING (incident_id)
+  LEFT JOIN ucr_prd.nibrs_victim_offense USING (victim_id)
+  LEFT JOIN ucr_prd.nibrs_offense USING (offense_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+  LEFT JOIN ucr_prd.nibrs_victim_circumstance USING (victim_id)
+  LEFT JOIN ucr_prd.lkup_nibrs_circumstance USING (circumstance_code)
+ WHERE ", der_where_query )
+  
+  
+  #If you know the data you could summarise by state instead of processing it when all the states are stacked together
+  df32 <- time_query(con, query32)
+  all.equal(df31, df32)
+  
+#df32_final <- merge(df32, Cleared_Exceptionally_4, by = "incident_id")
+df32_final <- left_join(df32 %>% mutate(incident_id = as.double(incident_id)), 
+                        Cleared_Exceptionally_4, 
+                        by = "incident_id") %>%
+  #Filter to Justifiable Homicide
+  filter(offense_code == "09C") %>%
+  #Filter want cleared incidents
+  filter(der_cleared %in% c(1,2))
+
+log_dim(df32_final)
+log_dim(df32)
+log_dim(Cleared_Exceptionally_4)
+
+df32_final %>% checkfunction(offense_code, offense_name)
+df32_final %>% checkfunction(der_cleared)
+df32_final %>% checkfunction(circumstance_code, circumstance_name)
+  
+
+#Output dataset to share for further processing
+df32_final %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/32_ADDITIONAL_JUSTIFIABLE_HOMICIDE_CIRCUMSTANCES_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+
+
+```
+
+
+
+
+# Tab 37: Offender Age  
+
+
+```{r}
+#Dataset for 37 Offender Age
+
+  #Copy and paste cleaned up queries.
+  #Note that the queries have no quotes (i.e "") and parentheses
+  
+query_offender <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_offender.age_code,
+  CASE
+      WHEN nibrs_offender.age_code = ANY (ARRAY['NN'::bpchar, 'NB'::bpchar, 'BB'::bpchar, '00'::bpchar, 'NS'::bpchar, '99'::bpchar]) THEN NULL::bpchar
+      ELSE nibrs_offender.age_code
+  END AS age_num,
+  CASE
+      WHEN nibrs_offender.sex_code = 'X'::bpchar THEN ' '::bpchar
+      ELSE nibrs_offender.sex_code
+  END AS sex_code,
+  nibrs_offender.race_code,
+  CAST(lkup_race.description AS TEXT) AS race_desc,
+  nibrs_offender.offender_id,
+  nibrs_offender.sequence_number AS offender_seq_num
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_offender USING (incident_id)
+  LEFT JOIN ucr_prd.lkup_race USING (race_code)
+ WHERE ", der_where_query )
+  
+  
+#If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df_offender <- time_query(con, query_offender)
+  
+df37_off_seq <- df_offender %>%
+  filter(offender_seq_num != 0) %>%
+  select(-c(sex_code, race_code, race_desc))
+
+#Using df37 aggregate the counts at the ORI level
+# df37_ori <- df37 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, ) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df37_off_seq %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/37_Offender_Age_",input_state,".csv.gz")), na="")
+```
+
+
+# Tab 38: Offender Sex  
+
+
+```{r}
+#Dataset for 38 Offender Sex
+df38_off_seq <- df_offender %>% filter(offender_seq_num != 0) %>% 
+  select(-c(age_code, age_num, race_code, race_desc))
+
+#Using df38 aggregate the counts at the ORI level
+# df38_ori <- df38 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, ) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df38_off_seq %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/38_Offender_Sex_",input_state,".csv.gz")), na="")
+```
+
+
+# Tab 39: Offender Race  
+
+
+```{r}
+#Dataset for 39 Offender Race
+df39_off_seq <- df_offender %>% filter(offender_seq_num != 0) %>% 
+  select(-c(sex_code, age_code, age_num))
+
+
+#Using df39 aggregate the counts at the ORI level
+# df39_ori <- df39 %>%
+#   #Need to group by ori and the derived to get counts
+#   group_by(ori, ) %>%
+#   summarise(count = n() ) %>%
+#   ungroup()
+
+#Output dataset to share for further processing
+df39_off_seq %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/39_Offender_Race_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+
+# Tab 47: AGE OF ARRESTEE  
+
+```{r}
+#Copy and paste cleaned up queries.
+#Note that the queries have no quotes (i.e "") and parentheses
+query_arrestee <- paste0("
+ SELECT 
+  agencies.ucr_agency_name,
+  agencies.ori,
+  agencies.legacy_ori,
+  agencies.state_abbr,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  nibrs_arrestee.arrestee_id,
+  nibrs_arrestee.age_code,
+  CASE
+      WHEN nibrs_arrestee.age_code = ANY (ARRAY['NN'::bpchar, 'NB'::bpchar, 'BB'::bpchar, '00'::bpchar, 'NS'::bpchar, '99'::bpchar]) THEN NULL::bpchar
+      ELSE nibrs_arrestee.age_code
+  END AS age_num,
+  nibrs_arrestee.race_code,
+  CAST(lkup_race.description AS TEXT) AS race_desc,
+  lkup_nibrs_offense.offense_group
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	 SELECT
+	  ref_agency.ucr_agency_name,
+    ref_agency.ori,
+    ref_agency.legacy_ori,
+    ref_agency_status.data_year,
+    ref_agency.agency_id,
+    ref_agency.state_id,
+    ref_state.name AS state_name,
+    ref_state.abbr AS state_abbr,
+    ref_state.postal_abbr AS state_postal_abbr
+	 FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE)
+	   agencies 
+      ON ((nibrs_incident.agency_id = agencies.agency_id) 
+      AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  LEFT JOIN ucr_prd.nibrs_arrestee USING (incident_id)
+  LEFT JOIN ucr_prd.lkup_race USING (race_code)
+  LEFT JOIN ucr_prd.lkup_nibrs_offense USING (offense_code)
+ WHERE ", der_where_query)
+  
+  
+#If you know the data you could summarise by state instead of processing it when all the states are stacked together
+df_arrestee <- time_query(con, query_arrestee)
+
+df47 <- df_arrestee %>% select(-c(race_code, race_desc))
+
+#Output dataset to share for further processing
+df47 %>%
+  filter(trim_upcase(offense_group) %in% c("A", "B")) %>% filter(is.na(arrestee_id) == FALSE) %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/47_Arrestee_Age_",input_state,".csv.gz")), na="")
+```
+
+
+#  Tab 49: Race of Arrestee  
+
+
+```{r}
+df49 <- df_arrestee %>% select(-c(age_code, age_num))
+ 
+#Output dataset to share for further processing
+df49 %>%
+  filter(trim_upcase(offense_group) %in% c("A", "B")) %>% filter(is.na(arrestee_id) == FALSE) %>%
+  #Used gzfile to compress into a zipped file to save space on share
+  write_csv(gzfile(paste0(validation_input_path,"/49_Arrestee_Race_",input_state,".csv.gz")), na="")
+
+#Clear the objects (i.e. objects starts with df or query) and free up memory
+cleanup_memory()
+```
+
+
+```{r, echo=FALSE}
+#Last step is to disconnect from the NIBRS database
+dbDisconnect(con)
+```
+

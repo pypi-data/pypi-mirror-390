@@ -1,0 +1,15 @@
+checks for lkup_nibrs_arrest_type:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['arrest_type_code', 'name','sort_order']
+        when wrong column type:
+          arrest_type_code: character(1)
+          name: character varying(100)
+          sort_order: smallint
+  - invalid_count(arrest_type_code) = 0:
+      valid values: ['O', 'S', 'T']
+  - invalid_count(name) = 0:
+      valid values: ['On View', 'Summoned / Cited', 'Taken INTO Custody']
+  - invalid_count(sort_order) = 0:
+      valid values: [1, 2, 3]

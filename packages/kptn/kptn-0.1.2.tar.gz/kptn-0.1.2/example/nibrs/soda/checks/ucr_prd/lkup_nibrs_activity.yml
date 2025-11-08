@@ -1,0 +1,12 @@
+checks for lkup_nibrs_activity:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['activity_code', 'name']
+        when wrong column type:
+          activity_code: character(2)
+          name: character varying(100)
+  - invalid_count(activity_code) = 0:
+      valid values: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11']
+  - invalid_count(name) = 0:
+      valid values: ['All Other', 'Ambush - No Warning', 'Attempting Other Arrests', 'Burglaries in Progress or Pursuing Burglary Suspects', 'Civil Disorder', 'Handling Persons with Mental Illness', 'Handling, Transporting, Custody of Prisoners', 'Investigating Suspicious Persons or Circumstances', 'Responding to Disturbance Call', 'Robberies in Progress or Pursuing Robbery Suspects', 'Traffic Pursuits and Stops']

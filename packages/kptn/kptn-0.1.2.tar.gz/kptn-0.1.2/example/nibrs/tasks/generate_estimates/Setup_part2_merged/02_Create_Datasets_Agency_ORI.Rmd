@@ -1,0 +1,343 @@
+---
+title: '00-Create Datasets Agency ORI'
+author: "Philip Lee"
+date: "July 22, 2020"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+#Update on 20200803:
+#1.  Free up memory by deleting dataset and queries object after processing
+#2.  Make the in_univ variable for subsetting to eligible agencies if needed on task
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DT)
+library(lubridate)
+#library(dplyr)
+#library(dbplyr)
+#library(rlang)
+library(readxl)
+library(data.table)
+
+#Read in the common functions to be used in R
+#source(here::here("tasks/impute_items/0-Common_functions_for_imputation.R"))
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+read_xlsx <- partial(read_xlsx, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+
+#This function will clear up the memory for any object that starts with df and query
+#Clear the memory
+
+cleanup_memory <- function(){
+  
+  #Get the list of objects
+  tbd_list <- c(ls(pattern="^df", envir=.GlobalEnv), ls(pattern="^query", envir=.GlobalEnv))
+  print("Removing objects:  ")
+  print(as.character(tbd_list))
+
+  #Remove the objects
+  rm(list=c(as.character(tbd_list)), envir=.GlobalEnv)
+ 
+  #Free up memory
+  gc()
+   
+}
+
+
+
+```
+
+
+```{r}
+#Must update universe file below:
+#universe - read in file
+univ <- file.path(initial_inputs_path, paste0("ref_agency_", CONST_YEAR, ".csv")) %>%
+  read_csv()
+
+
+#Read in the pseudo-ori file
+raw_pop <- read_excel(file.path(external_path,file_locs[[CONST_YEAR]]$cbi_summary_county))
+
+#Check the dim
+log_dim(raw_pop)
+
+#Deduplicate in case
+raw_pop <- raw_pop %>%
+  group_by(ORI, state, county) %>%
+  mutate(raw_total = n()) %>%
+  ungroup() %>%
+  #Make the keep criteria
+  mutate(raw_keep = case_when(
+    raw_total == 1 ~ TRUE,
+    raw_total > 1 & popResidAgcyCounty_cbi > 0 ~ TRUE 
+    )) %>%
+  filter(raw_keep == TRUE) %>%
+  select(-raw_total, -raw_keep)
+
+#Check the dim
+log_dim(raw_pop)
+
+#See the number of unique ORIs
+raw_test_ori_counts <- raw_pop %>% 
+  distinct(ORI)
+
+#See the number of ORIs
+log_dim(raw_test_ori_counts)
+
+#Rename to not overwrite
+names(raw_pop) <- toupper(paste0("POP_", colnames(raw_pop)))
+
+#Need to rename some variables to keep consistent with processing
+raw_pop <- raw_pop %>%
+  select(POP_ORI, POP_LEGACY_ORI, POP_MSA_NAME_COUNTY, POP_POPRESIDAGCYCOUNTY_CBI) %>%
+  rename(
+MSA_NAME_COUNTY	=        POP_MSA_NAME_COUNTY)
+  
+#Merge the files using univ and raw_pop
+tbd_good_1 <- univ %>%
+  inner_join(raw_pop, by = c("ORI" = "POP_ORI") )
+
+tbd_anti_1 <- univ %>%
+  anti_join(raw_pop, by = c("ORI" = "POP_ORI") )
+
+#Check the dimension
+log_dim(univ)
+log_dim(tbd_good_1)
+log_dim(tbd_anti_1)
+
+#Merge by ORI from universe file
+tbd_good_2 <- tbd_anti_1 %>%
+  inner_join(raw_pop, by = c("LEGACY_ORI" = "POP_LEGACY_ORI") )
+
+tbd_anti_2 <- tbd_anti_1 %>%
+  anti_join(raw_pop, by = c("LEGACY_ORI" = "POP_LEGACY_ORI") )
+
+#Check the dim
+log_dim(tbd_good_2)
+log_dim(tbd_anti_2)
+
+#Bind the dataset together
+raw_2 <- bind_rows(
+  tbd_good_1 %>% mutate(der_in_pop = 1), 
+  tbd_good_2 %>% mutate(der_in_pop = 1), 
+  tbd_anti_2 %>% mutate(der_in_pop = 0))
+
+#Check the dim
+log_dim(univ)
+log_dim(raw_2)
+
+raw_2 %>%
+  checkfunction(der_in_pop)
+
+
+#Check to see if not merge because population counts are 0
+tbd_anti_2 %>%
+  checkfunction(POPULATION)
+
+tbd_anti_2 %>%
+  filter(POPULATION > 0) %>%
+  print() %>%
+  datatable()
+
+#Will Use JD's variables 
+for_counts0 <- raw_2 %>%
+    group_by(ORI) %>%
+    mutate(tbd_county_counts = n() ) %>% 
+    ungroup() %>%
+    mutate(
+    #Need to code the der_in_msa_county_name status variable using MSA_NAME_COUNTY
+    der_in_msa_county_name = fcase(
+      
+      #Going to code the following as not in MSA
+      trim_upcase(MSA_NAME_COUNTY) %in% c("NOT SPECIFIED", "NOT AVAILABLE"), "N",
+      #For the remaining ones, code as yes including Not Specified;Peoria, IL
+      !is.na(MSA_NAME_COUNTY), "Y"),  
+    
+  #Create new der_msa variable using RTI's definition from the population task
+  #Update on 20240506 - Use the population task MSA_NAME_COUNTY variable as the main variable to determine MSA status
+  der_in_msa = fcase(
+      trim_upcase(der_in_msa_county_name) == "Y", 1, # National Size MSA Counties  
+      
+      (POPULATION_GROUP_ID == 3 | #Cities 1,000,000 or over  
+      POPULATION_GROUP_ID == 9 | #Cities from 10,000 thru 24,999
+      POPULATION_GROUP_ID == 6 | #Cities from 100,000 thru 249,999
+      POPULATION_GROUP_ID == 10 | #Cities from 2,500 thru 9,999
+      POPULATION_GROUP_ID == 8 | #Cities from 25,000 thru 49,999
+      POPULATION_GROUP_ID == 5 | #Cities from 250,000 thru 499,999
+      POPULATION_GROUP_ID == 7 | #Cities from 50,000 thru 99,999
+      POPULATION_GROUP_ID == 4 | #Cities from 500,000 thru 999,999
+      POPULATION_GROUP_ID == 11)  #Cities under 2,500
+      & trim_upcase(der_in_msa_county_name) == "N", 2, # National Size Cities outside MSA    
+      
+      trim_upcase(der_in_msa_county_name) == "N", 3, #National Size Non-MSA Counties
+      
+      default = 4) #Missing         
+    ) %>%
+  #Need to create a new der_in_msa variable that assign based on ORI level
+    group_by(ORI, der_in_msa) %>%
+    mutate(tbd_in_msa_ori_pop_sum = sum(POP_POPRESIDAGCYCOUNTY_CBI, na.rm=TRUE)  ) %>% 
+    ungroup() 
+
+#Check the recodes
+for_counts0 %>% checkfunction(der_in_msa_county_name, MSA_NAME_COUNTY)
+for_counts0 %>% checkfunction(der_in_msa, der_in_msa_county_name, POPULATION_GROUP_DESC)
+
+
+#Figure out the which version of der_in_msa to assign which ORI
+tbd_for_counts0 <- for_counts0 %>%
+  group_by(ORI) %>%
+  mutate(
+  
+    #Keep the record at the ORI level where the tbd_in_msa_ori_pop_sum variable is the largest
+    tbd_in_msa_keep = fcase(
+      max(tbd_in_msa_ori_pop_sum, na.rm = TRUE) == tbd_in_msa_ori_pop_sum, 1,
+      default = 0
+    )
+  ) %>%
+  ungroup() %>%
+  #Keep the largest population record within ORI by the der_in_msa group
+  filter(tbd_in_msa_keep == 1) %>%
+  #Deduplicate the record
+  distinct(ORI, der_in_msa) %>%
+  rename(der_in_msa_singleori = der_in_msa) %>%
+  #Deduplicate if there are still more than one record
+  group_by(ORI) %>%
+  mutate(
+    #Want the lowest level first
+    tbd_keep = fcase(
+      min(der_in_msa_singleori, na.rm=TRUE) == der_in_msa_singleori, 1,
+      default = 0
+    )
+  ) %>%
+  ungroup() %>%
+  #Keep the 1 record
+  filter(tbd_keep == 1) %>%
+  select(-tbd_keep)
+
+#Want the tbd_for_counts0 dataset
+log_dim(tbd_for_counts0)  
+
+
+#Assign to cius object
+cius <- tbd_for_counts0
+
+#Remove the objects
+rm(list=ls(pattern="^tbd_"))
+rm(list=ls(pattern="^raw_"))
+rm(list=ls(pattern="^for_"))
+invisible(gc())
+
+
+#Need to merge on the universe file for the Agency indicator
+dim(univ)
+dim(cius)
+
+#Merge on the extra information from the CDE for help to identify agencies
+raw_maindata <- univ %>% 
+  left_join(cius, by = c("ORI" = "ORI"))
+dim(raw_maindata)
+
+#Check the dimension
+dim(raw_maindata)
+dim(univ)
+dim(cius)
+
+#Double check that the total matches the number of records from cius
+raw_maindata %>%
+  checkfunction(der_in_msa_singleori)
+
+# read in agencies table ORIs for CONST_YEAR
+ori_data <- read_csv(file=paste0(queried_data_path, "agencies_data_year_", CONST_YEAR, ".csv.gz")) %>% 
+  select(ori, legacy_ori) %>% 
+  as.data.frame()
+
+#Using ori_data match up between the file raw_maindata
+
+#Merge on the extra information from the CDE for help to identify agencies
+maindata_1 <- inner_join(ori_data, raw_maindata, by = c("ori" = "ORI"))
+dim(maindata_1)
+dim(ori_data)
+dim(raw_maindata)
+
+#Using maindata_1 create the new variables
+maindata_2 <- maindata_1 %>%
+  mutate(
+  der_population_group = fcase(
+    
+    POPULATION_GROUP_ID == 3,  1, #Cities 1,000,000 or over:  Cities and counties 100,000 or over
+    POPULATION_GROUP_ID == 4, 1, #Cities from 500,000 thru 999,999:  Cities and counties 100,000 or over
+    POPULATION_GROUP_ID == 5, 1, #Cities from 250,000 thru 499,999:  Cities and counties 100,000 or over
+    POPULATION_GROUP_ID == 6, 1, #Cities from 100,000 thru 249,999:  Cities and counties 100,000 or over
+    POPULATION_GROUP_ID == 7, 2, #Cities from 50,000 thru 99,999:  Cities and counties 25,000-99,999
+    POPULATION_GROUP_ID == 8, 2, #Cities from 25,000 thru 49,999:  Cities and counties 25,000-99,999
+    POPULATION_GROUP_ID == 9, 3, #Cities from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+    POPULATION_GROUP_ID == 10, 4, #Cities from 2,500 thru 9,999:  Cities and counties under 10,000
+    POPULATION_GROUP_ID == 11, 4, #Cities under 2,500:  Cities and counties under 10,000
+    POPULATION_GROUP_ID == 13, 1, #Non-MSA counties 100,000 or over:  Cities and counties 100,000 or over
+    POPULATION_GROUP_ID == 14, 2, #Non-MSA counties from 25,000 thru 99,999:  Cities and counties 25,000-99,999
+    POPULATION_GROUP_ID == 15, 3, #Non-MSA counties from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+    POPULATION_GROUP_ID == 16, 4, #Non-MSA counties under 10,000:  Cities and counties under 10,000
+    POPULATION_GROUP_ID == 17, 5, #Non-MSA State Police:  State police
+    POPULATION_GROUP_ID == 19, 1, #MSA counties 100,000 or over:  Cities and counties 100,000 or over
+    POPULATION_GROUP_ID == 20, 2, #MSA counties from 25,000 thru 99,999:  Cities and counties 25,000-99,999
+    POPULATION_GROUP_ID == 21, 3, #MSA counties from 10,000 thru 24,999:  Cities and counties 10,000-24,999
+    POPULATION_GROUP_ID == 22, 4, #MSA counties under 10,000:  Cities and counties under 10,000
+    POPULATION_GROUP_ID == 23, 5, #MSA State Police:  State police
+    default = NA_real_),    
+  
+  der_agency_type_1_7 = fcase(
+    
+    trim_upper(AGENCY_TYPE_NAME) == "CITY", 1, #City:  City
+    trim_upper(AGENCY_TYPE_NAME) == "TRIBAL", 6, #Tribal:  Tribal agencies
+    trim_upper(AGENCY_TYPE_NAME) == "OTHER", 5, #Other:  Other state agencies
+    trim_upper(AGENCY_TYPE_NAME) == "UNIVERSITY OR COLLEGE", 3, #University or College:  University or college
+    trim_upper(AGENCY_TYPE_NAME) == "OTHER STATE AGENCY", 5, #Other State Agency:  Other state agencies
+    trim_upper(AGENCY_TYPE_NAME) == "STATE POLICE", 4, #State Police:  State police
+    trim_upper(AGENCY_TYPE_NAME) == "UNKNOWN", NA_real_, #Unknown:  Unknown
+    trim_upper(AGENCY_TYPE_NAME) == "COUNTY", 2, #County:  County
+    trim_upper(AGENCY_TYPE_NAME) == "FEDERAL", 7, #Federal:  Federal agencies
+    default = NA_real_),
+  
+    #Use the der_in_msa_singleori variable from the population task above
+    der_msa = der_in_msa_singleori,
+  
+    #Create a count variable of 1 to count
+    count = 1
+  )
+
+#Check recodes
+maindata_2 %>% checkfunction(der_population_group, POPULATION_GROUP_ID, POPULATION_GROUP_DESC)
+maindata_2 %>% checkfunction(der_agency_type_1_7, AGENCY_TYPE_NAME)
+maindata_2 %>% checkfunction(der_msa, der_in_msa_singleori)
+maindata_2 %>% checkfunction(count)
+
+#Write out the data
+#ori_population_group_cat
+maindata_2 %>%
+  select(ori, der_population_group, count) %>%
+	write_csv(gzfile(paste0(der_file_path,"/ori_population_group_cat.csv.gz")), na="")
+
+#ori_agency_type_cat_1_7
+maindata_2 %>%
+  select(ori, der_agency_type_1_7, count) %>%
+	write_csv(gzfile(paste0(der_file_path,"/ori_agency_type_cat_1_7.csv.gz")), na="")
+
+#ori_msa_cat
+maindata_2 %>%
+  select(ori, der_msa, count) %>%
+	write_csv(gzfile(paste0(der_file_path,"/ori_msa_cat.csv.gz")), na="")
+
+
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+
+```
+

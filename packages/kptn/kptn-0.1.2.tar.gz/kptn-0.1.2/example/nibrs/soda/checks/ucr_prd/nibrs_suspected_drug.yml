@@ -1,0 +1,15 @@
+checks for nibrs_suspected_drug:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['suspected_drug_id', 'drug_code', 'drug_measure_code', 'est_drug_qty', 'property_id']
+        when wrong column type:
+          suspected_drug_id: bigint
+          drug_code: character(1)
+          drug_measure_code: character(2)
+          est_drug_qty: numeric(12,3)
+          property_id: bigint
+  - invalid_count(drug_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'U', 'X']
+  - invalid_count(drug_measure_code) = 0:
+      valid values: ['DU', 'FO', 'GL', 'GM', 'KG', 'LB', 'LT', 'ML', 'NP', 'OZ', 'XX']

@@ -1,0 +1,405 @@
+---
+title: "331_MICE_Impute_Relationship_code_offender_gt3"
+author: "Philip Lee & Amang Sukasih"
+date: "12/18/2020"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+
+```{r program331}
+options(max.print=100000)
+options(tibble.print_max = 1000)
+#set.seed(414425)
+#Make set.seed = NA to produce consistent results on rerun
+set.seed=NA
+library(dplyr)
+library(dbplyr)
+library(tidyverse)
+library(haven)
+library(mice)
+library(miceadds)
+library(VIM)
+library(naniar)
+library(visdat)
+library(ggplot2)
+library(writexl)
+library(foreign)
+library(DT)
+library(lubridate)
+
+options(knit.duplicate.label = "allow")
+
+#KJ - swap to pipeline location (comment out here; comes from run program)
+#source(here::here("tasks/impute_items/0-Common_functions_for_imputation.R"))
+#source("../NIBRS_function.R")
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+
+# input_state <- read_csv(paste0(mainpath, "/Current_State_to_process.csv")) %>% select(state)
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as enviroment variable")
+}
+
+# Pre-imputed data (all cases: 1 - 4)
+NIBRS_NY <- data.frame(fread_logging(paste0(inputmainpath, "01_", input_state, "_recoded_for_imputation.csv.gz")))
+
+#For NY, stacked data from MA as well
+NIBRS_MA <- data.frame(fread_logging(paste0(inputmainpath, "01_", "MA", "_recoded_for_imputation.csv.gz")))
+
+NIBRS <- bind_rows(NIBRS_NY, NIBRS_MA)
+
+log_dim(NIBRS)
+log_dim(NIBRS_NY)
+log_dim(NIBRS_MA)
+
+checkfunction(NIBRS, state_abbr)
+
+table(NIBRS[,c("der_incident_cleared")],exclude=NULL)
+table(NIBRS[,c("der_data_subset")],exclude=NULL)
+
+
+# Subset to clear incident only and any incident with at least one person offense
+NIBRS <- NIBRS %>% filter(der_data_subset %in% c(1,3) & der_any_person_offense == 1) %>% #Impute 2: clear incident only where victims are person.
+    #For this program subset to incidents with 3 or less offenders
+	filter(count_offd > 3) %>%
+	select(-der_any_person_offense)
+
+log_debug("Checking dimensions of NIBRS after filter")
+log_dim(NIBRS)
+
+#Replace the old demographic variables with the imputed version from Version 3 - 1
+
+#Write function to handle the processing of the imputed data to match current variable names
+
+processimputeddata <- function(type, state){
+
+  #Declare the symbols
+  inseq       = paste0(type, "_seq_num") %>% rlang:::parse_expr()
+  insex       = paste0("sex_code_", type, "_i") %>% rlang:::parse_expr()
+  inrace      = paste0("race_code_", type, "_i") %>% rlang:::parse_expr()
+  inage       = paste0("age_num_", type, "_i") %>% rlang:::parse_expr()
+
+  renamesex   = paste0("sex_code_", type, "2") %>% rlang:::parse_expr()
+  renamerace  = paste0("race_code_", type, "2") %>% rlang:::parse_expr()
+  renameage   = paste0("age_num_", type, "2") %>% rlang:::parse_expr()
+
+  #Read the file
+  raw1 <- data.frame(fread_logging(paste0(inputmainpath, "17_", state, "_", type, "_imputed_final_flag.csv.gz"))) %>%
+    select(
+           #Keep ID variables
+           incident_id,	!!inseq,
+           #Demographics variables
+           !!insex,	!!inrace,	!!inage) %>%
+
+    #recreate the sex variable
+    mutate(!!insex := case_when(trim_upper(!!insex)  == "M" ~ 1,
+                                trim_upper(!!insex)  == "F" ~ 2,
+                                TRUE ~ NA_real_)
+    ) %>%
+    rename(
+         !!renamesex  := !!insex,
+         !!renamerace := !!inrace,
+         !!renameage  := !!inage)
+
+}
+
+#NY
+imp_victim_NY <- processimputeddata(type="victim", state="NY")
+imp_offender_NY <- processimputeddata(type="offender", state="NY")
+imp_arrestee_NY <- processimputeddata(type="arrestee", state="NY") %>%
+  rename(arrestee_seq_num2 = arrestee_seq_num)
+
+#MA
+imp_victim_MA <- processimputeddata(type="victim", state="MA")
+imp_offender_MA <- processimputeddata(type="offender", state="MA")
+imp_arrestee_MA <- processimputeddata(type="arrestee", state="MA") %>%
+  rename(arrestee_seq_num2 = arrestee_seq_num)
+
+#Stack the data
+imp_victim <- bind_rows(imp_victim_NY, imp_victim_MA)
+imp_offender <- bind_rows(imp_offender_NY, imp_offender_MA)
+imp_arrestee <- bind_rows(imp_arrestee_NY, imp_arrestee_MA)
+
+glimpse(imp_victim)
+glimpse(imp_offender)
+glimpse(imp_arrestee)
+
+#Replace the variables
+log_debug("Checking dimensions of NIBRS after processimputeddata")
+log_dim(NIBRS)
+
+NIBRS <- replacedemovars2(base=NIBRS, imputed=imp_victim, mergeonby=c("incident_id", "victim_seq_num"))
+NIBRS <- replacedemovars2(base=NIBRS, imputed=imp_offender, mergeonby=c("incident_id", "offender_seq_num"))
+NIBRS <- replacedemovars2(base=NIBRS, imputed=imp_arrestee, mergeonby=c("incident_id", "arrestee_seq_num2"))
+
+log_debug("Checking dimensions of NIBRS after replacedemovars2")
+log_dim(NIBRS)
+
+#Delete the imputed datasets
+remove(list=ls(pattern="^imp_"))
+invisible(gc())
+
+
+#NIBRS$relationship_code	            <- as.factor(NIBRS$relationship_code)
+NIBRS$arrest_type_code2	          <- as.factor(NIBRS$arrest_type_code2)
+NIBRS$cargo_theft_flag2           <- as.factor(NIBRS$cargo_theft_flag2)
+NIBRS$cleared_except_code	<- as.factor(NIBRS$cleared_except_code)
+NIBRS$crime_against2              <- as.factor(NIBRS$crime_against2)
+NIBRS$der_arrestee_weapon2        <- as.factor(NIBRS$der_arrestee_weapon2)
+NIBRS$der_bias                    <- as.factor(NIBRS$der_bias)
+NIBRS$der_data_subset             <- as.factor(NIBRS$der_data_subset)
+NIBRS$der_weapon2                 <- as.factor(NIBRS$der_weapon2)
+NIBRS$method_entry_code2          <- as.factor(NIBRS$method_entry_code2)
+NIBRS$resident_code2              <- as.factor(NIBRS$resident_code2)
+NIBRS$population_group_id         <- as.factor(NIBRS$population_group_id)
+NIBRS$race_code_arrestee2         <- as.factor(NIBRS$race_code_arrestee2)
+NIBRS$race_code_offender2	        <- as.factor(NIBRS$race_code_offender2)
+NIBRS$race_code_victim2           <- as.factor(NIBRS$race_code_victim2)
+NIBRS$sex_code_arrestee2          <- as.factor(NIBRS$sex_code_arrestee2)
+NIBRS$sex_code_offender2          <- as.factor(NIBRS$sex_code_offender2)
+NIBRS$sex_code_victim2            <- as.factor(NIBRS$sex_code_victim2)
+NIBRS$suburban_area_flag2         <- as.factor(NIBRS$suburban_area_flag2)
+NIBRS$victim_type_code            <- as.factor(NIBRS$victim_type_code)
+NIBRS$der_arrestee_offender_same  <- as.factor(NIBRS$der_arrestee_offender_same)
+NIBRS$resident_status_code_victim2<- as.factor(NIBRS$resident_status_code_victim2)
+NIBRS$der_off2_assault_hom        <- as.factor(NIBRS$der_off2_assault_hom   )
+NIBRS$der_off2_kidnapping_ht      <- as.factor(NIBRS$der_off2_kidnapping_ht )
+NIBRS$der_off2_sex                <- as.factor(NIBRS$der_off2_sex           )
+NIBRS$der_off2_arson_bur_vand     <- as.factor(NIBRS$der_off2_arson_bur_vand)
+NIBRS$der_off2_mvt_rob            <- as.factor(NIBRS$der_off2_mvt_rob       )
+NIBRS$der_off2_other_property     <- as.factor(NIBRS$der_off2_other_property)
+NIBRS$der_off2_other_society      <- as.factor(NIBRS$der_off2_other_society )
+
+log_debug("Checking dimensions of NIBRS after recodes")
+log_dim(NIBRS)
+
+glimpse(NIBRS)
+
+#checkfunction(NIBRS,relationship_code)
+checkfunction(NIBRS,der_data_subset)
+checkfunction(NIBRS,sex_code_offender2)
+checkfunction(NIBRS,race_code_offender2)
+checkfunction(NIBRS,age_num_offender2)
+checkfunction(NIBRS,sex_code_victim2)
+checkfunction(NIBRS,race_code_victim2)
+checkfunction(NIBRS,age_num_victim2)
+checkfunction(NIBRS,der_arrestee_flag,sex_code_arrestee2)
+checkfunction(NIBRS,der_arrestee_flag,race_code_arrestee2)
+checkfunction(NIBRS,der_arrestee_flag,age_num_arrestee2)
+
+#NEED TO DROP ORIGINAL relationship_code after recode
+#Victim Was Offender:  Victim was Offender will be new  der_relationship == 5 and
+#  relationship_code == "RU" ~ 5, #Relationship Unknown:  Unknown relationship will be NA
+
+
+#Will update the below code:
+NIBRS <- NIBRS %>% mutate(
+  der_relationship_raw = fcase(
+          relationship_code == "AQ" , 3, #Victim Was Acquaintance:  Outside family but known to victim
+          relationship_code == "BE" , 3, #Victim Was Babysittee:  Outside family but known to victim
+          relationship_code == "BG" , 1, #Victim Was Boyfriend/Girlfriend:  Intimate partner
+		      relationship_code == "CF" , 2, #Victim Was Child of Boyfriend or Girlfriend:  Other family          
+          relationship_code == "CH" , 2, #Victim Was Child:  Other family
+          relationship_code == "CS" , 1, #Victim Was Common-Law Spouse:  Intimate partner
+          relationship_code == "EE" , 3, #Victim was Employee:  Outside family but known to victim
+          relationship_code == "ER" , 3, #Victim was Employer:  Outside family but known to victim
+          relationship_code == "FR" , 3, #Victim Was Friend:  Outside family but known to victim
+          relationship_code == "GC" , 2, #Victim Was Grandchild:  Other family
+          relationship_code == "GP" , 2, #Victim Was Grandparent:  Other family
+
+          relationship_code == "IL" , 2, #Victim Was In-law:  Other family
+          relationship_code == "NE" , 3, #Victim Was Neighbor:  Outside family but known to victim
+          relationship_code == "OF" , 2, #Victim Was Other Family Member:  Other family
+          relationship_code == "OK" , 3, #Victim was Otherwise Known:  Outside family but known to victim
+          relationship_code == "PA" , 2, #Victim Was Parent:  Other family
+          relationship_code == "RU" , 6, #Relationship Unknown:  Unknown relationship
+          relationship_code == "SB" , 2, #Victim Was Sibling:  Other family
+          relationship_code == "SC" , 2, #Victim Was Stepchild:  Other family
+          relationship_code == "SE" , 1, #Victim Was Spouse:  Intimate partner
+          relationship_code == "SP" , 2, #Victim Was Stepparent:  Other family
+          relationship_code == "SS" , 2, #Victim Was Stepsibling:  Other family
+          relationship_code == "ST" , 4, #Victim Was Stranger:  Stranger
+          relationship_code == "VO" , 5, #Victim Was Offender:  Victim was Offender
+          relationship_code == "XS" , 1, #Victim was Ex-Spouse:  Intimate partner
+          relationship_code == "XR" , 1, #Victim Was Ex-Relationship (Ex-Boyfriend/Girlfriend):  Intimate partner
+		      #Update to handle new relationship_code codes
+          relationship_code == "CO", 3,  #Cohabitant (non-intimate relationship) (relationship_code = CO):  Outside family but known to victim
+          relationship_code == "FP", 3,  #Victim was Foster Parent (relationship_code=FP):  Outside family but known to victim
+          relationship_code == "FC", 3,   #Victim was Foster Child (relationship_code=FC):  Outside family but known to victim		      		  
+          default = NA_real_),
+
+	#Need to update der_relationship to make der_relationship == 6, #Relationship Unknown:  Unknown relationship to missing for imputation when
+	#1.  count_offd == 1 Cleared case, single offender
+	#2.  der_arrestee_offender_same == 1 Cleared case, multiple offenders and the imputed offender can be linked to an arrestee
+
+	der_relationship = case_when(
+		der_relationship_raw == 6 & count_offd == 1 ~ NA_real_,
+		der_relationship_raw == 6 & der_arrestee_offender_same == 1 ~ NA_real_,
+		TRUE ~ der_relationship_raw
+	)
+)
+
+	#Need to output data for validation purposes - need to output these datasets to identify the missings
+	NIBRS %>% write_csv_logging(paste0(mainpath, "04_beforeimp_relationship_code_gt3_", input_state, ".csv.gz"), na="") 																									  
+NIBRS %>% checkfunction(der_relationship, der_relationship_raw, count_offd, der_arrestee_offender_same)
+
+#Check the recodes
+NIBRS %>% checkfunction(der_relationship, relationship_code)
+
+#WARNING NEED TO ASK ABOUT THIS VARIABLE
+NIBRS %>% checkfunction(cleared_except_code, cleared_except_code2)
+NIBRS %>% checkfunction(one_level_incident)
+NIBRS %>% checkfunction(der_off_arr_ind_1_to_1)
+NIBRS %>% checkfunction(der_incident_cleared)
+NIBRS %>% checkfunction(division_code)
+NIBRS %>% checkfunction(resident_code2)
+NIBRS %>% checkfunction(state_id)
+NIBRS %>% checkfunction(der_arrestee_flag)
+NIBRS %>% checkfunction(region_code)
+
+#Drop the original variable and keep recoded variable
+NIBRS <- NIBRS %>%
+  select(-relationship_code, -der_relationship_raw)
+
+#Assign as factor
+NIBRS$der_relationship <- as.factor(NIBRS$der_relationship)
+
+#WARNING NEED TO ASK ABOUT THESE VARIABLES
+NIBRS$cleared_except_code2 <- as.factor(NIBRS$cleared_except_code2)
+NIBRS$one_level_incident <- as.factor(NIBRS$one_level_incident)
+NIBRS$der_off_arr_ind_1_to_1 <- as.factor(NIBRS$der_off_arr_ind_1_to_1)
+NIBRS$der_incident_cleared <- as.factor(NIBRS$der_incident_cleared)
+NIBRS$division_code <- as.factor(NIBRS$division_code)
+NIBRS$resident_code2 <- as.factor(NIBRS$resident_code2)
+NIBRS$state_id <- as.factor(NIBRS$state_id)
+NIBRS$der_arrestee_flag <- as.factor(NIBRS$der_arrestee_flag)
+NIBRS$region_code <- as.factor(NIBRS$region_code)
+
+#Quick look before imputation
+#There is two versions of:  cleared_except_code and cleared_except_code2
+glimpse(NIBRS)
+
+md2 <- as.data.frame(md.pattern(NIBRS)) %>% mutate(id = rownames(.))
+
+#Check if imputation is needed
+raw_numbercheck <- md2[1,] %>%
+  mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+  select(new_id) %>%
+  as.double() #Get the number of cells that are non-empty
+raw_numberrows <- nrow(NIBRS) %>% as.double() #Get the number of total records
+
+
+#If true then output dataset and no imputation needed
+if(raw_numbercheck == raw_numberrows |
+
+#Check if any imputation is needed for offender variables
+(any(is.na(NIBRS$der_relationship)) == FALSE))
+{
+
+NIBRS %>%
+	select("incident_id","offender_seq_num","arrestee_seq_num2","victim_seq_num","der_relationship",
+	       "offender_id","arrestee_id2", "victim_id",
+	       "state_abbr", "ori",  "month_num"
+
+	       ) %>%
+  #Filter to NY agencies
+  filter(trim_upcase(state_abbr) == "NY") %>%
+	write_csv_logging(paste0(mainpath, "04_imputed_relationship_code_offender_gt3_", input_state, ".csv.gz"), na="" )
+
+}else{
+
+write_xlsx_logging(md2,paste0(miscpathout ,"mdpattern_relationship_code_", input_state, "_offender_gt3.xlsx"))
+
+init1 = mice(NIBRS, maxit=0)
+meth1 = init1$method
+pred1 = init1$predictorMatrix
+
+#incpreds <- c("sex_code_offender2","race_code_offender2","age_num_offender2","sex_code_victim2","race_code_victim2","age_num_victim2")
+              #Include Crime variables
+incpreds <- c("der_off2_assault_hom","der_off2_kidnapping_ht","der_off2_sex","der_off2_arson_bur_vand",
+              "der_off2_mvt_rob","der_off2_other_property","der_off2_other_society",
+              #Include sex variables for offender and victim
+              "sex_code_offender2", "sex_code_victim2")
+
+predQuick1 <- quickpred(NIBRS, minpuc=0.25, include=incpreds)
+
+# predQuick1[,c("data_year","incident_id","offender_id","victim_id","arrestee_id2",
+#               "offender_seq_num","victim_seq_num","arrestee_seq_num2","cleared_except_code",
+#               "der_incident_cleared","der_arrestee_offender_same","der_off_arr_ind_1_to_1","offense_code2")] <- 0
+
+#offense_code2 is commented out since it was drop in the 301 program
+predQuick1[,c("data_year","incident_id","offender_id","victim_id","arrestee_id2",
+              "offender_seq_num","victim_seq_num","arrestee_seq_num2","cleared_except_code",
+              "der_incident_cleared","der_arrestee_offender_same","der_off_arr_ind_1_to_1",
+              "state_abbr", "ori",  "month_num")] <- 0
+
+
+#predQuick1[c("victim_ID_new"),] <- 0 WARNING NOT AVAILABLE
+predQuick1[c("data_year"),] <- 0
+predQuick1[c("incident_id"),] <- 0
+predQuick1[c("offender_id"),] <- 0
+predQuick1[c("victim_id"),] <- 0
+predQuick1[c("arrestee_id2"),] <- 0
+predQuick1[c("offender_seq_num"),] <- 0
+predQuick1[c("victim_seq_num"),] <- 0
+predQuick1[c("arrestee_seq_num2"),] <- 0
+predQuick1[c("count_arr"),] <- 0
+predQuick1[c("count_offd"),] <- 0
+predQuick1[c("count_vic"),] <- 0
+predQuick1[c("count_offs"),] <- 0
+predQuick1[c("one_level_incident"),] <- 0
+predQuick1[c("der_off_arr_ind_1_to_1"),] <- 0
+predQuick1[c("der_arrestee_offender_same"),] <- 0
+predQuick1[c("arrest_type_code2"),] <- 0
+predQuick1[c("cleared_except_code"),] <- 0
+predQuick1[c("age_num_arrestee2"),] <- 0
+predQuick1[c("state_abbr"),] <- 0
+predQuick1[c("ori"),] <- 0
+predQuick1[c("month_num"),] <- 0
+
+#New code to handle arrestee
+predQuick1[,c("count_arr","der_arrestee_weapon2","der_arrestee_flag")] <- 0
+
+write_xlsx(as.data.frame(predQuick1), paste0(miscpathout, "predQuick_der_relationship_",input_state,"_offender_gt3.xlsx"))
+
+meth2 <- meth1
+meth2[c("incident_id","offender_seq_num","victim_seq_num","der_incident_cleared",
+        "der_arrestee_offender_same","der_off_arr_ind_1_to_1","race_code_arrestee2","count_arr",
+        "state_abbr", "ori",  "month_num"
+        )] <- c(rep("",11))
+
+meth2[c("der_relationship")] <- c(rep("pmm",1))
+meth2
+
+write_xlsx_logging(as.data.frame(meth2), paste0(miscpathout, "meth_relationship_code_",input_state,"_offender_gt3.xlsx"))
+
+imp = mice(NIBRS, pred=predQuick1, meth=meth2, m=1, seed=643220, maxit=5)
+
+NIBRSimp <- complete(imp,1)
+NIBRSimp <- as.data.frame(NIBRSimp)
+summary(NIBRSimp)
+
+NIBRSimp <- as.data.frame(NIBRSimp)
+glimpse(NIBRSimp)
+
+checkfunction(NIBRSimp,der_relationship)
+
+NIBRSimp2b  <- NIBRSimp %>%
+  select("incident_id","offender_seq_num","arrestee_seq_num2","victim_seq_num","der_relationship",
+                       "offender_id",     "arrestee_id2",     "victim_id",
+                       "state_abbr", "ori",  "month_num" )
+
+NIBRSimp2b %>%
+  #Filter to NY agencies
+  filter(trim_upcase(state_abbr) == "NY") %>%
+  write_csv_logging(paste0(mainpath, "04_imputed_relationship_code_offender_gt3_", input_state, ".csv.gz"), na="" )
+
+
+  log_dim(NIBRS)
+  log_dim(NIBRSimp2b)
+
+}
+```

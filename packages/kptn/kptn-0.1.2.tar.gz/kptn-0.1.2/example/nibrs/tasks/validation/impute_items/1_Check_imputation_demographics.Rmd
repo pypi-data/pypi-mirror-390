@@ -1,0 +1,360 @@
+---
+title: '1 - Check imputation demographics'
+author: "Philip Lee"
+date: "June 14, 2022"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+library(tidyverse)
+library(DT)
+library(data.table)
+```
+
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+
+#Create a function to gather the files
+
+processfiles <- function(infilepath, intype){
+  
+  log_trace("In function processfiles")
+  #Get all of the csv files
+  raw_list_files <- list.files(path=input_item_imp, pattern=paste0("17_\\w+_", intype, "_imputed_final_flag.csv.gz"), full.names=TRUE)
+  
+  #Print the path
+  log_trace("Printing the files that will be read in:")
+  print(raw_list_files)
+  
+  #Create a list object to hold results
+  raw_list_1 <- vector("list", length(raw_list_files))
+  
+  #Loop thru the list 
+  for(i in 1:length(raw_list_1)){
+    
+    #Get the current path of the file
+    raw_file <- raw_list_files[[i]]
+    
+    #Get the state
+    raw_state <- str_match(raw_file, paste0("17_(\\w+)_", intype, "_imputed_final_flag.csv.gz")) %>%
+      as_tibble() %>%
+      select(2) %>%
+      pull()
+    
+    #Save to a list
+    raw_list_1[[i]] <- fread(file=raw_file)[, state := raw_state] %>% recode_all_race_ints_to_char()
+    
+  }
+  
+  #Return the list object
+  return(raw_list_1 %>% rbindlist())
+}
+
+#Get the files
+raw_victim <- processfiles(infilepath=input_item_imp, intype="victim")
+raw_arrestee <- processfiles(infilepath=input_item_imp, intype="arrestee")
+raw_offender <- processfiles(infilepath=input_item_imp, intype="offender")
+
+#Take a look at the dataset
+glimpse(raw_victim)
+glimpse(raw_arrestee)
+glimpse(raw_offender)
+
+#Create a function to summarise
+summarize_demo <- function(indata, inraw, inimp, innewvar, inselect){
+  log_trace("In function summarize_demo")
+  
+  #Create new symbol
+  in2newvar <- innewvar %>% rlang:::parse_expr()
+  
+  #Process the variable - National
+  tbd_1 <- indata %>%
+    group_by(!!inraw) %>%
+    summarise(raw_count = n()) %>%
+    mutate(raw_percentage=roundfunction((raw_count/sum(raw_count)))) %>%
+    rename(!!in2newvar := !!inraw) %>%
+    mutate(state="National")
+  
+  tbd_2 <- indata %>%
+    group_by(!!inimp) %>%
+    summarise(imputed_count = n()) %>%
+    mutate(imputed_percentage=roundfunction((imputed_count/sum(imputed_count))))  %>%
+    rename(!!in2newvar := !!inimp) %>%
+    mutate(state="National")
+  
+  #National only
+  tbd_national <- tbd_1 %>%
+    full_join(tbd_2, by=c("state", innewvar)) %>%
+    select(state, !!in2newvar, !!!inselect)
+  
+  #Process the variable - state
+  tbd_state_1 <- indata %>%
+    group_by(state, !!inraw) %>%
+    summarise(raw_count = n()) %>%
+    mutate(raw_percentage=roundfunction((raw_count/sum(raw_count)))) %>%
+    rename(!!in2newvar := !!inraw) 
+  
+  tbd_state_2 <- indata %>%
+    group_by(state, !!inimp) %>%
+    summarise(imputed_count = n()) %>%
+    mutate(imputed_percentage=roundfunction((imputed_count/sum(imputed_count))))  %>%
+    rename(!!in2newvar := !!inimp) 
+  
+  #State only
+  tbd_state <- tbd_state_1 %>%
+    full_join(tbd_state_2, by=c("state", innewvar))%>%
+    select(state, !!in2newvar, !!!inselect)
+  
+  #Stack the results
+  final <- bind_rows(tbd_national,tbd_state)
+  
+  #Return the final data
+  return(final)
+
+}
+
+
+#Creating a function to compare the distributions
+compareit <- function(intype){
+  log_trace("In function compareit")
+  #Declare the variable
+  in_raw_age_code     = paste0("age_code_",intype,"_raw") %>% rlang:::parse_expr()
+  in_raw_age_num    = paste0("age_num_",intype,"_raw") %>% rlang:::parse_expr()
+  in_raw_sex_code   = paste0("sex_code_",intype,"_raw") %>% rlang:::parse_expr()
+  in_raw_race_code    = paste0("race_code_",intype,"_raw") %>% rlang:::parse_expr()
+  
+  in_imputed_age_num   = paste0("age_num_",intype,"_i") %>% rlang:::parse_expr()
+  in_imputed_sex_code  = paste0("sex_code_",intype,"_i") %>% rlang:::parse_expr()
+  in_imputed_race_code   = paste0("race_code_",intype,"_i") %>% rlang:::parse_expr()
+  
+
+  #Need to create distribution comparing the raw and imputed values 
+  inselect = c("raw_count", "raw_percentage", "imputed_count", "imputed_percentage") %>% rlang:::parse_exprs()
+  
+  #Get the raw dataset
+  raw0 <- get(paste0("raw_",intype))
+  
+  raw1 <-  raw0 %>%
+    #select the variables of interest
+    select( state,
+            #Raw variables
+            !!in_raw_age_code,	!!in_raw_age_num,	     !!in_raw_sex_code,	       !!in_raw_race_code,
+            #Imputed variables
+                             !!in_imputed_age_num,   !!in_imputed_sex_code,    !!in_imputed_race_code)%>%
+    #Need to recode the age_code
+    mutate(  !!in_raw_age_num :=  case_when(!!in_raw_age_code %in% c("NN","NB","BB") ~ 0, #1: Under 24 Hours, 2: 1-6 Days Old, 3: 7-364 Days Old
+                                 !!in_raw_age_code %in% c("99") ~ 99, #6: Over 98 Years Old
+                                 !!in_raw_age_code %in% c("00","NS") ~ NA_real_ , #4: Unknown
+                                 TRUE ~ as.numeric(!!in_raw_age_num)))
+  
+  #Process the age
+  raw_age <- summarize_demo(indata=raw1, inraw=in_raw_age_num, inimp=in_imputed_age_num, innewvar="age_num", inselect=inselect)
+  
+  #Process the gender
+  raw_sex <- summarize_demo(indata=raw1, inraw=in_raw_sex_code, inimp=in_imputed_sex_code, innewvar="sex_code", inselect=inselect)
+  
+  #Process the race
+  raw_race <- summarize_demo(indata=raw1, inraw=in_raw_race_code, inimp=in_imputed_race_code, innewvar="race_code", inselect=inselect) %>%
+    #Create the recode
+    mutate(race_label = fcase(
+      race_code == "U", "Unknown",
+      race_code == "W", "White",
+      race_code == "B", "Black or African American",
+      race_code == "I", "American Indian or Alaska Native",
+      race_code == "A", "Asian",
+      race_code == "AP", "Asian, Native Hawaiian, or Other Pacific Islander",
+      race_code == "C", "Chinese",
+      race_code == "J", "Japanese",
+      race_code == "P", "Native Hawaiian or Other Pacific Islander",
+      race_code == "O", "Other",
+      race_code == "M", "Multiple",
+      race_code == "NS", "Not Specified"
+  )) %>% select(
+      state, race_label, race_code, !!!inselect)
+
+  #Return the list of results
+  return( list(raw_age, raw_sex, raw_race) )
+
+}
+
+#Create a function to create the der_percentage_difference_outlier_mean variable
+
+createoutliervar <- function(indata){
+  log_trace("In function createoutliervar")
+  #Create a list
+  returndata <- vector("list", length(indata))
+  
+  for(i in 1:length(returndata)){
+  
+  returndata[[i]] <- indata[[i]]  %>%
+    #Calculate the percentage difference variable
+    mutate(der_percentage_difference = imputed_percentage - raw_percentage,
+           one = 1) %>%
+    #Group by one
+    group_by(one) %>%
+    mutate(der_percentage_difference_mean = mean(der_percentage_difference, na.rm=TRUE),
+           der_percentage_difference_sd = sd(der_percentage_difference, na.rm=TRUE),
+           der_percentage_difference_outlier_mean = fcase(
+             
+             #The upper bound
+             der_percentage_difference_mean + 3*der_percentage_difference_sd < der_percentage_difference, 1,
+             
+             #The lower bound
+             der_percentage_difference_mean - 3*der_percentage_difference_sd > der_percentage_difference, 1,
+             default = 0
+           )) %>%
+    ungroup() %>%
+    select(-one, -der_percentage_difference_mean, -der_percentage_difference_sd)
+  }
+  
+  return(returndata)
+
+}
+
+
+
+
+#Call the function
+final_victim   <- compareit(intype="victim") %>% createoutliervar()
+final_arrestee <- compareit(intype="arrestee") %>% createoutliervar()
+final_offender <- compareit(intype="offender") %>% createoutliervar()
+
+
+
+#Create a format function
+formatfunction <- function(indata, inlabel, incaptionstyle){
+    log_trace("In function formatfunction")
+    #Format the columns
+    indata2 <- datatable(indata,
+	            filter = "top", 
+	            options = list(pageLength = 100, autoWidth = TRUE),
+                caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    inlabel)) %>%
+                formatPercentage(c("raw_percentage", "imputed_percentage", "der_percentage_difference"), 2) %>%
+                formatRound(c("raw_count", "imputed_count"), digits = 0)
+    
+    #Call the print
+    htmltools:::tagList(indata2)
+  
+}
+
+
+formatfunctionoutlier <- function(indata, inlabel, incaptionstyle){
+    log_trace("In function formatfunctionoutlier")
+    #Format the columns
+    indata2 <- datatable(indata,
+	            filter = "top", 
+	            options = list(pageLength = 100, autoWidth = TRUE),
+                caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    inlabel)) %>%
+                formatPercentage(c("raw_percentage", "imputed_percentage", "der_percentage_difference"), 2) %>%
+                formatRound(c("raw_count", "imputed_count"), digits = 0) %>%
+                #Add code to highlight outlier rows
+                formatStyle("der_percentage_difference_outlier_mean",
+                            target="row",
+                            backgroundColor = styleEqual(1, "yellow"))
+    
+    #Call the print
+    htmltools:::tagList(indata2)
+  
+}
+
+
+#Create caption font
+incaptionstyle = 'caption-side: top; text-align: center; font-size: 75px'
+
+#Create a function to subset to outlier states 
+subsetoutlierstate <- function(indata){
+  log_trace("In function subsetoutlierstate")
+  returndata <- indata %>%
+                 #Group by state to detect any outliers
+                 group_by(state) %>%
+                 mutate(der_any_mean_outlier = any(der_percentage_difference_outlier_mean == 1)) %>%
+                 ungroup() %>%
+                 #Filter to impacted records
+                 filter(der_any_mean_outlier == 1) %>%
+                 select(-der_any_mean_outlier)
+} 
+
+```
+This is the validation report for the victim, arrestee, and offender segments for the demographic variables. 
+
+Below are the tables that show the distribution of the raw data (i.e. columns raw_count and raw_percentage) and after imputation (i.e. columns imputed_count and imputed_percentage) for the victim, offender, and arrestee segments for the demographic items, age, gender, and race.  Each table shows the distribution at the national level and broken down by the 50 states plus DC.
+
+Please note for the arrestee and offender segments, imputation is done on cleared incidents only (i.e. there is an arrestee in an incident or the incident is cleared exceptionally) and for eligible NIBRS agencies.
+
+For the victim segment, all victims in eligible NIBRS agencies are imputed and includes both cleared and uncleared incidents.  
+
+In the columns, raw_count and raw_percentage, there are missing or unknown values and they are removed in the imputed columns (i.e. imputed counts and imputed_percentage). 
+
+The percentages are within National or each of the 50 states plus D.C.
+
+* Note the tables with "Outlier" in the title, flags any outliers on the column, der_percentage_difference.
+    + Differences that are more than 3 standard deviations away from the mean difference are flagged as outliers.
+    + For the purpose of these tables, all rows from the impacted domain (i.e. column state is shown) and any rows detected as an outlier is highlighted.  
+    + The mean and standard deviations used comes from der_percentage_difference and is calculated within each of the tables (i.e. Victim Age, Victim Gender, Victim Race, and same for Arrestee and Offender).  
+    + Please note that the "Age Outlier" tables have the most outlier flags of the demographic outlier tables.  This is because there are many age levels and the percentage point difference between the imputed and raw percentages are very small or no percentage difference change.  This implies that the mean of the difference is near zero and the standard deviations is small as well.  This is the reason why small percentage changes in the age levels are flag as outlier when the percentage point difference is small.
+
+
+```{r, echo=FALSE, message=FALSE}
+
+##############################################Victim table###################################################
+formatfunction(       indata=final_victim[[1]],                          inlabel = 'Victim Age Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_victim[[1]] %>% subsetoutlierstate(), inlabel = 'Victim Age Outlier Table', incaptionstyle=incaptionstyle)
+
+formatfunction(       indata=final_victim[[2]],                          inlabel = 'Victim Gender Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_victim[[2]] %>% subsetoutlierstate(), inlabel = 'Victim Gender Outlier Table', incaptionstyle=incaptionstyle)
+
+formatfunction(       indata=final_victim[[3]],                          inlabel = 'Victim Race Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_victim[[3]] %>% subsetoutlierstate(), inlabel = 'Victim Race Outlier Table', incaptionstyle=incaptionstyle)
+
+##############################################Arrestee table###################################################
+formatfunction(       indata=final_arrestee[[1]],                          inlabel = 'Arrestee Age Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_arrestee[[1]] %>% subsetoutlierstate(), inlabel = 'Arrestee Age Outlier Table', incaptionstyle=incaptionstyle)
+
+formatfunction(       indata=final_arrestee[[2]],                          inlabel = 'Arrestee Gender Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_arrestee[[2]] %>% subsetoutlierstate(), inlabel = 'Arrestee Gender Outlier Table', incaptionstyle=incaptionstyle)
+
+formatfunction(       indata=final_arrestee[[3]],                          inlabel = 'Arrestee Race Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_arrestee[[3]] %>% subsetoutlierstate(), inlabel = 'Arrestee Race Outlier Table', incaptionstyle=incaptionstyle)
+
+
+##############################################Offender table###################################################
+formatfunction(       indata=final_offender[[1]],                          inlabel = 'Offender Age Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_offender[[1]] %>% subsetoutlierstate(), inlabel = 'Offender Age Outlier Table', incaptionstyle=incaptionstyle)
+
+formatfunction(       indata=final_offender[[2]],                          inlabel = 'Offender Gender Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_offender[[2]] %>% subsetoutlierstate(), inlabel = 'Offender Gender Outlier Table', incaptionstyle=incaptionstyle)
+
+formatfunction(       indata=final_offender[[3]],                          inlabel = 'Offender Race Table',         incaptionstyle=incaptionstyle)
+formatfunctionoutlier(indata=final_offender[[3]] %>% subsetoutlierstate(), inlabel = 'Offender Race Outlier Table', incaptionstyle=incaptionstyle)
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+
+##############################################Victim table###################################################
+formatfunction(indata=final_victim[[1]] %>% filter(is.na(age_num) & !is.na(imputed_count)) , inlabel = 'Any Unknown/Missing Victim Age After Imputation Table', incaptionstyle=incaptionstyle)
+formatfunction(indata=final_victim[[2]] %>% filter((is.na(trim_upper(sex_code)) |  trim_upper(sex_code) == "U") & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Victim Gender After Imputation Table', incaptionstyle=incaptionstyle)
+formatfunction(indata=final_victim[[3]] %>% filter((is.na(race_code) |  race_code == 0) & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Victim Race After Imputation Table', incaptionstyle=incaptionstyle)
+
+##############################################Arrestee table###################################################
+formatfunction(indata=final_arrestee[[1]] %>% filter(is.na(age_num) & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Arrestee Age After Imputation Table', incaptionstyle=incaptionstyle)
+formatfunction(indata=final_arrestee[[2]] %>% filter((is.na(trim_upper(sex_code)) |  trim_upper(sex_code) == "U") & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Arrestee Gender After Imputation Table', incaptionstyle=incaptionstyle)
+formatfunction(indata=final_arrestee[[3]] %>% filter((is.na(race_code) |  race_code == 0) & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Arrestee Race After Imputation Table', incaptionstyle=incaptionstyle)
+
+
+##############################################Offender table###################################################
+formatfunction(indata=final_offender[[1]] %>% filter(is.na(age_num) & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Offender Age After Imputation Table', incaptionstyle=incaptionstyle)
+formatfunction(indata=final_offender[[2]] %>% filter((is.na(trim_upper(sex_code)) |  trim_upper(sex_code) == "U") & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Offender Gender After Imputation Table', incaptionstyle=incaptionstyle)
+formatfunction(indata=final_offender[[3]] %>% filter((is.na(race_code) |  race_code == 0) & !is.na(imputed_count)), inlabel = 'Any Unknown/Missing Offender Race After Imputation Table', incaptionstyle=incaptionstyle)
+
+
+
+
+```
+

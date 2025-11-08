@@ -1,0 +1,23 @@
+
+# This file contains dev-specific configuration. It should not be loaded
+# in CI.
+
+
+services:
+  prefect:
+    env_file:
+      - .env
+    volumes:
+      - type: bind
+        source: ./
+        target: /code
+        read_only: false
+      - /code/.venv/
+      - type: bind
+        source: ${HOST_ARTIFACT_DIR:-./artifacts}
+        target: /store/artifacts
+        read_only: false
+      - type: bind
+        source: ${HOST_SCRATCH_DIR:-./scratch}
+        target: /scratch
+        read_only: false

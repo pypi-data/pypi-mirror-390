@@ -1,0 +1,369 @@
+---
+title: '15_Create_Data_Victim_Imputation_Uncleared'
+author: "Philip Lee"
+date: "November 4, 2020"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r program15}
+library(tidyverse)
+library(DT)
+library(lubridate)
+
+options(knit.duplicate.label = "allow")
+
+#KJ - swap to pipeline location (comment out here; comes from run program)
+#source("workflow/tasks/impute_items/0-Common_functions_for_imputation.R")
+#Create the continuous summary counts variables for offense indicator used for MICE
+#source("workflow/tasks/impute_items/NIBRS_Offense_function.r")
+#source("workflow/tasks/impute_items/NIBRS_function.R")
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+
+#input_state <- read_csv(paste0(mainpath, "/Current_State_to_process.csv")) %>% select(state)
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as enviroment variable")
+}
+
+
+
+#Read in the logical edit dataset
+raw_main <- logical_edits_frame %>%
+  filter(der_data_subset %in% c(1,3,5)  )
+glimpse(raw_main)
+
+
+
+  raw_main %>% checkfunction(
+    der_data_subset, der_arrestee_offender_same, der_incident_cleared, der_victim_person, der_victim_non_person, der_victim_person_unknown_off
+  )
+
+#Bring in the final imputed dataset variables
+
+
+#Bring in the imputed file 2(a) for offenders
+
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath, "/05_", input_state,"_offender_imputed.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw_main, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num"))
+
+
+#Bring in the imputed file 2(b) for victim
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath, "/07_", input_state,"_victim_imputed_final.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw1, imputed=raw_imputed, mergeonby=c("incident_id", "victim_seq_num"))
+
+#Bring in the imputed file 2(c) for arrestee
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath, "/09_", input_state,"_arrestee_imputed_final.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw1, imputed=raw_imputed, mergeonby=c("incident_id", "arrestee_seq_num"))
+
+
+#Bring in the imputed file 3(a) for offenders
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath, "/12_", input_state,"_offender_imputed.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw1, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num"))
+
+#Bring in the imputed file 3(b) for arrestee
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath, "/14_", input_state,"_arrestee_imputed_final.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw1, imputed=raw_imputed, mergeonby=c("incident_id", "arrestee_seq_num"))
+
+
+#Do the same person match last to guarantee match
+#Bring in the imputed file 1(a)
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath,"/03_", input_state,"_imputed_arrestee_offender_match.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw1, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num", "arrestee_seq_num"))
+
+#Bring in the imputed file 1(b)
+raw_imputed <- data.frame(fread_logging(paste0(inputmainpath, "/10_", input_state,"_imputed_arrestee_offender_match.csv.gz")))
+glimpse(raw_imputed)
+
+
+raw1 <- replacedemovars2(base=raw1, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num", "arrestee_seq_num"))
+
+
+#Check data is expected:
+
+
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,sex_code_offender2)
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,age_num_offender2)
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,race_code_offender2)
+
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,sex_code_arrestee2)
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,age_num_arrestee2)
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,race_code_arrestee2)
+
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,sex_code_victim2)
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,age_num_victim2)
+raw1 %>% checkfunction(der_incident_cleared,der_victim_person,der_victim_non_person, der_victim_person_unknown_off,race_code_victim2)
+
+
+  #Dedepuliate the data for victim and arrestee for each offender
+#raw1 is the main dataset to process
+
+
+
+#####################################Process offender############################################
+
+raw2_offender <- raw1 %>%
+  group_by(incident_id, victim_seq_num, offender_seq_num,  sex_code_offender2, age_num_offender2, ethnicity_code_offender2, race_code_offender2) %>%
+  arrange( incident_id, victim_seq_num, offender_seq_num,  sex_code_offender2, age_num_offender2, ethnicity_code_offender2, race_code_offender2) %>%
+  mutate(raw_first_row = row_number() == 1) %>%
+  filter(raw_first_row == TRUE) %>%
+  ungroup() %>%
+  select(  incident_id, victim_seq_num, offender_seq_num,  sex_code_offender2, age_num_offender2, ethnicity_code_offender2, race_code_offender2)
+
+log_dim(raw1)
+log_dim(raw2_offender)
+
+datatable(raw2_offender %>% select(incident_id, victim_seq_num, offender_seq_num,  sex_code_offender2, age_num_offender2, ethnicity_code_offender2, race_code_offender2) %>% head(30))
+
+datatable(raw2_offender %>% select(incident_id, victim_seq_num, offender_seq_num,  sex_code_offender2, age_num_offender2, ethnicity_code_offender2, race_code_offender2) %>% filter(is.na(sex_code_offender2) | is.na(age_num_offender2)) %>%
+            head(50))
+
+#Get the mean of offender's age
+final_offender_age <- raw2_offender %>%
+        filter(offender_seq_num != 0) %>% #Drop unknown offenders
+        group_by(incident_id, victim_seq_num) %>%
+        summarise(mean_age_offender = mean(age_num_offender2, na.rm=TRUE)) %>%
+        ungroup()
+
+#Get Number of offender per victim
+raw_offender_count <- raw2_offender %>%
+              count(incident_id, victim_seq_num, offender_seq_num) %>% #Get the number of unique SEQ_NUM
+              filter(offender_seq_num != 0) %>% #Filter out the unknown person
+              group_by(incident_id, victim_seq_num) %>%
+              summarise(num_offender_per_victim = n()) %>%
+              ungroup()
+
+
+#Get the count of gender
+final_offender_gender <- raw2_offender %>%
+        count(incident_id, victim_seq_num, sex_code_offender2) %>%
+        spread(sex_code_offender2, n, fill=0) %>%
+        select(incident_id, victim_seq_num, count_male_offender = `1`, count_female_offender = `2`) %>%
+        ungroup()
+
+#Get the count of race
+final_offender_race <- raw2_offender %>%
+        mutate(race_code_offender3 = case_when(race_code_offender2 == 1 ~ "count_white_offender",
+                                           race_code_offender2 == 2 ~ "count_black_offender",
+                                           race_code_offender2 %in% c(3,4,5,6,7,8,9,98) ~ "count_othrace_offender")) %>%
+        count(incident_id, victim_seq_num, race_code_offender3) %>%
+        spread(race_code_offender3, n, fill=0) %>%
+        select(incident_id, victim_seq_num, count_white_offender, count_black_offender, count_othrace_offender) %>%
+        ungroup()
+
+#Get the count of ethnicity
+# final_offender_ethnicity <- raw2_offender %>%
+#         count(incident_id, victim_seq_num, ethnicity_code_offender2) %>%
+#         spread(ethnicity_code_offender2, n, fill=0) %>%
+#         select(incident_id, victim_seq_num, count_hispanic_offender = `1`, count_not_hispanic_offender = `2`) %>%
+#         ungroup()
+
+
+##################################################################################################
+
+#####################################Process Offense code############################################
+
+log_dim(raw1)
+final_offense_code <- createoffenserecodeindicator(data=raw1, type="victim", deduptype="offender") %>%
+  select(incident_id, victim_seq_num, !!!(paste0(listofoffensesrecoded,"_victim") %>% rlang:::parse_exprs()) ) %>%
+  #Deduplicate to the person of interest
+  group_by(incident_id, victim_seq_num) %>%
+  mutate(raw_first_row = row_number() == 1) %>%
+  filter(raw_first_row == TRUE) %>%
+  ungroup() %>%
+  select(-raw_first_row)
+
+log_dim(final_offense_code)
+glimpse(final_offense_code)
+
+
+
+##################################################################################################
+
+
+
+
+#Create the final dataset
+
+listofvars = raw1 %>% select(
+incident_id,
+victim_seq_num ,
+sex_code_victim2,
+race_code_victim2,
+ethnicity_code_victim2,
+age_num_victim2,
+victim_type_code,
+der_arrestee_weapon2,
+#offense_code2,
+#crime_against2,
+suburban_area_flag2,
+state_id,
+division_code,
+region_code,
+population_group_id,
+der_bias,
+der_weapon2,
+der_off_arr_eq_1,
+cargo_theft_flag2,
+method_entry_code2,
+der_incident_cleared,
+
+#New variable for checking unknown offender incidents - Will drop
+der_victim_person_unknown_off
+) %>% colnames() %>% rlang::parse_exprs()
+
+listofvars
+
+#NEW on 20200701:  After talking with Amang, we want the best match between offender and arrestee records, so will add on the variable der_off_arr_count_flag which sums up the following indicator variables (0 if not match and 1 for match between offender and arrestee non-missing and not unknown values):
+#der_off_arr_ethnicity_flag, der_off_arr_age_flag, der_off_arr_sex_flag, der_off_arr_race_flag
+
+Data <- raw1 %>% group_by(incident_id, victim_seq_num) %>%
+        mutate(raw_first = row_number() == 1) %>%
+        filter(raw_first == TRUE) %>%
+        select(!!!listofvars) %>%
+        ungroup()
+
+log_dim(raw1)
+log_dim(Data)
+
+listofdataset <- c("Data", ls(pattern="final_"))
+listofdataset
+
+raw_tobemerge <- mget(listofdataset)
+
+final_data0 <- reduce(raw_tobemerge, left_join, by=c("incident_id", "victim_seq_num"))
+
+#Double Check Merges is expected
+log_dim(final_offender_age)
+log_dim(final_offender_gender)
+log_dim(final_offender_race)
+log_dim(final_offense_code)
+
+log_dim(final_data0)
+
+listofdataset <- c("final_data0", "raw_offender_count")
+
+raw_tobemerge2 <- mget(listofdataset)
+
+#Merge on the counts of interest at the incident level
+final_data <- reduce(raw_tobemerge2, left_join, by = c("incident_id", "victim_seq_num"))
+
+log_dim(raw_offender_count)
+
+log_dim(final_data)
+
+#Apply the missings to zero count variables, when the variable is zero and the counts of offender/offender does not match the total reported for the demographic variable
+
+rowsumsna <- partial(rowSums, na.rm=TRUE)
+
+final_data2 <- final_data %>% mutate(
+
+  #Get the totals
+  raw_count_gender_offender = rowsumsna(.[,c("count_male_offender", "count_female_offender") ]),
+
+  raw_count_race_offender = rowsumsna(.[,c("count_white_offender", "count_black_offender", "count_othrace_offender")])
+
+  # raw_count_hispanic_offender = rowsumsna(.[,c("count_hispanic_offender", "count_not_hispanic_offender")])
+
+
+
+)
+
+
+checkfunction(final_data2, raw_count_gender_offender, count_male_offender, count_female_offender)
+checkfunction(final_data2, raw_count_race_offender, count_white_offender, count_black_offender, count_othrace_offender)
+# checkfunction(final_data2, raw_count_hispanic_offender, count_hispanic_offender, count_not_hispanic_offender)
+
+final_data3 <- final_data2 %>%
+  filter(!is.na(victim_seq_num)) %>%
+  mutate(
+
+
+################################################offender#######################################
+
+  #Gender
+
+  count_male_offender = case_when(  (num_offender_per_victim != raw_count_gender_offender) &
+                                   count_male_offender == 0  ~ NA_real_,
+                                   der_victim_person_unknown_off == 1 ~ NA_real_, #Will have MICE impute number of unknown off
+                                   TRUE ~ count_male_offender),
+
+  count_female_offender = case_when( (num_offender_per_victim != raw_count_gender_offender) &
+                                   count_female_offender == 0  ~ NA_real_,
+                                   der_victim_person_unknown_off == 1 ~ NA_real_, #Will have MICE impute number of unknown off
+                                   TRUE ~ count_female_offender),
+  #Race
+
+  count_white_offender = case_when( (num_offender_per_victim != raw_count_race_offender) &
+                                   count_white_offender == 0 ~ NA_real_,
+                                   der_victim_person_unknown_off == 1 ~ NA_real_, #Will have MICE impute number of unknown off
+                                   TRUE ~ count_white_offender),
+
+  count_black_offender = case_when( (num_offender_per_victim != raw_count_race_offender) &
+                                   count_black_offender == 0 ~ NA_real_,
+                                   der_victim_person_unknown_off == 1 ~ NA_real_, #Will have MICE impute number of unknown off
+                                   TRUE ~ count_black_offender),
+
+  count_othrace_offender = case_when((num_offender_per_victim != raw_count_race_offender) &
+                                   count_othrace_offender == 0 ~ NA_real_,
+                                   der_victim_person_unknown_off == 1 ~ NA_real_, #Will have MICE impute number of unknown off
+                                 TRUE ~ count_othrace_offender)
+
+  #Hispanic
+  # count_hispanic_offender = case_when( (num_offender_per_victim != raw_count_hispanic_offender) &
+  #                                    count_hispanic_offender == 0 ~ NA_real_,
+  #                                TRUE ~ count_hispanic_offender),
+  #
+  # count_not_hispanic_offender = case_when( (num_offender_per_victim != raw_count_hispanic_offender) &
+  #                                    count_not_hispanic_offender == 0 ~ NA_real_,
+  #                                TRUE ~ count_not_hispanic_offender)
+
+
+
+
+)
+
+
+checkfunction(final_data3, count_male_offender,     count_female_offender,                       num_offender_per_victim, raw_count_gender_offender, der_victim_person_unknown_off)
+checkfunction(final_data3, count_white_offender,    count_black_offender,  count_othrace_offender, num_offender_per_victim, raw_count_race_offender, der_victim_person_unknown_off)
+# checkfunction(final_data3, count_hispanic_offender, count_not_hispanic_offender,                 num_offender_per_victim, raw_count_hispanic_offender)
+
+
+
+#Drop the raw variables
+# final_data4 <- final_data3 %>% select(-starts_with("raw_count"), -count_hispanic_arrestee, -count_not_hispanic_arrestee,
+#                                       -count_hispanic_offender, -count_not_hispanic_offender) %>%
+#   filter(!is.na(arrestee_seq_num))
+
+final_data4 <- final_data3 %>% select(-starts_with("raw_count")) %>%
+  filter(!is.na(victim_seq_num)) %>%
+  select(-der_victim_person_unknown_off) #Drop the variable
+
+
+
+#Output the dataset
+
+
+final_data4 %>% write_csv(gzfile(paste0(mainpath, "15_", input_state, "_victim_for_imputation.csv.gz")), na = "")
+
+```

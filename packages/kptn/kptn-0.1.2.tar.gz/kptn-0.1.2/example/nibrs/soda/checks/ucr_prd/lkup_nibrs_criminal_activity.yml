@@ -1,0 +1,18 @@
+checks for lkup_nibrs_criminal_activity:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['criminal_activity_code', 'name', 'description', 'sort_order']
+        when wrong column type:
+          criminal_activity_code: character(1)
+          name: character varying(100)
+          description: character varying(200)
+          sort_order: smallint
+  - invalid_count(criminal_activity_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'I', 'J', 'N', 'O', 'P', 'R', 'S', 'T', 'U', 'W']
+  - invalid_count(name) = 0:
+      valid values: ['Animal Sexual Abuse', 'Buying/Receiving', 'Conspiracy', 'Cultivating/Manufacturing/Publishing', 'Distributing/Selling', 'Exploiting Children', 'Intentional Abuse and Torture', 'Juvenile Gang', 'None/Unknown', 'Operating/Promoting/Assisting/Abetting', 'Organized Abuse', 'Other Gang', 'Possessing/Concealing', 'Simple/Gross Neglect', 'Stolen Firearm', 'Transporting/Transmitting/Importing', 'Using/Consuming']
+  - invalid_count(description) = 0:
+      valid values: ['Animal Sexual Abuse (Bestiality)', 'Buying/Receiving', 'Conspiracy', 'Cultivating/Manufacturing/Publishing (i.e., production of any type)', 'Distributing/Selling', 'Exploiting Children', 'Intentional Abuse and Torture (tormenting, mutilating, maiming, poisoning, or abandonment)', 'Juvenile Gang', 'None/Unknown', 'Operating/Promoting/Assisting/Abetting', 'Organized Abuse (Dog Fighting and Cock Fighting)', 'Other Gang', 'Possessing/Concealing', 'Simple/Gross Neglect (unintentionally, intentionally, or knowingly failing to provide food, water, shelter, veterinary care, hoarding, etc.)', 'Stolen Firearm', 'Transporting/Transmitting/Importing', 'Using/Consuming']
+  - invalid_count(sort_order) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]

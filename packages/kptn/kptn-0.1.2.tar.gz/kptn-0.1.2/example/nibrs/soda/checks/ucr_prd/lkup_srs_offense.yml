@@ -1,0 +1,52 @@
+checks for lkup_srs_offense:
+- row_count > 0
+- schema:
+    fail:
+      when required column missing: ['breakdown_id', 'breakdown_code', 'breakdown_name', 'breakdown_sort_order', 'offense_name', 'sort_order', 'category_name', 'category_sort_order', 'classification_name', 'classification_sort_order', 'crime_type', 'is_crime', 'adult_juv_flag', 'nibrs_conversion_notes', 'offense_code']
+      when wrong column type:
+        breakdown_id: smallint
+        breakdown_code: character varying(20)
+        breakdown_name: character varying(100)
+        breakdown_sort_order: smallint
+        offense_name: character varying(100)
+        sort_order: smallint
+        category_name: character varying(100)
+        category_sort_order: smallint
+        classification_name: character varying(50)
+        classification_sort_order: smallint
+        crime_type: character varying(50)
+        is_crime: boolean
+        adult_juv_flag: character(1)
+        nibrs_conversion_notes: character varying(500)
+        offense_code: character varying(4)
+
+- invalid_count(breakdown_id) = 0:
+    valid values: [0, 11, 12, 20, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 50, 51, 52, 53, 54, 55, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 90, 91, 92, 93, 94, 95, 96, 100, 101, 102, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 130, 131, 132, 140, 141, 142, 143, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 170, 171, 172, 173, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340]
+- invalid_count(breakdown_code) = 0:
+    valid values: ['AF', 'AH', 'AK', 'ANS', 'AO', 'AOO', 'AR', 'ARL', 'ARSCP', 'ARSIM', 'ARSMN', 'ARSMV', 'ARSNS', 'ARSO', 'ARSOC', 'ARSOM', 'ARSOR', 'ARSOS', 'ARSS', 'ARSSN', 'ARSSR', 'BAFE', 'BFE', 'BNF', 'BNRD', 'BNRN', 'BNRU', 'BNS', 'BRD', 'BRN', 'BRU', 'CLLV', 'D', 'DAV', 'DC', 'DPM', 'DPO', 'DPOC', 'DPSN', 'DPU', 'DSMM', 'DSMO', 'DSMOC', 'DSMSN', 'DSMU', 'DUI', 'E', 'F', 'FC', 'GAO', 'GB', 'GNL', 'GU', 'HTCSA', 'HTIS', 'HTNS', 'L200', 'L50', 'LA', 'LAA', 'LAK', 'LANS', 'LAO', 'LB', 'LCM', 'LFA', 'LFB', 'LFK', 'LLV', 'LNS', 'LPP', 'LPS', 'LS', 'LU', 'MN', 'MNH', 'MVLL', 'MVLO', 'MVOL', 'MVTAT', 'MVTNS', 'MVTOV', 'MVTTB', 'NONE', 'OAFC', 'PCVAP', 'PCVP', 'PCVPP', 'PCVU', 'R', 'RB', 'RBNS', 'RCH', 'RCS', 'RF', 'RGSS', 'RH', 'RHFF', 'RK', 'RL', 'RM', 'RNS', 'RNSL', 'RO', 'RR', 'RUN', 'S', 'SA', 'SO', 'SPBRP', 'V', 'VAND', 'WCP']
+- invalid_count(breakdown_name) = 0:
+    valid values: ['$200 and Over', '$50 to $199', 'All Other', 'All Other Offenses (Except Traffic)', 'All Other Structure', 'Arson (Not Specified)', 'Assault - Firearm', 'Assault - Hands, Fists, Feet', 'Assault - Knife or Cutting Instrument', 'Assault - Not Specified', 'Assault - Other Dangerous Weapon', 'Attempted Rape', 'Attempted Rape (Legacy)', 'Auto Accessories', 'Auto Theft', 'Bank', 'Bicycle', 'Burglary - Attempted Forcible Entry', 'Burglary - Forcible Entry', 'Burglary - No Force', 'Burglary - Not Specified', 'Coin Machine', 'Commercial House', 'Commercial Sex Acts', 'Community/Public', 'Convenience Store', 'Curfew and Loitering Law Violations', 'Disorderly Conduct', 'Driving Under the Influence', 'Drug Abuse Violations (Unspecified)', 'Drug Possession (Unspecified)', 'Drug Possession - Marijuana', 'Drug Possession - Opium or Cocaine or Their Derivatives', 'Drug Possession - Other - Dangerous Nonnarcotic Drugs', 'Drug Possession - Synthetic Narcotics', 'Drug Sale/Manufacturing (Unspecified)', 'Drug Sale/Manufacturing - Marijuana', 'Drug Sale/Manufacturing - Opium or Cocaine or Their Derivatives', 'Drug Sale/Manufacturing - Other - Dangerous Nonnarcotic Drugs', 'Drug Sale/Manufacturing - Synthetic Narcotics', 'Drunkenness', 'Embezzlement', 'Forgery and Counterfeiting', 'Fraud', 'From Auto', 'From Building', 'Gambling (Unspecified)', 'Gambling - All Other Gambling', 'Gambling - Bookmaking (Horse and Sport Book)', 'Gambling - Numbers and Lottery', 'Gas or Service Station', 'Highway', 'Human Trafficking - Not Specified', 'Industrial/Manufacturing', 'Involuntary Servitude', 'LEOKA Accidentally Killed', 'LEOKA Assaulted', 'LEOKA Feloniously Killed', 'Larceny - Theft (Not Specified)', 'Larceny Analysis (Not Specified)', 'Liquor Law Violations', 'Manslaughter by Negligence', 'Miscellaneous', 'Mobile (Not Specified)', 'Motor Vehicle Theft - Not Specified', 'Motor Vehicles', 'Murder and Nonnegligent Homicide', 'Non-Residence - Day', 'Non-Residence - Night', 'Non-Residence - Unknown', 'Not Specified', 'Offenses Against the Family and Children', 'Other', 'Other Commercial', 'Other Mobile Property', 'Other Residential', 'Other Vehicle Theft', 'Pocket Picking', 'Prostitution and Commercialized Vice (Unspecified)', 'Prostitution and Commercialized Vice - Assisting or Promoting Prostitution', 'Prostitution and Commercialized Vice - Prostitution', 'Prostitution and Commercialized Vice - Purchasing Prostitution', 'Purse Snatching', 'Rape', 'Rape (Legacy)', 'Rape - Not Specified', 'Rape - Not Specified (Legacy)', 'Residence', 'Residence - Day', 'Residence - Night', 'Residence - Unknown', 'Robbery - Firearm', 'Robbery - Hands, Fists, Feet', 'Robbery - Knife or Cutting Instrument', 'Robbery - Not Specified', 'Robbery - Other Dangerous Weapon', 'Runaway', 'Sex Offenses (Except Rape, and Prostitution and Commercialized Vice)', 'Shoplifting', 'Simple Assault', 'Single Occupancy Residential', 'Stolen Local Recovered Local', 'Stolen Local Recovered Other', 'Stolen Other Recovered Local', 'Stolen Property: Buying, Receiving, Possessing', 'Storage', 'Structure (Not Specified)', 'Suspicion', 'Truck and Bus Theft', 'Under $50', 'Vagrancy', 'Vandalism', 'Weapons: Carrying, Possessing, Etc.']
+- invalid_count(breakdown_sort_order) = 0:
+    valid values: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 199]
+- invalid_count(offense_name) = 0:
+    valid values: ['Aggravated Assault', 'All Other Offenses', 'Arson', 'Burglary', 'Counterfeiting/Forgery', 'Curfew and Loitering Law Violations', 'Disorderly Conduct', 'Drive Under the Influence', 'Drug Abuse Violations', 'Drug Possession', 'Drug Sale/Manufacturing', 'Drunkenness', 'Embezzlement', 'Fraud', 'Gambling', 'Human Trafficking', 'LEOKA Accidentally Killed', 'LEOKA Assaulted', 'LEOKA Feloniously Killed', 'Larceny', 'Liquor Law Violations', 'Manslaughter by Negligence', 'Mobile', 'Motor Vehicle Theft', 'Murder and Nonnegligent Homicide', 'Not Specified', 'Offenses Against the Family and Children', 'Other', 'Prostitution and Commercialized Vice', 'Rape', 'Rape (Legacy)', 'Robbery', 'Runaway', 'Sex Offenses', 'Simple Assault', 'Stolen Property', 'Structural', 'Suspicion', 'Vagrancy', 'Vandalism', 'Weapons']
+- invalid_count(sort_order) = 0:
+    valid values: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 99]
+- invalid_count(category_name) = 0:
+    valid values: ['Aggravated Assault', 'All Other Offenses', 'Arson', 'Burglary', 'Counterfeiting/Forgery', 'Destruction/Damage/Vandalism of Property', 'Disorderly Conduct', 'Drive Under the Influence', 'Drug/Narcotic Offenses', 'Drunkenness', 'Embezzlement', 'Family Offenses, Nonviolent', 'Fraud Offenses', 'Gambling Offenses', 'Homicide Offenses', 'Human Trafficking', 'LEOKA', 'Larceny', 'Liquor Law Violations', 'Motor Vehicle Theft', 'None', 'Prostitution Offenses', 'Robbery', 'Runaway', 'Sex Offenses', 'Sex Offenses, Non-forcible', 'Simple Assault', 'Stolen Property Offenses', 'Suspicion', 'Vagrancy/Loitering', 'Weapon Law Violations']
+- invalid_count(category_sort_order) = 0:
+    valid values: [10, 20, 30, 40, 45, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 990]
+- invalid_count(classification_name) = 0:
+    valid values: ['None', 'Property', 'Society', 'Violent']
+- invalid_count(classification_sort_order) = 0:
+    valid values: [0, 10, 20, 30, 99]
+- invalid_count(crime_type) = 0:
+    valid values: ['None', 'Not a Crime', 'Person', 'Property', 'Society']
+- invalid_count(is_crime) = 0:
+    valid values: [False, True]
+- invalid_count(adult_juv_flag) = 0:
+    valid values: ['A', 'B', 'J']
+- invalid_count(nibrs_conversion_notes) = 0:
+    valid values: ['', '09A', '09B', '11A (Victim = M, Completed = N)', '11A (Victim = M, Completed = Y)', '11A - 11C (Completed = N)', '11A - 11C (Completed = Y)', '11D, 36A, 36B', '120 (Depends on location type)', '120 (Depends on weapon type)', '13A (Dpends on weapon type)', '13B', '200 (Depends on property desc)', '220 (Completed = N)', '220 (Depends on location type and incident hour)', '220 (Entry Method = F, Completed = Y)', '220 (Entry Method = N, Completed = Y)', '23A', '23A - 23H (Depends on stolen value)', '23B', '23C', '23D', '23E', '23F', '23G or 23H (it''''s complicated)', '23H (Bicycle property type)', '23H (It''''s complicated)', '240 (based on vehicle type)', '250', '26A - 26G, 90A', '270', '280', '290', '35A (Based on criminal activity and drug type)', '35B, 100, 210, 37, 510, 90H, 90J, 90Z, 720', '39A  - 39D', '40A', '40B', '40C', '520', '64A', '64B', '90B (Adult)', '90B (Juvenile)', '90C', '90D', '90E', '90F', '90G', '90I', 'N/A', 'N/A (Converted to LEOKA Summary)', 'Prop Loss of Recovered; Property Desc of MV']
+- invalid_count(offense_code) = 0:
+    valid values: ['NAA', 'NAOO', 'NAR', 'NB', 'NCF', 'NCLV', 'ND', 'NDAV', 'NDC', 'NDP', 'NDSM', 'NDUI', 'NE', 'NF', 'NG', 'NHT', 'NL', 'NLA', 'NLAK', 'NLFK', 'NLLV', 'NM', 'NMN', 'NMNH', 'NMVT', 'NNS', 'NO', 'NOFC', 'NPCV', 'NRL', 'NROB', 'NRPE', 'NRUN', 'NSA', 'NSO', 'NSP', 'NSTR', 'NSUS', 'NVAG', 'NVAN', 'NW']

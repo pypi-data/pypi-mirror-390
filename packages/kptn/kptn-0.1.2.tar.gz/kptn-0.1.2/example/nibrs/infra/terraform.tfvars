@@ -1,0 +1,38 @@
+assign_public_ip = false
+create_decider_lambda = true
+create_ecr_repository = true
+create_ecs_cluster = true
+create_efs = false
+create_networking = true
+create_security_group = true
+create_task_definition = true
+create_task_execution_role = true
+create_task_role = true
+dynamodb_table_name = "nibrs-table"
+artifact_store = "s3://nibrs-estimation-artifacts"
+external_store = "s3://nibrs-estimation-externals"
+ecr_repository_name = "nibrs"
+ecs_launch_type = "FARGATE"
+enable_efs = false
+new_security_group_description = "kptn Step Functions tasks"
+new_security_group_egress_cidr_blocks = ["0.0.0.0/0"]
+new_security_group_ingress_cidr_blocks = ["0.0.0.0/0"]
+new_subnet_cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"]
+new_vpc_cidr_block = "10.0.0.0/16"
+state_machines = {
+  nibrs = {
+  definition_file = "../nibrs.json.tpl"
+},
+  srs = {
+  definition_file = "../srs.json.tpl"
+}
+}
+task_definition_container_image = "public.ecr.aws/amazonlinux/amazonlinux:latest"
+task_definition_container_name = "nibrs"
+task_definition_cpu = "512"
+task_definition_family = "nibrs-task"
+task_definition_memory = "1024"
+task_definition_network_mode = "awsvpc"
+task_definition_requires_compatibilities = ["FARGATE"]
+task_execution_role_name_prefix = "nibrs-task-execution-role"
+task_role_name_prefix = "nibrs-task-role"

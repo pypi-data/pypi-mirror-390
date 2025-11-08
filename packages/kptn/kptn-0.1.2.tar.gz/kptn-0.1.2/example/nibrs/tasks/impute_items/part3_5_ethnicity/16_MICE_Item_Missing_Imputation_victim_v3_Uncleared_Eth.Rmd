@@ -1,0 +1,309 @@
+---
+title: "NIBRS_Imputation_item_Missing"
+author: "Amang Sukasih / Edited by: Philip Lee"
+date: "11/4/2020"
+output: html_document
+---
+
+```{r program16}
+options(max.print=100000)
+options(tibble.print_max = 1000)
+#set.seed(414425)
+#Make set.seed = NA to produce consistent results on rerun
+set.seed=NA
+library(dplyr)
+library(dbplyr)
+library(tidyverse)
+library(haven)
+library(mice)
+library(miceadds)
+library(VIM)
+library(naniar)
+library(visdat)
+library(ggplot2)
+library(writexl)
+library(foreign)
+library(data.table)
+
+options(knit.duplicate.label = "allow")
+
+#KJ - swap to pipeline location (comment out here; comes from run program)
+#source("workflow/tasks/impute_items/0-Common_functions_for_imputation.R")
+#Create the continuous summary counts variables for offense indicator used for MICE
+#source("workflow/tasks/impute_items/NIBRS_Offense_function.r")
+
+
+#Read in the input states which is now the group_state_number
+input_state <- paste0("group", Sys.getenv("ETHNICITY_INPUT_NUM"))
+																																			  
+#Read in the current group of states
+tbd_states <- Sys.getenv("INPUT_STATE")
+			  
+
+#Need in the list of states
+if (tbd_states==""){
+  simpleError("Set INPUT_STATE as enviroment variable")
+}
+
+#Need to separate out the states
+tbd_list_states <- tbd_states %>%
+  #Split into list
+  strsplit(",") %>%
+  #Make into dataset
+  unlist() %>%
+  as_tibble() %>%
+  #Clean up the states
+  mutate(
+    clean_states = trim_upcase(value)
+  ) %>%
+  select(clean_states) %>%
+  pull()
+  
+#Need to read in the MICE dataset
+raw_mice <- map_dfr(tbd_list_states, ~{
+  
+  #Read in the dataset
+  raw_data <- read_csv(paste0(mainpath, "16_", .x, "_victim_mice_final.csv.gz")) %>%
+    #Create state indicator
+    mutate(
+      tbd_state = .x
+    )
+  
+  #Return the data
+  return(raw_data)
+   
+})
+
+#Need to create distinct incident_id and state
+CONST_STATE_INCIDENT <- raw_mice %>%
+  distinct(incident_id, tbd_state)  %>%
+  mutate(incident_id = as.factor(incident_id))
+
+#Check the dimension
+log_dim(CONST_STATE_INCIDENT)
+log_dim(raw_mice)
+
+#Next need to bring in the ethnicity variables we want to impute
+raw_data <- map_dfr(tbd_list_states, ~{
+  
+  #Read in the dataset
+  raw_data <- fread(paste0(mainpath, "15_", .x, "_victim_for_imputation.csv.gz")) %>%
+    #Keep selected variables
+    select(
+      incident_id,
+      
+      victim_seq_num, ethnicity_code_victim2
+    )
+  
+  #Return the data
+  return(raw_data)
+   
+})
+										   
+
+#Need to merge on the data from raw_data2 with raw_mice
+raw_mice2 <- raw_mice %>%
+  #Drop the tbd variables
+  select(-tbd_state) %>%
+  left_join(raw_data, by=c("incident_id", "victim_seq_num"))
+		
+
+#Check the dimension
+log_dim(raw_mice2)
+log_dim(raw_mice)
+log_dim(raw_data)
+
+#Create list of variables to change to factor
+raw_list_vars_factors <- c(
+  
+"incident_id",
+"state_id",
+"division_code",
+"region_code",
+"population_group_id",
+"victim_type_code",
+"victim_seq_num",
+"der_bias",
+"der_off_arr_eq_1",
+"sex_code_victim2",
+"cargo_theft_flag2",
+"suburban_area_flag2",
+"method_entry_code2",
+"crime_against2",
+"der_weapon2",
+"race_code_victim2",
+"ethnicity_code_victim2",
+"der_arrestee_weapon2",
+"der_incident_cleared",
+
+"der_off_assault_hom_victim",
+"der_off_kidnapping_ht_victim",
+"der_off_sex_victim",
+"der_off_arson_bur_vand_victim",
+"der_off_mvt_rob_victim",
+"der_off_other_property_victim",
+"der_off_other_society_victim"
+
+  
+)
+
+#Change to factors
+raw_mice3 <- raw_mice2 %>%
+  mutate(
+    across(
+      .cols=any_of(raw_list_vars_factors),
+      .fns = ~{ as.factor(.x) }
+    )
+  )
+
+
+#Check the dimension
+log_dim(raw_mice3)
+log_dim(raw_mice2)
+
+#Check to see the summary
+summary(raw_mice3)
+
+#Create the NIBRS dataset
+NIBRS <- raw_mice3
+
+#Delete the raw data
+rm(list=ls(pattern="raw_"))
+invisible(gc())
+
+#md2 <- as.data.frame(md.pattern(NIBRS))
+md2 <- as.data.frame(md.pattern(NIBRS)) %>% mutate(id = rownames(.))
+
+#Check if imputation is needed
+# raw_numbercheck <- md2[1,] %>%
+#   mutate(new_id = str_match(.[,"id"], "X?(\\d+)")[2]) %>%  #Get the number portion
+#   select(new_id) %>%
+#   as.double() #Get the number of cells that are non-empty
+# raw_numberrows <- nrow(NIBRS) %>% as.double() #Get the number of total records
+
+
+CONST_CHECK_1 <- (any(is.na(NIBRS$ethnicity_code_victim2)) == FALSE)
+print(CONST_CHECK_1)
+
+
+
+#If true then output dataset and no imputation needed
+if(CONST_CHECK_1 == TRUE) {
+  
+  log_debug("Imputation NOT needed.")
+  
+  #Merge on the state information  
+  NIBRS_OUT <- NIBRS %>%
+    left_join(CONST_STATE_INCIDENT, by=c("incident_id"))
+  
+  #Check the dimension
+  log_dim(NIBRS_OUT)
+  log_dim(NIBRS)
+  log_dim(CONST_STATE_INCIDENT)
+  
+  #Loop thru and output data
+  walk(tbd_list_states, ~{
+    
+    NIBRS_OUT %>%
+        #Filter by state
+        filter(tbd_state == .x) %>%	
+        select(incident_id,victim_seq_num, ethnicity_code_victim2) %>%
+        write_csv(gzfile(paste0(mainpath, "16_", .x, "_victim_imputed_final_hisp.csv.gz")), na="" )
+    	
+    NIBRS_OUT %>%  
+      #Filter by state
+      filter(tbd_state == .x) %>%	
+      select(-tbd_state) %>%
+      write_csv(gzfile(paste0(mainpath, "16_", .x, "_victim_mice_final_hisp.csv.gz")), na="" )
+    
+  })  
+
+} else{
+log_debug("Imputation IS needed.")
+write_xlsx(md2,paste0(miscPathout ,"16_mdpattern2_", input_state, "_hisp.xlsx"))
+
+init1 = mice(NIBRS, maxit=0)
+meth1 = init1$method
+pred1 = init1$predictorMatrix
+
+meth1
+
+## MODEL 1 (only victim demographic vars were imputed, and summary of offender demog vars were used as predictors)
+
+#pred1[,c("incident_id","victim_seq_num","race_code_victim2","age_num_victim2")] <- 0
+#pred1[,c("incident_id","victim_seq_num")] <- 0
+#pred1
+
+incpreds <- c("race_code_victim2")
+predQuick1 <- quickpred(NIBRS, minpuc = 0.25, include = incpreds)
+
+#Identify the variables (i.e. IDs) to drop
+summary(NIBRS)
+
+predQuick1[,c("incident_id","victim_seq_num")] <- 0 #Will not use variables as predicator by making 0
+
+write_xlsx(as.data.frame(predQuick1), paste0(miscPathout, "16_predQuick1_", input_state, "_hisp.xlsx"))
+
+
+#meth1
+
+
+imp1 = mice(NIBRS, pred=predQuick1, meth="pmm", m=1, seed=414425, maxit=15)
+
+#plot(imp1,c("sex_code_victim2","race_code_victim2","age_num_victim2"))
+NIBRS1 <- complete(imp1,1)
+#NIBRS2 <- complete(imp1,2)
+#NIBRS3 <- complete(imp1,3)
+#NIBRS4 <- complete(imp1,4)
+#NIBRS5 <- complete(imp1,5)
+
+check0 <- NIBRS[1:100,]
+write_xlsx(check0,paste0(miscPathout, "16_check0_", input_state, "_hisp.xlsx"))
+
+check1 <- NIBRS1[1:100,]
+write_xlsx(check1, paste0(miscPathout, "16_check1_", input_state, "_hisp.xlsx"))
+
+
+NIBRS1 <- as.data.frame(NIBRS1)
+
+#Check to make sure it is non-missing
+NIBRS1 %>% checkfunction(ethnicity_code_victim2)
+
+#Need to loop thru by state and output the data
+#Merge on the state information  
+NIBRS_OUT <- NIBRS1 %>%
+  #mutate(incident_id = as.double(incident_id)) %>%
+  left_join(CONST_STATE_INCIDENT, by=c("incident_id"))
+
+#Check the dimension
+log_dim(NIBRS_OUT)
+log_dim(NIBRS1)
+log_dim(CONST_STATE_INCIDENT)
+
+  #Loop thru and output data
+  walk(tbd_list_states, ~{
+    
+    NIBRS_OUT %>%
+        #Filter by state
+        filter(tbd_state == .x) %>%	
+        select(incident_id,victim_seq_num, ethnicity_code_victim2) %>%
+        write_csv(gzfile(paste0(mainpath, "16_", .x, "_victim_imputed_final_hisp.csv.gz")), na="" )
+    	
+    NIBRS_OUT %>%  
+      #Filter by state
+      filter(tbd_state == .x) %>%
+      select(-tbd_state) %>%
+      write_csv(gzfile(paste0(mainpath, "16_", .x, "_victim_mice_final_hisp.csv.gz")), na="" )
+    
+  }) 
+
+
+
+}
+
+
+
+
+
+
+```

@@ -1,0 +1,863 @@
+---
+title: '4_Create_Annual_Totals_Partial'
+author: "Philip Lee"
+date: "April 9, 2024"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(DBI)
+library(DT)
+library(lubridate)
+library(data.table)
+library(openxlsx)
+
+
+
+#Create some functions
+tablena <- partial(table, useNA = "ifany")
+table_func <- partial(table, useNA="ifany")
+sum_func <- partial(sum, na.rm=TRUE)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+trim <- partial(trimws, which="both")
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+#######################################SRS Information##########################
+
+#Monthly SRS variables crosswalk
+CONST_SRS_JAN_VARS <- c(70:95, 10000:10002)
+CONST_SRS_FEB_VARS <- c(188:213, 10118:10120)
+CONST_SRS_MAR_VARS <- c(306:331, 10236:10238)
+
+CONST_SRS_APR_VARS <- c(424:449, 10354:10356)
+CONST_SRS_MAY_VARS <- c(542:567, 10472:10474)
+CONST_SRS_JUN_VARS <- c(660:685, 10590:10592)
+
+CONST_SRS_JUL_VARS <- c(778:803, 10708:10710)
+CONST_SRS_AUG_VARS <- c(896:921, 10826:10828)
+CONST_SRS_SEP_VARS <- c(1014:1039, 10944:10946)
+
+CONST_SRS_OCT_VARS <- c(1132:1157, 11062:11064)
+CONST_SRS_NOV_VARS <- c(1250:1275, 11180:11182)
+CONST_SRS_DEC_VARS <- c(1368:1393, 11298:11300)
+
+##For the Partial program list the January V variable number that is not created and will cause false positives
+CONST_EXCLUDE_V_VARS <- c(
+  
+  #Use full version of offense if available
+  #70, #Murder Subtotal  
+  
+  71, #71 Negligent manslaughter
+  
+  #72, #Rape Subtotal  
+  73, #Rape Rape
+  74, #Rape Attempted Rape  
+  
+  #75, #Robbery Subtotal  
+  76, #Robbery Robbery Firarm
+  77, #Robbery Robbery Knife or Cutting Instrument
+  78, #Robbery Robbery Other Dangerous Weapon
+  79, #Robbery Robbery Hands, Fists, Feet  
+  
+  80, #Assault Subtotal
+  
+  #81, #Assault Assault Firearm
+  #82, #Assault Assault Knife or Cutting Instrument
+  #83, #Assault Assault Other Dangerous Weapon
+  #84 #Assault Assault Hands, Fists, Feet
+  
+  
+  85, #Simple Assault
+  86, #Burglary Subtotal
+  87, #Burglary Burglary Forcible Entry
+  88, #Burglary Burglary No Force
+  89, #Burglary Burglary Attempted Forcible Entry
+  90, #Larceny Subtotal
+  91, #Motor Vehicle Theft Subtotal
+  92, #Motor Vehicle Theft Auto Theft
+  93, #Motor Vehicle Theft Truck and Bus Theft
+  94, #Motor Vehicle Theft Other Vehicle Theft  
+  95,  #95 #Grand Total
+  
+  #NIBRS only offenses
+  10000, #Human Trafficking Subtotal:  v10000 
+  10001, #64A	Human Trafficking, Commercial Sex Acts:    v10001
+  10002  #64B	Human Trafficking, Involuntary Servitude:  v10002  
+  
+)
+
+CONST_SRS_ALL_JAN_VARS <- c(
+  70:95)
+
+
+CONST_NIBRSONLY_ALL_JAN_VARS <- c(
+  10000, #Human Trafficking Subtotal:  v10000 
+  10001, #64A	Human Trafficking, Commercial Sex Acts:    v10001
+  10002  #64B	Human Trafficking, Involuntary Servitude:  v10002
+)
+
+################################################################################
+
+
+
+```
+
+
+```{r}
+
+#####################################################################
+
+#Read in the universe file
+raw_universe <- fread(paste0(filepathin_initial, "orig_ref_agency_", CONST_YEAR, ".csv")) %>%
+  select(DATA_YEAR, ORI, LEGACY_ORI, STATE_ABBR, UCR_AGENCY_NAME,
+         NIBRS_START_DATE,
+         AGENCY_STATUS, COVERED_FLAG, DORMANT_FLAG, AGENCY_TYPE_NAME
+         ) %>%
+  mutate(
+    #Need to create the eligible variable, but drop the states
+     der_in_univ_elig =  fcase(
+        trim_upper(AGENCY_STATUS) == "A" &
+        trim_upper(COVERED_FLAG) == "N" &
+        trim_upper(DORMANT_FLAG) == "N" &
+        trim_upper(AGENCY_TYPE_NAME) != "FEDERAL", 1,  
+        default =  0),
+    der_nibrs_start_date_year  = lubridate:::year( as.Date(NIBRS_START_DATE)),
+    der_nibrs_start_date_month = lubridate:::month(as.Date(NIBRS_START_DATE))     
+  )
+
+
+
+
+#Check the recodes
+raw_universe %>% checkfunction(der_in_univ_elig, AGENCY_STATUS, COVERED_FLAG, DORMANT_FLAG, AGENCY_TYPE_NAME)
+raw_universe %>% checkfunction(der_nibrs_start_date_year,  NIBRS_START_DATE)
+raw_universe %>% checkfunction(der_nibrs_start_date_month, NIBRS_START_DATE)
+
+
+#Subset to only the eligible agencies
+#Will subset later
+final_universe <- raw_universe 
+
+# %>%
+#   filter(der_in_univ_elig == 1)
+
+#Check the dim
+final_universe %>% checkfunction(der_in_univ_elig)
+log_dim(final_universe)
+log_dim(raw_universe)
+
+
+#Read the original Return A SRS file
+raw_srs <- fread(paste0(filepathin_initial, "UCR_SRS_", CONST_YEAR, "_clean_reta_mm_selected_vars.csv")) %>%
+  select( ORI, ORI_UNIV,	
+          ends_with("_mm_flag"),
+          starts_with("v")) 
+  
+
+#Get the MM variables
+CONST_MM_VARS <- raw_srs %>%
+  head(1) %>%
+  select(ends_with("_mm_flag")) %>%
+  colnames() %>%
+  as_tibble() %>%
+  pull()
+
+#See the MM variables
+print(CONST_MM_VARS)
+
+raw_srs2 <- raw_srs %>%
+  mutate(
+    
+  across(.cols = any_of(CONST_MM_VARS),
+         .fns = ~{
+           fcase(
+           #For reporting agencies
+           .x %in% c(1,9) , 1, 
+           .x %in% c(0) , 0)},
+         .names="der_ind_{col}"
+         )) %>%
+  #Make the indicators
+  rowwise() %>%
+  mutate(
+    num_month_reported = sum( !!!(paste0("der_ind_", CONST_MM_VARS  ) %>% rlang:::parse_exprs()), na.rm = TRUE )     
+  ) %>%
+  ungroup()
+
+#Check the recodes
+raw_srs2 %>% checkfunction(der_ind_jan_mm_flag, jan_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_feb_mm_flag, feb_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_mar_mm_flag, mar_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_apr_mm_flag, apr_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_may_mm_flag, may_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_jun_mm_flag, jun_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_jul_mm_flag, jul_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_aug_mm_flag, aug_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_sep_mm_flag, sep_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_oct_mm_flag, oct_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_nov_mm_flag, nov_mm_flag)
+raw_srs2 %>% checkfunction(der_ind_dec_mm_flag, dec_mm_flag)
+
+raw_srs2 %>% checkfunction(num_month_reported, !!!(paste0("der_ind_", CONST_MM_VARS  ) %>% rlang:::parse_exprs()) )
+
+
+#First need to rename the variables
+CONST_RAW_VARS <- raw_srs2 %>%
+  colnames() %>%
+  as_tibble() %>%
+  mutate(
+    der_keep = str_detect(string=value, pattern="^v\\d+")
+  ) %>%
+  filter(der_keep == TRUE) %>%
+  select(value) %>%
+  pull()
+
+#See the list of variables
+print(CONST_RAW_VARS)
+
+#Rename the variables
+raw_srs3 <- raw_srs2 %>%
+  mutate(
+    across(.cols = any_of(CONST_RAW_VARS),
+           .fns = ~{.x}, 
+           .names = "returna_{.col}")
+  ) %>%
+  #Drop the original variables
+  select(!!!(paste0("-", CONST_RAW_VARS) %>% rlang:::parse_exprs()))
+
+#Check the dim
+log_dim(raw_srs3)
+log_dim(raw_srs2)
+
+
+#Next need to add on the universe file to raw_srs3
+tbd_good <- final_universe %>%
+  inner_join(raw_srs3 %>% select(-ORI), by=c("ORI" = "ORI_UNIV"))
+
+tbd_bad <- final_universe %>%
+  anti_join(raw_srs3 %>% select(-ORI), by=c("ORI" = "ORI_UNIV"))
+
+tbd_good2 <- tbd_bad %>%
+  inner_join(raw_srs3 %>% select(-ORI_UNIV), by=c("LEGACY_ORI" = "ORI"))
+
+tbd_bad2 <- tbd_bad %>%
+  anti_join(raw_srs3 %>% select(-ORI_UNIV), by=c("LEGACY_ORI" = "ORI"))
+
+#See the joins
+
+log_dim(final_universe)
+log_dim(tbd_good)
+log_dim(tbd_bad)
+log_dim(tbd_good2)
+log_dim(tbd_bad2)
+
+#Bind the rows
+raw_srs4 <- bind_rows(tbd_good, tbd_good2, tbd_bad2)
+
+log_dim(raw_srs4)
+log_dim(tbd_good)
+log_dim(tbd_good2)
+log_dim(tbd_bad2)
+
+#Delete the tbd objects
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Subset to eligible agencies
+raw_srs5 <- raw_srs4 %>%
+  filter(der_in_univ_elig == 1)
+
+#Check the dim
+log_dim(raw_srs5)
+log_dim(raw_srs4)
+
+#Next read in the NIBRS to SRS converted data
+raw_nibrs <- fread(paste0(filepathout, "Partial_SRS_Original_Combined_", CONST_YEAR, ".csv"))
+
+
+#First need to rename the variables
+CONST_NIBRS_VARS <- raw_nibrs %>%
+  colnames() %>%
+  as_tibble() %>%
+  mutate(
+    der_keep = str_detect(string=value, pattern="^v\\d+")
+  ) %>%
+  filter(der_keep == TRUE) %>%
+  select(value) %>%
+  pull()
+
+#See the list of variables
+print(CONST_NIBRS_VARS)
+
+#Rename the variables
+raw_nibrs2 <- raw_nibrs %>%
+  mutate(
+    across(.cols = any_of(CONST_NIBRS_VARS),
+           .fns = ~{.x}, 
+           .names = "nibrs_{.col}")
+  ) %>%
+  #Drop the original variables
+  select(!!!(paste0("-", CONST_NIBRS_VARS) %>% rlang:::parse_exprs()))
+
+
+#Check the dim
+log_dim(raw_nibrs2)
+log_dim(raw_nibrs)
+
+#Next need to add on the universe file to raw_nibrs2
+
+tbd_good <- raw_nibrs2 %>%
+  inner_join(final_universe %>% select(-LEGACY_ORI), by=c("ori" = "ORI"))
+
+tbd_bad <- raw_nibrs2 %>%
+  anti_join(final_universe %>% select(-LEGACY_ORI), by=c("ori" = "ORI"))
+
+tbd_good2 <- tbd_bad %>%
+  inner_join(final_universe %>% select(-ORI), by=c("legacy_ori" = "LEGACY_ORI"))
+
+tbd_bad2 <- tbd_bad %>%
+  anti_join(final_universe %>% select(-ORI), by=c("legacy_ori" = "LEGACY_ORI"))
+
+#See the joins
+log_dim(raw_nibrs2)
+log_dim(tbd_good)
+log_dim(tbd_bad)
+log_dim(tbd_good2)
+log_dim(tbd_bad2)
+
+#Bind the rows
+#raw_nibrs3 <- bind_rows(tbd_good, tbd_good2, tbd_bad2)
+raw_nibrs3 <- bind_rows(tbd_good, tbd_good2)
+
+log_dim(raw_nibrs3)
+log_dim(tbd_good)
+log_dim(tbd_good2)
+log_dim(tbd_bad2)
+
+#Delete the tbd objects
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Subset to eligible agencies
+raw_nibrs4 <- raw_nibrs3 %>%
+  filter(der_in_univ_elig == 1)
+
+#Check the dim
+log_dim(raw_nibrs4)
+log_dim(raw_nibrs3)
+
+#Create the long version of the mm file using raw_srs5
+raw_mm <- raw_srs5 %>%
+  select(DATA_YEAR, ORI, LEGACY_ORI, STATE_ABBR, (ends_with("_mm_flag") & !starts_with("der_ind_"))) %>%
+  gather(-DATA_YEAR, -ORI, -LEGACY_ORI, -STATE_ABBR, key="mm_variable", value="mm_flag_value") %>%
+  mutate(
+    der_srs_numeric_month = fcase(
+      trim_upcase(mm_variable) == "JAN_MM_FLAG", 1,
+      trim_upcase(mm_variable) == "FEB_MM_FLAG", 2, 
+      trim_upcase(mm_variable) == "MAR_MM_FLAG", 3, 
+      
+      trim_upcase(mm_variable) == "APR_MM_FLAG", 4, 
+      trim_upcase(mm_variable) == "MAY_MM_FLAG", 5, 
+      trim_upcase(mm_variable) == "JUN_MM_FLAG", 6, 
+      
+      trim_upcase(mm_variable) == "JUL_MM_FLAG", 7, 
+      trim_upcase(mm_variable) == "AUG_MM_FLAG", 8, 
+      trim_upcase(mm_variable) == "SEP_MM_FLAG", 9, 
+      
+      trim_upcase(mm_variable) == "OCT_MM_FLAG", 10, 
+      trim_upcase(mm_variable) == "NOV_MM_FLAG", 11, 
+      trim_upcase(mm_variable) == "DEC_MM_FLAG", 12
+      
+    )
+  )
+
+#Check the recodes
+raw_mm %>% checkfunction(der_srs_numeric_month, mm_variable)
+
+#Check the dim
+log_dim(raw_srs5)
+log_dim(raw_mm)
+
+#Declare the final version
+final_raw     <- raw_srs5
+final_nibrs   <- raw_nibrs4
+final_mm_long <- raw_mm
+
+#Delete the raw objects 
+rm(list=ls(pattern="raw_"))
+invisible(gc())
+
+
+#Get the list of states to loop thru
+CONST_LIST_STATES <- final_raw %>%
+  distinct(STATE_ABBR) %>%
+  select(STATE_ABBR) %>%
+  pull()
+
+#See the list of states
+print(CONST_LIST_STATES)
+
+#Loop thru by state
+final_list <- map_dfr(CONST_LIST_STATES, ~ {
+  
+  #Using the final_nibrs need to subset to current state
+  tbd_nibrs <- final_nibrs %>%
+    filter(STATE_ABBR == .x) %>%
+    #select the variables
+    select(DATA_YEAR, ori, legacy_ori, STATE_ABBR, der_nibrs_start_date_year, der_nibrs_start_date_month, starts_with("nibrs_v")) %>%
+    #Rename the ori and legacy_ori variables
+    rename(ORI = ori, 
+           LEGACY_ORI = legacy_ori)
+  
+  #Need to transpose the dataset from wide to long
+  tbd_nibrs_long <- tbd_nibrs %>%
+    gather(-DATA_YEAR, -ORI, -LEGACY_ORI, -STATE_ABBR, -der_nibrs_start_date_year, -der_nibrs_start_date_month, 
+           key="nibrs_variable", value="nibrs_value") %>%
+    #Create the additional variables
+    mutate(
+      #Get the numeric portion of the srs variables
+      der_srs_numeric = str_match(string=nibrs_variable, pattern="_v(\\d+)")[,2] %>% as.numeric(),
+      
+      #Recode the der_srs_numeric for the month
+      der_srs_numeric_month = fcase(
+        der_srs_numeric %in% CONST_SRS_JAN_VARS, 1,  
+        der_srs_numeric %in% CONST_SRS_FEB_VARS, 2,  
+        der_srs_numeric %in% CONST_SRS_MAR_VARS, 3,   
+        
+        der_srs_numeric %in% CONST_SRS_APR_VARS, 4,   
+        der_srs_numeric %in% CONST_SRS_MAY_VARS, 5,   
+        der_srs_numeric %in% CONST_SRS_JUN_VARS, 6,   
+        
+        der_srs_numeric %in% CONST_SRS_JUL_VARS, 7,   
+        der_srs_numeric %in% CONST_SRS_AUG_VARS, 8,   
+        der_srs_numeric %in% CONST_SRS_SEP_VARS, 9,   
+        
+        der_srs_numeric %in% CONST_SRS_OCT_VARS, 10,   
+        der_srs_numeric %in% CONST_SRS_NOV_VARS, 11,   
+        der_srs_numeric %in% CONST_SRS_DEC_VARS, 12   
+      )
+  )
+      
+  #Check the recodes
+  tbd_nibrs_long %>% checkfunction(der_srs_numeric_month, der_srs_numeric, nibrs_variable)
+  
+    
+  
+  #Next using final_raw need to subset to current state
+  tbd_raw <- final_raw %>%
+    filter(STATE_ABBR == .x) %>%
+    #select the variables
+    select(DATA_YEAR, ORI, LEGACY_ORI, STATE_ABBR, der_nibrs_start_date_year, der_nibrs_start_date_month, starts_with("returna_"))
+  
+  #Need to transpose the dataset from wide to long
+  tbd_raw_long <- tbd_raw %>%
+    gather(-DATA_YEAR, -ORI, -LEGACY_ORI, -STATE_ABBR, -der_nibrs_start_date_year, -der_nibrs_start_date_month,
+           key="srs_variable", value="returna_value") %>%
+    #Create the additional variables
+    mutate(
+      #Get the numeric portion of the srs variables
+      der_srs_numeric = str_match(string=srs_variable, pattern="_v(\\d+)")[,2] %>% as.numeric(),
+      #Recode the der_srs_numeric for the month
+      der_srs_numeric_month = fcase(
+        der_srs_numeric %in% CONST_SRS_JAN_VARS, 1,  
+        der_srs_numeric %in% CONST_SRS_FEB_VARS, 2,  
+        der_srs_numeric %in% CONST_SRS_MAR_VARS, 3,   
+        
+        der_srs_numeric %in% CONST_SRS_APR_VARS, 4,   
+        der_srs_numeric %in% CONST_SRS_MAY_VARS, 5,   
+        der_srs_numeric %in% CONST_SRS_JUN_VARS, 6,   
+        
+        der_srs_numeric %in% CONST_SRS_JUL_VARS, 7,   
+        der_srs_numeric %in% CONST_SRS_AUG_VARS, 8,   
+        der_srs_numeric %in% CONST_SRS_SEP_VARS, 9,   
+        
+        der_srs_numeric %in% CONST_SRS_OCT_VARS, 10,   
+        der_srs_numeric %in% CONST_SRS_NOV_VARS, 11,   
+        der_srs_numeric %in% CONST_SRS_DEC_VARS, 12       
+      
+      )
+    )
+      
+  #Check the recodes
+  tbd_raw_long %>% checkfunction(der_srs_numeric_month, der_srs_numeric, srs_variable)
+  
+  #Next need to use tbd_nibrs_long and tbd_raw_long and join the data
+  #Want the Return A since it contains both NIBRS and SRS reporters
+  #Need to do a full join since tbd_nibrs_long contains the new NIBRS only variables (i.e. human trafficking)
+  tbd_merge <-  tbd_raw_long  %>%
+    full_join(tbd_nibrs_long, by=c("DATA_YEAR", "ORI", "LEGACY_ORI", "STATE_ABBR", "der_nibrs_start_date_year", "der_nibrs_start_date_month", "der_srs_numeric", "der_srs_numeric_month"))
+  
+  #See the dim
+  log_dim(tbd_merge)
+  log_dim(tbd_raw_long)
+  log_dim(tbd_nibrs_long)
+  
+  #Using tbd_merge and final_mm_long, need to merge on the mm flag
+  tbd_mm_flag <- final_mm_long %>%
+    filter(STATE_ABBR == .x)
+    
+  #Check the dim
+  log_dim(tbd_mm_flag)
+  log_dim(final_mm_long)
+  
+  #Merge on the mm flag
+  tbd_merge2 <- tbd_merge %>%
+    left_join(tbd_mm_flag, by=c("DATA_YEAR", "ORI", "LEGACY_ORI", "STATE_ABBR", "der_srs_numeric_month"))
+  
+  #Check the dim
+  log_dim(tbd_merge2)
+  log_dim(tbd_merge)
+  log_dim(tbd_mm_flag)
+  
+  #Check to see if the mm_flag_value is non-missing
+  tbd_merge2 %>% checkfunction(mm_flag_value)
+  
+
+  #Using tbd_merge2 need to determine which version of the variables to use based on 
+  # DATA_YEAR, der_nibrs_start_date_year, der_nibrs_start_date_month, der_srs_numeric_month
+  tbd_merge3 <- tbd_merge2 %>%
+    rowwise() %>%
+    mutate(
+      one = 1,
+      
+      #Create variable to choose which values
+      der_choose_nibrs_srs = fcase(
+        #is missing NIBRS start date then use SRS
+        is.na(der_nibrs_start_date_year)  & is.na(der_nibrs_start_date_month), "returna",
+        der_nibrs_start_date_year > DATA_YEAR, "returna", #If the NIBRS start year is greater than current year then use SRS returna
+        #For the der_nibrs_start_date_year and DATA_YEAR are equal
+        (der_nibrs_start_date_year == DATA_YEAR) & (der_nibrs_start_date_month > der_srs_numeric_month), "returna", 
+        (der_nibrs_start_date_year == DATA_YEAR) & (der_nibrs_start_date_month <=  der_srs_numeric_month), "nibrs",
+        #For year after the NIBRS start year
+        der_nibrs_start_date_year < DATA_YEAR, "nibrs" #If the NIBRS start year is less than current year then use nibrs
+      )
+    )
+  
+  #Check the recodes
+  tbd_merge3 %>% checkfunction(der_nibrs_start_date_year, der_nibrs_start_date_month, DATA_YEAR,  der_srs_numeric_month, der_choose_nibrs_srs)
+  
+  #Using tbd_merge3, need to recreate the aggregate variables
+  tbd_merge4 <- tbd_merge3 %>%
+    mutate(
+      #Create the January version of the variables
+      
+      der_jan_var = der_srs_numeric - (der_srs_numeric_month-1)*118
+      )
+  
+   #Verify that the min is 70 and max is 10002
+  tbd_merge4 %>% checkfunction(der_jan_var) 
+  
+  #Using tbd_merge4, need to create an indicator if the SRS Return A values is higher than the reported NIBRS values for selected variables
+  #If so then use the SRS's Return A over the NIBRS values, also need to account for the late-starters
+  tbd_merge4_1 <- tbd_merge4 %>%
+    mutate(      
+      der_drop_offenses = fcase(
+        der_jan_var %in% CONST_EXCLUDE_V_VARS, 1, 
+        default = 0), 
+      
+      der_nibrs_late_starter = fcase(
+        der_choose_nibrs_srs == "returna" & 
+          (der_nibrs_start_date_year == DATA_YEAR) & (der_nibrs_start_date_month > der_srs_numeric_month), 1, 
+        default = 0      
+      ))
+  
+  #Check the recodes
+  tbd_merge4_1 %>% checkfunction(der_drop_offenses, der_jan_var)   
+  tbd_merge4_1 %>% checkfunction(der_nibrs_late_starter, der_choose_nibrs_srs, der_nibrs_start_date_year, DATA_YEAR, der_nibrs_start_date_month, der_srs_numeric_month)
+      
+  #Create a variable to indicate if we should switch to using SRS's Return A over the NIBRS counts
+  tbd_merge4_1_filter <- tbd_merge4_1 %>%
+    #Drop the NIBRS late starter records and any variables we shouldn't flag
+    filter(der_nibrs_late_starter == 0) %>%
+    filter(der_drop_offenses == 0)
+  
+  #See the number of records
+  log_dim(tbd_merge4_1_filter)
+  log_dim(tbd_merge4_1)
+  
+  #For the qualified records check to see if at the agency level 
+  tbd_merge4_1_filter2 <- tbd_merge4_1_filter %>%
+    group_by(DATA_YEAR, ORI, LEGACY_ORI, STATE_ABBR, der_nibrs_start_date_year, der_nibrs_start_date_month) %>%
+    summarise(
+      der_switch_over_to_returna = fcase(
+        any(returna_value > nibrs_value), 1,
+        default = 0
+      )
+    )  
+      
+  #See the number of records
+  log_dim(tbd_merge4_1_filter2)
+  log_dim(tbd_merge4_1_filter)    
+    
+  #Next using tbd_merge4_1_filter2, merge the results to tbd_merge4_1
+  tbd_merge4_2 <- tbd_merge4_1 %>%
+    left_join(tbd_merge4_1_filter2, c("DATA_YEAR", "ORI", "LEGACY_ORI", "STATE_ABBR", "der_nibrs_start_date_year", "der_nibrs_start_date_month"))
+  
+  #Check the dim
+  log_dim(tbd_merge4_2)
+  log_dim(tbd_merge4_1)
+  log_dim(tbd_merge4_1_filter2)
+    
+  #Create the dataset
+  tbd_merge4_3 <- tbd_merge4_2 %>%
+    mutate(
+  
+      #Create the final version of the variables to choose
+      der_final_value = fcase(
+        #Need to account for the switch over to SRS cases at the annual review
+        der_choose_nibrs_srs == "nibrs" & der_switch_over_to_returna ==  1 & der_jan_var %in% c(CONST_SRS_ALL_JAN_VARS), as.double(returna_value),  
+        #Need to handle the NIBRS only offense - keep as is
+        der_choose_nibrs_srs == "nibrs" & der_switch_over_to_returna ==  1 & der_jan_var %in% c(CONST_NIBRSONLY_ALL_JAN_VARS), as.double(nibrs_value),          
+        
+        
+        #Make sure to account when offense counts are 0 and the mm flag is 0 for not reported 
+        der_choose_nibrs_srs == "nibrs" & mm_flag_value == 0 & nibrs_value == 0, NA_real_,
+        der_choose_nibrs_srs == "returna"   & mm_flag_value == 0 & returna_value == 0, NA_real_,
+        
+        #Since the NIBRS reporters are blank, need to fill in with 0 if reported
+        der_choose_nibrs_srs == "nibrs" & mm_flag_value == 1 & is.na(nibrs_value), 0,
+        
+        #Choose the appropriate value
+        der_choose_nibrs_srs == "nibrs", as.double(nibrs_value),
+        der_choose_nibrs_srs == "returna",   as.double(returna_value)
+      )
+      
+      #Create the final version of the variables to choose
+      # der_final_value = fcase(
+      #   #Make sure to account when offense counts are 0 and the mm flag is 0 for not reported 
+      #   der_choose_nibrs_srs == "nibrs" & mm_flag_value == 0 & nibrs_value == 0, NA_real_,
+      #   der_choose_nibrs_srs == "returna"   & mm_flag_value == 0 & returna_value == 0, NA_real_,
+      #   
+      #   #Since the NIBRS reporters are blank, need to fill in with 0 if reported
+      #   der_choose_nibrs_srs == "nibrs" & mm_flag_value == 1 & is.na(nibrs_value), 0,
+      #   
+      #   #Choose the appropriate value
+      #   der_choose_nibrs_srs == "nibrs", as.double(nibrs_value),
+      #   der_choose_nibrs_srs == "returna",   as.double(returna_value)
+      # )      
+    )
+      
+  #Check for the der_switch_over_to_returna cases
+  tbd_merge4_3 %>%
+    filter(der_switch_over_to_returna == 1) %>%
+    checkfunction(der_final_value, mm_flag_value, der_switch_over_to_returna, der_choose_nibrs_srs, der_jan_var, nibrs_value, returna_value)
+
+  tbd_merge4_3 %>% 
+    filter(der_switch_over_to_returna == 0) %>%
+    checkfunction(der_final_value, mm_flag_value, der_switch_over_to_returna, der_choose_nibrs_srs, der_jan_var, nibrs_value, returna_value)
+  
+  #Output a file when the returna_value is greater than the nibrs_value
+  #Note for the partial program, it is expected that certain SRS v variables created for the NIBRS to SRS reporters
+  #to not have a value or 0 since it is not created.
+      
+  #Output any flagged cases for review
+  tbd_check <- tbd_merge4_3 %>%
+    #Drop the NIBRS late starter records and any variables we shouldn't flag
+    filter(der_nibrs_late_starter == 0) %>%
+    filter(der_drop_offenses == 0) %>% 
+    #Flag cases where the returna_value is higher than the nibrs_value
+    filter(returna_value > nibrs_value) 
+  
+  #Output if there are any cases
+  if(nrow(tbd_check) > 0 ){
+    tbd_check  %>%
+      write_csv(paste0(filepathflag, "Flag_ReturnA_gt_NIBRS_", .x, "_", CONST_YEAR, ".csv"), na="")  
+  }
+  
+  
+  
+  #Using tbd_merge4_3, create the various aggregate variables for the whole year
+  #Below is code on the various aggregate variables
+  
+#     der_offense %in% c(
+#       
+#       70, #Murder Subtotal
+# 	    71, #Negligent manslaughter							 
+#       72, #Rape Subtotal
+#       # 73, #Rape Rape
+#       # 74, #Rape Attempted Rape
+#       75, #Robbery Subtotal
+#       # 76, #Robbery Robbery Firarm
+#       # 77, #Robbery Robbery Knife or Cutting Instrument
+#       # 78, #Robbery Robbery Other Dangerous Weapon
+#       # 79, #Robbery Robbery Hands, Fists, Feet
+#       80, #Assault Subtotal
+#       # 81, #Assault Assault Firearm
+#       # 82, #Assault Assault Knife or Cutting Instrument
+#       # 83, #Assault Assault Other Dangerous Weapon
+#       # 84, #Assault Assault Hands, Fists, Feet
+#       # 85, #Simple Assault
+#       86, #Burglary Subtotal
+#       # 87, #Burglary Burglary Forcible Entry
+#       # 88, #Burglary Burglary No Force
+#       # 89, #Burglary Burglary Attempted Forcible Entry
+#       90, #Larceny Subtotal
+#       91 #Motor Vehicle Theft Subtotal
+#       # 92, #Motor Vehicle Theft Auto Theft
+#       # 93, #Motor Vehicle Theft Truck and Bus Theft
+#       # 94, #Motor Vehicle Theft Other Vehicle Theft
+
+	  
+  tbd_merge5 <- tbd_merge4_3 %>%
+    #Need to group by ori, state, and month
+    group_by(DATA_YEAR, ORI, LEGACY_ORI, STATE_ABBR, der_nibrs_start_date_year, der_nibrs_start_date_month, der_switch_over_to_returna) %>%
+    summarise(
+      #Create an indicator for all missing
+      der_all_missing = all(is.na(der_final_value)),
+      
+      
+      #Murder Subtotal
+      count_Murder = sum(
+        (der_jan_var == 70) * der_final_value, na.rm=TRUE), 
+      
+      Murder = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_Murder),
+      
+      #Rape subtotal
+      #v72 = v73 + v74
+      count_Rape = sum(
+        (der_jan_var == 72) * der_final_value, na.rm=TRUE),
+        #(der_jan_var == 73) * der_final_value, 
+        #(der_jan_var == 74) * der_final_value, na.rm=TRUE),
+      
+      Rape = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_Rape),    
+      
+      #Robbery subtotal
+      #v75 = v76 + v77 + v78 + v79
+      count_Robbery = sum(
+        (der_jan_var == 75) * der_final_value, na.rm=TRUE),     
+        #(der_jan_var == 76) * der_final_value, 
+        #(der_jan_var == 77) * der_final_value,
+        #(der_jan_var == 78) * der_final_value,
+        #(der_jan_var == 79) * der_final_value, na.rm=TRUE),     
+      
+      Robbery = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_Robbery),        
+      
+      #Aggravated Assault subtotal
+      # 81, #Assault Assault Firearm
+      # 82, #Assault Assault Knife or Cutting Instrument
+      # 83, #Assault Assault Other Dangerous Weapon
+      # 84, #Assault Assault Hands, Fists, Feet
+      count_AggAssault = sum(
+        (der_jan_var == 81) * der_final_value, 
+        (der_jan_var == 82) * der_final_value,
+        (der_jan_var == 83) * der_final_value,
+        (der_jan_var == 84) * der_final_value, na.rm=TRUE),
+      
+      AggAssault = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_AggAssault),      
+      
+    
+      
+      #Human Trafficking subtotal
+      count_HumanTrafficking = sum(
+        (der_jan_var == 10000) * der_final_value, na.rm=TRUE),
+      
+      HumanTrafficking = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_HumanTrafficking),      
+
+      count_HumanTraffickingSex = sum(
+        (der_jan_var == 10001) * der_final_value, na.rm=TRUE),
+      
+      HumanTraffickingSex = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_HumanTraffickingSex),      
+      
+      count_HumanTraffickingLabor = sum(
+        (der_jan_var == 10002) * der_final_value, na.rm=TRUE),
+      
+      HumanTraffickingLabor = case_when(
+        der_all_missing == TRUE ~ NA_real_,
+        TRUE ~ count_HumanTraffickingLabor)      
+       
+
+    ) %>%
+    ungroup()
+  
+  
+  #Return the data
+  return(tbd_merge5)
+  
+})
+
+
+#Check the dimension
+log_dim(final_list)
+log_dim(final_raw)
+
+#Create list of annual offenses to keep
+CONST_OUTPUT_VARS_YEAR <- c(
+  "Murder",
+  "Rape",
+  "AggAssault",
+  "Robbery",
+  "HumanTrafficking",
+  "HumanTraffickingSex",
+  "HumanTraffickingLabor"
+)
+
+
+#Keep certain variables for output
+final_list2 <- final_list %>%
+  select(ORI, STATE_ABBR, 
+         !!!(CONST_OUTPUT_VARS_YEAR %>% rlang:::parse_exprs()), 
+         der_switch_over_to_returna)
+
+#Need to add on the additional variables
+final_list3 <- final_list2 %>%
+  left_join(final_universe %>% select(ORI, UCR_AGENCY_NAME) , by=c("ORI"))
+
+#Check the dim
+log_dim(final_list3)
+log_dim(final_list2)
+
+final_list4 <- final_list3 %>%
+  left_join(final_raw %>% select(ORI, num_month_reported), by=c("ORI")) %>%
+  rename(MO=num_month_reported)
+
+#Check the dim
+log_dim(final_list4)
+log_dim(final_list3)
+
+#Need to rename the variables
+final_list5 <- final_list4 %>%
+  rename(STATE = STATE_ABBR) %>%
+  select(ORI, STATE, UCR_AGENCY_NAME, 
+         !!!(CONST_OUTPUT_VARS_YEAR %>% rlang:::parse_exprs()),
+             MO, der_switch_over_to_returna, everything())
+
+for(x in c(CONST_OUTPUT_VARS_YEAR, "MO", "der_switch_over_to_returna")){
+  
+  final_list5 <- final_list5 %>%
+    rename(
+      !!(paste0(x, "_", CONST_YEAR) %>% rlang:::parse_expr() ) := !!(x %>% rlang:::parse_expr() )
+      
+    )
+  
+}
+
+#Output to share
+final_list5 %>%
+  write_csv(paste0(filepathout, "Combined_NIBRS_SRS_Offense_Totals_", CONST_YEAR ,".csv"), na="")
+
+
+
+
+```

@@ -1,0 +1,315 @@
+---
+title: '2 - Check imputation relationship'
+author: "Philip Lee"
+date: "June 14, 2022"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+library(tidyverse)
+library(DT)
+```
+
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+
+#Create a function to gather the files
+
+processfiles <- function(infilepath, intype){
+
+  log_trace("In function processfiles")
+  #Get all of the csv files
+  raw_list_files <- list.files(path=infilepath, pattern=paste0(intype), full.names=TRUE)
+  
+  #Print the path
+  print("Printing the files that will be read in:")
+  print(raw_list_files)
+  
+  #Create a list object to hold results
+  raw_list_1 <- vector("list", length(raw_list_files))
+  
+  #Loop thru the list 
+  for(i in 1:length(raw_list_1)){
+    
+    #Get the current path of the file
+    raw_file <- raw_list_files[[i]]
+    
+    #Save to a list
+    raw_list_1[[i]] <- fread(file=raw_file)
+    
+  }
+  
+  #Return the list object
+  return(raw_list_1 %>% rbindlist())
+}
+
+#Get the files
+raw_file     <- processfiles(infilepath=input_item_imp, intype="01_\\w+_recoded_for_imputation.csv.gz") %>% recode_all_race_ints_to_char()
+raw_le3      <- processfiles(infilepath=input_item_imp, intype="04_imputed_relationship_code_offender_le3_\\w+.csv.gz") %>% recode_all_race_ints_to_char()
+raw_ge3      <- processfiles(infilepath=input_item_imp, intype="04_imputed_relationship_code_offender_gt3_\\w+.csv.gz") %>% recode_all_race_ints_to_char()
+
+#Take a look at the dataset
+glimpse(raw_file)
+glimpse(raw_le3)
+glimpse(raw_ge3)
+
+keep_vars <- c("incident_id", "victim_id", "offender_id") %>% rlang:::parse_exprs()
+
+#Create function to create der_relationship on raw data
+function_der_relationship <- function(indata){
+
+  log_trace("In function function_der_relationship")
+  indata2 <- indata %>%
+    	  mutate( der_relationship_raw = fcase(
+				relationship_code == "AQ" , 3, #Victim Was Acquaintance:  Outside family but known to victim
+          relationship_code == "BE" , 3, #Victim Was Babysittee:  Outside family but known to victim
+          relationship_code == "BG" , 1, #Victim Was Boyfriend/Girlfriend:  Intimate partner
+		      relationship_code == "CF" , 2, #Victim Was Child of Boyfriend or Girlfriend:  Other family
+          relationship_code == "CH" , 2, #Victim Was Child:  Other family
+          relationship_code == "CS" , 1, #Victim Was Common-Law Spouse:  Intimate partner
+          relationship_code == "EE" , 3, #Victim was Employee:  Outside family but known to victim
+          relationship_code == "ER" , 3, #Victim was Employer:  Outside family but known to victim
+          relationship_code == "FR" , 3, #Victim Was Friend:  Outside family but known to victim
+          relationship_code == "GC" , 2, #Victim Was Grandchild:  Other family
+          relationship_code == "GP" , 2, #Victim Was Grandparent:  Other family
+          relationship_code == "IL" , 2, #Victim Was In-law:  Other family
+          relationship_code == "NE" , 3, #Victim Was Neighbor:  Outside family but known to victim
+          relationship_code == "OF" , 2, #Victim Was Other Family Member:  Other family
+          relationship_code == "OK" , 3, #Victim was Otherwise Known:  Outside family but known to victim
+          relationship_code == "PA" , 2, #Victim Was Parent:  Other family
+          relationship_code == "RU" , 6, #Relationship Unknown:  Unknown relationship
+          relationship_code == "SB" , 2, #Victim Was Sibling:  Other family
+          relationship_code == "SC" , 2, #Victim Was Stepchild:  Other family
+          relationship_code == "SE" , 1, #Victim Was Spouse:  Intimate partner
+          relationship_code == "SP" , 2, #Victim Was Stepparent:  Other family
+          relationship_code == "SS" , 2, #Victim Was Stepsibling:  Other family
+          relationship_code == "ST" , 4, #Victim Was Stranger:  Stranger
+          relationship_code == "VO" , 5, #Victim Was Offender:  Victim was Offender
+          relationship_code == "XS" , 1, #Victim was Ex-Spouse:  Intimate partner
+          relationship_code == "XR" , 1, #Victim Was Ex-Relationship (Ex-Boyfriend/Girlfriend):  Intimate partner
+		      #Update to handle new relationship_code codes
+          relationship_code == "CO", 3,  #Cohabitant (non-intimate relationship) (relationship_code = CO):  Outside family but known to victim
+          relationship_code == "FP", 3,  #Victim was Foster Parent (relationship_code=FP):  Outside family but known to victim
+          relationship_code == "FC", 3,   #Victim was Foster Child (relationship_code=FC):  Outside family but known to victim
+				default = NA_real_)
+    	  )				
+		#Need to update der_relationship to make der_relationship == 6, #Relationship Unknown:  Unknown relationship to missing for imputation when
+		#1.  count_offd == 1 Cleared case, single offender
+		#2.  der_arrestee_offender_same == 1 Cleared case, multiple offenders and the imputed offender can be linked to an arrestee  
+		
+		# der_relationship = case_when(
+		# 	der_relationship_raw == 6 & count_offd == 1 ~ NA_real_,
+		# 	der_relationship_raw == 6 & der_arrestee_offender_same == 1 ~ NA_real_,
+		# 	TRUE ~ der_relationship_raw))
+  
+  #Return the dataset
+  return(indata2)
+}
+
+
+#Match on the le3 cases
+final_le3 <- raw_le3 %>% select(!!!keep_vars, der_relationship_imp = der_relationship ) %>%
+  left_join(raw_file %>% function_der_relationship() %>% #Recode the relationship_id variable
+                         select(state_abbr, !!!keep_vars, der_relationship_raw), 
+            by=c("incident_id", "victim_id", "offender_id"))
+
+#QC the merge
+log_trace(toString(dim(final_le3)))
+log_trace(toString(dim(raw_le3)))
+log_trace(toString(dim(raw_file)))
+
+#Match on the ge3 cases
+final_ge3 <- raw_ge3 %>% select(!!!keep_vars, der_relationship_imp = der_relationship ) %>%
+  left_join(raw_file %>% function_der_relationship() %>% #Recode the relationship_id variable
+                         select(state_abbr, !!!keep_vars, der_relationship_raw), 
+            by=c("incident_id", "victim_id", "offender_id"))
+
+#QC the merge
+log_trace(toString(dim(final_ge3)))
+log_trace(toString(dim(raw_ge3)))
+log_trace(toString(dim(raw_file)))
+
+#Stack the datasets together
+tbd <- bind_rows(final_le3, final_ge3)
+
+#Create a function to summarise
+summarize_demo <- function(indata, inraw, inimp, innewvar, inselect){
+  log_trace("In function summarize_demo")
+  #Create new symbol
+  in2newvar <- innewvar %>% rlang:::parse_expr()
+  inraw <- inraw %>% rlang:::parse_expr() 
+  inimp <- inimp %>% rlang:::parse_expr() 
+  
+  #Process the variable - National
+  tbd_1 <- indata %>%
+    group_by(!!inraw) %>%
+    summarise(raw_count = n()) %>%
+    mutate(raw_percentage=roundfunction((raw_count/sum(raw_count)))) %>%
+    rename(!!in2newvar := !!inraw) %>%
+    mutate(state_abbr="National")
+  
+  tbd_2 <- indata %>%
+    group_by(!!inimp) %>%
+    summarise(imputed_count = n()) %>%
+    mutate(imputed_percentage=roundfunction((imputed_count/sum(imputed_count))))  %>%
+    rename(!!in2newvar := !!inimp) %>%
+    mutate(state_abbr="National")
+  
+  #National only
+  tbd_national <- tbd_1 %>%
+    full_join(tbd_2, by=c("state_abbr", innewvar)) %>%
+    select(state_abbr, !!in2newvar, !!!inselect)
+  
+  #Process the variable - state
+  tbd_state_1 <- indata %>%
+    group_by(state_abbr, !!inraw) %>%
+    summarise(raw_count = n()) %>%
+    mutate(raw_percentage=roundfunction((raw_count/sum(raw_count)))) %>%
+    rename(!!in2newvar := !!inraw) 
+  
+  tbd_state_2 <- indata %>%
+    group_by(state_abbr, !!inimp) %>%
+    summarise(imputed_count = n()) %>%
+    mutate(imputed_percentage=roundfunction((imputed_count/sum(imputed_count))))  %>%
+    rename(!!in2newvar := !!inimp) 
+  
+  #State only
+  tbd_state <- tbd_state_1 %>%
+    full_join(tbd_state_2, by=c("state_abbr", innewvar))%>%
+    select(state_abbr, !!in2newvar, !!!inselect)
+  
+  #Stack the results
+  final <- bind_rows(tbd_national,tbd_state)
+  
+  #Return the final data
+  return(final)
+
+}
+
+#Need to create distribution comparing the raw and imputed values 
+  inselect = c("raw_count", "raw_percentage", "imputed_count", "imputed_percentage") %>% rlang:::parse_exprs()
+  
+  inselect2 = c("state_abbr", "relationship", "relationship_label",
+                "raw_count", "raw_percentage", "imputed_count", "imputed_percentage",
+                "der_percentage_difference", "der_percentage_difference_outlier_mean") %>% rlang:::parse_exprs()
+  inselectoutlier = c("state_abbr", "relationship", "relationship_label",
+                "raw_count", "raw_percentage", "imputed_count", "imputed_percentage",
+                "der_percentage_difference", "der_percentage_difference_outlier_mean") %>% rlang:::parse_exprs()  
+
+
+final_relationship0 <- summarize_demo(indata=tbd, inraw="der_relationship_raw", inimp="der_relationship_imp", innewvar="relationship", inselect=inselect) %>%
+  mutate(relationship_label = fcase(
+    
+    relationship == 1, "Intimate partner",
+    relationship == 2, "Other family",
+    relationship == 3, "Outside family but known to victim",
+    relationship == 4, "Stranger",
+    relationship == 5, "Victim was Offender",
+    relationship == 6, "Unknown relationship"
+ )) %>%
+  select(state_abbr, relationship, relationship_label, !!!inselect)
+
+
+final_relationship <- final_relationship0 %>%
+  #Calculate the percentage difference variable
+  mutate(der_percentage_difference = imputed_percentage - raw_percentage,
+         one = 1) %>%
+  #Group by one
+  group_by(one) %>%
+  mutate(der_percentage_difference_mean = mean(der_percentage_difference, na.rm=TRUE),
+         der_percentage_difference_sd = sd(der_percentage_difference, na.rm=TRUE),
+         der_percentage_difference_outlier_mean = case_when(
+           
+           #The upper bound
+           der_percentage_difference_mean + 3*der_percentage_difference_sd < der_percentage_difference ~ 1,
+           
+           #The lower bound
+           der_percentage_difference_mean - 3*der_percentage_difference_sd > der_percentage_difference ~ 1,
+           TRUE ~ 0
+         )) %>%
+  ungroup()
+
+
+  
+#Create a format function
+formatfunction <- function(indata, inlabel, incaptionstyle){
+    log_trace("In function formatfunction")
+    #Format the columns
+    indata2 <- datatable(indata,
+	            filter = "top", 
+	            options = list(pageLength = 100, autoWidth = TRUE),
+                caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    inlabel)) %>%
+                formatPercentage(c("raw_percentage", "imputed_percentage", "der_percentage_difference"), 2) %>%
+                formatRound(c("raw_count", "imputed_count"), digits = 0)
+    
+    #Call the print
+    htmltools:::tagList(indata2)
+  
+}
+
+formatfunctionoutlier <- function(indata, inlabel, incaptionstyle){
+    log_trace("In function formatfunctionoutlier")
+    #Format the columns
+    indata2 <- datatable(indata,
+	            filter = "top", 
+	            options = list(pageLength = 100, autoWidth = TRUE),
+                caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    inlabel)) %>%
+                formatPercentage(c("raw_percentage", "imputed_percentage", "der_percentage_difference"), 2) %>%
+                formatRound(c("raw_count", "imputed_count"), digits = 0) %>%
+                #Add code to highlight outlier rows
+                formatStyle("der_percentage_difference_outlier_mean",
+                            target="row",
+                            backgroundColor = styleEqual(1, "yellow"))
+    
+    #Call the print
+    htmltools:::tagList(indata2)
+  
+}
+
+#Create caption font
+incaptionstyle = 'caption-side: top; text-align: center; font-size: 75px'
+
+```
+
+This is the validation report for the victim-offender relationship segment. 
+
+Below is the table that shows the distribution of the raw data (i.e. columns raw_count and raw_percentage) and after imputation (i.e. columns imputed_count and imputed_percentage) for the victim offender relationship segment for the demographic variable, victim offender relationship.  Note that imputation is done on cleared incidents only (i.e. there is an arrestee in an incident or the incident is cleared exceptionally), for eligible NIBRS agencies, and if an incident has any offense against a person.
+
+In the columns, raw_count and raw_percentage, there are missing values and they are removed in the imputed columns (i.e. imputed counts and imputed_percentage).  Please note that we impute "Unknown Relationship" on 1) cleared incident and single offender incidents and 2) cleared incident and the arrestee and offender are identified as the same person after the logical edit process.  This is the reason why the raw_counts in the "Unknown relationship" is higher than the counts in the imputed_counts, but the imputed_counts is not missing, hence "Unknown relationship" is a legitimate category for the remaining cases. 
+
+Each table shows the distribution at the national level and broken down by the 50 states plus DC.
+
+The table "Victim Offender Relationship Outlier Table" flags any outliers on the column, der_percentage_difference, that is more than 3 standard deviations away from the mean.  For the purpose of this table, all rows from the impacted domain (i.e. column state_abbr is shown) and the column where der_percentage_difference_outlier_mean = 1 is the row with the outlier and highlighted.  The mean and standard deviations used comes from der_percentage_difference and is calculated within the 'Victim Offender Relationship Table'.
+
+Note Unknown Relationship may be flag as an outlier since we impute cases in certain situation as describe above, but is flag for the outlier table.
+
+
+```{r, echo=FALSE, message=FALSE}
+
+##############################################Relationship table###################################################
+formatfunction(indata=final_relationship %>% select(!!!inselect2), inlabel = 'Victim Offender Relationship Table', incaptionstyle=incaptionstyle)
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+
+##############################################Relationship table###################################################
+formatfunctionoutlier(indata=final_relationship %>%
+                 #Group by state_abbr to detect any outliers
+                 group_by(state_abbr) %>%
+                 mutate(der_any_mean_outlier = any(der_percentage_difference_outlier_mean == 1)) %>%
+                 ungroup() %>%
+                 #Filter to impacted records
+                 filter(der_any_mean_outlier == 1)%>% 
+                 select(!!!inselectoutlier), inlabel = 'Victim Offender Relationship Outlier Table', incaptionstyle=incaptionstyle)
+
+```
+
+
+

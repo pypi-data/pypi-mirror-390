@@ -1,0 +1,746 @@
+---
+title: '17_Combine_and_Analyze_Imputation'
+author: "Philip Lee"
+date: "August 10, 2020"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r program17}
+library(tidyverse)
+library(DT)
+library(lubridate)
+
+
+options(knit.duplicate.label = "allow")
+
+#KJ - swap to pipeline location (comment out here; comes from run program)
+#source("workflow/tasks/impute_items/0-Common_functions_for_imputation.R")
+#source("workflow/tasks/impute_items/NIBRS_function.R")
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+
+input_state <- Sys.getenv("INPUT_STATE")
+if (input_state==""){
+  simpleError("Set input_state as enviroment variable")
+}
+
+#Read in the dataset that includes the imputed offender and arrestee records
+#Bring in the raw data
+
+#Read the main file
+main_person   <- read_csv_logging(paste0(artifactsmainpath, "01_", input_state, "_extract.csv.gz"), col_types=extract_variable_type) %>%
+  mutate(der_victim_person = 1)
+
+main_victim_other <- read_csv_logging(paste0(artifactsmainpath, "01_", input_state, "_victim_other_extract.csv.gz"), col_types=extract_variable_type) %>%
+  mutate(der_victim_non_person = 1)
+
+main_unknown_off  <- read_csv_logging(paste0(artifactsmainpath, "01_", input_state, "_unknown_offenders_extract.csv.gz"), col_types=extract_variable_type) %>%
+  mutate(der_victim_person_unknown_off = 1) %>%
+  filter(victim_type_code %in% c("I", "L") ) #victim_type_code in c("I", "L") for "I"=Individual and "L" = Law Enforcement Officers
+
+#Create new codes to bind dataset if non-empty
+raw_dataset <- c("main_person", "main_victim_other", "main_unknown_off")
+raw_list <- vector("list", length(raw_dataset))
+raw_counter = 1
+
+  #Will loop thru the data files and put in list if non-empty
+for(i in 1:length(raw_list)){
+  #Place the dataset in list if non-empty
+  if(nrow(get(raw_dataset[[i]])) > 0) {
+
+    raw_list[[raw_counter]] <- get(raw_dataset[[i]])
+
+    #Increase the counter
+    raw_counter <- raw_counter + 1
+  }
+
+
+}
+
+raw_data <- bind_rows(raw_list)
+
+# recode race variable to numeric to match imputed vals
+raw_data <- raw_data %>% mutate(
+  race_code_victim = 
+      case_when(race_code_victim == "W" ~ 1,
+                                    race_code_victim == "B" ~ 2,
+                                    race_code_victim == "I" ~ 3,
+                                    race_code_victim == "A" ~ 4,
+                                    race_code_victim == "AP" ~ 5,
+                                    race_code_victim == "C" ~ 6,
+                                    race_code_victim == "J" ~ 7,
+                                    race_code_victim == "P" ~ 8,
+                                    race_code_victim == "O" ~ 9,
+                                    race_code_victim == "M" ~ 98,
+                                    #race_code_victim == "NS" ~ 99,
+                                    TRUE ~ NA_real_ # NA or U (Unknown)
+                                  ),
+  race_code_offender = case_when(race_code_offender == "W" ~ 1,
+                                  race_code_offender == "B" ~ 2,
+                                  race_code_offender == "I" ~ 3,
+                                  race_code_offender == "A" ~ 4,
+                                  race_code_offender == "AP" ~ 5,
+                                  race_code_offender == "C" ~ 6,
+                                  race_code_offender == "J" ~ 7,
+                                  race_code_offender == "P" ~ 8,
+                                  race_code_offender == "O" ~ 9,
+                                  race_code_offender == "M" ~ 98,
+                                  #race_code_offender == "NS" ~ 99,
+                                  TRUE ~ NA_real_ # NA or U (Unknown)
+                                ),
+  race_code_arrestee = case_when(race_code_arrestee == "W" ~ 1,
+                                  race_code_arrestee == "B" ~ 2,
+                                  race_code_arrestee == "I" ~ 3,
+                                  race_code_arrestee == "A" ~ 4,
+                                  race_code_arrestee == "AP" ~ 5,
+                                  race_code_arrestee == "C" ~ 6,
+                                  race_code_arrestee == "J" ~ 7,
+                                  race_code_arrestee == "P" ~ 8,
+                                  race_code_arrestee == "O" ~ 9,
+                                  race_code_arrestee == "M" ~ 98,
+                                  #race_code_arrestee == "NS" ~ 99,
+                                  TRUE ~ NA_real_ # NA or U (Unknown)
+                                ),
+)
+
+#Check if missing der_victim_person_unknown_off.  If missing then make variable to be all NA.
+if(any(colnames(raw_data) %in% c("der_victim_person_unknown_off"))){
+  log_debug("der_victim_person_unknown_off detected in dataset")
+} else {
+  raw_data$der_victim_person_unknown_off <- NA
+}
+
+#Clean up the environment
+rm(raw_dataset, raw_list, raw_counter)
+invisible(gc())
+
+log_dim(raw_data)
+log_dim(main_person)
+log_dim(main_victim_other)
+log_dim(main_unknown_off)
+
+#raw_data %>% checkfunction(der_victim_person, der_victim_non_person, der_victim_person_unknown_off, victim_type_code)
+
+#Clear the datasets
+ls(pattern="^main_")
+rm(list=ls(pattern="^main_"))
+invisible(rm())
+
+#Bring in the logical imputed data (& recode race to match imp.)
+le_data <- logical_edits_frame %>% 
+  mutate(race_code_victim = case_when(race_code_victim == "W" ~ 1,
+                                    race_code_victim == "B" ~ 2,
+                                    race_code_victim == "I" ~ 3,
+                                    race_code_victim == "A" ~ 4,
+                                    race_code_victim == "AP" ~ 5,
+                                    race_code_victim == "C" ~ 6,
+                                    race_code_victim == "J" ~ 7,
+                                    race_code_victim == "P" ~ 8,
+                                    race_code_victim == "O" ~ 9,
+                                    race_code_victim == "M" ~ 98,
+                                    #race_code_victim == "NS" ~ 99,
+                                    TRUE ~ NA_real_ # NA or U (Unknown)
+                                  ),
+  race_code_offender = case_when(race_code_offender == "W" ~ 1,
+                                  race_code_offender == "B" ~ 2,
+                                  race_code_offender == "I" ~ 3,
+                                  race_code_offender == "A" ~ 4,
+                                  race_code_offender == "AP" ~ 5,
+                                  race_code_offender == "C" ~ 6,
+                                  race_code_offender == "J" ~ 7,
+                                  race_code_offender == "P" ~ 8,
+                                  race_code_offender == "O" ~ 9,
+                                  race_code_offender == "M" ~ 98,
+                                  #race_code_offender == "NS" ~ 99,
+                                  TRUE ~ NA_real_ # NA or U (Unknown)
+                                ),
+  race_code_arrestee = case_when(race_code_arrestee == "W" ~ 1,
+                                  race_code_arrestee == "B" ~ 2,
+                                  race_code_arrestee == "I" ~ 3,
+                                  race_code_arrestee == "A" ~ 4,
+                                  race_code_arrestee == "AP" ~ 5,
+                                  race_code_arrestee == "C" ~ 6,
+                                  race_code_arrestee == "J" ~ 7,
+                                  race_code_arrestee == "P" ~ 8,
+                                  race_code_arrestee == "O" ~ 9,
+                                  race_code_arrestee == "M" ~ 98,
+                                  #race_code_arrestee == "NS" ~ 99,
+                                  TRUE ~ NA_real_ # NA or U (Unknown)
+                                )
+  )
+  
+log_dim(le_data)
+
+#Keep only the variables we are interested in
+
+keep_demo_vars <- function(data){
+  log_debug("Running function keep_demo_vars")
+
+  returndata <- data %>%
+  select(incident_id,
+         victim_seq_num,   victim_id,   age_code_victim, age_num_victim, sex_code_victim, race_code_victim,
+         offender_seq_num, offender_id, age_code_offender, age_num_offender, sex_code_offender, race_code_offender,
+         arrestee_seq_num, arrestee_id, age_code_arrestee, age_num_arrestee, sex_code_arrestee, race_code_arrestee,
+         offense_id)
+
+  return(returndata)
+}
+
+keep_demo_vars_le <- function(data){
+  log_debug("Running function keep_demo_vars_le")
+
+  returndata <- data %>%
+  select(incident_id,
+         victim_seq_num,   victim_id,   age_code_victim, age_num_victim, sex_code_victim, race_code_victim,
+         offender_seq_num, offender_id, age_code_offender, age_num_offender, sex_code_offender, race_code_offender,
+         arrestee_seq_num, arrestee_id, age_code_arrestee, age_num_arrestee, sex_code_arrestee, race_code_arrestee,
+         offense_id,
+         #Additional variables for LE
+         der_data_subset, der_arrestee_offender_same, der_incident_cleared, der_victim_person, der_victim_non_person,
+         der_victim_person_unknown_off
+         )
+
+  return(returndata)
+}
+
+raw_data2 <- keep_demo_vars(raw_data)
+log_dim(raw_data)
+log_dim(raw_data2)
+
+
+le_data2 <- keep_demo_vars_le(le_data)
+log_dim(le_data)
+log_dim(le_data2)
+
+#Rename the variables
+keep_demo_vars <- function(data, suffix){
+  log_debug("Running function keep_demo_vars")
+
+  #Rename all variables except incident_id
+  raw_names <- colnames(data) %>%
+  as_tibble() %>%
+  filter(! (trim_upper(value) %in% c("INCIDENT_ID", "VICTIM_SEQ_NUM", "OFFENDER_SEQ_NUM", "ARRESTEE_SEQ_NUM", "OFFENSE_ID"))) %>%
+  mutate(new_value = paste0(value, suffix))
+
+  orig_var <- raw_names %>% select(value) %>% unlist() %>% rlang:::parse_exprs()
+  new_var  <- raw_names %>% select(new_value) %>% unlist() %>% rlang:::parse_exprs()
+
+  #Loop thru and rename
+
+  for(i in 1:length(orig_var)){
+
+    in_orig_var = orig_var[[i]]
+    in_new_var = new_var[[i]]
+
+    #Loop thru and rename
+    data <- data %>%
+      rename(!!in_new_var := !!in_orig_var)
+
+
+  }
+
+  #Return the data
+  return(data)
+
+}
+
+#Rename the variables
+raw_data3 <- keep_demo_vars(data=raw_data2, suffix="_raw")
+le_data3 <- keep_demo_vars(data=le_data2, suffix="_le")
+
+#Merge on the datasets
+#NOTE:  Do inner join since the logical edit data drop records after editing the age
+#NOTE:  Doing an inner join will drop the cases where the arrestee information have been clear due to an offender can be match after adjusting the arrestee's age.
+
+#Get the matches
+main1_good <- inner_join(raw_data3, le_data3,
+          by=c("incident_id",
+               "victim_seq_num",
+               "offender_seq_num",
+               "arrestee_seq_num",
+               "offense_id"))
+
+#Get the records for the raw data where there is no match
+main1_rest <- anti_join(raw_data3, le_data3,
+          by=c("incident_id",
+               "victim_seq_num",
+               "offender_seq_num",
+               "arrestee_seq_num",
+               "offense_id")) %>%
+              #Must clear the arrestee variables, since these are clear in the logical edits
+           select(-arrestee_seq_num, -arrestee_id_raw, -age_code_arrestee_raw, -age_num_arrestee_raw, -sex_code_arrestee_raw, -race_code_arrestee_raw)
+
+#Get the records for the le data where there is no match
+main1_rest2 <- anti_join(le_data3, raw_data3,
+          by=c("incident_id",
+               "victim_seq_num",
+               "offender_seq_num",
+               "arrestee_seq_num",
+               "offense_id"))
+
+#Do the join between the remaining data and merge on without the arrestee_seq_num
+#NOTE:  there may be a many to many join due to deleting the arrestee information and not using arrestee_seq_num.  This should be fine, since we
+#will deduplicate at using the person ids and keep one record.  The imputed data we will read in will make sure that the same information is
+#used for the person of interest.
+
+main1_good2 <- inner_join(main1_rest, main1_rest2,
+          by=c("incident_id",
+               "victim_seq_num",
+               "offender_seq_num",
+               "offense_id"))
+
+main1 <- bind_rows(main1_good, main1_good2)
+
+#Double check there is no raw data that can not be merged
+
+main1_tbd <- anti_join(main1_rest, main1_rest2,
+          by=c("incident_id",
+               "victim_seq_num",
+               "offender_seq_num",
+               "offense_id"))
+
+
+log_dim(main1_tbd)
+
+log_dim(main1)
+log_dim(raw_data3)
+log_dim(le_data3)
+
+log_dim(main1_good)
+log_dim(main1_good2)
+log_dim(main1_rest)
+log_dim(main1_rest2)
+
+
+#Remove the datasets
+remove(list = c("main1_good", "main1_good2", "main1_rest", "main1_rest2", "main1_tbd"))
+invisible(gc())
+
+
+
+#Create the flag variables
+
+flag_raw_le <- function(data, person){
+  log_debug("Running function flag_raw_le")
+
+  #Age Num
+  age_num_f    <- paste0("age_num_", person, "_f") %>% rlang:::parse_expr()
+  age_num_raw  <- paste0("age_num_", person, "_raw")  %>% rlang:::parse_expr()
+  age_num_le   <- paste0("age_num_", person, "_le")  %>% rlang:::parse_expr()
+
+  #Sex Code
+  sex_code_f    <- paste0("sex_code_", person, "_f") %>% rlang:::parse_expr()
+  sex_code_raw  <- paste0("sex_code_", person, "_raw")  %>% rlang:::parse_expr()
+  sex_code_le   <- paste0("sex_code_", person, "_le")  %>% rlang:::parse_expr()
+
+  #Race id
+  race_code_f    <- paste0("race_code_", person, "_f") %>% rlang:::parse_expr()
+  race_code_raw  <- paste0("race_code_", person, "_raw")  %>% rlang:::parse_expr()
+  race_code_le   <- paste0("race_code_", person, "_le")  %>% rlang:::parse_expr()
+
+  data2 <- data %>%
+    mutate(
+      !!age_num_f := case_when( (!!age_num_raw == !!age_num_le) &
+                                    !is.na(!!age_num_raw)                           ~ 1, #Reported same value
+                                    ( (!!age_num_raw != !!age_num_le) |
+                                      (is.na(!!age_num_raw) & !is.na(!!age_num_le))
+                                     )                                              ~ 2, #logically edited
+                                    TRUE                                            ~ NA_real_), #Missing for now
+
+      !!sex_code_f := case_when( (!!sex_code_raw == !!sex_code_le) &
+                                    (!is.na(!!sex_code_raw) & trim_upcase(!!sex_code_raw) != "U")                                                                                                              ~ 1, #Reported same value
+                                    !!sex_code_raw != !!sex_code_le                   ~ 2, #logically edited
+                                    TRUE                                              ~ NA_real_), #Missing for now
+
+      !!race_code_f := case_when( (!!race_code_raw == !!race_code_le) &
+                                    (!is.na(!!race_code_raw)) 
+                                                                                    ~ 1, #Reported same value
+                                    !!race_code_raw != !!race_code_le                   ~ 2, #logically edited
+                                    TRUE                                            ~ NA_real_) #Missing for now
+
+
+  )
+
+  return(data2)
+
+
+}
+
+
+#Call the function and create the flag variables
+main2 <- flag_raw_le(data=main1, person="victim")
+main2 <- flag_raw_le(data=main2, person="arrestee")
+main2 <- flag_raw_le(data=main2, person="offender")
+
+#Check the flag recodes
+
+main2 %>% checkfunction(age_num_victim_f, age_num_victim_raw, age_num_victim_le)
+main2 %>% checkfunction(sex_code_victim_f, sex_code_victim_raw, sex_code_victim_le)
+main2 %>% checkfunction(race_code_victim_f, race_code_victim_raw, race_code_victim_le)
+
+main2 %>% checkfunction(age_num_arrestee_f, age_num_arrestee_raw, age_num_arrestee_le)
+main2 %>% checkfunction(sex_code_arrestee_f, sex_code_arrestee_raw, sex_code_arrestee_le)
+main2 %>% checkfunction(race_code_arrestee_f, race_code_arrestee_raw, race_code_arrestee_le)
+
+main2 %>% checkfunction(age_num_offender_f, age_num_offender_raw, age_num_offender_le)
+main2 %>% checkfunction(sex_code_offender_f, sex_code_offender_raw, sex_code_offender_le)
+main2 %>% checkfunction(race_code_offender_f, race_code_offender_raw, race_code_offender_le)
+
+#Bring in the final imputed dataset variables
+
+
+#Bring in the imputed file 2(a) for offenders
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/05_", input_state,"_offender_imputed.csv.gz"))
+
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main2, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num"))
+
+
+#Bring in the imputed file 2(b) for victim
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/07_", input_state,"_victim_imputed_final.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "victim_seq_num"))
+
+#Bring in the imputed file 2(c) for arrestee
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/09_", input_state,"_arrestee_imputed_final.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "arrestee_seq_num"))
+
+
+#Bring in the imputed file 3(a) for offenders
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/12_", input_state,"_offender_imputed.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num"))
+
+#Bring in the imputed file 3(b) for arrestee
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/14_", input_state,"_arrestee_imputed_final.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "arrestee_seq_num"))
+
+
+#Bring in the imputed file 4 for arrestee
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/16_", input_state,"_victim_imputed_final.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "victim_seq_num"))
+
+#Do the same person match last to guarantee match
+#Bring in the imputed file 1(a)
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/03_", input_state,"_imputed_arrestee_offender_match.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num", "arrestee_seq_num"))
+
+#Bring in the imputed file 1(b)
+
+raw_imputed <- read_csv_logging(paste0(inputmainpath, "/10_", input_state,"_imputed_arrestee_offender_match.csv.gz"))
+glimpse(raw_imputed)
+
+
+main3 <- replacedemovars2(base=main3, imputed=raw_imputed, mergeonby=c("incident_id", "offender_seq_num", "arrestee_seq_num"))
+
+
+
+main3 <- main3 %>%
+  mutate(der_is_na_arrestee_seq_num =
+           case_when(is.na(arrestee_seq_num) ~ 1 )
+)
+
+#Check the frequencies:
+
+main3 %>%
+  checkfunction(der_is_na_arrestee_seq_num, arrestee_seq_num)
+
+
+log_dim(main2)
+log_dim(main3)
+
+glimpse(main3)
+
+
+
+
+listvars_qc <- c(
+  "der_data_subset_le",
+  "der_incident_cleared_le",
+  "der_victim_person_le",
+  "der_victim_non_person_le",
+  "der_victim_person_unknown_off_le"
+) %>% rlang:::parse_exprs()
+
+main3 %>% checkfunction(!!!listvars_qc, sex_code_offender2)
+main3 %>% checkfunction(!!!listvars_qc, age_num_offender2)
+main3 %>% checkfunction(!!!listvars_qc, race_code_offender2)
+
+main3 %>% checkfunction(!!!listvars_qc, der_is_na_arrestee_seq_num, sex_code_arrestee2)
+main3 %>% checkfunction(!!!listvars_qc, der_is_na_arrestee_seq_num, age_num_arrestee2)
+main3 %>% checkfunction(!!!listvars_qc, der_is_na_arrestee_seq_num, race_code_arrestee2)
+
+main3 %>% checkfunction(!!!listvars_qc, sex_code_victim2)
+main3 %>% checkfunction(!!!listvars_qc, age_num_victim2)
+main3 %>% checkfunction(!!!listvars_qc, race_code_victim2)
+
+#Do rename of the imputed "2" variables and rename them to end in a suffix of _i
+
+listofvarstorename2_i = c(
+"sex_code_offender",
+"age_num_offender",
+"race_code_offender",
+"sex_code_arrestee",
+"age_num_arrestee",
+"race_code_arrestee",
+"sex_code_victim",
+"age_num_victim",
+"race_code_victim"
+
+)
+
+rename2toi <- function(data, list){
+  log_debug("Running function rename2toi")
+
+  for(i in 1:length(list)){
+
+    in_2 = paste0(list[[i]], "2") %>% rlang:::parse_expr()
+    in_i = paste0(list[[i]], "_i")  %>% rlang:::parse_expr()
+
+    data <- data %>%
+      rename(!!in_i := !!in_2)
+
+  }
+
+  return(data)
+}
+
+main3 <- rename2toi(data= main3, list= listofvarstorename2_i)
+glimpse(main3)
+
+
+#Create the flag variables
+
+flag_imp <- function(data, person){
+  log_debug("Running function flag_imp")
+
+  #Age ID
+  age_code    <- paste0("age_code_", person, "_raw") %>% rlang:::parse_expr()
+
+  #Age Num
+  age_num_f    <- paste0("age_num_", person, "_f") %>% rlang:::parse_expr()
+  age_num_raw  <- paste0("age_num_", person, "_raw")  %>% rlang:::parse_expr()
+  age_num_imp   <- paste0("age_num_", person, "_i")  %>% rlang:::parse_expr()
+  age_num_le   <- paste0("age_num_", person, "_le")  %>% rlang:::parse_expr()
+
+  #Sex Code
+  sex_code_f    <- paste0("sex_code_", person, "_f") %>% rlang:::parse_expr()
+  sex_code_raw  <- paste0("sex_code_", person, "_raw")  %>% rlang:::parse_expr()
+  sex_code_imp   <- paste0("sex_code_", person, "_i")  %>% rlang:::parse_expr()
+  sex_code_le   <- paste0("sex_code_", person, "_le")  %>% rlang:::parse_expr()
+
+  #Race id
+  race_code_f    <- paste0("race_code_", person, "_f") %>% rlang:::parse_expr()
+  race_code_raw  <- paste0("race_code_", person, "_raw")  %>% rlang:::parse_expr()
+  race_code_imp   <- paste0("race_code_", person, "_i")  %>% rlang:::parse_expr()
+  race_code_le   <- paste0("race_code_", person, "_le")  %>% rlang:::parse_expr()
+
+  data2 <- data %>%
+    mutate(
+      #Change sex_code to be character
+      !!sex_code_imp := case_when(
+        !!sex_code_imp == 1 ~ "M",
+        !!sex_code_imp == 2 ~ "F",
+        TRUE ~ NA_character_
+      ),
+
+    #####Fix Case where imputed values are missing but have raw data for the uncleared cases
+
+          !!age_num_imp := case_when(   is.na(!!age_num_imp) & !!age_code %in% c("NN","NB","BB") ~ 0, #1: Under 24 Hours, 2: 1-6 Days Old, 3: 7-364 Days Old
+                                        is.na(!!age_num_imp) & !!age_code %in% c("99") ~ 99, #6: Over 98 Years Old
+                                        is.na(!!age_num_imp) & !is.na(!!age_num_le) ~  !!age_num_le,
+
+                                        TRUE ~ !!age_num_imp),
+
+
+          !!sex_code_imp := case_when(  is.na(!!sex_code_imp) & trim_upcase(!!sex_code_le) %in% c("U", "X") ~ NA_character_, #Unknown
+                                        is.na(!!sex_code_imp) & !is.na(!!sex_code_le) ~  !!sex_code_le,
+                                        TRUE ~ !!sex_code_imp),
+
+		 #Note that race_code_le is already recode to be numeric from the beginning of program
+          !!race_code_imp := case_when(   is.na(!!race_code_imp) & is.na(!!race_code_le) ~ NA_real_, #Unknown
+                                        is.na(!!race_code_imp) & !is.na(!!race_code_le) ~  !!race_code_le,
+                                        TRUE ~ !!race_code_imp),
+    ############################################################################################
+
+
+
+
+      !!age_num_f := case_when(
+                                    !!age_code %in% c("NN","NB","BB","99")   ~ 1, #Reported if age_code is one of the following categories:  1: Under 24 Hours, 2: 1-6 Days Old, 3: 7-364 Days Old, 6: Over 98 Years Old
+
+                                    !!age_num_le != !!age_num_imp   ~ 3, #imputed if imputed and logical edits are different
+                                    is.na(!!age_num_le) & !is.na(!!age_num_imp)   ~ 3, #imputed if imputed and logical edits are different
+                                    !is.na(!!age_num_f)             ~ !!age_num_f, #if non-missing
+                                    !is.na(!!age_num_imp) | is.na(!!age_num_imp)  ~ 5, #non-imputed and use raw data if available
+                                    TRUE ~ NA_real_),
+
+      !!sex_code_f := case_when(
+                                    !!sex_code_le != !!sex_code_imp   ~ 3, #imputed if imputed and logical edits are different
+                                    !is.na(!!sex_code_f)       ~ !!sex_code_f, #if non-missing
+                                    !is.na(!!sex_code_imp) | is.na(!!sex_code_imp)    ~ 5, #non-imputed and use raw data if available
+                                    TRUE ~ NA_real_),
+
+      !!race_code_f := case_when(
+                                    !!race_code_le != !!race_code_imp   ~ 3, #imputed if imputed and logical edits are different
+                                    !is.na(!!race_code_f)       ~ !!race_code_f, #if non-missing
+                                    !is.na(!!race_code_imp) | is.na(!!race_code_imp)    ~ 5, #non-imputed and use raw data if available
+                                    TRUE ~ NA_real_)
+  )
+
+  return(data2)
+
+
+}
+
+
+#Call the function and create the flag variables
+main4 <- flag_imp(data=main3, person="victim")
+main4 <- flag_imp(data=main4, person="arrestee")
+main4 <- flag_imp(data=main4, person="offender")
+
+main4 <- main4 %>%
+
+  mutate(
+    #Add on the fix to missing arrestee
+    age_num_arrestee_f = case_when(
+      #!is.na(age_num_arrestee_f)   ~ age_num_arrestee_f,
+      der_is_na_arrestee_seq_num == 1 ~ 4,
+      TRUE ~ age_num_arrestee_f), #No reported arrestee - change to code 4 after dropping unknown offenders
+
+    sex_code_arrestee_f = case_when(
+      #!is.na(sex_code_arrestee_f)   ~ sex_code_arrestee_f,
+      der_is_na_arrestee_seq_num == 1 ~ 4,
+      TRUE ~ sex_code_arrestee_f), #No reported arrestee   - change to code 4 after dropping unknown offenders
+
+    race_code_arrestee_f = case_when(
+      #!is.na(race_code_arrestee_f)   ~ race_code_arrestee_f,
+      der_is_na_arrestee_seq_num == 1 ~ 4,
+      TRUE ~ race_code_arrestee_f), #No reported arrestee  - change to code 4 after dropping unknown offenders
+
+    der_is_offender_seq_num_0 = case_when(
+      offender_seq_num == 0 ~ 1
+
+    )
+)
+
+
+main4 %>% checkfunction(der_is_na_arrestee_seq_num, arrestee_seq_num)
+main4 %>% checkfunction(der_is_offender_seq_num_0, offender_seq_num)
+
+#Check the flag recodes
+
+main4 %>% checkfunction(!!!listvars_qc, age_num_victim_f, age_code_victim_raw,age_num_victim_raw, age_num_victim_le, age_num_victim_i)
+main4 %>% checkfunction(!!!listvars_qc, sex_code_victim_f, sex_code_victim_raw, sex_code_victim_le, sex_code_victim_i)
+main4 %>% checkfunction(!!!listvars_qc, race_code_victim_f,  race_code_victim_raw, race_code_victim_le, race_code_victim_i)
+
+main4 %>% checkfunction(!!!listvars_qc, age_num_offender_f, age_code_offender_raw,  age_num_offender_raw, age_num_offender_le, age_num_offender_i)
+main4 %>% checkfunction(!!!listvars_qc, sex_code_offender_f, sex_code_offender_raw, sex_code_offender_le, sex_code_offender_i)
+main4 %>% checkfunction(!!!listvars_qc, race_code_offender_f,  race_code_offender_raw, race_code_offender_le, race_code_offender_i)
+
+main4 %>% checkfunction(!!!listvars_qc, age_num_arrestee_f, age_code_arrestee_raw,  der_is_na_arrestee_seq_num, age_num_arrestee_raw, age_num_arrestee_le, age_num_arrestee_i)
+main4 %>% checkfunction(!!!listvars_qc, sex_code_arrestee_f, der_is_na_arrestee_seq_num, sex_code_arrestee_raw, sex_code_arrestee_le, sex_code_arrestee_i)
+main4 %>% checkfunction(!!!listvars_qc, race_code_arrestee_f,  der_is_na_arrestee_seq_num, race_code_arrestee_raw, race_code_arrestee_le, race_code_arrestee_i)
+
+main4 %>%
+  filter(der_arrestee_offender_same_le == 1) %>%
+  checkfunction(der_arrestee_offender_same_le,age_num_offender_i,age_num_arrestee_i)
+
+main4 %>%
+  filter(der_arrestee_offender_same_le == 1) %>%
+  checkfunction(der_arrestee_offender_same_le,race_code_offender_i,race_code_arrestee_i)
+
+main4 %>%
+  filter(der_arrestee_offender_same_le == 1) %>%
+  checkfunction(der_arrestee_offender_same_le,sex_code_offender_i,sex_code_arrestee_i)
+
+
+#Output the dataset
+main4 %>% write_csv(gzfile(paste0(mainpath, "17_", input_state, "_Combined.csv.gz")), na = "")
+
+keepvarsfinal <- function(data, var){
+  log_debug("Running function keepvarsfinal")
+
+  invarid   <- paste0(var, "_id")  %>% rlang:::parse_expr()
+  inidvar   <- paste0(var, "_id_raw") %>% rlang:::parse_expr()
+
+
+
+  returndata <- data %>%
+    #select(-der_victim_person_unknown_off_le, -der_is_na_arrestee_seq_num) %>% #Drop variables
+    group_by(incident_id, !!inidvar) %>%
+    mutate(ind_first = min(row_number() ) == row_number()) %>%
+    ungroup() %>%
+    filter(ind_first == TRUE) %>%  #keep first instance
+    filter(!is.na(!!inidvar)) %>% #keep records with ids
+    select(incident_id, contains(var), !!!listvars_qc) %>%
+    rename(!!invarid := !!inidvar)
+
+    #Write to share
+    returndata %>%
+      write_csv(gzfile(paste0(mainpath, "17_", input_state, "_", var, "_imputed_final_flag.csv.gz")), na = "")
+
+    #get the number of records
+    log_debug("In keepvarsfinal checking dimensions of returndata")
+    log_dim(returndata)
+}
+
+keepvarsfinal(data=main4 %>% filter(is.na(der_victim_non_person_le)), var="victim") #Keep records where victim is a person
+keepvarsfinal(data=main4 %>% filter(der_data_subset_le %in% c(1:4)),   var="offender") #Keep cleared incident only
+keepvarsfinal(data=main4 %>% filter(der_data_subset_le %in% c(1:4)),   var="arrestee") #Keep cleared incident only
+
+outputchecks <- function(data, ...){
+  log_debug("Running function outputchecks")
+
+  data %>%
+    mutate(state = input_state %>% as.character() ) %>%
+    group_by(state, ...) %>%
+    summarise(count = n()) %>%
+    write_csv( paste0(mainpath,"17_",input_state,"_Check_Arrestee_Offender_Same_Person.csv"), na = "", append=TRUE, col_names=TRUE)
+
+}
+
+
+main4 %>%
+  filter(der_arrestee_offender_same_le == 1) %>%
+  outputchecks(der_arrestee_offender_same_le,age_num_offender_i,age_num_arrestee_i)
+
+main4 %>%
+  filter(der_arrestee_offender_same_le == 1) %>%
+  outputchecks(der_arrestee_offender_same_le,race_code_offender_i,race_code_arrestee_i)
+
+main4 %>%
+  filter(der_arrestee_offender_same_le == 1) %>%
+  outputchecks(der_arrestee_offender_same_le,sex_code_offender_i,sex_code_arrestee_i)
+
+
+
+
+
+```

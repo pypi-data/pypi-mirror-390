@@ -1,0 +1,13 @@
+checks for nibrs_victim_circumstance:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['victim_id', 'circumstance_code', 'justifiable_force_code']
+        when wrong column type:
+          victim_id: bigint
+          circumstance_code: smallint
+          justifiable_force_code: character(1)
+  - invalid_count(circumstance_code) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21, 30, 31, 32, 33, 34]
+  - invalid_count(justifiable_force_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'F', 'G']

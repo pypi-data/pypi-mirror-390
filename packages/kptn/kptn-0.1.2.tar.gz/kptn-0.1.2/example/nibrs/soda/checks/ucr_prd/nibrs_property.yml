@@ -1,0 +1,13 @@
+checks for nibrs_property:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['property_id', 'incident_id', 'prop_loss_code', 'stolen_count', 'recovered_count']
+        when wrong column type:
+          property_id: bigint
+          incident_id: bigint
+          prop_loss_code: smallint
+          stolen_count: integer
+          recovered_count: integer
+  - invalid_count(prop_loss_code) = 0:
+      valid values: [1, 2, 3, 4, 5, 6, 7, 8]

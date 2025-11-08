@@ -1,0 +1,212 @@
+---
+title: "Weights Checks (SRS)"
+author: "JD Bunker"
+date: "07/06/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+#Note (16Jun2023): updating to include JD/MSA/FO checks
+#Note (16Jun2023): Updating to reflect SRS pipeline (not NIBRS)
+#Note (16Jun2023): still need to rename `n NIBRS LEAs, Overall` to `n SRS LEAs, Overall` in calibration programs - for now, just rename outputs after reading in
+#Note (02Jan2025): Creating national SRS equivalent, heavily based on substate SRS equivalent and NIBRS equivalent.
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+## Purpose
+
+The purpose of this program is to compile weight checks from the national weights.
+
+* SRS-reporting LEAs with missing weights are marked red in all the tables. Each of these LEAs should get a nonzero weight during calibration and thus missing weights implies an issue during the calibration process. If nonzero weights exist the estimation process should be halted as the estimates will not be correct. A review of how the LEA is identified for purposes of estimation should be reviewed to ensure it should receive a weight.  
+* Weights greater than 20 in all tables are marked red in all the tables. This suggests that a single SRS-reporting agency represents 20+ SRS-eligible agencies and may yield unreliable estimates. If this occurs in a domain, review the coverage rate for the domain. If the coverage is low, this result is expected and not an indication of a larger issue. 
+* Weights less than 1 in all tables are marked yellow in all the tables, while weights less than 0.9 are marked red. During calibration of national-level weights, emphasis was placed on fitting all SRS calibration variables. When possible, a weight of 1 was used as the lower limit. If calibration was not possible with a minimum weight of 1, lower minimum weights were attempted, starting at 0.998 and then decreasing from 0.99 to 0.9 in increments of 0.01 until calibration was successful. Thus any weights < 0.9 are illogical and should be investigated. Note that calibration success is affected by parameters supplied to the gencalib() function (e.g., design weights and upper bound of g-weights). If weights < 1 do occur, a solution with a minimum weight of 1 might exist but was not found in the given number of iterations. 
+* UWEs between 2 and 3 are marked yellow in all the tables and UWEs greater than 3 are marked red. This indicates a high level of variance inflation due to unequal weighting. For national-level weights this implies that the agencies within a weighting group had high levels of dispersion in their weights. If this occurs in a domain, review the coverage rate for the domain. If the coverage is low, this result is expected and not an indication of a larger issue.
+* Cases where the 95th percentile is 5 or more times higher than the median are marked red in the national-level weights. For these weight variables, this implies one or more agencies had significantly higher weights than the rest of the agencies in a given summary level. All tribal and university LEAs received the same weight and thus this isn’t applicable in the corresponding tables. If this occurs in a domain, review the coverage rate for the domain. If the coverage is low, this result is possible and not an indication of a larger issue.
+
+
+## Load Data
+
+Loading national weight checks
+
+```{r load,echo=FALSE,message=FALSE}
+
+log_trace("Generating weights_checks_national_srs.html")
+#################
+#Read in files
+
+results_national <- read_csv(file=paste0(output_weighting_data_folder,"weights_national_checks_srs.csv"))#Note (16Jun2023): Don't have SRS university/tribal weights yet
+#27Jul2022: Read in national weights
+weights_national <- read_csv(paste0(output_weighting_data_folder,'weights_national_srs.csv'))
+
+```
+
+## Prep overall national results
+```{r prep,echo=FALSE,message=FALSE,include=FALSE}
+#02Jan2025: adding number of LEAs with weight < 0.9
+SF2 <- weights_national
+out_temp <- SF2 %>%
+  subset(!is.na(NationalWgt))
+    temp.describe <- describe(out_temp$NationalWgt)
+    temp.quantiles <- quantile(out_temp$NationalWgt,
+                               probs=c(0,0.05,0.1,0.25,0.5,0.75,0.9,0.95,1),
+                               na.rm=TRUE)
+    #Note (26Jul2022): Adding n Eligible LEAs
+    temp.nElig <- SF2 %>%
+      nrow()
+	#Note (16May2024): round weights to 6 digits before checking if <1
+    temp.nLT1 <- sum(round(out_temp$NationalWgt,digits=6) < 1 & out_temp$NationalWgt>0, na.rm=TRUE)
+	#Note (02Jan2025): include number of LEAs with weight < 0.9
+	temp.nLT0pt9 <- sum(round(out_temp$NationalWgt,digits=6) < 0.9 & out_temp$NationalWgt>0, na.rm=TRUE)
+    #Note (29Jul2022): Switching from >100 to >20
+    #temp.nGT100 <- sum(out_temp$NationalWgt > 100, na.rm=TRUE)
+    temp.nGT20 <- sum(out_temp$NationalWgt > 20, na.rm=TRUE)
+    temp.UWE <- 1+var(out_temp$NationalWgt,na.rm=TRUE)/(mean(out_temp$NationalWgt,na.rm=TRUE)^2)
+	#Note (16May2024): adding min and max
+    temp.out <- data.frame(wgtGpDesc="All LEAs",
+                           calibrated=NA,
+                           nElig=temp.nElig,
+                           nNIBRS=as.numeric(temp.describe$counts["n"]) + as.numeric(temp.describe$counts["missing"]),
+                           nMissing=as.numeric(temp.describe$counts["missing"]),
+                           nLT1=temp.nLT1,
+                           nLT0pt9=temp.nLT0pt9,
+                           #nGT100=temp.nGT100,
+                           nGT20=temp.nGT20,
+                           UWE=sprintf(temp.UWE,fmt="%1.3f"),
+                           Mean=sprintf(as.numeric(temp.describe$counts["Mean"]),fmt="%1.3f"),
+						   Min=sprintf(temp.quantiles["0%"],fmt="%1.3f"),
+                           pt05=sprintf(temp.quantiles["5%"],fmt="%1.3f"),
+                           pt10=sprintf(temp.quantiles["10%"],fmt="%1.3f"),
+                           pt25=sprintf(temp.quantiles["25%"],fmt="%1.3f"),
+                           pt50=sprintf(temp.quantiles["50%"],fmt="%1.3f"),
+                           pt75=sprintf(temp.quantiles["75%"],fmt="%1.3f"),
+                           pt90=sprintf(temp.quantiles["90%"],fmt="%1.3f"),
+                           pt95=sprintf(temp.quantiles["95%"],fmt="%1.3f"),
+                           Max=sprintf(temp.quantiles["100%"],fmt="%1.3f")) %>%
+      #Need to convert some variables to numeric
+      mutate(UWE=as.numeric(UWE),
+             Mean=as.numeric(Mean),
+			 Min=as.numeric(Min),
+             pt05=as.numeric(pt05),
+             pt10=as.numeric(pt10),
+             pt25=as.numeric(pt25),
+             pt50=as.numeric(pt50),
+             pt75=as.numeric(pt75),
+             pt90=as.numeric(pt90),
+             pt95=as.numeric(pt95),
+             Max=as.numeric(Max))
+    colnames(temp.out) <- c("Weight Group","Calibrated",
+                            "n Eligible LEAs","n NIBRS LEAs, Overall","n NIBRS LEAs, Missing Weight",
+                            "n LT 1","n LT 0.9","n GT 20","UWE",#"n GT 100","UWE",
+                            "Mean","Minimum","5th Pctl","10th Pctl","25th Pctl","50th Pctl",
+                            "75th Pctl","90th Pctl","95th Pctl","Maximum") 
+    list2env(list("results_national_0"=temp.out),.GlobalEnv)
+    
+#Stack total row onto rest of national results
+results_national <- bind_rows(results_national_0,
+                              results_national)
+```
+
+## Display Results
+```{r results,echo=FALSE,warning=FALSE}
+#################
+#Display results
+
+#29Jul2022: Changing n GT 100 to n GT 20
+
+#30Jun2023: Adding summary table before each geography
+
+#National
+log_debug("National")
+
+#National
+summary_national_major <- results_national %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(redMissingWgts=`n NIBRS LEAs, Missing Weight`>0,
+         yellowNLT1=`n LT 1`>0,
+         redNLT0pt9=`n LT 0.9`>0,
+		 redNGT20=`n GT 20`>0,
+		 yellowUWE=UWE<3 & UWE>=2,
+		 redUWE=UWE>=3,
+		 redRatio=ratio>=5) %>%
+  dplyr::summarize(anyMajor=any(redMissingWgts,redNLT0pt9,redNGT20,redUWE,redRatio),
+				   anyMissingWgts=any(redMissingWgts),
+				   anyMissingWgtsGeo=ifelse(anyMissingWgts,"National",NA_character_),
+				   anyNLT1=any(yellowNLT1),
+				   anyNLT1Geo=ifelse(anyNLT1,"National",NA_character_),
+				   anyNLT0pt9=any(redNLT0pt9),
+				   anyNLT0pt9Geo=ifelse(anyNLT0pt9,"National",NA_character_),
+				   anyNGT20=any(redNGT20),
+				   anyNGT20Geo=ifelse(anyNGT20,"National",NA_character_),
+				   anyUWEGTE3=any(redUWE),
+				   anyUWEGTE3Geo=ifelse(anyUWEGTE3,"National",NA_character_),
+				   anyRatioGTE5=any(redRatio),
+				   anyRatioGTE5Geo=ifelse(anyRatioGTE5,"National",NA_character_),
+				   anyMissingWgtsDesc=ifelse(any(anyMissingWgts),paste0("1+ NIBRS LEAs missing weights",str_flatten(anyMissingWgtsGeo %>% subset(!is.na(.)),col=", ")),NA_character_),
+				   anyNLT0pt9Desc=ifelse(any(anyNLT0pt9),paste0("1+ weight <0.9: ",str_flatten(anyNLT0pt9Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+				   anyNGT20Desc=ifelse(any(anyNGT20),paste0("1+ weight > 20: ",str_flatten(anyNGT20Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+				   anyUWEGTE3Desc=ifelse(any(anyUWEGTE3),paste0("UWE >= 3: ",str_flatten(anyUWEGTE3Geo %>% subset(!is.na(.)),col=", ")),NA_character_),
+				   anyRatioGTE5Desc=ifelse(any(anyRatioGTE5),paste0("95th Pctl / Median >= 5: ",str_flatten(anyRatioGTE5Geo %>% subset(!is.na(.)),col=", ")),NA_character_)) %>%
+  mutate(anyMajorDesc=ifelse(any(anyMajor),
+                             str_flatten(c(anyMissingWgtsDesc %>% subset(!is.na(.)),
+							               anyNLT0pt9Desc %>% subset(!is.na(.)),
+										   anyNGT20Desc %>% subset(!is.na(.)),
+										   anyUWEGTE3Desc %>% subset(!is.na(.)),
+										   anyRatioGTE5Desc %>% subset(!is.na(.))),
+										 col=";<br/><br/>"),
+							 NA_character_)) %>%
+  mutate(`Weight Level`="National",
+         Status=ifelse(anyMajor,"Major problem(s) found","No major problems found"),
+		 `Flagged Areas`=anyMajorDesc) %>%
+		 select(`Weight Level`,Status,`Flagged Areas`)
+		 
+summary_national_minor <- results_national %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  mutate(yellowUWE=UWE<3 & UWE>=2,
+         yellowNLT1=`n LT 1`>0) %>%
+  dplyr::summarize(anyMinor=any(yellowUWE|yellowNLT1),
+				   anyUWE2to3=any(yellowUWE),
+				   anyUWE2to3Desc=ifelse(anyUWE2to3,"2 <= UWE < 3",NA_character_),
+				   anyNLT1=any(yellowNLT1),
+				   anyNLT1Desc=ifelse(any(anyNLT1),paste0("1+ weight <1: ",str_flatten(anyNLT1 %>% subset(!is.na(.)),col=", ")),NA_character_))%>%
+  mutate(anyMinorDesc=ifelse(any(anyMinor),
+                             str_flatten(c(anyNLT1Desc %>% subset(!is.na(.)),
+										   anyUWE2to3Desc %>% subset(!is.na(.))),
+										 col=";<br/><br/>"),
+							 NA_character_)) %>%
+  mutate(`Weight Level`="National",
+         Status=ifelse(anyMinor,"Minor problem(s) found","No minor problems found"),
+		 `Flagged Areas`=anyMinorDesc) %>%
+  select(`Weight Level`,Status,`Flagged Areas`)
+		 
+summary_national <- bind_rows(summary_national_major,
+                              summary_national_minor)
+
+summary_national %>% DT::datatable()
+
+results_national %>%
+  mutate(ratio=as.numeric(eval(as.symbol("95th Pctl")))/as.numeric(eval(as.symbol("50th Pctl")))) %>%
+  `row.names<-`(1:nrow(.)) %>%
+  DT::datatable(options = list(columnDefs = list(
+    list(visible = FALSE, targets = 20)#16)
+  ))) %>%
+  formatStyle(columns="n NIBRS LEAs, Missing Weight",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="n LT 1",
+              backgroundColor = styleInterval(c(0), c('NULL','yellow'))) %>%
+  formatStyle(columns="n LT 0.9",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  #formatStyle(columns="n GT 100",
+  formatStyle(columns="n GT 20",
+              backgroundColor = styleInterval(c(0), c('NULL','red'))) %>%
+  formatStyle(columns="UWE",
+              backgroundColor = styleInterval(c(2,3), c('NULL','yellow','red'))) %>%
+  formatStyle(columns="95th Pctl",
+              valueColumns="ratio",
+              backgroundColor = styleInterval(c(5), c('NULL','red')))
+log_trace("Finished generating weights_checks_national_srs.html")
+```

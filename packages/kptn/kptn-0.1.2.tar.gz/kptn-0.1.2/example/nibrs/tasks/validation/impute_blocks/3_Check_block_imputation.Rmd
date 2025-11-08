@@ -1,0 +1,275 @@
+---
+title: '3 - Check block imputation'
+author: "Philip Lee"
+date: "August 9, 2022"
+output:
+  html_document: default
+  pdf_document:  default
+---
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+library(tidyverse)
+library(DT)
+```
+
+
+```{r, echo=FALSE, message=FALSE, results='hide', warning=FALSE}
+#############################Get the list of files##################################
+year <- Sys.getenv("DATA_YEAR")
+inorigpermutation = c(1:108)
+
+####################################################################################
+
+#Read in the output
+raw_main <- read_csv(paste0(input_block_imp, "donorids.csv"))
+
+#Read in the universe file
+raw_universe <- read_csv(file.path(input_files_folder, paste0("ref_agency_", year, ".csv")))
+
+#Try to merge by ori
+raw_main_1_good <- raw_main  %>%
+  left_join(raw_universe, by=c("ori"="ORI"))
+
+raw_main_1_anti <- raw_main  %>%
+  anti_join(raw_universe, by=c("ori"="ORI"))
+
+log_dim(raw_universe)
+log_dim(raw_main)
+log_dim(raw_main_1_good)
+log_dim(raw_main_1_anti)
+
+#Try to merge by legacy ori
+raw_main_2_good <- raw_main_1_anti  %>%
+  left_join(raw_universe, by=c("ori"="LEGACY_ORI"))
+
+raw_main_2_anti <- raw_main_1_anti  %>%
+  anti_join(raw_universe, by=c("ori"="LEGACY_ORI"))
+
+log_dim(raw_universe)
+log_dim(raw_main_1_anti)
+log_dim(raw_main_2_good)
+log_dim(raw_main_2_anti)
+
+#Stack the data together
+raw_main_1 <- bind_rows(raw_main_1_good, raw_main_2_good, raw_main_2_anti)
+
+#Check to see if all records are accounted for
+log_dim(raw_main_1)
+log_dim(raw_main)
+log_dim(raw_main_1_good)
+log_dim(raw_main_2_good)
+log_dim(raw_main_2_anti)
+
+#Next need to determine the eligible agencies
+
+raw_main_2 <- raw_main_1 %>%
+  mutate(
+    
+      der_national = fcase(
+        
+      toupper(trimws(STATE_ABBR, which="both")) == "AL", 1, #Alabama
+      toupper(trimws(STATE_ABBR, which="both")) == "AK", 1, #Alaska
+      toupper(trimws(STATE_ABBR, which="both")) == "AZ", 1, #Arizona
+      toupper(trimws(STATE_ABBR, which="both")) == "AR", 1, #Arkansas
+      toupper(trimws(STATE_ABBR, which="both")) == "CA", 1, #California
+      toupper(trimws(STATE_ABBR, which="both")) == "CO", 1, #Colorado
+      toupper(trimws(STATE_ABBR, which="both")) == "CT", 1, #Connecticut
+      toupper(trimws(STATE_ABBR, which="both")) == "DE", 1, #Delaware
+      toupper(trimws(STATE_ABBR, which="both")) == "DC", 1, #District of Columbia
+      toupper(trimws(STATE_ABBR, which="both")) == "FL", 1, #Florida
+      toupper(trimws(STATE_ABBR, which="both")) == "GA", 1, #Georgia
+      toupper(trimws(STATE_ABBR, which="both")) == "HI", 1, #Hawaii
+      toupper(trimws(STATE_ABBR, which="both")) == "ID", 1, #Idaho
+      toupper(trimws(STATE_ABBR, which="both")) == "IL", 1, #Illinois
+      toupper(trimws(STATE_ABBR, which="both")) == "IN", 1, #Indiana
+      toupper(trimws(STATE_ABBR, which="both")) == "IA", 1, #Iowa
+      toupper(trimws(STATE_ABBR, which="both")) == "KS", 1, #Kansas
+      toupper(trimws(STATE_ABBR, which="both")) == "KY", 1, #Kentucky
+      toupper(trimws(STATE_ABBR, which="both")) == "LA", 1, #Louisiana
+      toupper(trimws(STATE_ABBR, which="both")) == "ME", 1, #Maine
+      toupper(trimws(STATE_ABBR, which="both")) == "MD", 1, #Maryland
+      toupper(trimws(STATE_ABBR, which="both")) == "MA", 1, #Massachusetts
+      toupper(trimws(STATE_ABBR, which="both")) == "MI", 1, #Michigan
+      toupper(trimws(STATE_ABBR, which="both")) == "MN", 1, #Minnesota
+      toupper(trimws(STATE_ABBR, which="both")) == "MS", 1, #Mississippi
+      toupper(trimws(STATE_ABBR, which="both")) == "MO", 1, #Missouri
+      toupper(trimws(STATE_ABBR, which="both")) == "MT", 1, #Montana
+      toupper(trimws(STATE_ABBR, which="both")) == "NB", 1, #Nebraska
+      toupper(trimws(STATE_ABBR, which="both")) == "NV", 1, #Nevada
+      toupper(trimws(STATE_ABBR, which="both")) == "NH", 1, #New Hampshire
+      toupper(trimws(STATE_ABBR, which="both")) == "NJ", 1, #New Jersey
+      toupper(trimws(STATE_ABBR, which="both")) == "NM", 1, #New Mexico
+      toupper(trimws(STATE_ABBR, which="both")) == "NY", 1, #New York
+      toupper(trimws(STATE_ABBR, which="both")) == "NC", 1, #North Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "ND", 1, #North Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "OH", 1, #Ohio
+      toupper(trimws(STATE_ABBR, which="both")) == "OK", 1, #Oklahoma
+      toupper(trimws(STATE_ABBR, which="both")) == "OR", 1, #Oregon
+      toupper(trimws(STATE_ABBR, which="both")) == "PA", 1, #Pennsylvania
+      toupper(trimws(STATE_ABBR, which="both")) == "RI", 1, #Rhode Island
+      toupper(trimws(STATE_ABBR, which="both")) == "SC", 1, #South Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "SD", 1, #South Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "TN", 1, #Tennessee
+      toupper(trimws(STATE_ABBR, which="both")) == "TX", 1, #Texas
+      toupper(trimws(STATE_ABBR, which="both")) == "UT", 1, #Utah
+      toupper(trimws(STATE_ABBR, which="both")) == "VT", 1, #Vermont
+      toupper(trimws(STATE_ABBR, which="both")) == "VA", 1, #Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WA", 1, #Washington
+      toupper(trimws(STATE_ABBR, which="both")) == "WV", 1, #West Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WI", 1, #Wisconsin
+      toupper(trimws(STATE_ABBR, which="both")) == "WY", 1, #Wyoming
+      default = 0),
+   
+  #Create the eligible flag
+      in_univ_elig_state = fcase(
+        der_national %in% c(1), 1,
+        default = 0),
+  
+  
+      der_in_univ_elig =  fcase(
+        trim_upper(AGENCY_STATUS) == "A" &
+        trim_upper(COVERED_FLAG) == "N" &
+        trim_upper(DORMANT_FLAG) == "N" &
+        trim_upper(AGENCY_TYPE_NAME) != "FEDERAL" &
+        in_univ_elig_state == 1, 1,
+        default = 0)
+  
+  )
+
+#Check the variables
+raw_main_2 %>% checkfunction(der_national, STATE_ABBR)  
+raw_main_2 %>% checkfunction(in_univ_elig_state, der_national, STATE_ABBR)  
+raw_main_2 %>% checkfunction(der_in_univ_elig, AGENCY_STATUS, COVERED_FLAG, DORMANT_FLAG, AGENCY_TYPE_NAME, in_univ_elig_state)  
+#Declare the month variables
+CONST_MONTH_VARS <- c(
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec"
+)
+
+#Save the dataset
+raw_main_3 <- raw_main_2
+
+#Loop thru and create the _MONTH_REPORTED_FLAG variables
+for(i in 1:length(CONST_MONTH_VARS)){
+  
+  #Create the current month var
+  inmonthvar <- CONST_MONTH_VARS[i] %>% rlang:::parse_expr()
+  inmonthvarflag <- paste0(CONST_MONTH_VARS[i],"_MONTH_REPORTED_FLAG") %>% rlang:::parse_expr()
+  
+  
+  raw_main_3 <- raw_main_3 %>%
+    mutate(!!inmonthvarflag := case_when(is.na(trimws(!!inmonthvar, which="both")) ~ 1,
+           TRUE ~ 0))
+  
+}
+
+#Create the remaining variables
+raw_main_3 <- raw_main_3 %>%
+  mutate(der_MONTH_REPORTED = rowSums(.[,paste0(CONST_MONTH_VARS,"_MONTH_REPORTED_FLAG")]),
+         der_MONTH_NOTREPORTED = 12 - der_MONTH_REPORTED)
+
+#QC the variables
+raw_main_3 %>%
+  checkfunction(der_MONTH_REPORTED, der_MONTH_NOTREPORTED, 
+                !!!(CONST_MONTH_VARS %>% rlang:::parse_exprs()),
+                !!!(paste0(CONST_MONTH_VARS, "_MONTH_REPORTED_FLAG") %>% rlang:::parse_exprs()))
+
+
+
+#Bring in the population file
+raw_pop <- read_csv(paste0(input_files_folder, "POP_TOTALS_PERM_", year, ".csv")) %>%
+  #Filter to the original permutations
+  filter(PERMUTATION_NUMBER %in% inorigpermutation) %>%
+  select(PERMUTATION_NUMBER, PERMUTATION_NUMBER_DESC, PERMUTATION_DESCRIPTION)
+
+CONST_PERMUTATION_NUMBER      <- raw_pop %>% select(PERMUTATION_NUMBER) %>% pull()
+CONST_PERMUTATION_NUMBER_DESC <- raw_pop %>% select(PERMUTATION_NUMBER_DESC) %>% pull()
+CONST_PERMUTATION_DESCRIPTION <- raw_pop %>% select(PERMUTATION_DESCRIPTION) %>% pull()
+  
+raw_main_3_list <- vector("list", length(CONST_PERMUTATION_NUMBER))
+
+for(i in 1:length(raw_main_3_list)){
+  
+  #Get the current row variables
+  IN_CONST_PERMUTATION_NUMBER      <- CONST_PERMUTATION_NUMBER[i]
+  IN_CONST_PERMUTATION_NUMBER_DESC <- CONST_PERMUTATION_NUMBER_DESC[i] %>% rlang:::parse_expr()
+  IN_CONST_PERMUTATION_DESCRIPTION <- CONST_PERMUTATION_DESCRIPTION[i]
+  
+  #Subset the data
+  tbd_1 <- raw_main_3 %>%
+            #Filter the data
+            filter(!!IN_CONST_PERMUTATION_NUMBER_DESC) %>%
+            summarise(
+              
+              #Number of agencies
+              der_number_partial_reporters = n(),
+              
+              #Number of donor months
+              der_number_months_imputed = sum(der_MONTH_NOTREPORTED ,na.rm=TRUE)) %>%
+              #Create new variables
+              mutate(PERMUTATION_NUMBER = IN_CONST_PERMUTATION_NUMBER,
+                     PERMUTATION_DESCRIPTION = IN_CONST_PERMUTATION_DESCRIPTION
+              ) %>%
+            select(PERMUTATION_NUMBER, PERMUTATION_DESCRIPTION, der_number_partial_reporters, der_number_months_imputed)
+    
+  #Return the data
+  raw_main_3_list[[i]] <- tbd_1
+  
+  #Remove the objects
+  rm(IN_CONST_PERMUTATION_NUMBER, IN_CONST_PERMUTATION_NUMBER_DESC, IN_CONST_PERMUTATION_DESCRIPTION, tbd_1)
+  invisible(gc())
+  
+}
+
+#Bind the results
+raw_main_4 <- bind_rows(raw_main_3_list) %>%
+  mutate(der_ratio = der_number_months_imputed / der_number_partial_reporters)
+
+#Create caption font
+incaptionstyle = 'caption-side: top; text-align: center; font-size: 75px'
+
+```
+
+This is the validation report for the block imputation.
+
+Below is a table that shows the eligible NIBRS partial reporters that reported 3 - 11 months of data.  The column ori.don is the donor agency and the month columns, jan thru dec, have a value of 1 if the ori did not report any data for the month and the records are imputed from the donor agency.  
+
+```{r, echo=FALSE, message=FALSE}
+
+
+#Print the results
+raw_main  %>%
+  datatable(
+    options = list(pageLength = 100, autoWidth = TRUE),    
+                    caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    'See the partial reporters, their donor agency, monthly records imputed'))
+
+
+```					
+
+Below is a table that shows the overall results of block imputation.  The domains are labeled in the column PERMUTATION_DESCRIPTION, with column der_number_partial_reporters indicating the number of partial reporters and column der_number_months_imputed indicating the number of months imputed for each of the 108 domains.
+
+					
+```{r, echo=FALSE, message=FALSE}					
+
+raw_main_4 %>%
+  datatable(
+    options = list(pageLength = 100, autoWidth = TRUE),    
+                    caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    'Block Imputation Results')) %>%
+                formatRound(c("der_ratio"), 2)
+
+```
+

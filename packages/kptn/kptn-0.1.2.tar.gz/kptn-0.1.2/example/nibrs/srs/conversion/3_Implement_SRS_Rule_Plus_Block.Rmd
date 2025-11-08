@@ -1,0 +1,1419 @@
+---
+title: '3-Implement SRS Rule Plus Block'
+author: "Philip Lee"
+date: "April 7, 2023"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(DBI)
+library(DT)
+library(lubridate)
+library(data.table)
+library(openxlsx)
+
+
+#Create some functions
+tablena <- partial(table, useNA = "ifany")
+table_func <- partial(table, useNA="ifany")
+sum_func <- partial(sum, na.rm=TRUE)
+
+trim_upper <- compose(toupper, partial(trimws, which="both"))
+trim_upcase <- compose(toupper, partial(trimws, which="both"))
+trim <- partial(trimws, which="both")
+
+checkfunction <- function(data, ...){
+  
+  groupbyinput <- rlang:::enquos(...)
+  datatable( data %>% group_by( !!!(groupbyinput) ) %>% summarise(count = n() ) %>% print())
+  
+}
+
+#Function to gather the list of files
+readfiles <- function(inpath, inpatternfile){
+  
+  #Get the list of files
+  raw_list_files <- list.files(path=inpath, pattern=inpatternfile)
+  
+  #See the list of files
+  print(raw_list_files)
+  
+  #Loop thru to get the files
+  returndata <- map_dfr(raw_list_files,  ~{
+      
+      #Get current file name
+      raw_current_file <- .x
+  
+      #Read the current file
+      raw_main <- fread(paste0(inpath, raw_current_file)) 
+      
+      if(nrow(raw_main) == 0){
+        return(NULL)
+      }
+      
+      #Return the file
+      return(raw_main)
+      
+  })
+  
+  #Return the data
+  return(returndata)
+  
+}
+
+
+```
+
+
+```{r}
+
+##########################################################################################
+
+#Read in the external current year NIBRS block imputation data
+raw_nibrs_block_imputed <- fread(paste0(block_imp_path, "NIBRS_INCIDENT_PLUS_IMPUTED_BLOCK.csv.gz"))
+
+#Read in the incident file
+raw_main_inc0 <- readfiles(inpath=filepathin, inpatternfile="^raw_all_incidents_\\w+.csv.gz") %>%
+  #Need to drop the agencies variables since we will be using the ones from the block imputation 
+  select(-ori, -legacy_ori) %>%
+  #Need to drop any records where the incident is before start date
+  mutate(
+    nibrs_start_date_month = month(nibrs_start_date),
+    nibrs_start_date_year =  year(nibrs_start_date),
+    
+    #Need to drop the late starters incidents months before their NIBRS start date
+    der_drop_record = fcase(
+      
+      #Make sure it is the current year processing
+      (nibrs_start_date_year == CONST_YEAR) & (incident_year == CONST_YEAR) & 
+      #Drop any incidents before their starting month  
+      (incident_month < nibrs_start_date_month), 1, 
+      default = 0
+        
+    )
+  )
+
+#Check the recodes
+raw_main_inc0 %>% checkfunction(der_drop_record, nibrs_start_date_year, nibrs_start_date_month, incident_month, incident_year)
+
+#New:  vehicular manslaughter is excluded from manslaughter counts
+#So for cases where the offense code is "09B" (Negligent Manslaughter), the weapon code is 35 (vehicle) and the circumstances code is 33 (other negligent weapon handling), it should not contribute to the manslaughter total.  
+
+#Get the victim circumstances
+#tbd_nm_victim_circum <- fread(paste0(filepathin, "agg_neg_manslaughter_victim_circumstance_", CONST_STATE ,".csv.gz") )
+tbd_nm_victim_circum <- readfiles(inpath=filepathin, inpatternfile="^agg_neg_manslaughter_victim_circumstance_\\w+.csv.gz")
+
+#Get if weapon involved is motor vehicle
+#tbd_nm_victim_mv     <- fread(paste0(filepathin, "agg_nm_mv_victim_", CONST_STATE ,".csv.gz") )
+tbd_nm_victim_mv <- readfiles(inpath=filepathin, inpatternfile="^agg_nm_mv_victim_\\w+.csv.gz")
+
+#Merge the two dataset together
+tbd_nm_merge <- tbd_nm_victim_circum %>%
+  left_join(tbd_nm_victim_mv, by=c("incident_id", "victim_id"))
+
+#Check the size
+log_dim(tbd_nm_merge)
+log_dim(tbd_nm_victim_circum)
+log_dim(tbd_nm_victim_mv)
+
+
+#Need to make edit in code to program this at the incident level
+#It looks like the variable der_any_other_negligent_weapon_handling is apply at the victim level
+#However, if within the same incident if another person has der_any_other_negligent_weapon_handling == 0
+#Then this will overwrite the person that has der_any_other_negligent_weapon_handling = 1
+
+tbd_nm_counts0 <- tbd_nm_merge %>%
+  #Create indicator at the incident level
+  group_by(incident_id) %>%
+  mutate(der_any_other_negligent_weapon_handling_any0 = any(der_any_other_negligent_weapon_handling == 0)) %>%
+  ungroup() %>%
+  #Create new der_any_other_negligent_weapon_handling that accounts for the above
+  mutate(
+    one = 1,
+    der_any_other_negligent_weapon_handling2 = fcase(
+      #If any other victim is detected has having 
+      der_any_other_negligent_weapon_handling_any0 == TRUE & der_any_other_negligent_weapon_handling > 0, 0,
+      #Otherwise keep the same
+      one == 1, as.double(der_any_other_negligent_weapon_handling)
+    ),
+    
+    der_nm_keep = fcase(
+      #New keep neg manslaughter if another weapon is involved
+      nm_motor_vehicle > 0 & der_any_other_negligent_weapon_handling2 > 0 & nm_not_motor_vehicle > 0, 1,															  																																				   
+      nm_motor_vehicle > 0 & der_any_other_negligent_weapon_handling2 > 0, 0,
+      default = 1
+    )
+  )
+
+#Check the recodes
+tbd_nm_counts0 %>% checkfunction(der_nm_keep, nm_motor_vehicle, der_any_other_negligent_weapon_handling, der_any_other_negligent_weapon_handling2, der_any_other_negligent_weapon_handling_any0, nm_not_motor_vehicle)
+
+#Get the incident ids for the der_nm_keep == 0
+tbd_nm_drop_inc <- tbd_nm_counts0 %>%
+  filter(der_nm_keep == 0) %>%
+  distinct(incident_id) %>%
+  mutate(der_inc_drop_nm = 1)
+
+#Do a join with raw_main_inc0
+raw_main_inc1 <- raw_main_inc0 %>%
+  left_join(tbd_nm_drop_inc, by="incident_id") %>%
+  #Update the inc_der_neg_manslaughter variable
+  rename(old_inc_der_neg_manslaughter = inc_der_neg_manslaughter) %>%
+  mutate(
+    one = 1,
+    
+    inc_der_neg_manslaughter = fcase(
+      old_inc_der_neg_manslaughter == 1 & der_inc_drop_nm == 1, 0,
+      one == 1, as.double(old_inc_der_neg_manslaughter)
+    )
+  ) %>%
+  select(-one)
+
+
+#Check the merge
+log_dim(raw_main_inc1)
+log_dim(raw_main_inc0)
+log_dim(tbd_nm_drop_inc)
+
+#Check the recodes
+raw_main_inc1 %>% checkfunction(inc_der_neg_manslaughter, old_inc_der_neg_manslaughter, der_inc_drop_nm)
+
+
+
+#Drop the records
+raw_main_inc01 <- raw_main_inc1 %>%
+  filter(der_drop_record == 0)
+
+#Check the dim
+log_dim(raw_main_inc01)
+log_dim(raw_main_inc1)
+
+#Do a left join on the block imputed file
+raw_main_inc <- raw_nibrs_block_imputed %>%
+  left_join(raw_main_inc01, by="incident_id")
+
+
+#Check the dimensions
+log_dim(raw_main_inc)
+log_dim(raw_nibrs_block_imputed)
+log_dim(raw_main_inc01)
+
+#Delete datasets no longer needed
+rm(raw_nibrs_block_imputed, raw_main_inc0, raw_main_inc01)
+rm(list=ls(pattern="tbd_"))						   
+invisible(gc())
+
+################################################1 Murder###################################
+
+# 	Otherwise, get the categories and counts according to these rules
+# 	"09A" [Murder]
+# -	Classify: Murder
+# -	Count: The number of victims tied to the offense
+
+#Filter to incidents with murder
+tbd_1 <- raw_main_inc %>%
+  filter(inc_der_murder_non_neg_manslaughter == 1) %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)  
+
+#Get the remaining incidents 
+remaining_1 <- raw_main_inc %>%
+  filter(inc_der_murder_non_neg_manslaughter != 1) 
+
+#See the dimension
+log_dim(raw_main_inc)
+log_dim(tbd_1)
+log_dim(remaining_1)
+
+#Process the murder counts
+
+#Read in the murder count extracts
+#tbd_murder_counts <- fread(paste0(CONST_OUTPUT, "agg_victim_murder_person_counts_", CONST_STATE ,"_.csv.gz") )
+tbd_murder_counts <- readfiles(inpath=filepathin, inpatternfile="^agg_victim_murder_person_counts_\\w+.csv.gz")
+
+glimpse(tbd_murder_counts)
+
+#Do the merge
+final_1 <- tbd_1 %>%
+  inner_join(tbd_murder_counts, by="incident_id") %>%
+  rename(counts = der_victim_person_counts) %>%
+  mutate(der_offense = 70) #Murder Subtotal	70
+  
+
+#See the dimensions
+log_dim(final_1)
+log_dim(tbd_1)
+log_dim(tbd_murder_counts)
+
+#Remove objects 
+#rm(list=ls(pattern="tbd_"), raw_main_inc)
+rm(list=ls(pattern="tbd_"))						   
+invisible(gc())
+
+#final_1 is murder
+
+###############################################################################################
+
+################################################2 Negligent manslaughter###################################
+
+#Skip the incident if the top offense is "09B" (Negligent manslaughter) 
+
+#Filter to incidents with Negligent manslaughter
+# tbd_1 <- remaining_1 %>%
+#   filter(inc_der_neg_manslaughter == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)  
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1
+         #inc_der_neg_manslaughter == 1 |
+         #inc_der_collapse_rape == 1  |
+         #inc_der_robbery  == 1 |
+         #inc_der_aggravated_assault   == 1 |
+         #Need to include simple assault
+         #inc_der_collapse_simple_assault   == 1 
+         #inc_der_burglary_b_e   == 1 
+         #Need to include Theft
+         #inc_der_collapse_theft   == 1
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+#Filter to incidents with Negligent manslaughter
+tbd_1 <- tbd_remaining %>%	
+  filter(inc_der_neg_manslaughter == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)  
+
+#Get the remaining incidents, since skipping Negligent manslaughter incidents
+remaining_2 <- remaining_1 %>%
+  filter(inc_der_neg_manslaughter != 1) 
+
+#See the dimension
+log_dim(remaining_1)
+log_dim(tbd_1)
+log_dim(remaining_2)
+
+#Read in the negligent manslaughter count extracts
+#tbd_nm_counts <- fread(paste0(CONST_OUTPUT, "agg_victim_nm_person_counts_", CONST_STATE ,"_.csv.gz") )
+tbd_nm_counts <- readfiles(inpath=filepathin, inpatternfile="^agg_victim_nm_person_counts_\\w+.csv.gz")
+
+glimpse(tbd_nm_counts)
+
+#Do the merge
+final_2 <- tbd_1 %>%
+  inner_join(tbd_nm_counts, by="incident_id") %>%
+  rename(counts = der_victim_person_counts) %>%
+  mutate(der_offense = 71) #71 Negligent manslaughter
+  
+
+#See the dimensions
+log_dim(final_2)
+log_dim(tbd_1)
+log_dim(tbd_nm_counts)
+
+
+#final_2 for non-Negligent manslaughter
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_1)
+invisible(gc())
+
+###############################################3 Rape####################################################
+
+
+# .	"11A", "11B", "11C" [Rape]
+# -	Classify:
+# .	Get the offenses with any of the three rape codes. Subset to those with an associated victim with sex of M or F. 
+# 1.	If none of the offense victims had a sex of M/F, this incident is skipped. 
+# 2.	For the remaining offenses with a M/F victim, if any were completed, the counts for this incident will falls in the "rape by force" bucket, otherwise it's the "attempted rape by force." 
+# -	Count: The number of unique victims tied to either 11C, 11B, or 11A (looking at all the offenses in the incident). Non-M/F victims are included in this count.
+
+
+#Filter to incidents with rape
+# tbd_1 <- remaining_2 %>%
+#   filter(inc_der_collapse_rape == 1) %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 |
+         inc_der_neg_manslaughter == 1) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_collapse_rape == 1) %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)
+
+  
+#Get the remaining incidents 
+remaining_3 <- remaining_2 %>%
+  filter(inc_der_collapse_rape != 1) 
+
+#See the dimension
+log_dim(remaining_2)
+log_dim(tbd_1)
+log_dim(remaining_3)
+
+
+#Read in the rape count extracts
+#tbd_rape_counts <- fread(paste0(CONST_OUTPUT, "agg_victim_rape_gender_completed_person_counts_", CONST_STATE ,"_.csv.gz") )
+tbd_rape_counts <- readfiles(inpath=filepathin, inpatternfile="^agg_victim_rape_gender_completed_person_counts_\\w+.csv.gz")
+
+glimpse(tbd_rape_counts)
+
+#Get the variables for rape_sex_
+tbd_rape_vars <- tbd_rape_counts %>%
+  colnames() %>%
+  as_tibble() %>%
+  mutate(keep = str_match(.$value, pattern="^rape_sex_\\w+")) %>%
+  filter(!is.na(keep)) %>%
+  pull(value)
+
+#See the variables
+tbd_rape_vars
+
+#Overwrite the rape variables for the following only (i.e. male or female and A or C)
+#20230719 - Need to consider Unknown gender
+tbd_rape_vars <- c("rape_sex_F_A", 
+                   "rape_sex_F_C", 
+                   "rape_sex_M_A",
+                   "rape_sex_M_C",
+                   "rape_sex_U_A",
+                   "rape_sex_U_C"
+                   )
+
+#Do the merge
+tbd_2 <- tbd_1 %>%
+  inner_join(tbd_rape_counts, by="incident_id") %>%
+  rowwise() %>%
+  #Create the total counts
+  mutate(der_totalrape = sum(!!!(tbd_rape_vars %>% rlang:::parse_exprs()) ),
+         #It looks like it counts the number of incidents involving female and males 
+         #der_totalrape = sum(!!!tbd_rape_vars,  na.rm=TRUE),
+    
+# 2.	For the remaining offenses with a M/F victim, if any were completed, the counts for this incident will falls in the "rape by force" bucket, otherwise it's the "attempted rape by force."         
+         der_rape_complete_attempt = fcase(
+           rape_sex_F_C > 0 | rape_sex_M_C > 0 | rape_sex_U_C > 0, 1,
+           rape_sex_F_A > 0 | rape_sex_M_A > 0 | rape_sex_U_A > 0, 2)
+         ) %>%
+  ungroup()
+
+#Check the recodes
+tbd_2 %>% checkfunction(der_totalrape, !!!(tbd_rape_vars %>% rlang:::parse_exprs()) )
+tbd_2 %>% checkfunction(der_rape_complete_attempt, !!!(tbd_rape_vars %>% rlang:::parse_exprs()) )
+
+#final_3 is Rape (completed)
+final_3 <- tbd_2 %>%
+  filter(der_rape_complete_attempt == 1) %>%
+  rename(counts = der_totalrape) %>%
+  mutate(der_offense = 73) #Rape Rape	73
+
+final_3 %>% checkfunction(der_rape_complete_attempt, counts, !!!(tbd_rape_vars %>% rlang:::parse_exprs()))
+
+#final_4 is Attempted Rape
+final_4 <- tbd_2 %>%
+  filter(der_rape_complete_attempt == 2) %>%
+  rename(counts = der_totalrape) %>%
+  mutate(der_offense = 74) #Rape Attempted Rape	74
+
+final_4 %>% checkfunction(der_rape_complete_attempt, counts, !!!(tbd_rape_vars %>% rlang:::parse_exprs()))
+
+#final_5 is Rape	Subtotal includes unknown gender
+final_5 <- tbd_2 %>%
+  rename(counts = der_totalrape) %>%
+  mutate(der_offense = 72) #Rape Subtotal	72
+
+final_5 %>% checkfunction(der_rape_complete_attempt, counts, !!!(tbd_rape_vars %>% rlang:::parse_exprs()))
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_2)
+invisible(gc())
+
+
+
+
+###############################################################################################
+
+###############################################4 Robbery####################################################
+
+# "120" [Robbery]
+# -	Classify: Look at the types of force associated with the offense. Assign the offense by weapon code with the following logic:
+# .	If there is a firearm (11-15) , it's a firearm robbery
+# .	If there is a knife (20), it's a knife/cutting instrument robbery
+# .	If there's another dangerous weapon ("30", "35", "50", "60", "65", "70", "85", "90", "95"), it's "Other dangerous weapon" robbery
+# .	If it has a strongarm code (44  or 99), it's a "hands fists feet" robbery
+# -	Count: as 1
+
+#Filter to incidents with robbery
+# tbd_1 <- remaining_3 %>%
+#   #Edit on 20230719 - It appears to be completed robberies
+#   #filter(inc_der_robbery  == 1 & trim_upcase(attempt_complete_code) == "C" )  %>%
+#   filter(inc_der_robbery  == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)  
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 | 
+         inc_der_neg_manslaughter == 1 |
+         inc_der_collapse_rape == 1    
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_robbery  == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)  
+
+#Get the remaining incidents 
+remaining_4 <- remaining_3 %>%
+  filter(inc_der_robbery  != 1) 
+
+#See the dimension
+log_dim(remaining_3)
+log_dim(tbd_1)
+log_dim(remaining_4)
+
+#Process the robbery counts
+
+#Read in the robbery count extracts
+# tbd_robbery_weapons_counts <- fread(paste0(CONST_OUTPUT, "agg_robbery_weapons_", CONST_STATE ,"_.csv.gz") )
+
+tbd_robbery_weapons_counts <- readfiles(inpath=filepathin, inpatternfile="^agg_robbery_weapons_\\w+.csv.gz")
+glimpse(tbd_robbery_weapons_counts)
+
+#Do the merge
+tbd_2 <- tbd_1 %>%
+  inner_join(tbd_robbery_weapons_counts, by="incident_id") %>%
+  mutate(one = 1)
+
+#See the data
+log_dim(tbd_2)
+log_dim(tbd_1)
+glimpse(tbd_2)
+
+tbd_2 %>% checkfunction(robbery_firearm)
+
+#final_6 is Robbery - Firarm
+final_6 <- tbd_2 %>%
+  filter(robbery_firearm > 0 ) %>%
+  mutate(counts = one) %>%
+  mutate(der_offense = 76) #Robbery Robbery Firarm	76
+
+#Check the recodes
+# final_6 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet, robbery_NA)
+
+final_6 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet)
+
+#final_7 is Robbery_Robbery - Knife or Cutting Instrument
+final_7 <- tbd_2 %>%
+  filter(robbery_firearm == 0 & robbery_knife > 0 ) %>%
+  mutate(counts = one) %>%
+  mutate(der_offense = 77) #Robbery Robbery Knife or Cutting Instrument	77
+
+
+#Check the recodes
+# final_7 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet, robbery_NA)
+
+final_7 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet)
+
+#final_8 is Robbery_Robbery - Other Dangerous Weapon
+final_8 <- tbd_2 %>%
+  filter(robbery_firearm == 0 & robbery_knife == 0 & robbery_other > 0) %>%
+  mutate(counts = one) %>%
+  mutate(der_offense = 78) #Robbery Robbery Other Dangerous Weapon	78
+
+
+#Check the recodes
+# final_8 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet, robbery_NA)
+
+final_8 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet)
+
+#final_9 is Robbery_Robbery - Hands, Fists, Feet
+final_9 <- tbd_2 %>%
+  filter(robbery_firearm == 0 & robbery_knife == 0 & robbery_other == 0 & robbery_hand_fist_feet > 0 ) %>%
+  mutate(counts = one) %>%
+  mutate(der_offense = 79) #Robbery Robbery Hands, Fists, Feet	79
+
+
+#Check the recodes
+# final_9 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet, robbery_NA)
+
+final_9 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet)
+
+#final_10 is Robbery_Subtotal
+final_10 <- tbd_2 %>%
+  filter(robbery_firearm > 0 | robbery_knife > 0 | robbery_other > 0 | robbery_hand_fist_feet > 0 ) %>%
+  rowwise() %>%						   
+  mutate(counts = one ) %>%
+  mutate(der_offense = 75) #Robbery Subtotal	75
+
+
+#Check the recodes
+# final_10 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet, robbery_NA)
+
+final_10 %>% checkfunction(counts, robbery_firearm, robbery_knife, robbery_other, robbery_hand_fist_feet)
+
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_3)
+invisible(gc())
+
+###############################################################################################
+
+###############################################5 Assault####################################################
+
+
+# .	"13A" [Assault]
+# -	Classify: Look at the types of force associated with the offense. Assign the offense by weapon code with the following logic:
+# .	If there is a firearm (11-15), it's a firearm assault
+# .	If there is a knife (20), it's a knife/cutting instrument assault
+# .	If there's another dangerous weapon ("30", "35", "50", "60", "65", "70", "85", "90", "95"), it's "Other dangerous weapon" assault
+# .	If it has a strongarm code (44 or 99), it's a "hands fists feet" assault
+# -	Count: All victims tied to the offense 
+
+#Filter to incidents with assault
+# tbd_1 <- remaining_4 %>%
+#   filter(inc_der_aggravated_assault   == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)   
+
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 | 
+         #Perhaps number will match if take out manslaughter
+         #Update add back on inc_der_neg_manslaughter - better to have off in 5 agencies then 49 in 2022 
+         inc_der_neg_manslaughter == 1 |
+         inc_der_collapse_rape == 1  |
+         inc_der_robbery  == 1   
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+
+#Filter to incidents with assault
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_aggravated_assault   == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)   
+
+#Get the remaining incidents 
+remaining_5 <- remaining_4 %>%
+  filter(inc_der_aggravated_assault  != 1) 
+
+#See the dimension
+log_dim(remaining_4)
+log_dim(tbd_1)
+log_dim(remaining_5)
+
+#Process the assault counts
+
+#Read in the assault count extracts
+# tbd_assault_weapons_counts <- fread(paste0(CONST_OUTPUT, "agg_agg_assault_weapon_victim_count_", CONST_STATE ,"_.csv.gz") )
+
+tbd_assault_weapons_counts <- readfiles(inpath=filepathin, inpatternfile="^agg_agg_assault_weapon_victim_count_\\w+.csv.gz")
+
+glimpse(tbd_assault_weapons_counts)
+
+#Do the merge
+tbd_2 <- tbd_1 %>%
+  inner_join(tbd_assault_weapons_counts, by="incident_id") 
+
+#See the data
+log_dim(tbd_2)
+log_dim(tbd_1)
+glimpse(tbd_2)
+
+tbd_2 %>% checkfunction(agg_assault_firearm)
+
+#final_11 is Assault_Assault - Firarm
+final_11 <- tbd_2 %>%
+  filter(agg_assault_firearm > 0 ) %>%
+  mutate(counts = aggravated_assault_victim_count) %>%
+  mutate(der_offense = 81) #Assault Assault Firearm	81
+
+
+#Check the recodes
+# final_11 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet, agg_assault_NA)
+
+final_11 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet)
+
+#final_12 is Assault_Assault - Knife or Cutting Instrument
+final_12 <- tbd_2 %>%
+  filter(agg_assault_firearm == 0 & agg_assault_knife > 0 ) %>%
+  mutate(counts = aggravated_assault_victim_count) %>%
+  mutate(der_offense = 82) #Assault Assault Knife or Cutting Instrument	82
+
+
+#Check the recodes
+# final_12 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet, agg_assault_NA)
+
+final_12 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet)
+
+#final_13 is Assault_Assault - Other Dangerous Weapon
+#20230722 - drop off offense of neg manslaughter and be off in 5 agencies or include offense of neg manslaughter and be off in 42 agencies for SRS 2022																																					   
+final_13 <- tbd_2 %>%
+  filter(agg_assault_firearm == 0 & agg_assault_knife == 0 & agg_assault_other > 0) %>%
+  mutate(counts = aggravated_assault_victim_count) %>%
+  mutate(der_offense = 83) #Assault Assault Other Dangerous Weapon	83
+
+
+#Check the recodes
+# final_13 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet, agg_assault_NA)
+
+final_13 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet)
+
+#final_14 is Assault_Assault - Hands, Fists, Feet
+final_14 <- tbd_2 %>%
+  filter(agg_assault_firearm == 0 & agg_assault_knife == 0 & agg_assault_other == 0 & agg_assault_hand_fist_feet > 0 ) %>%
+  mutate(counts = aggravated_assault_victim_count) %>%
+  mutate(der_offense = 84) #Assault Assault Hands, Fists, Feet	84
+
+
+#Check the recodes
+# final_14 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet, agg_assault_NA)
+
+final_14 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet)
+
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_4)
+invisible(gc())
+
+##############################################################################################
+
+###############################################6 simple assault ###########################################
+
+# .	"13B", "13C" [other assault not aggravated] <- simple assault
+# -	Classify: Look at the forces associated with either 13B or 13C. If there are none, or all listed forces fall under the following non-aggravated force codes ("40", "90", "95", "99", " ") then we can count this incident as "Other assault not aggravated"
+# -	Count: all victims tied to 13C or 13B 
+
+#Filter to incidents with assault
+# tbd_1 <- remaining_5 %>%
+#   filter(inc_der_collapse_simple_assault   == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)   
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 |
+         #20230722 Exclude Manslaughter and be off for one agency in 2022 NJ0081100 or
+         #include and off in 7 agencies
+         inc_der_neg_manslaughter == 1 |
+         inc_der_collapse_rape == 1  |
+         inc_der_robbery  == 1 |
+         inc_der_aggravated_assault   == 1 |
+        #Take out additional offense ahead of simple assault
+        inc_der_burglary_b_e   == 1  |
+        inc_der_collapse_theft   == 1  |
+        inc_der_motor_vehicle_theft  
+           
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_collapse_simple_assault   == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)   
+
+#Get the remaining incidents 
+remaining_6 <- remaining_5 %>%
+  filter(inc_der_collapse_simple_assault  != 1) 
+
+#See the dimension
+log_dim(remaining_5)
+log_dim(tbd_1)
+log_dim(remaining_6)
+
+#Process the assault counts
+
+#Read in the assault count extracts
+#tbd_assault_weapons_counts <- fread(paste0(CONST_OUTPUT, "agg_assault_weapon_victim_count_", CONST_STATE ,"_.csv.gz") )
+
+tbd_assault_weapons_counts <- readfiles(inpath=filepathin, inpatternfile="^agg_assault_weapon_victim_count_\\w+.csv.gz")
+
+glimpse(tbd_assault_weapons_counts)
+
+#Do the merge
+tbd_2 <- tbd_1 %>%
+  inner_join(tbd_assault_weapons_counts, by="incident_id") 
+
+#See the data
+log_dim(tbd_2)
+log_dim(tbd_1)
+log_dim(tbd_assault_weapons_counts)
+
+glimpse(tbd_2)
+
+tbd_2 %>% checkfunction(assault_non_aggravated )
+
+#final_15 is simple assault
+final_15 <- tbd_2 %>%
+  #Note:  Need to comment this out to get counts to match																												   
+  #filter(assault_non_aggravated > 0 ) %>%
+  mutate(counts = assault_victim_count) %>%
+  mutate(der_offense = 85) #Simple Assault	85
+
+#Check the recodes
+final_15 %>% checkfunction(counts, assault_victim_count, assault_non_aggravated)
+
+#final_16 is agg_assault_Subtotal
+final_16 <- bind_rows(
+  final_11, #final_11 is Assault_Assault - Firarm
+  final_12, #final_12 is Assault_Assault - Knife or Cutting Instrument
+  final_13, #final_13 is Assault_Assault - Other Dangerous Weapon
+  final_14, #final_14 is Assault_Assault - Hands, Fists, Feet
+  final_15  #final_15 is simple assault
+)%>%
+  mutate(der_offense = 80) #Assault Subtotal	80
+
+
+# final_16 <- tbd_2 %>%
+#   filter(agg_assault_firearm > 0 | agg_assault_knife > 0 | agg_assault_other > 0 | agg_assault_hand_fist_feet > 0 ) %>%
+#   mutate(counts = aggravated_assault_victim_count ) %>%
+#   mutate(der_offense = 80) #Assault Subtotal	80
+
+#Check the recodes
+# final_16 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet, agg_assault_NA)
+
+
+
+final_16 %>% checkfunction(counts, aggravated_assault_victim_count, agg_assault_firearm, agg_assault_knife, agg_assault_other, agg_assault_hand_fist_feet)
+
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_5)
+invisible(gc())
+
+###############################################################################################
+
+###############################################7 Burglary ###########################################
+
+# .	"220" [Burglary]
+# -	Classify:
+# .	If the offense was completed, stratify by forcible entry or non-forcible entry
+# .	If the offense was attempted, count as "attempted forcible burglary"
+# .	If there was no entry code (F or N) or no attempted/completed flag, skip the incident
+# -	Count:
+# .	If the location was a Rental Storage Facility and they entered at least 1 premises, count the number of premises entered
+# .	Otherwise count as 1
+
+
+#Filter to incidents with assault
+# tbd_1 <- remaining_6 %>%
+#   filter(inc_der_burglary_b_e   == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)  
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 |
+         inc_der_neg_manslaughter == 1 |
+         inc_der_collapse_rape == 1  |
+         inc_der_robbery  == 1 |
+         inc_der_aggravated_assault   == 1 
+         #Keep simple assault
+         #inc_der_collapse_simple_assault   == 1    
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+
+#Filter to incidents with assault
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_burglary_b_e   == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)  
+
+#Get the remaining incidents 
+remaining_7 <- remaining_6 %>%
+  filter(inc_der_burglary_b_e  != 1) 
+
+#See the dimension
+log_dim(remaining_6)
+log_dim(tbd_1)
+log_dim(remaining_7)
+
+#Process the burglary
+
+#Read in the burlglary_completed_force_num_entry
+#tbd_inc_burlglary_completed_force_num_entry <- fread(paste0(CONST_OUTPUT, "agg_inc_burlglary_completed_force_num_entry_", CONST_STATE ,"_.csv.gz") )
+tbd_inc_burlglary_completed_force_num_entry <- readfiles(inpath=filepathin, inpatternfile="^agg_inc_burlglary_completed_force_num_entry_\\w+.csv.gz")
+
+
+glimpse(tbd_inc_burlglary_completed_force_num_entry)
+
+#Do the merge
+tbd_2 <- tbd_1 %>%
+  inner_join(tbd_inc_burlglary_completed_force_num_entry, by="incident_id") 
+
+#See the data
+log_dim(tbd_2)
+log_dim(tbd_1)
+log_dim(tbd_inc_burlglary_completed_force_num_entry)
+
+glimpse(tbd_2)
+
+tbd_2 %>% checkfunction(classify_burglary_b_e, keep_burglary_num_premises_entered )
+
+#final_17 is Burglary_Burglary - Forcible Entry
+final_17 <- tbd_2 %>%
+  filter(classify_burglary_b_e == "force" ) %>%
+  mutate(counts = keep_burglary_num_premises_entered) %>%
+  mutate(der_offense = 87) #Burglary Burglary Forcible Entry	87
+
+
+#Check the recodes
+final_17 %>% checkfunction(counts, keep_burglary_num_premises_entered, classify_burglary_b_e)
+
+#final_18 is Burglary_Burglary - No Force
+final_18 <- tbd_2 %>%
+  filter(classify_burglary_b_e == "noforce" ) %>%
+  mutate(counts = keep_burglary_num_premises_entered) %>%
+  mutate(der_offense = 88) #Burglary Burglary No Force	88
+
+
+#Check the recodes
+final_18 %>% checkfunction(counts, keep_burglary_num_premises_entered, classify_burglary_b_e)
+
+#final_19 is Burglary_Burglary - Attempted Forcible Entry
+final_19 <- tbd_2 %>%
+  filter(classify_burglary_b_e == "attempted" ) %>%
+  mutate(counts = keep_burglary_num_premises_entered) %>%
+  mutate(der_offense = 89) #Burglary Burglary Attempted Forcible Entry	89
+
+
+#Check the recodes
+final_19 %>% checkfunction(counts, keep_burglary_num_premises_entered, classify_burglary_b_e)
+
+#final_20 is Burglary_Subtotal
+final_20 <- tbd_2 %>%
+  filter(!is.na(classify_burglary_b_e) ) %>%
+  mutate(counts = keep_burglary_num_premises_entered) %>%
+  mutate(der_offense = 86) #Burglary Subtotal	86
+
+#Check the recodes
+final_20 %>% checkfunction(counts, keep_burglary_num_premises_entered, classify_burglary_b_e)
+
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_6)
+invisible(gc())
+
+###############################################################################################
+
+###############################################8 Larceny ###########################################
+
+# .	"23A", "23B", "23C", "23D", "23E", "23F", "23G","23H" [Larceny]
+# -	Classify: Larceny
+# -	Count: as 1
+
+#Filter to incidents with Larceny
+# tbd_1 <- remaining_7 %>%
+#   filter(inc_der_collapse_theft   == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first)  
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 |
+         inc_der_neg_manslaughter == 1 |
+         inc_der_collapse_rape == 1  |
+         inc_der_robbery  == 1 |
+         inc_der_aggravated_assault   == 1 |
+         #Need to include simple assault
+         #inc_der_collapse_simple_assault   == 1 |
+         inc_der_burglary_b_e   == 1 |
+         #Need to add on Motor Vehicle Theft
+         inc_der_motor_vehicle_theft == 1 
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+#Filter to incidents with Larceny
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_collapse_theft   == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)  
+
+#Get the remaining incidents 
+remaining_8 <- remaining_7 %>%
+  filter(inc_der_collapse_theft  != 1) 
+
+#See the dimension
+log_dim(remaining_7)
+log_dim(tbd_1)
+log_dim(remaining_8)
+
+#Process the Larceny
+
+#final_21 is Larceny_Subtotal
+final_21 <- tbd_1 %>%
+  mutate(counts = 1) %>%
+  mutate(der_offense = 90) #Larceny Subtotal	90
+
+#Check the recodes
+final_21 %>% checkfunction(counts)
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_7)
+invisible(gc())
+
+###############################################################################################
+
+###############################################9 Motor vehicle theft #######################################
+
+# .	"240" [Motor vehicle theft]
+# -	Classify: This offense can be split between multiple classifications, see below logic
+# -	Count:
+# .	If the offense was attempted, it counts as 1 "Auto theft" 
+# .	If the offense was completed, 
+# o	Take the set of properties for the incident where property loss type is 7 (stolen). Take the stolen_count  for each.
+# o	If there is a stolen property with an auto code "03"
+#  -Count the stolen properties with type "05","28","37": Truck/Bus theft
+#  -Count the stolen properties with type "24": Other Vehicle theft
+#  -If those two didn't add up to the total stolen MV for the incident, the remainder is assigned to "Auto theft"
+# o	If there is no auto code but there is a Truck/Bus code
+#  -Count the stolen properties with type "24": Other Vehicle theft
+#  -If that didn't add up to the total stolen MV for the incident, the remainder is assigned to Truck/Bus theft
+# o	If there is no auto or truck/buss code, the entire stolen count is assigned to "Other Vehicle"
+
+#Filter to incidents with Motor vehicle theft
+# tbd_1 <- remaining_8 %>%
+#   filter(inc_der_motor_vehicle_theft    == 1)  %>%
+#   #Fix need to deduplicate the incident_id due to multiple offenses
+#   group_by(ori, incident_id) %>%
+#   mutate(raw_first = row_number()) %>%
+#   ungroup() %>%
+#   #Filter to 1 record
+#   filter(raw_first == 1) %>%
+#   select(-raw_first) 
+
+
+
+#Need to drop off any offenses 
+tbd_drop_inc <- raw_main_inc %>% 
+  filter(inc_der_murder_non_neg_manslaughter == 1 |
+         inc_der_neg_manslaughter == 1 |
+         inc_der_collapse_rape == 1  |
+         inc_der_robbery  == 1 |
+         inc_der_aggravated_assault   == 1 |
+         #Need to include simple assault
+         #inc_der_collapse_simple_assault   == 1 |
+         inc_der_burglary_b_e   == 1 
+         #Need to include Theft
+         #inc_der_collapse_theft   == 1
+           ) %>%
+  distinct(incident_id)
+
+tbd_remaining <- raw_main_inc %>%
+  anti_join(tbd_drop_inc, by=c("incident_id"))
+
+#Check the size
+log_dim(raw_main_inc)
+log_dim(tbd_drop_inc)
+log_dim(tbd_remaining)
+
+
+
+#Filter to incidents with Motor vehicle theft
+tbd_1 <- tbd_remaining %>%
+  filter(inc_der_motor_vehicle_theft    == 1)  %>%
+  #Fix need to deduplicate the incident_id due to multiple offenses
+  group_by(ori, incident_id) %>%
+  mutate(raw_first = row_number()) %>%
+  ungroup() %>%
+  #Filter to 1 record
+  filter(raw_first == 1) %>%
+  select(-raw_first)  
+
+#Get the remaining incidents 
+remaining_9 <- remaining_8 %>%
+  filter(inc_der_motor_vehicle_theft   != 1) 
+
+#See the dimension
+log_dim(remaining_8)
+log_dim(tbd_1)
+log_dim(remaining_9)
+
+#Process the Motor vehicle theft
+
+#Read in the tbd_mvt_variables
+#tbd_mvt_variables <- fread(paste0(CONST_OUTPUT, "agg_mvt_variables_", CONST_STATE ,"_.csv.gz") )
+tbd_mvt_variables <- readfiles(inpath=filepathin, inpatternfile="^agg_mvt_variables_\\w+.csv.gz")
+
+glimpse(tbd_mvt_variables)
+
+#Read in the agg_inc_mvt_att_comp_flags file
+tbd_mvt_inc_variables <- readfiles(inpath=filepathin, inpatternfile="^agg_inc_mvt_att_comp_flags_\\w+.csv.gz")
+glimpse(tbd_mvt_inc_variables)
+
+#Join the files together
+tbd_mvt_variables_merge <- tbd_mvt_inc_variables %>%
+  left_join(tbd_mvt_variables, by="incident_id")
+
+#Check the merge
+log_dim(tbd_mvt_variables_merge)
+log_dim(tbd_mvt_inc_variables)
+log_dim(tbd_mvt_variables)
+
+#Do the merge
+tbd_2 <- tbd_1 %>%
+  inner_join(tbd_mvt_variables_merge, by="incident_id") 
+
+#See the data
+log_dim(tbd_2)
+log_dim(tbd_1)
+log_dim(tbd_mvt_variables)
+
+glimpse(tbd_2)
+
+#Check the recode
+tbd_2 %>% checkfunction(inc_der_motor_vehicle_theft, inc_der_motor_vehicle_theft_attempt, inc_der_motor_vehicle_theft_complete)
+
+
+#Motor Vehicle Theft_Auto Theft
+#final_22 is Motor Vehicle Theft_Auto Theft
+final_22 <- tbd_2 %>%
+  #Count Auto Theft
+  mutate(counts = case_when(
+    inc_der_motor_vehicle_theft_attempt == 1 ~ 1, #If the offense was attempted, it counts as 1 "Auto theft"
+    TRUE  ~ as.numeric(veh_auto))) %>%
+  mutate(der_offense = 92) #Motor Vehicle Theft Auto Theft	92
+
+#Check the recodes
+final_22 %>% checkfunction(counts, inc_der_motor_vehicle_theft_attempt, inc_der_motor_vehicle_theft_complete, veh_auto)
+
+
+#Motor Vehicle Theft_Truck and Bus Theft
+#final_23 is Motor Vehicle Theft_Truck and Bus Theft
+final_23 <- tbd_2 %>%
+  #Completed MVT
+  filter(inc_der_motor_vehicle_theft_complete == 1 ) %>%
+  #Count veh_truck_bus_theft
+  filter(veh_truck_bus_theft >= 1 ) %>%  
+  #Count Motor Vehicle Theft_Truck and Bus Theft
+  mutate(counts = as.numeric(veh_truck_bus_theft)) %>%
+  mutate(der_offense = 93) #Motor Vehicle Theft Truck and Bus Theft	93
+
+
+#Check the recodes
+final_23 %>% checkfunction(counts, inc_der_motor_vehicle_theft_complete, veh_truck_bus_theft)
+
+#Motor Vehicle Theft_Other Vehicle Theft
+#final_24 is Motor Vehicle Theft_Other Vehicle Theft
+final_24 <- tbd_2 %>%
+  #Completed MVT
+  filter(inc_der_motor_vehicle_theft_complete == 1 ) %>%
+  #Count veh_other
+  filter(veh_other >= 1 ) %>%  
+  #Count Motor Vehicle Theft_Other Vehicle Theft
+  mutate(counts = as.numeric(veh_other)) %>%
+  mutate(der_offense = 94) #Motor Vehicle Theft Other Vehicle Theft	94
+
+
+#Check the recodes
+final_24 %>% checkfunction(counts, inc_der_motor_vehicle_theft_complete, veh_other)
+
+#Motor Vehicle Theft_Subtotal
+#final_25 is Motor Vehicle Theft_Subtotal
+final_25 <- tbd_2 %>%
+  rowwise() %>%
+  #Count Motor Vehicle Theft_Subtotal
+  mutate(counts  = case_when(
+    inc_der_motor_vehicle_theft_attempt == 1 ~ 1, #If the offense was attempted, it counts as 1 "Auto theft"
+    TRUE ~ sum(as.numeric(veh_auto), as.numeric(veh_truck_bus_theft), as.numeric(veh_other), na.rm=TRUE))) %>%
+  mutate(der_offense = 91) %>% #Motor Vehicle Theft Subtotal	91
+
+  ungroup()
+
+#Check the recodes
+final_25 %>% checkfunction(counts, inc_der_motor_vehicle_theft_attempt, inc_der_motor_vehicle_theft_complete, veh_auto, veh_truck_bus_theft, veh_other)
+
+
+#Remove objects 
+rm(list=ls(pattern="tbd_"), remaining_8)
+invisible(gc())
+
+###############################################################################################
+
+#Need to gather all of the "final_" datasets
+merge_final <- reduce(mget(ls(pattern="final_")), bind_rows) %>%
+  #select(ori, legacy_ori, incident_id, incident_month, incident_year, der_offense,counts)
+  select(ori, incident_id, incident_month, incident_year, der_offense,counts)
+
+#See the dimension
+log_dim(merge_final)
+
+#Next need to add on the month information
+merge_final2 <- merge_final %>%
+  mutate(
+    der_offense_month = paste0("v", (incident_month-1)*118 + der_offense)
+)
+
+#Check the recodes
+merge_final2 %>% checkfunction(der_offense_month, incident_month, der_offense)
+
+#Create the final total monthly counts
+merge_final3_monthly <- merge_final2 %>%
+  #Need to keep certain variables for the totals
+  filter( 
+    der_offense %in% c(
+      
+      70, #Murder Subtotal
+	  71, #Negligent manslaughter							 
+      72, #Rape Subtotal
+      # 73, #Rape Rape
+      # 74, #Rape Attempted Rape
+      75, #Robbery Subtotal
+      # 76, #Robbery Robbery Firarm
+      # 77, #Robbery Robbery Knife or Cutting Instrument
+      # 78, #Robbery Robbery Other Dangerous Weapon
+      # 79, #Robbery Robbery Hands, Fists, Feet
+      80, #Assault Subtotal
+      # 81, #Assault Assault Firearm
+      # 82, #Assault Assault Knife or Cutting Instrument
+      # 83, #Assault Assault Other Dangerous Weapon
+      # 84, #Assault Assault Hands, Fists, Feet
+      # 85, #Simple Assault
+      86, #Burglary Subtotal
+      # 87, #Burglary Burglary Forcible Entry
+      # 88, #Burglary Burglary No Force
+      # 89, #Burglary Burglary Attempted Forcible Entry
+      90, #Larceny Subtotal
+      91 #Motor Vehicle Theft Subtotal
+      # 92, #Motor Vehicle Theft Auto Theft
+      # 93, #Motor Vehicle Theft Truck and Bus Theft
+      # 94, #Motor Vehicle Theft Other Vehicle Theft
+      # , #Commercial Sex Acts
+      # , #Involuntary Servitude
+      # , #Arson
+    )
+  ) %>%
+  #group_by(ori, legacy_ori, incident_month) %>%
+  group_by(ori, incident_month) %>%
+  summarise(count = sum(counts, na.rm=TRUE) ) %>%
+  ungroup() %>%
+  mutate(
+    der_offense_month = paste0("v", (incident_month-1)*118 + 95)
+  )
+
+#Check the recode 
+merge_final3_monthly %>% checkfunction(incident_month, der_offense_month)
+
+
+
+#Need to aggregate at the ori, level
+#Need to use the following variables  der_offense_month and counts
+merge_final3 <- merge_final2 %>%
+  #Select the variables
+  #select(ori, legacy_ori, der_offense_month, counts) %>%
+  select(ori, der_offense_month, counts) %>%
+  #Need to sum up all the counts
+  #group_by(ori, legacy_ori, der_offense_month) %>%
+  group_by(ori, der_offense_month) %>%
+  summarise(count = sum(counts, na.rm=TRUE) ) %>%
+  ungroup()
+
+#Check the dimension
+log_dim(merge_final3)
+log_dim(merge_final2)
+
+#Next need to transpose the dataset
+merge_final4 <- bind_rows(merge_final3, 
+                          #Need to drop incident_month
+                          merge_final3_monthly %>% select(-incident_month)) %>%
+  spread(der_offense_month, count)
+
+#Check the dimension
+log_dim(merge_final4)
+log_dim(merge_final3)
+
+#Need to get all the variables to be zero filled
+MACRO_ALL_VARS <- merge_final4 %>%
+  #Create rows
+  colnames() %>%
+  as_tibble() %>%
+  #Extract numbers
+  mutate(keep = str_match(string=.$value, pattern="v(\\d+)")[,2] %>% as.numeric() ) %>%
+  #Keep non-missing
+  filter(!is.na(keep)) %>%
+  #Sort
+  arrange(keep) %>%
+  #Get the sorted variables
+  select(value) %>% 
+  pull()
+
+#See the variables
+MACRO_ALL_VARS
+
+#Need to zero filled all the variables in MACRO_ALL_VARS
+merge_final5 <- merge_final4 %>%
+  mutate(
+    #Need to zero filled the variables
+    across(
+      .cols = any_of(MACRO_ALL_VARS),
+      .fns = ~{
+        replace_na(.x, replace = 0)
+      }, 
+      .names = "{.col}"
+    )
+  ) %>%
+  #Put variables in the correct order
+  #select(ori, legacy_ori,
+  select(ori,
+         !!!(MACRO_ALL_VARS %>% rlang:::parse_exprs() ) )
+  
+#See the data
+glimpse(merge_final5)
+
+#Output file to share
+merge_final5 %>%
+  write_csv(paste0(filepathout, "SRS_NIBRS_BLOCK_IMP_ONLY.csv"))
+
+
+
+
+```

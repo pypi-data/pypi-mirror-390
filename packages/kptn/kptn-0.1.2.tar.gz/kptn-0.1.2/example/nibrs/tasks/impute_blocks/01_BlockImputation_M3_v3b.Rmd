@@ -1,0 +1,674 @@
+---
+title: "01_BlockImputation_M3_v3b"
+author: "Amang/Jeniffer Iriondo"
+date: "June 29, 2021"
+output: html_document
+---
+
+```{r block1}
+
+###-------------------------------------------------------------------------------
+### Define libraries
+###-------------------------------------------------------------------------------
+
+library(tidyverse)
+library(haven)
+library(mice)
+library(miceadds)
+library(VIM)
+library(naniar)
+library(visdat)
+library(ggplot2)
+library(StatMatch)
+library(writexl)
+library(sas7bdat)
+library(sjmisc)
+library(gtools)
+library(zoo)
+library(reshape2)
+library(lazyeval)
+library(DT)	   
+
+# Deletes everything
+#Philip's edit on 20230605, need to remove this code since we have paths defined if running interactively
+#rm(list = ls())
+
+set.seed(414425)
+#Make set.seed = NA to produce consistent results on rerun
+#set.seed=NA
+
+read_csv <- partial(read_csv, guess_max = 100000) #For now, read thru the 1st 100,000 rows to determine variable type
+
+#Create a dataset for the state factors
+CONST_STATE_FACTOR <- c(
+"1=AK",
+"2=AL",
+"3=AR",
+"4=AS",
+"5=AZ",
+"6=CA",
+"7=CO",
+"8=CT",
+"9=CZ",
+"10=DC",
+"11=DE",
+"12=FL",
+"13=GA",
+"14=GM",
+"15=HI",
+"16=IA",
+"17=ID",
+"18=IL",
+"19=IN",
+"20=KS",
+"21=KY",
+"22=LA",
+"23=MA",
+"24=MD",
+"25=ME",
+"26=MI",
+"27=MN",
+"28=MO",
+"29=MS",
+"30=MT",
+"31=NB",
+"32=NC",
+"33=ND",
+"34=NH",
+"35=NJ",
+"36=NM",
+"37=NV",
+"38=NY",
+"39=OH",
+"40=OK",
+"41=OR",
+"42=PA",
+"43=PR",
+"44=RI",
+"45=SC",
+"46=SD",
+"47=TN",
+"48=TX",
+"49=UT",
+"50=VI",
+"51=VA",
+"52=VT",
+"53=WA",
+"54=WI",
+"55=WV",
+"56=WY",
+"57=MP",
+"98=FS") %>%
+  as_tibble() %>%
+  rename(
+    state_factor=value
+  ) %>%
+  mutate(
+    state_num = str_match(string=state_factor, pattern="(\\d+)=")[,2] %>% as.character()
+  )
+
+#See the dataset
+CONST_STATE_FACTOR %>% datatable()									   
+
+###-------------------------------------------------------------------------------
+### Data preparation: recoding and creating variables
+###-------------------------------------------------------------------------------
+
+# Read file created by Philip
+agn  <- read_csv(paste0(mainpathdata, "NIBRS_reporting_pattern_with_reta-mm.csv"))
+
+# Rename variables to have shorter names
+agn <- agn %>% mutate(state=nibrs_agn_state_id, division=nibrs_agn_division_code, region=nibrs_agn_region_code,
+              pop=nibrs_agn_population, agn_id=nibrs_agn_submitting_agency_id, parentpop_grp=nibrs_agn_parent_pop_group_code,
+              pop_grpid=nibrs_agn_population_group_id, parpop_grpid=nibrs_agn_parent_pop_group_code, male_off=nibrs_agn_male_officer,
+              male_civ=nibrs_agn_male_civilian, male_tot=nibrs_agn_male_total, female_off=nibrs_agn_female_officer,
+              female_civ=nibrs_agn_female_civilian, female_tot=nibrs_agn_female_total, sai=nibrs_agn_sai,
+              sub_agn_id=nibrs_agn_submitting_agency_id, off_rate=nibrs_agn_officer_rate, employ_rate=nibrs_agn_employee_rate,
+              msa=nibrs_agn_msa_name) 
+
+# Shortened crime variable names
+names(agn) <- sub("\\part1+", "", names(agn))
+names(agn) <- sub("\\otherc+", "o", names(agn))
+
+# Recode variables from character to numeric
+agn <- agn %>% mutate(rpt_type  = 
+              case_when(
+              nibrs_agn_reporting_type=="I" ~ 1,
+              nibrs_agn_reporting_type=="S" ~ 2))
+
+agn <- agn %>% mutate(suburb_flg  = 
+                      case_when(
+                      nibrs_agn_suburban_area_flag=="Y" ~ 1,
+                      nibrs_agn_suburban_area_flag=="N" ~ 0))
+
+agn <- agn %>% mutate(cover_flg  = 
+                        case_when(
+                          nibrs_agn_covered_flag=="Y" ~ 1,
+                          nibrs_agn_covered_flag=="N" ~ 0))
+
+# New for 2022 - will be used to form imputation classes
+agn <- agn %>% mutate(covering_flg  = 
+                        case_when(
+                          COVERING_FLAG=="Y" ~ 1,
+                          COVERING_FLAG=="N" ~ 0))
+
+agn <- agn %>% mutate(agn_status  = 
+                      case_when(
+                      nibrs_agn_agency_status=="A" ~ 1,
+                      nibrs_agn_agency_status=="D" ~ 2,
+                      nibrs_agn_agency_status=="L" ~ 3))
+
+agn <- agn %>% mutate(agn_type  = 
+                      case_when(
+                      nibrs_agn_agency_type_name=="City" ~1,
+                      nibrs_agn_agency_type_name=="County" ~2,
+                      nibrs_agn_agency_type_name=="Federal" ~3,
+                      nibrs_agn_agency_type_name=="Other" ~4,
+                      nibrs_agn_agency_type_name=="Other State Agency" ~5,
+                      nibrs_agn_agency_type_name=="State Police" ~6,
+                      nibrs_agn_agency_type_name=="Tribal" ~7,
+                      nibrs_agn_agency_type_name=="University or College" ~8))
+
+# Create Jan 31, CONST_YEAR as a reference date to calculate number of days between dates
+refdate <- as.Date(paste0(CONST_YEAR, "-01-31"))
+
+# Calculate dates as number of months
+agn <- agn %>% mutate(dt_jan_cert=ifelse(refdate<nibrs_agn_nibrs_cert_date,0, as.numeric(difftime(refdate, nibrs_agn_nibrs_cert_date)/30)),
+                      dt_jan_st=ifelse(refdate<nibrs_agn_nibrs_start_date,0, as.numeric(difftime(refdate, nibrs_agn_nibrs_start_date)/30)),
+                      dt_jan_leok_st=ifelse(refdate<nibrs_agn_nibrs_leoka_start_date,0, as.numeric(difftime(refdate, nibrs_agn_nibrs_leoka_start_date)/30)),
+                      dt_jan_ct_st=ifelse(refdate<nibrs_agn_nibrs_ct_start_date,0, as.numeric(difftime(refdate, nibrs_agn_nibrs_ct_start_date)/30)),
+                      dt_jan_bias_st=ifelse(refdate<nibrs_agn_nibrs_multi_bias_start_date,0, as.numeric(difftime(refdate, nibrs_agn_nibrs_multi_bias_start_date)/30)),
+                      dt_jan_eth_st=ifelse(refdate<nibrs_agn_nibrs_off_eth_start_date,0, as.numeric(difftime(refdate, nibrs_agn_nibrs_off_eth_start_date)/30)))
+
+# Replace missing dates to 0
+agn <- agn %>% mutate_at(.vars=c("dt_jan_cert","dt_jan_st","dt_jan_leok_st","dt_jan_ct_st","dt_jan_bias_st","dt_jan_eth_st"), ~replace(., is.na(.), 0))
+
+# Keep variables and records needed for imputation- CONST_YEAR records and eligible IDs
+tbd_agnCONST_YEAR <- agn %>% filter(incident_year==CONST_YEAR & nibrs_agn_in_univ_elig==1) %>%
+                    select(jan_v, jan_p, jan_o, feb_v, feb_p, feb_o, mar_v, mar_p, mar_o, apr_v, apr_p, apr_o,
+                           may_v, may_p, may_o, jun_v, jun_p, jun_o, jul_v, jul_p, jul_o, aug_v, aug_p, aug_o,
+                           sep_v, sep_p, sep_o, oct_v, oct_p, oct_o, nov_v, nov_p, nov_o, dec_v, dec_p, dec_o,
+                           ori,incident_year,
+                           cover_flg, suburb_flg, covering_flg,
+                           rpt_type, agn_type, agn_status,
+                           state, pop, region,
+                           male_off, male_civ, female_off,female_civ,
+                           dt_jan_cert, dt_jan_st, dt_jan_leok_st, dt_jan_ct_st, dt_jan_bias_st, dt_jan_eth_st) %>% 
+                           #New edit need to drop the officer variables and use the imputed version
+                           select(-male_off, -male_civ, -female_off,-female_civ)
+
+################New need to use the imputed officer counts here ##################################
+
+#Next need to read in the pseudo ori file
+tbd_universe <- read_csv(paste0(initial_tasks_output_path, "ref_agency_", CONST_YEAR, ".csv")) 
+log_dim(tbd_universe)
+
+#Next need to keep certain variables
+tbd_universe2 <- tbd_universe %>%
+  select(ORI, LEGACY_ORI, PE_MALE_OFFICER_COUNT, PE_FEMALE_OFFICER_COUNT, PE_MALE_CIVILIAN_COUNT, PE_FEMALE_CIVILIAN_COUNT) %>%
+  #Need to deduplicate
+  distinct(ORI, LEGACY_ORI, PE_MALE_OFFICER_COUNT, PE_FEMALE_OFFICER_COUNT, PE_MALE_CIVILIAN_COUNT, PE_FEMALE_CIVILIAN_COUNT)
+
+#Check to see the dim
+log_dim(tbd_universe2)
+
+#Need to join tbd_agnCONST_YEAR and tbd_universe2
+tbd_good <- tbd_agnCONST_YEAR %>%
+  inner_join(tbd_universe2 %>% select(-LEGACY_ORI), by = c("ori" = "ORI"))
+
+tbd_bad <- tbd_agnCONST_YEAR %>%
+  anti_join(tbd_universe2 %>% select(-LEGACY_ORI), by = c("ori" ="ORI"))
+
+tbd_good2 <- tbd_bad %>%
+  inner_join(tbd_universe2 %>% select(-ORI), by = c("ori" = "LEGACY_ORI"))
+
+tbd_bad2 <- tbd_bad %>%
+  anti_join(tbd_universe2 %>% select(-ORI), by = c("ori" ="LEGACY_ORI"))
+
+#Put the dataset together
+tbd_agnCONST_YEAR2 <- bind_rows(tbd_good, tbd_good2, tbd_bad2)
+
+#See the dim
+log_dim(tbd_agnCONST_YEAR2)
+log_dim(tbd_good)
+log_dim(tbd_bad)
+log_dim(tbd_good2)
+log_dim(tbd_bad2)
+
+#Drop the old police employment variables and rename them
+tbd_agnCONST_YEAR3 <- tbd_agnCONST_YEAR2 %>%
+  #Rename the police officer variables
+  rename(
+    male_off    = PE_MALE_OFFICER_COUNT, 
+    female_off  = PE_FEMALE_OFFICER_COUNT, 
+    male_civ    = PE_MALE_CIVILIAN_COUNT, 
+    female_civ  = PE_FEMALE_CIVILIAN_COUNT
+  )
+
+
+#Create the agnCONST_YEAR to be consistent with rest of program
+agnCONST_YEAR <- tbd_agnCONST_YEAR3
+
+#Delete the tbd_objects
+rm(list=ls(pattern="^tbd_"))
+invisible(gc())
+
+###################################################################################################																								   
+
+# Define factor variables
+agnCONST_YEAR <- agnCONST_YEAR %>% mutate_at(c("incident_year", "cover_flg", "suburb_flg", "rpt_type", "agn_type", "region",
+                                   "agn_status", "state", "covering_flg"), as.factor)
+
+agnCONST_YEAR_1 <- agnCONST_YEAR
+
+# Keep the original state variable as numeric instead of factor for later use
+agnCONST_YEAR_1$state <- factor(agnCONST_YEAR_1$state,
+ 								
+  levels=CONST_STATE_FACTOR %>% select(state_num) %>% pull(),
+  labels=CONST_STATE_FACTOR %>% select(state_factor) %>% pull())
+    
+# Make sure only the variables of interest start with the month name as preffix and factors are defined properly
+str(agnCONST_YEAR_1)
+
+###-------------------------------------------------------------------------------
+### Staff count and suburban flg imputation 
+###-------------------------------------------------------------------------------
+
+# Specify prediction matrix and variables that need to be included in variable selection
+init = mice(agnCONST_YEAR_1, maxit=0)
+meth = init$method
+pred = init$predictorMatrix
+  
+incpreds  <- c("state","agn_type","pop", "suburb_flg")
+predQuick <- quickpred(agnCONST_YEAR_1, minpuc = 0.25, include = incpreds) 
+predQuick[,c("ori","incident_year", "region")] <- 0
+  
+# Run the imputation
+impLEA = mice(agnCONST_YEAR_1, pred=predQuick, meth="pmm", m=1, seed=254658, maxit=15)
+
+# Plot variables of interest  
+#plot(impLEA,c("male_off","male_civ","female_off","female_civ"))
+  
+# Create complete dataset that will be used to check imputations
+NIBRS <- complete(impLEA,"broad",1)
+NIBRS <- as.data.frame(NIBRS)
+
+# Create dataset with staff count imputed variables to be used in the next imputation section
+ImputedVars <- complete(impLEA,1)
+
+###-------------------------------------------------------------------------------
+### Combine different sources of information and calculate CT for imputation
+###-------------------------------------------------------------------------------
+
+# Keep only the staff and suburban imputed variables and calculate total based on imputed values
+ImputedVars <- ImputedVars %>% select(ori, male_off, female_off, male_civ, female_civ, suburb_flg)  %>% 
+               mutate(totaloff=male_off+female_off)
+names(ImputedVars)
+log_dim(ImputedVars)
+
+# Read JD's data and merge it to exclude outlier records
+out <- read_csv(paste0(filepathin, "outlier_data_file.csv"))
+
+#See the current variable names
+colnames(out)
+
+# Need to replace "-" with "_" so R variable names could be use without the ``
+colnames(out) <- str_replace(colnames(out), "-", "_")
+
+#See the rename variable names
+colnames(out)
+
+out <- out %>% select(ori, nSeqs, ends_with(CONST_YEAR_2_DIGIT %>% as.character())) %>%
+  rename(p1=paste0("Jan","_", CONST_YEAR_2_DIGIT), 
+		p2=paste0("Feb","_", CONST_YEAR_2_DIGIT), 
+		p3=paste0("Mar","_", CONST_YEAR_2_DIGIT), 
+		p4=paste0("Apr","_", CONST_YEAR_2_DIGIT), 
+		p5=paste0("May","_", CONST_YEAR_2_DIGIT), 
+		p6=paste0("Jun","_", CONST_YEAR_2_DIGIT), 
+		p7=paste0("Jul","_", CONST_YEAR_2_DIGIT),
+    p8=paste0("Aug","_", CONST_YEAR_2_DIGIT), 
+		p9=paste0("Sep","_", CONST_YEAR_2_DIGIT), 
+		p10=paste0("Oct","_", CONST_YEAR_2_DIGIT), 
+		p11=paste0("Nov","_", CONST_YEAR_2_DIGIT), 
+		p12=paste0("Dec","_", CONST_YEAR_2_DIGIT))
+
+high <- c("brown","blue")
+low <- c("red","orange")
+ out <- out %>% rowwise() %>% 
+         mutate(
+                Highoutlier=sum(p1 %in% high, p2 %in% high, p3 %in% high, p4 %in% high,
+                                p5 %in% high, p6 %in% high, p7 %in% high, p8 %in% high,
+                                p9 %in% high, p10 %in% high, p11 %in% high, p12 %in% high,
+                                na.rm=TRUE
+                                ),
+                Lowoutlier=sum(p1 %in% low, p2 %in% low, p3 %in% low, p4 %in% low,
+                               p5 %in% low, p6 %in% low, p7 %in% low, p8 %in% low,
+                               p9 %in% low, p10 %in% low, p11 %in% low, p12 %in% low,
+                               na.rm=TRUE) 
+                              ) %>% ungroup()
+
+# Create additional variables to identify which months are low outlier months and need imputation  
+out <- out %>% mutate(across(p1:p12,
+                              .fns= ~ fcase(.x %in% low,1,
+                                            default=0),
+                              .names = "low_{.col}"
+                              ))
+
+# Keep variable needed to be merged back to the data
+out_final <- out %>% select(ori, Highoutlier, Lowoutlier, p1:p12, low_p1:low_p12)
+
+# Merge JD file with outlier information
+ImputedVars_1 <- right_join(out_final, ImputedVars, by =c("ori"))
+log_dim(ImputedVars)
+names(ImputedVars_1)
+log_dim(ImputedVars_1)
+summary(ImputedVars_1$male_off)
+summary(ImputedVars_1$female_off)
+
+# Merge original file, excluding the original staff counts and state not being a factor
+agnCONST_YEAR_orig <- agnCONST_YEAR %>% select(-c(male_off, female_off, suburb_flg, male_civ, female_civ))
+agnCONST_YEAR_2_DIGIT <- left_join(ImputedVars_1, agnCONST_YEAR_orig, by =c("ori"))
+names(agnCONST_YEAR_2_DIGIT)
+log_dim(agnCONST_YEAR_2_DIGIT)
+
+# Make sure there are no missing values
+summary(agnCONST_YEAR_2_DIGIT$male_off)
+summary(agnCONST_YEAR_2_DIGIT$female_off)
+summary(agnCONST_YEAR_2_DIGIT$totaloff)
+summary(agnCONST_YEAR_2_DIGIT$state)
+summary(agnCONST_YEAR_2_DIGIT$agn_type)
+summary(agnCONST_YEAR_2_DIGIT$region)
+summary(agnCONST_YEAR_2_DIGIT$totaloff)
+summary(agnCONST_YEAR_2_DIGIT$pop)
+summary(agnCONST_YEAR_2_DIGIT$covering_flg)
+
+# Calculate crime totals across type of crimes
+agnCONST_YEAR_2_DIGIT <- agnCONST_YEAR_2_DIGIT %>% mutate(c1 = rowSums(select(., starts_with("jan"))),
+                                  c2 = rowSums(select(., starts_with("feb"))),
+                                  c3 = rowSums(select(., starts_with("mar"))),
+                                  c4 = rowSums(select(., starts_with("apr"))),
+                                  c5 = rowSums(select(., starts_with("may"))),
+                                  c6 = rowSums(select(., starts_with("jun"))),
+                                  c7 = rowSums(select(., starts_with("jul"))),
+                                  c8 = rowSums(select(., starts_with("aug"))),                                           
+                                  c9 = rowSums(select(., starts_with("sep"))),
+                                  c10= rowSums(select(., starts_with("oct"))),
+                                  c11= rowSums(select(., starts_with("nov"))),                                                                  
+                                  c12= rowSums(select(., starts_with("dec"))))
+
+# Create a NR_flag for non-respondents (=1) and respondents (=0) using the 36 variables
+agnCONST_YEAR_2_DIGIT <- agnCONST_YEAR_2_DIGIT %>% mutate(numNAs = rowSums(is.na(select(., jan_v, jan_p, jan_o, feb_v, feb_p, feb_o, mar_v, mar_p, mar_o, apr_v, apr_p, apr_o,
+                       may_v, may_p, may_o, jun_v, jun_p, jun_o, jul_v, jul_p, jul_o, aug_v, aug_p, aug_o,
+                       sep_v, sep_p, sep_o, oct_v, oct_p, oct_o, nov_v, nov_p, nov_o, dec_v, dec_p, dec_o)))) %>%
+                      mutate(NR_flg= ifelse(numNAs >0, 1,0)) 
+
+table(agnCONST_YEAR_2_DIGIT$NR_flg, useNA="always")
+
+agnCONST_YEAR_2_DIGIT_1 <- agnCONST_YEAR_2_DIGIT
+# Calculate number of missing values in file provided by Philip
+agnCONST_YEAR_2_DIGIT_1 <- agnCONST_YEAR_2_DIGIT_1 %>% mutate(cNAs=rowSums(is.na(select(., c1:c12)))) %>% mutate(cNAs_lowoutlier=cNAs+Lowoutlier) 
+table(agnCONST_YEAR_2_DIGIT_1$cNAs)
+table(agnCONST_YEAR_2_DIGIT_1$cNAs_lowoutlier)
+# Keep agencies with 3-12 months of data (after accounting for low outlier months that will be imputed)
+#agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_1 %>% filter(cNAs_lowoutlier<=9)
+
+#New decision on 20240417 - We will impute the agencies that report at least 3 months of data, outlier or not
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_1 %>% filter(cNAs<=9)																											 																	  
+# Keep only type I agencies
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% filter(rpt_type==1)
+log_dim(agnCONST_YEAR_2_DIGIT_2)
+table(agnCONST_YEAR_2_DIGIT_2$NR_flg  , useNA="always")
+names(agnCONST_YEAR_2_DIGIT_2)
+log_dim(agnCONST_YEAR_2_DIGIT_2)
+
+# Create new variables for imputation cells based on groups: Low, Medium, High
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% mutate(totaloff_grp = quantcut(totaloff, 3), pop_grp = quantcut(pop, 3))
+
+agnCONST_YEAR_2_DIGIT_2$totaloff_grp<- as.numeric(agnCONST_YEAR_2_DIGIT_2$totaloff_grp)
+agnCONST_YEAR_2_DIGIT_2$pop_grp<- as.numeric(agnCONST_YEAR_2_DIGIT_2$pop_grp)
+table(agnCONST_YEAR_2_DIGIT_2$totaloff_grp, useNA="always")
+table(agnCONST_YEAR_2_DIGIT_2$pop_grp, useNA="always")
+
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% mutate(pop0= ifelse(pop ==0, 1,0))
+
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% mutate_at(c("totaloff_grp", "pop_grp", "pop0"), as.factor)
+
+# Calculate PCT and CT
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% mutate(pct = rowSums(select(., c1:c12), na.rm=T)) %>% mutate(ct=pct)
+
+# Create variable to match the arrays later on
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% mutate(xp1_v=low_p1, xp2_v=low_p2, xp3_v=low_p3, xp4_v=low_p4, xp5_v=low_p5, xp6_v=low_p6, xp7_v=low_p7, xp8_v=low_p8, xp9_v=low_p9, 
+                              xp10_v=low_p10, xp11_v=low_p11, xp12_v=low_p12,
+                              xp1_o=low_p1, xp2_o=low_p2, xp3_o=low_p3, xp4_o=low_p4, xp5_o=low_p5, xp6_o=low_p6, xp7_o=low_p7, xp8_o=low_p8, xp9_o=low_p9, 
+                              xp10_o=low_p10, xp11_o=low_p11, xp12_o=low_p12,
+                              xp1_p=low_p1, xp2_p=low_p2, xp3_p=low_p3, xp4_p=low_p4, xp5_p=low_p5, xp6_p=low_p6, xp7_p=low_p7, xp8_p=low_p8, xp9_p=low_p9, 
+                              xp10_p=low_p10, xp11_p=low_p11, xp12_p=low_p12)
+
+
+###-------------------------------------------------------------------------------
+### Imputation Method #3
+###-------------------------------------------------------------------------------
+
+# Define factor variables
+agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>% mutate_at(c("suburb_flg", "rpt_type", "agn_type", "agn_status", "state", "region", "pop_grp"), as.factor)
+
+# Split between donors and agencies that need imputation
+don_m3 <- agnCONST_YEAR_2_DIGIT_2 %>% filter(NR_flg==0 & Highoutlier==0 & Lowoutlier==0)
+
+
+checkfunction(don_m3,agn_type)
+checkfunction(agnCONST_YEAR_2_DIGIT_2,agn_type)
+
+# determine if both full dataset and donor file have same levels of agn_type
+compare_agn_type <- agnCONST_YEAR_2_DIGIT_2 %>%
+                distinct(agn_type) %>%
+                anti_join(distinct(don_m3,agn_type), by = "agn_type")
+
+# collapse agn_type categories if full dataset and donor file do not have same levels
+# currently code accounts for missing "Tribal" and missing "OTher" instances
+# others may need to be added
+if(nrow(compare_agn_type) == 1){
+  agnCONST_YEAR_2_DIGIT_2 <- agnCONST_YEAR_2_DIGIT_2 %>%
+    mutate(agn_type = case_when(compare_agn_type$agn_type==7 & agn_type %in% c("7","4","5") ~ "4",
+                                compare_agn_type$agn_type==4 & agn_type %in% c("4","5") ~ "4",
+                                .default = agn_type))
+  
+  don_m3 <- don_m3 %>%
+    mutate(agn_type = case_when(compare_agn_type$agn_type==7 & agn_type %in% c("7","4","5") ~ "4",
+                                compare_agn_type$agn_type==4 & agn_type %in% c("4","5") ~ "4",
+                                .default = agn_type))
+}
+
+checkfunction(agnCONST_YEAR_2_DIGIT_2,agn_type)
+checkfunction(don_m3,agn_type)
+
+# Run regression only on donors but no high/low outliers
+# drop date variables ("dt_")
+fit <- lm(ct ~ 
+            suburb_flg + agn_type+ region+ pop+ male_off+female_off+dt_jan_cert+covering_flg, data=don_m3)
+
+fit2 <- MASS:::stepAIC(fit, direction="both")
+
+pred_m3 <- predict(fit2, agnCONST_YEAR_2_DIGIT_2)
+
+agnCONST_YEAR_2_DIGIT_2['pred'] <- pred_m3
+
+# Split between donors and agencies that need imputation
+imp_m3 <- agnCONST_YEAR_2_DIGIT_2 %>% filter(NR_flg==1 | Lowoutlier>0)
+don_m3 <- agnCONST_YEAR_2_DIGIT_2 %>% filter(NR_flg==0 & Highoutlier==0 & Lowoutlier==0)
+don_m3_out <- agnCONST_YEAR_2_DIGIT_2 %>% filter(NR_flg==0 & Highoutlier>0 & Lowoutlier==0)
+
+summary(agnCONST_YEAR_2_DIGIT_2$pred)
+
+log_dim(imp_m3)
+log_dim(don_m3)
+log_dim(don_m3_out)
+
+imp_m3 <- data.frame(imp_m3)
+don_m3 <- data.frame(don_m3)
+
+imp_meth3 <- NND.hotdeck(imp_m3, don_m3, match.vars=c("pred"), don.class=c("pop0","covering_flg"), dist.fun="Euclidean", k=5)
+
+dat_m3_grp1 <- create.fused(imp_m3, don_m3, imp_meth3$mtc.ids, dup.x=T, 
+                            match.vars=c("ct","ori", "pred", "jan_v", "jan_p", "jan_o", "feb_v", "feb_p", "feb_o", "mar_v","mar_p", "mar_o", "apr_v", "apr_p", "apr_o",
+                                         "may_v", "may_p", "may_o", "jun_v", "jun_p", "jun_o", "jul_v", "jul_p", "jul_o", "aug_v", "aug_p", "aug_o",
+                                         "sep_v", "sep_p", "sep_o", "oct_v", "oct_p", "oct_o", "nov_v", "nov_p", "nov_o", "dec_v", "dec_p", "dec_o"), z.vars=NULL)
+
+dat_m3 <- don_m3 %>%
+  bind_rows(don_m3_out) %>%
+  bind_rows(dat_m3_grp1) 
+log_dim(don_m3)
+log_dim(dat_m3)
+
+# Call function to impute values
+dat_m3_final <-	data.frame(impvals(dat_m3))
+
+dat_m3_final %>% 
+  write_csv(paste0(outblockimp, "dat_m3_final_v3b.csv"), na="")
+
+###-------------------------------------------------------------------------------
+### Create the donor IDs 
+###-------------------------------------------------------------------------------
+
+#Select variables of interest
+origid   <- agnCONST_YEAR_2_DIGIT_2 %>% 
+  select(ori, NR_flg, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11,c12,low_p1:low_p12)
+
+#Make missings monthly counts to -1
+origid <- origid %>% 
+  mutate_at(.vars=c("c1","c2","c3","c4","c5","c6","c7","c8","c9","c10","c11","c12"), ~replace(., is.na(.), -1))
+
+
+#New edit:  Need to make sure that the donors incident-offense counts are higher than the recipent's low outlier counts
+donid_m3 <- dat_m3_final %>% 
+  select(ori, ori.don, Lowoutlier, 
+         #Get the donor variables
+         ends_with(".i")
+         ) %>%
+  #Need to create the imputed totals c#.i variables
+  mutate( c1.i  = rowSums(select(., matches("^jan\\w+\\.i$"))),
+          c2.i  = rowSums(select(., matches("^feb\\w+\\.i$"))),
+          c3.i  = rowSums(select(., matches("^mar\\w+\\.i$"))),
+          c4.i  = rowSums(select(., matches("^apr\\w+\\.i$"))),
+          c5.i  = rowSums(select(., matches("^may\\w+\\.i$"))),
+          c6.i  = rowSums(select(., matches("^jun\\w+\\.i$"))),
+          c7.i  = rowSums(select(., matches("^jul\\w+\\.i$"))),
+          c8.i  = rowSums(select(., matches("^aug\\w+\\.i$"))),                                           
+          c9.i  = rowSums(select(., matches("^sep\\w+\\.i$"))),
+          c10.i = rowSums(select(., matches("^oct\\w+\\.i$"))),
+          c11.i = rowSums(select(., matches("^nov\\w+\\.i$"))),                                                       
+          c12.i = rowSums(select(., matches("^dec\\w+\\.i$"))))
+  
+#Check the recodes
+donid_m3 %>% checkfunction(c1.i, !!!(donid_m3[1,] %>% select(matches("^jan\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c2.i, !!!(donid_m3[1,] %>% select(matches("^feb\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c3.i, !!!(donid_m3[1,] %>% select(matches("^mar\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c4.i, !!!(donid_m3[1,] %>% select(matches("^apr\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c5.i, !!!(donid_m3[1,] %>% select(matches("^may\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c6.i, !!!(donid_m3[1,] %>% select(matches("^jun\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c7.i, !!!(donid_m3[1,] %>% select(matches("^jul\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c8.i, !!!(donid_m3[1,] %>% select(matches("^aug\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c9.i, !!!(donid_m3[1,] %>% select(matches("^sep\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c10.i, !!!(donid_m3[1,] %>% select(matches("^oct\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c11.i, !!!(donid_m3[1,] %>% select(matches("^nov\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+donid_m3 %>% checkfunction(c12.i, !!!(donid_m3[1,] %>% select(matches("^dec\\w+\\.i$")) %>% colnames() %>% rlang:::parse_exprs()))
+
+
+
+#Need to join the data
+donorids <- origid %>% 
+  left_join(donid_m3, by=c("ori")) 
+
+#Check the dimension
+log_dim(donorids)
+log_dim(origid)
+log_dim(donid_m3)
+
+#Using donorids, need to create the flags
+
+donorid2 <- donorids %>% 
+  mutate(
+    jan=fcase(c1==-1,1,
+              low_p1==1 & (c1 < c1.i),2),
+    feb=fcase(c2==-1,1,
+              low_p2==1 & (c2 < c2.i),2),
+    mar=fcase(c3==-1,1,
+              low_p3==1 & (c3 < c3.i),2),
+    apr=fcase(c4==-1,1,
+              low_p4==1 & (c4 < c4.i),2),
+    may=fcase(c5==-1,1,
+              low_p5==1 & (c5 < c5.i),2),
+    jun=fcase(c6==-1,1,
+              low_p6==1 & (c6 < c6.i),2),
+    jul=fcase(c7==-1,1,
+              low_p7==1 & (c7 < c7.i),2),
+    aug=fcase(c8==-1,1,
+              low_p8==1 & (c8 < c8.i),2),
+    sep=fcase(c9==-1,1,
+              low_p9==1 & (c9 < c9.i),2),
+    oct=fcase(c10==-1,1,
+              low_p10==1 & (c10 < c10.i),2),
+    nov=fcase(c11==-1,1,
+              low_p11==1 & (c11 < c11.i),2),
+    dec=fcase(c12==-1,1,
+              low_p12==1 & (c12 < c12.i),2))
+
+
+#Check the recodes
+donorid2 %>% checkfunction(jan, low_p1, c1, c1.i)
+donorid2 %>% checkfunction(feb, low_p2, c2, c2.i)
+donorid2 %>% checkfunction(mar, low_p3, c3, c3.i)
+donorid2 %>% checkfunction(apr, low_p4, c4, c4.i)
+donorid2 %>% checkfunction(may, low_p5, c5, c5.i)
+donorid2 %>% checkfunction(jun, low_p6, c6, c6.i)
+donorid2 %>% checkfunction(jul, low_p7, c7, c7.i)
+donorid2 %>% checkfunction(aug, low_p8, c8, c8.i)
+donorid2 %>% checkfunction(sep, low_p9, c9, c9.i)
+donorid2 %>% checkfunction(oct, low_p10, c10, c10.i)
+donorid2 %>% checkfunction(nov, low_p11, c11, c11.i)
+donorid2 %>% checkfunction(dec, low_p12, c12, c12.i)
+
+#Next need to filter to records with non-response flag = 1 or Lowoutier
+donorids3 <- donorid2 %>% 
+  filter(NR_flg==1 | Lowoutlier>0)
+
+#Check the dimension
+log_dim(donorids3)
+log_dim(donorid2)
+
+#Need to keep selected records
+donorids4 <- donorids3 %>% 
+  select(ori, ori.don, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec)
+
+#Note it is possible with the latest edits that some month variables will be all missing
+donorids5 <- donorids4 %>%
+  mutate(
+    der_keep = fcase(
+      is.na(jan) & is.na(feb) & is.na(mar) & 
+      is.na(apr) & is.na(may) & is.na(jun) & 
+      is.na(jul) & is.na(aug) & is.na(sep) & 
+      is.na(oct) & is.na(nov) & is.na(dec), 0,
+      default = 1
+    )
+  )
+
+#Check recodes
+donorids5 %>% checkfunction(der_keep, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec)
+
+#Drop the cases
+donorids6 <- donorids5 %>%
+  filter(der_keep == 1) %>%
+  select(-der_keep)
+
+#Check the dimension
+log_dim(donorids6)
+log_dim(donorids5)
+
+#Output the dataset
+donorids6 %>% 
+  write_csv(paste0(outblockimp, "donorids.csv"), na="")
+
+
+
+
+```

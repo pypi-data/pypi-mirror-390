@@ -1,0 +1,764 @@
+---
+title: '01-Process Weights and permutation variable'
+author: "Philip Lee"
+date: "August 25, 2020"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DT)
+library(lubridate)
+library(readxl)
+library(data.table)
+#library(dplyr)
+#library(dbplyr)
+#library(rlang)
+
+#Read in the common functions to be used in R
+#source(here::here("tasks/impute_items/0-Common_functions_for_imputation.R"))
+#source("POP_Total_code_assignment.R")
+
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+write.csv0 <- partial(write.csv, row.names = FALSE, na ="0")
+write.csv <- partial(write.csv, row.names = FALSE, na ="")
+
+#Function to make the der_national variable
+
+create_der_national <- function(indata){
+
+returndata <- indata %>%
+  mutate(
+
+      der_national = fcase(
+
+      toupper(trimws(STATE_ABBR, which="both")) == "AL", 1, #Alabama
+      toupper(trimws(STATE_ABBR, which="both")) == "AK", 1, #Alaska
+      toupper(trimws(STATE_ABBR, which="both")) == "AZ", 1, #Arizona
+      toupper(trimws(STATE_ABBR, which="both")) == "AR", 1, #Arkansas
+      toupper(trimws(STATE_ABBR, which="both")) == "CA", 1, #California
+      toupper(trimws(STATE_ABBR, which="both")) == "CO", 1, #Colorado
+      toupper(trimws(STATE_ABBR, which="both")) == "CT", 1, #Connecticut
+      toupper(trimws(STATE_ABBR, which="both")) == "DE", 1, #Delaware
+      toupper(trimws(STATE_ABBR, which="both")) == "DC", 1, #District of Columbia
+      toupper(trimws(STATE_ABBR, which="both")) == "FL", 1, #Florida
+      toupper(trimws(STATE_ABBR, which="both")) == "GA", 1, #Georgia
+      toupper(trimws(STATE_ABBR, which="both")) == "HI", 1, #Hawaii
+      toupper(trimws(STATE_ABBR, which="both")) == "ID", 1, #Idaho
+      toupper(trimws(STATE_ABBR, which="both")) == "IL", 1, #Illinois
+      toupper(trimws(STATE_ABBR, which="both")) == "IN", 1, #Indiana
+      toupper(trimws(STATE_ABBR, which="both")) == "IA", 1, #Iowa
+      toupper(trimws(STATE_ABBR, which="both")) == "KS", 1, #Kansas
+      toupper(trimws(STATE_ABBR, which="both")) == "KY", 1, #Kentucky
+      toupper(trimws(STATE_ABBR, which="both")) == "LA", 1, #Louisiana
+      toupper(trimws(STATE_ABBR, which="both")) == "ME", 1, #Maine
+      toupper(trimws(STATE_ABBR, which="both")) == "MD", 1, #Maryland
+      toupper(trimws(STATE_ABBR, which="both")) == "MA", 1, #Massachusetts
+      toupper(trimws(STATE_ABBR, which="both")) == "MI", 1, #Michigan
+      toupper(trimws(STATE_ABBR, which="both")) == "MN", 1, #Minnesota
+      toupper(trimws(STATE_ABBR, which="both")) == "MS", 1, #Mississippi
+      toupper(trimws(STATE_ABBR, which="both")) == "MO", 1, #Missouri
+      toupper(trimws(STATE_ABBR, which="both")) == "MT", 1, #Montana
+      toupper(trimws(STATE_ABBR, which="both")) == "NB", 1, #Nebraska
+      toupper(trimws(STATE_ABBR, which="both")) == "NV", 1, #Nevada
+      toupper(trimws(STATE_ABBR, which="both")) == "NH", 1, #New Hampshire
+      toupper(trimws(STATE_ABBR, which="both")) == "NJ", 1, #New Jersey
+      toupper(trimws(STATE_ABBR, which="both")) == "NM", 1, #New Mexico
+      toupper(trimws(STATE_ABBR, which="both")) == "NY", 1, #New York
+      toupper(trimws(STATE_ABBR, which="both")) == "NC", 1, #North Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "ND", 1, #North Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "OH", 1, #Ohio
+      toupper(trimws(STATE_ABBR, which="both")) == "OK", 1, #Oklahoma
+      toupper(trimws(STATE_ABBR, which="both")) == "OR", 1, #Oregon
+      toupper(trimws(STATE_ABBR, which="both")) == "PA", 1, #Pennsylvania
+      toupper(trimws(STATE_ABBR, which="both")) == "RI", 1, #Rhode Island
+      toupper(trimws(STATE_ABBR, which="both")) == "SC", 1, #South Carolina
+      toupper(trimws(STATE_ABBR, which="both")) == "SD", 1, #South Dakota
+      toupper(trimws(STATE_ABBR, which="both")) == "TN", 1, #Tennessee
+      toupper(trimws(STATE_ABBR, which="both")) == "TX", 1, #Texas
+      toupper(trimws(STATE_ABBR, which="both")) == "UT", 1, #Utah
+      toupper(trimws(STATE_ABBR, which="both")) == "VT", 1, #Vermont
+      toupper(trimws(STATE_ABBR, which="both")) == "VA", 1, #Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WA", 1, #Washington
+      toupper(trimws(STATE_ABBR, which="both")) == "WV", 1, #West Virginia
+      toupper(trimws(STATE_ABBR, which="both")) == "WI", 1, #Wisconsin
+      toupper(trimws(STATE_ABBR, which="both")) == "WY", 1, #Wyoming
+      default = 0)
+  )
+
+  #Return the data
+  return(returndata)
+
+}
+
+
+```
+
+
+```{r}
+# read in file with NIBRS ori variable, queried from database
+#This will ensure that the ori variable used to merge on the extract files will have the same ori variable on the weighting file
+#Also these are NIBRS reporter agencies
+df0 <- read_csv(file=paste0(queried_data_path, "agencies_data_year_", CONST_YEAR, ".csv.gz"))
+
+#Make sure that LEGACY_ORI is capitalize 
+df0 <- df0 %>%
+  rename(LEGACY_ORI = legacy_ori)
+
+
+######Need to create the "ORI_weights.csv.gz" file for the single ORI file.  It only needs the following variables:
+#ori, 
+#!!DER_WEIGHT_VARIABLE_SYMBOL - For the national permutation:  NationalWgt
+#PARENT_POP_GROUP_CODE,	
+#AGENCY_TYPE_NAME,	
+#REGION_CODE,	
+#STATE_ABBR,	
+#der_national
+
+#Read in the main datasets to be used for the weights
+national_ori_weight <- read_csv(file=paste0(weight_path, "weights_national.csv"))
+
+#universe - read in file
+#raw_universe_path <- list.files(paste0(CONST_DEPENDENCY_UNIVERSE), pattern=paste0(CONST_YEAR,".xlsx"))[[1]]
+#print(raw_universe_path)
+
+univ_raw <-file.path(input_files_folder, paste0("ref_agency_", CONST_YEAR, ".csv")) %>%
+  read_csv()
+
+#Get selected variables from the universe file
+raw_universe <- univ_raw %>%
+  select(ORI,	LEGACY_ORI,
+         PARENT_POP_GROUP_CODE, AGENCY_TYPE_NAME, REGION_CODE, STATE_ABBR)
+
+#Do a join between the raw_universe and national_ori_weight file
+
+#Do the merge between the weighting file and the universe file
+#Merge by ORI first
+tbd_good_1 <- national_ori_weight %>%
+  inner_join(raw_universe %>% select(-LEGACY_ORI), by=c("ORI_universe" = "ORI"))
+
+tbd_bad_1 <- national_ori_weight %>%
+  anti_join(raw_universe  %>% select(-LEGACY_ORI), by=c("ORI_universe" = "ORI"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(raw_universe %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(raw_universe  %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+#Stack the data together
+raw_universe2 <- bind_rows(tbd_good_1, tbd_good_2)
+
+dim(national_ori_weight)
+dim(raw_universe2)
+dim(tbd_good_1)
+dim(tbd_good_2)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+########Merge on df0 - the ori variable from NIBRS database to make sure that the ori variable matches the database
+#We want NIBRS reporters for the "ORI_weights.csv.gz" file
+
+#Merge by ORI first
+
+#Note we want ori variable 
+tbd_good_1 <- df0 %>%
+  inner_join(raw_universe2 %>% select(-LEGACY_ORI), by=c("ori" = "ORI_universe"))
+
+tbd_bad_1 <- df0 %>%
+  anti_join(raw_universe2  %>% select(-LEGACY_ORI), by=c("ori" = "ORI_universe"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(raw_universe2 %>% select(-ORI_universe), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(raw_universe2 %>% select(-ORI_universe) , by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+#Stack the data together
+raw_universe3 <- bind_rows(tbd_good_1, tbd_good_2)
+
+dim(df0)
+dim(raw_universe3)
+dim(tbd_good_1)
+dim(tbd_good_2)
+
+#See the agencies that can't be join
+dim(tbd_bad_2)
+tbd_bad_2 %>% checkfunction(tbd_agency_status, tbd_dormant_flag, tbd_covered_flag)
+
+#Test to see if these eligible ORIs are in the weight file
+database_examine_ori_no_merge <- tbd_bad_2 %>%
+  filter(trim_upcase(tbd_agency_status) == "A" & trim_upcase(tbd_dormant_flag) == "N" & trim_upcase(tbd_covered_flag) == "N")
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Merge by ORI first
+
+#Note we want ori variable 
+tbd_good_1 <- database_examine_ori_no_merge %>%
+  inner_join(national_ori_weight %>% select(-LEGACY_ORI), by=c("ori" = "ORI_universe"))
+
+tbd_bad_1 <- database_examine_ori_no_merge %>%
+  anti_join(national_ori_weight  %>% select(-LEGACY_ORI), by=c("ori" = "ORI_universe"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(national_ori_weight %>% select(-ORI_universe), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(national_ori_weight %>% select(-ORI_universe) , by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+#Check if there are any merges
+dim(database_examine_ori_no_merge)
+dim(national_ori_weight)
+
+#Make sure that tbd_bad_2 matches the number of records in database_examine_ori_no_merge
+dim(tbd_good_1)
+dim(tbd_bad_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Using raw_universe3 - Create the der_national variable
+raw_universe4 <- raw_universe3 %>%
+  create_der_national()
+
+#Check derived variable
+raw_universe4 %>%
+  checkfunction(der_national, STATE_ABBR)
+
+#See the data
+glimpse(raw_universe4)
+
+#This dataset is for the Indicator Tables
+raw_universe4 %>%
+  select(-starts_with("tbd_")) %>%
+  write.csv0(gzfile(paste0(der_file_path, "ORI_weights.csv.gz")))
+
+#Delete variables we don't need in prepartion for "ORI_VARIANCE.csv.gz" creation at the pseudo ORI level (i.e. ORI x county)
+rm(list=c(ls(pattern="raw_"), "univ_raw", "database_examine_ori_no_merge"))
+invisible(gc())
+####################################################################################################################
+
+######Need to create the "ORI_VARIANCE.csv.gz" file for the copula and variance process#############################
+#This will be at the pseduo ORI (i.e. ORI crossed county), so need the approparite files at the ORI crossed county levels
+
+
+#Can merge these together with no issues
+tbd_national <- fread(paste0(weight_path, "weights_national_county.csv"))
+tbd_region <- fread(paste0(weight_path, "weights_region_county.csv"))
+tbd_state <- fread(paste0(weight_path, "weights_state_county.csv"))
+tbd_tribal <- fread(paste0(weight_path, "weights_tribal_county.csv"))
+tbd_university <- fread(paste0(weight_path, "weights_university_county.csv"))
+
+#Check the size
+dim(tbd_national)
+dim(tbd_region)
+dim(tbd_state)
+dim(tbd_tribal)
+dim(tbd_university)
+
+#Need to do a join to merge all the weight files together
+tbd_listoffiles <- mget(ls(pattern="tbd_"))
+print(tbd_listoffiles)
+
+#Merge all files togther and make sure that the counts are the same
+raw_final_weight_original <- reduce(tbd_listoffiles, full_join, by=c("ORI_universe", "LEGACY_ORI",	"county"))  %>%
+   #Select the variables we need 
+  select( #ID
+          ORI_universe, LEGACY_ORI, county,
+          
+          #National
+          wgtGpNational, wgtGpNationalDesc, NationalWgt,
+          
+          #Regional
+          wgtGpRegion, wgtGpRegionDesc, RegionWgt, 
+          
+          #State
+          wgtGpState, wgtGpStateDesc, StateWgt, 
+          
+          #Tribal
+          wgtGpTribal, wgtGpTribalDesc, TribalWgt,
+          
+          #University
+          wgtGpUniversity, wgtGpUniversityDesc, UniversityWgt
+         ) %>%
+  group_by(ORI_universe) %>%
+  mutate(der_ori_counts = n() ) %>%
+  ungroup()
+
+#Check the size
+dim(raw_final_weight_original)
+
+#Delete the tbd_objects
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#New substate can merge with no issues
+tbd_msa <- fread(paste0(weight_path, "weights_MSA_cal_srs_altcombs_col.csv"))
+tbd_jd <- fread(paste0(weight_path, "weights_jd_cal_srs_altcombs_col.csv"))
+tbd_fo <- fread(paste0(weight_path, "weights_FO_cal_srs_altcombs_col.csv"))
+
+#Check the size
+dim(tbd_msa)
+dim(tbd_jd)
+dim(tbd_fo)
+
+#Need to do a join to merge all the weight files together
+tbd_listoffiles <- mget(ls(pattern="tbd_"))
+print(tbd_listoffiles)
+
+
+#Merge all files togther and make sure that the counts are the same
+raw_final_weight_substate <- reduce(tbd_listoffiles, full_join, by=c("ORI_universe",	"county")) %>%
+   #Select the variables we need 
+  select( #ID
+          ORI_universe, county,
+          
+          #Field Office
+          wgtGpFO, wgtGpFODesc, FOWgt, FIELD_OFFICE_NAME,
+          
+          #Judicial District
+          wgtGpJD, wgtGpJDDesc, JDWgt, JUDICIAL_DISTRICT_NAME,
+          
+          #MSA
+          wgtGpMSA, wgtGpMSADesc, MSAWgt, MSA_NAME_COUNTY         
+          
+         )  
+
+
+
+#Check the size
+dim(raw_final_weight_substate)
+
+#Delete the tbd_objects
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Using datasets raw_final_weight_original and raw_final_weight_substate, need to merge the two together and make sure it is unique
+dim(raw_final_weight_original)
+dim(raw_final_weight_substate)
+
+####Next do the join between the raw_final_weight_original and raw_final_weight_substate files
+#Try to process the raw_final_weight_original by single record and more than one record
+#Single record do not need county and more than one record will use county as critera
+
+raw_final_weight_original_only1 <- raw_final_weight_original %>% filter(der_ori_counts == 1)
+raw_final_weight_original_mt1   <- raw_final_weight_original %>% filter(der_ori_counts > 1)
+
+#Check the size
+dim(raw_final_weight_original)
+dim(raw_final_weight_original_only1)
+dim(raw_final_weight_original_mt1)
+
+#Using raw_final_weight_original_only1 do the processing without using the county variable for better merges
+
+tbd_good_1 <- raw_final_weight_original_only1 %>%
+  inner_join(raw_final_weight_substate %>% select(-county), by=c("ORI_universe"))
+
+tbd_bad_1 <- raw_final_weight_original_only1 %>%
+  anti_join(raw_final_weight_substate %>% select(-county), by=c("ORI_universe"))
+
+#Stack the data together
+raw_final_weight_original_only1_final <- bind_rows(tbd_good_1, tbd_bad_1)
+
+dim(raw_final_weight_original_only1_final)
+dim(raw_final_weight_original_only1)
+dim(tbd_good_1)
+dim(tbd_bad_1)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Dataset to use:  raw_final_weight_original_only1_final
+
+#Next process the raw_final_weight_original_mt1 dataset
+
+#Using raw_final_weight_original_mt1 do the processing the county variable for better merges
+
+tbd_good_1 <- raw_final_weight_original_mt1 %>%
+  inner_join(raw_final_weight_substate, by=c("ORI_universe", "county"))
+
+tbd_bad_1 <- raw_final_weight_original_mt1 %>%
+  anti_join(raw_final_weight_substate, by=c("ORI_universe", "county"))
+
+#Stack the data together
+raw_final_weight_original_mt1_final <- bind_rows(tbd_good_1, tbd_bad_1)
+
+dim(raw_final_weight_original_mt1_final)
+dim(raw_final_weight_original_mt1)
+dim(tbd_good_1)
+dim(tbd_bad_1)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Stack the two datasets together raw_final_weight_original_only1_final and raw_final_weight_original_mt1_final to have all the information on one dataset
+
+final_weight <- bind_rows(raw_final_weight_original_only1_final, 
+                          raw_final_weight_original_mt1_final
+                          )
+
+glimpse(final_weight)
+
+#Make sure the datasets have the same amount of rows
+dim(final_weight)
+dim(raw_final_weight_original)
+dim(raw_final_weight_substate)
+
+
+#Final dataset to use is final_weight for the weights
+rm(list=ls(pattern="raw_final_"))
+invisible(gc())
+
+#universe - read in file
+#raw_universe_path <- list.files(paste0(CONST_DEPENDENCY_UNIVERSE), pattern=paste0(CONST_YEAR,".xlsx"))[[1]]
+#print(raw_universe_path)
+
+univ_raw0 <-file.path(external_path,file_locs[[CONST_YEAR]]$cbi_summary_county) %>%
+  read.xlsx() %>%
+  #Need to drop the following variable AGENCY_TYPE_NAME and read it in the regular universe file below
+  select(-AGENCY_TYPE_NAME)
+
+#See the dataset
+glimpse(univ_raw0)
+
+#It looks like the cbi_summary_county file does not contain the PARENT_POP_GROUP_CODE variable, will need to add it on from the universe file
+#20230802:  Use the AGENCY_TYPE_NAME variable from the universe file since it is non-missing
+univ_ori <-file.path(input_files_folder, paste0("ref_agency_", CONST_YEAR, ".csv")) %>%
+  read_csv() %>% select(ORI, LEGACY_ORI, PARENT_POP_GROUP_CODE, REGION_CODE, STATE_ABBR, AGENCY_TYPE_NAME) %>%
+  mutate(ORIG_ORI = ORI)
+
+#Need to merge univ_raw0 with univ_ori
+#Merge by ORI first
+
+#Note we want ori variable 
+tbd_good_1 <- univ_raw0 %>%
+  inner_join(univ_ori %>% select(-LEGACY_ORI), by=c("ORI"))
+
+tbd_bad_1 <- univ_raw0 %>%
+  anti_join(univ_ori  %>% select(-LEGACY_ORI), by=c("ORI"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(univ_ori %>% select(-ORI), by=c("LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(univ_ori %>% select(-ORI) , by=c("LEGACY_ORI"))
+
+#Check if there are any merges
+dim(univ_raw0)
+dim(univ_ori)
+
+#Make sure that tbd_bad_2 matches the number of records in database_examine_ori_no_merge
+dim(tbd_good_1)
+dim(tbd_bad_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#Join the dataset together
+univ_raw <- bind_rows(tbd_good_1, tbd_good_2, tbd_bad_2)
+
+dim(univ_raw)
+dim(tbd_good_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Make list of needed variables from the universe file that is not on the universe file
+CONST_LIST_VARS_UNIVERSE <- c(
+  "PARENT_POP_GROUP_CODE", 
+  "AGENCY_TYPE_NAME", 
+  "REGION_CODE", 
+  "STATE_ABBR" 
+  #"MSA_NAME_COUNTY", 
+  #"JUDICIAL_DISTRICT_NAME", 
+  #"FIELD_OFFICE_NAME"
+) %>% rlang:::parse_exprs()
+
+#Make variables needed to do the subset
+raw_universe <- univ_raw %>%
+  select(ORI,	LEGACY_ORI, county,
+         !!!CONST_LIST_VARS_UNIVERSE) %>%
+  mutate(ORIG_ORI = ORI)
+
+
+
+####Next do the join between the raw_universe and raw_final_weight file
+#Try to process the raw_final_weight by single record and more than one record
+#Single record do not need county and more than one record will use county as critera
+
+#Create raw_final_weight from final_weight so previous code to work
+raw_final_weight <- final_weight
+
+
+raw_final_weight_only1 <- raw_final_weight %>% filter(der_ori_counts == 1)
+raw_final_weight_mt1   <- raw_final_weight %>% filter(der_ori_counts > 1)
+
+#Check the size
+dim(raw_final_weight)
+dim(raw_final_weight_only1)
+dim(raw_final_weight_mt1)
+
+#Using raw_final_weight_only1 do the processing without using the county variable for better merges
+
+tbd_good_1 <- raw_final_weight_only1 %>%
+  inner_join(raw_universe %>% select(-LEGACY_ORI, -county), by=c("ORI_universe" = "ORI"))
+
+tbd_bad_1 <- raw_final_weight_only1 %>%
+  anti_join(raw_universe  %>% select(-LEGACY_ORI, -county), by=c("ORI_universe" = "ORI"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(raw_universe %>% select(-ORI, -county), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(raw_universe  %>% select(-ORI, -county), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+#Merge by LEGACY ORI next on the ORI Universe file
+tbd_good_3 <- tbd_bad_2 %>%
+  inner_join(univ_ori %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_3 <- tbd_bad_2 %>%
+  anti_join(univ_ori  %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+
+#Stack the data together
+raw_universe2_only1 <- bind_rows(tbd_good_1, tbd_good_2, tbd_good_3, tbd_bad_3)
+
+dim(raw_final_weight_only1)
+dim(raw_universe2_only1)
+dim(tbd_good_1)
+dim(tbd_good_2)
+dim(tbd_good_3)
+dim(tbd_bad_3)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Using raw_final_weight_mt1 do the processing with the county variable 
+
+tbd_good_1 <- raw_final_weight_mt1 %>%
+  inner_join(raw_universe %>% select(-LEGACY_ORI), by=c("ORI_universe" = "ORI", "county"))
+
+tbd_bad_1 <- raw_final_weight_mt1 %>%
+  anti_join(raw_universe  %>% select(-LEGACY_ORI), by=c("ORI_universe" = "ORI", "county"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(raw_universe %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI", "county"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(raw_universe  %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI", "county"))
+
+#Merge by LEGACY ORI next on the ORI Universe file
+tbd_good_3 <- tbd_bad_2 %>%
+  inner_join(univ_ori %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_3 <- tbd_bad_2 %>%
+  anti_join(univ_ori  %>% select(-ORI), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+
+#Stack the data together
+raw_universe2_mt1 <- bind_rows(tbd_good_1, tbd_good_2, tbd_good_3, tbd_bad_3)
+
+dim(raw_universe2_mt1)
+dim(raw_final_weight_mt1)
+dim(tbd_good_1)
+dim(tbd_good_2)
+dim(tbd_good_3)
+dim(tbd_bad_3)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Create the final raw_universe2 dataset
+raw_universe2 <- bind_rows(raw_universe2_only1, raw_universe2_mt1) %>%
+  #Rename the variable
+  rename(ORI = ORIG_ORI)
+
+#Make sure that all psuedo ORIs are accounted for
+dim(raw_final_weight)
+dim(raw_universe2)
+dim(raw_universe2_only1)
+dim(raw_universe2_mt1)
+
+
+
+########Merge on df0 - the ori variable from NIBRS database to make sure that the ori variable matches the database
+#We want all eligible agencies for the "ORI_VARIANCE.csv.gz" file
+
+#Create new variable for df0 to keep the original ori variable to use for merging to single level ORI files
+df0 <- df0 %>%
+  mutate(ori_nibrs=ori)
+
+#Merge by ORI first
+
+#Note we want ori variable  
+tbd_good_1 <- raw_universe2 %>%
+  inner_join(df0 %>% select(-LEGACY_ORI), by=c("ORI_universe" = "ori_nibrs")) %>%
+  mutate(in_nibrs = 1)
+
+tbd_bad_1 <- raw_universe2 %>%
+  anti_join(df0  %>% select(-LEGACY_ORI), by=c("ORI_universe" = "ori_nibrs"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(df0 %>% select(-ori_nibrs), by=c("LEGACY_ORI" = "LEGACY_ORI")) %>%
+  mutate(in_nibrs = 1)
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(df0 %>% select(-ori_nibrs) , by=c("LEGACY_ORI" = "LEGACY_ORI")) %>%
+  mutate(in_nibrs = 0)
+
+#Stack the data together - Need all the ORIs for variance
+raw_universe3 <- bind_rows(tbd_good_1, tbd_good_2, tbd_bad_2)
+
+dim(df0)
+dim(raw_universe3)
+dim(tbd_good_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#See how many agencies are in NIBRS 
+raw_universe3 %>% checkfunction(in_nibrs)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#As a QC check, see which agencies can't be merge
+tbd_ori_nibrs_databaseO_only <- df0 %>%
+  anti_join(raw_universe3 %>% select(ori), by = c("ori"))
+
+#See the agencies that can't be join
+dim(tbd_ori_nibrs_databaseO_only)
+tbd_ori_nibrs_databaseO_only %>% checkfunction(tbd_agency_status, tbd_dormant_flag, tbd_covered_flag)
+
+#Test to see if these eligible ORIs are in the weight file
+database_examine_ori_no_merge <- tbd_ori_nibrs_databaseO_only %>%
+  filter(trim_upcase(tbd_agency_status) == "A" & trim_upcase(tbd_dormant_flag) == "N" & trim_upcase(tbd_covered_flag) == "N")
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Merge by ORI first
+
+#Note we want ori variable 
+tbd_good_1 <- database_examine_ori_no_merge %>%
+  inner_join(national_ori_weight %>% select(-LEGACY_ORI), by=c("ori" = "ORI_universe"))
+
+tbd_bad_1 <- database_examine_ori_no_merge %>%
+  anti_join(national_ori_weight  %>% select(-LEGACY_ORI), by=c("ori" = "ORI_universe"))
+
+#Merge by LEGACY ORI next
+tbd_good_2 <- tbd_bad_1 %>%
+  inner_join(national_ori_weight %>% select(-ORI_universe), by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+tbd_bad_2 <- tbd_bad_1 %>%
+  anti_join(national_ori_weight %>% select(-ORI_universe) , by=c("LEGACY_ORI" = "LEGACY_ORI"))
+
+#Check if there are any merges
+dim(database_examine_ori_no_merge)
+dim(national_ori_weight)
+
+#Make sure that tbd_bad_2 matches the number of records in database_examine_ori_no_merge
+dim(tbd_good_1)
+dim(tbd_bad_1)
+dim(tbd_good_2)
+dim(tbd_bad_2)
+
+#Delete the tbd datasets
+rm(list=ls(pattern="tbd_"))
+invisible(gc())
+
+#Using raw_universe3, need to merge on the calibration variables
+
+#Read in the calibration variable file
+raw_variance_1 <- fread(paste0(weight_path, "County_Level_Calibration_Variable_File.csv")) 
+
+#See the size
+dim(raw_variance_1)
+
+#Get the variables from the first file
+raw_variance_1_vars <- colnames(raw_variance_1) %>%
+  #Change to a tibble
+  as_tibble() %>%
+  #Get the variables using variable der_var_num
+  mutate(der_var_num = str_match(.$value, pattern="V(\\d+)_")[,2] %>% as.numeric()) %>%
+  #Filter to not missing
+  filter(!is.na(der_var_num) ) %>%
+  #Pull the variable name
+  select(value) %>%
+  pull() %>%
+  #Save as a symbol
+  rlang:::parse_exprs()
+  
+final_variance_1 <- raw_variance_1 %>%
+  select(ORI_universe, LEGACY_ORI, county,
+         #Get the V calibration variables
+         !!!raw_variance_1_vars)
+
+#Next need to merge on raw_variance_1 and raw_universe3
+#Merge by ORI_UNIVERSE first
+
+tbd_good_1 <- raw_universe3 %>%
+  inner_join(final_variance_1 %>% select(-LEGACY_ORI), by=c("ORI_universe", "county"))
+
+tbd_bad_1 <- raw_universe3 %>%
+  anti_join(final_variance_1 %>% select(-LEGACY_ORI),  by=c("ORI_universe", "county"))
+
+
+#Stack the data together
+raw_universe4 <- bind_rows(tbd_good_1, tbd_bad_1)
+
+dim(raw_universe4)
+dim(raw_universe3)
+dim(tbd_good_1)
+dim(tbd_bad_1)
+
+
+
+#Using raw_universe4 create the derived variable
+raw_universe5 <- raw_universe4 %>%
+  create_der_national()
+
+
+#Check derived variable
+raw_universe5 %>%
+  checkfunction(der_national, STATE_ABBR)
+
+
+
+#This dataset is for Variance estimation
+raw_universe5 %>%
+  select(-starts_with("tbd_")) %>%
+  write_csv(gzfile(paste0(der_file_path, "ORI_VARIANCE.csv.gz")))
+
+
+```

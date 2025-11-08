@@ -1,0 +1,15 @@
+checks for ref_metro_division:
+- row_count > 0
+- schema:
+    fail:
+      when required column missing: ['metro_div_id', 'msa_id', 'name', 'is_parent_msa', 'legacy_msa_code', 'omb_code']
+      when wrong column type:
+        metro_div_id: smallint
+        msa_id: smallint
+        name: character varying(100)
+        is_parent_msa: boolean
+        legacy_msa_code: smallint
+        omb_code: integer
+
+- invalid_count(is_parent_msa) = 0:
+    valid values: [False, True]

@@ -1,0 +1,496 @@
+---
+title: '4 - Check before and after imputation merge'
+author: "Philip Lee"
+date: "November 2, 2022"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE, include=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DBI)
+library(DT)
+library(lubridate)
+library(readxl)
+#library(dplyr)
+#library(dbplyr)
+library(rlang)
+library(data.table)
+#Read in the common functions to be used in R
+
+#read_csv_main <- partial(read_csv, guess_max = 10) #For now, read thru the 1st 10 rows to determine variable type
+# read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+# write.csv0 <- partial(write.csv, row.names = FALSE, na ="0")
+# write.csv <- partial(write.csv, row.names = FALSE, na ="")
+# read_xlsx <- partial(read_xlsx, guess_max = 1000000)
+# 
+# roundfunction <- partial(round, digits=4)
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, include=FALSE}
+
+#Work on the NIBRS data
+con <- dbConnect(RPostgres::Postgres())
+
+#Limit the analysis to the following:
+
+query1 <- paste0("
+ SELECT 
+  agencies.ori,
+  EXTRACT(year FROM nibrs_incident.incident_date) AS data_year,
+  nibrs_incident.incident_id,
+  agencies.state_id,
+  agencies.state_name,
+  agencies.state_abbr,
+  agencies.state_postal_abbr
+ FROM ucr_prd.nibrs_incident
+	LEFT JOIN (
+	  SELECT
+	   ref_agency.ori,
+	   ref_agency.agency_id,
+	   ref_agency.legacy_ori,
+	   ref_agency_status.data_year,
+	   ref_agency_status.agency_status,
+	   ref_agency_yearly.is_nibrs,
+	   ref_state.state_id,
+     ref_state.name AS state_name,
+     ref_state.abbr AS state_abbr,
+     ref_state.postal_abbr AS state_postal_abbr
+	  FROM ucr_prd.ref_agency_yearly ref_agency_yearly
+	   LEFT JOIN ucr_prd.ref_agency ref_agency USING (agency_id)
+	   LEFT JOIN ucr_prd.ref_state USING (state_id)
+	   LEFT JOIN ucr_prd.ref_agency_status ref_agency_status USING (agency_id, data_year)
+	  WHERE ref_agency_status.data_year IS NOT NULL AND ref_agency_yearly.is_nibrs IS TRUE
+	   ) agencies 
+        ON ((nibrs_incident.agency_id = agencies.agency_id) AND (EXTRACT(year FROM nibrs_incident.incident_date) = agencies.data_year))
+  WHERE agencies.data_year =",  year)
+
+#Do the query
+raw_df1 <- time_query(con, query1)
+
+#Disconnect from database
+dbDisconnect(con)
+
+dim(raw_df1)
+glimpse(raw_df1)
+
+#Overwrite the type
+raw_df1 <- raw_df1 %>%
+  mutate(incident_id = as.double(incident_id ))
+
+##########################################Update Need to read in the dataset#######################################
+
+path_data <- extract_data
+
+#############################################################################################################
+
+compareit <-function(inraw, inimp, invar, indropnavar=NA){
+
+#Create the symbol
+invar_symbol        <- paste0(invar) %>% rlang:::parse_expr()
+invar_symbol_delete <- paste0("-",invar) %>% rlang:::parse_expr()
+
+  
+#Read in the raw and imputed files
+
+#Process normally if indropnavar is not specified
+if(is.na(indropnavar)){
+  tbd_raw <- fread(file=paste0(path_data, inraw))
+  tbd_imp <- fread(file=paste0(path_data, inimp))
+#Add on code to drop id variables that are missing  
+}else{
+  
+  #Create the symbol
+  indropnavar_symbol  <- paste0(indropnavar) %>% rlang:::parse_expr()
+  
+  tbd_raw <- fread(file=paste0(path_data, inraw)) %>% filter(!is.na(!!indropnavar_symbol))
+  tbd_imp <- fread(file=paste0(path_data, inimp)) %>% filter(!is.na(!!indropnavar_symbol))  
+}
+
+
+
+#Merge on the state code
+tbd_raw <- tbd_raw %>%
+  left_join(raw_df1 %>% select(state_abbr, incident_id), by=("incident_id"))
+
+tbd_imp <- tbd_imp %>%
+  left_join(raw_df1 %>% select(state_abbr, incident_id), by=("incident_id"))
+
+
+#Process the variable - National
+  tbd_raw_1 <- tbd_raw %>%
+    group_by(!!invar_symbol) %>%
+    summarise(before_merge_count = sum(count, na.rm=FALSE)) %>%
+    mutate(before_merge_percentage=roundfunction((before_merge_count/sum(before_merge_count)))) %>%
+    mutate(state="National")
+  
+  tbd_imp_1 <- tbd_imp %>%
+    group_by(!!invar_symbol) %>%
+    summarise(after_merge_count = sum(count, na.rm=FALSE)) %>%
+    mutate(after_merge_percentage=roundfunction((after_merge_count/sum(after_merge_count))))  %>%
+    mutate(state="National")
+  
+  #National only
+  tbd_national <- tbd_raw_1 %>%
+    full_join(tbd_imp_1, by=c("state", invar)) %>%
+    select(state, !!invar_symbol, before_merge_count, before_merge_percentage, after_merge_count, after_merge_percentage)
+  
+  #Process the variable - state
+  tbd_state_raw_1 <- tbd_raw %>%
+    rename(state=state_abbr) %>%
+    group_by(state, !!invar_symbol) %>%
+    summarise(before_merge_count = sum(count, na.rm=FALSE)) %>%
+    mutate(before_merge_percentage=roundfunction((before_merge_count/sum(before_merge_count))))
+    
+  tbd_state_imp_1 <- tbd_imp %>%
+    rename(state=state_abbr) %>%
+    group_by(state, !!invar_symbol) %>%
+    summarise(after_merge_count = sum(count, na.rm=FALSE)) %>%
+    mutate(after_merge_percentage=roundfunction((after_merge_count/sum(after_merge_count))))
+  
+  
+
+  #State only
+  tbd_state <- tbd_state_raw_1 %>%
+    full_join(tbd_state_imp_1, by=c("state", invar)) %>%
+    select(state, !!invar_symbol, before_merge_count, before_merge_percentage, after_merge_count, after_merge_percentage)
+  
+  #Create the final object
+  final <- vector("list", 2)
+  
+  #Stack the results
+  final[[1]] <- bind_rows(tbd_national,tbd_state)
+  
+  
+  if(is.na(indropnavar)){
+      final[[2]] <- paste0("Raw file used is ", inraw, " and the imputed file used is ", inimp, " and the derived variable used is ", invar, ".")
+  #Add on code to drop id variables that are missing  
+  }else{  
+    final[[2]] <- paste0("Raw file used is ", inraw, " and the imputed file used is ", inimp, " and the derived variable used is ", invar, " and dropping records with missing ID from variable ", indropnavar ,".")
+}
+  #Return the final data
+  return(final)
+
+}
+
+```
+
+This is the validation program for the before and after merging of the imputed demographic variables for the various extracts used in the NIBRS estimation system.
+
+Below are the tables that show the distribution before the merge (i.e. columns before_merge_count and before_merge_percentage) and after merging with the imputed data (i.e. columns after_merge_count and after_merge_percentage) for the various extracts.  Each table shows the distribution at the national level and broken down by the 50 states plus DC.
+
+Please note for the Arrestee, Offender, and Victim Offender Relationship segments, imputation is done on cleared incidents only (i.e. there is an arrestee in an incident or the incident is cleared exceptionally) and for eligible NIBRS agencies.  The summarized tables below include all incidents (i.e both cleared and uncleared incidents) and from all NIBRS agencies (i.e both eligible and non-eligible NIBRS agencies), so some unknown remains if these two criteria are not met.  In the NIBRS's final database, we only use records from eligible NIBRS agencies only.
+
+For the Victim segment, all victims in eligible NIBRS agencies are imputed and includes both cleared and uncleared incidents.  Note for the victim tables, non-person victims are coded as "Unknown" for the purposes of these tables, but in the estimation programs we subset to victims that are individuals or law enforcement officers, and the record came from eligible NIBRS agencies.   
+
+In the columns, before_merge_count and before_merge_percentage, there are missing or unknown values and they are reduced in the after merge columns (i.e. after_merge_count and after_merge_percentage). 
+
+The percentages are within National or each of the 50 states plus D.C.
+
+
+```{r, echo=FALSE, message=FALSE}
+
+#Create caption font
+incaptionstyle = 'caption-side: top; text-align: center; font-size: 50px;'
+
+#Create a format function
+formatfunction <- function(indata, inlabel, incaptionstyle){
+  
+    #Format the columns
+    indata2 <- datatable(indata,
+	            filter = "top", 
+	            options = list(pageLength = 25, autoWidth = TRUE),
+                caption = htmltools::tags$caption(
+                    style = incaptionstyle,
+                    inlabel)) %>%
+                formatPercentage(c("before_merge_percentage", "after_merge_percentage"), 2) %>%
+                formatRound(c("before_merge_count", "after_merge_count"), digits = 0)
+    
+    #Call the print
+    htmltools:::tagList(indata2)
+  
+}
+
+
+#Victim
+
+merge1 <- compareit(inraw="agg_victim_age_cat_victim.csv.gz",       	inimp="agg_victim_age_cat_victim_imp.csv.gz",       	invar="der_victim_age_cat")
+
+formatfunction(indata=merge1[[1]] %>% 
+  mutate(label=case_when(
+                der_victim_age_cat  == 1 ~ "Under 5",
+                der_victim_age_cat  == 2 ~ "5-14",
+                der_victim_age_cat  == 3 ~ "15-17",
+                der_victim_age_cat  == 4 ~ "18-24",
+                der_victim_age_cat  == 5 ~ "25-34",
+                der_victim_age_cat  == 6 ~ "35-64",
+                der_victim_age_cat  == 7 ~ "65+",
+                der_victim_age_cat  == 8 ~ "Unknown")),               
+               
+                inlabel=merge1[[2]], incaptionstyle)
+
+
+merge2 <- compareit(inraw="agg_victim_age_cat_15_17_victim.csv.gz", 	inimp="agg_victim_age_cat_15_17_victim_imp.csv.gz", 	invar="der_victim_age_cat_15_17")
+
+formatfunction(indata=merge2[[1]] %>% 
+  mutate(label=case_when(
+    der_victim_age_cat_15_17 == 1 ~ "Under 5",
+    der_victim_age_cat_15_17 == 2 ~ "5-14",
+    der_victim_age_cat_15_17 == 3 ~ "15",
+    der_victim_age_cat_15_17 == 4 ~ "16",
+    der_victim_age_cat_15_17 == 5 ~ "17",
+    der_victim_age_cat_15_17 == 6 ~ "18-24",
+    der_victim_age_cat_15_17 == 7 ~ "25-34",
+    der_victim_age_cat_15_17 == 8 ~ "35-64",
+    der_victim_age_cat_15_17 == 9 ~ "65+",
+    der_victim_age_cat_15_17 == 10 ~ "Unknown")),                               
+               
+                inlabel=merge2[[2]], incaptionstyle)
+
+
+merge3 <- compareit(inraw="agg_victim_gender_victim.csv.gz", 			inimp="agg_victim_gender_victim_imp.csv.gz",			invar="der_victim_gender") 
+
+formatfunction(indata=merge3[[1]] %>% 
+  mutate(label=case_when(
+  der_victim_gender == 1 ~ "M",
+  der_victim_gender == 2 ~ "F",
+  der_victim_gender == 3 ~ "U")),                               
+               
+                inlabel=merge3[[2]], incaptionstyle)
+
+
+
+merge4 <- compareit(inraw="agg_victim_race_victim.csv.gz", 			inimp="agg_victim_race_victim_imp.csv.gz",				invar="der_victim_race") 
+
+formatfunction(indata=merge4[[1]] %>% 
+  mutate(label=case_when(
+    der_victim_race == 1 ~ "White",
+    der_victim_race == 2 ~ "Black",
+    der_victim_race == 3 ~ "American Indian or Alaska Native",
+    der_victim_race == 4 ~ "Asian",
+    der_victim_race == 5 ~ "Native Hawaiian or Other Pacific Islander",
+    der_victim_race == 6 ~ " Unknown")),                               
+               
+                inlabel=merge4[[2]], incaptionstyle)
+
+
+merge5 <- compareit(inraw="agg_victim_gender_race_victim.csv.gz", 	inimp="agg_victim_gender_race_victim_imp.csv.gz",		invar="der_victim_gender_race") 
+
+formatfunction(indata=merge5[[1]] %>% 
+  mutate(label=case_when(
+    der_victim_gender_race == 1 ~ "Male White",
+    der_victim_gender_race == 2 ~ "Male Black",
+    der_victim_gender_race == 3 ~ "Male American Indian or Alaska Native",
+    der_victim_gender_race == 4 ~ "Male Asian",
+    der_victim_gender_race == 5 ~ "Male Native Hawaiian or Other Pacific Islander",
+    der_victim_gender_race == 6 ~ "Male Unknown",
+    der_victim_gender_race == 7 ~ "Female White",
+    der_victim_gender_race == 8 ~ "Female Black",
+    der_victim_gender_race == 9 ~ "Female American Indian or Alaska Native",
+    der_victim_gender_race == 10 ~ "Female Asian",
+    der_victim_gender_race == 11 ~ "Female Native Hawaiian or Other Pacific Islander",
+    der_victim_gender_race == 12 ~ "Female Unknown",
+    der_victim_gender_race == 13 ~ "Unknown White",
+    der_victim_gender_race == 14 ~ "Unknown Black",
+    der_victim_gender_race == 15 ~ "Unknown American Indian or Alaska Native",
+    der_victim_gender_race == 16 ~ "Unknown Asian",
+    der_victim_gender_race == 17 ~ "Unknown Native Hawaiian or Other Pacific Islander",
+    der_victim_gender_race == 18 ~ "Unknown Unknown")),                               
+               
+                inlabel=merge5[[2]], incaptionstyle)
+
+
+#VOR			
+merge6 <- compareit(inraw="agg_relationship_cat.csv.gz", 				inimp="agg_relationship_cat_imp.csv.gz",			invar="der_relationship") 
+
+formatfunction(indata=merge6[[1]] %>% 
+  mutate(label=case_when(
+    der_relationship == 1 ~ "Intimate partner",
+    der_relationship == 2 ~ "Other family",
+    der_relationship == 3 ~ "Outside family but known to victim",
+    der_relationship == 4 ~ "Stranger",
+    der_relationship == 5 ~ "Victim was Offender",
+    der_relationship == 6 ~ "Unknown relationship")),                               
+               
+                inlabel=merge6[[2]], incaptionstyle)
+
+
+merge7 <- compareit(inraw="agg_relationship_cat_victim.csv.gz",       inimp="agg_relationship_cat_victim_imp.csv.gz", 	invar="der_relationship") 
+
+formatfunction(indata=merge7[[1]] %>% 
+  mutate(label=case_when(
+    der_relationship == 1 ~ "Intimate partner",
+    der_relationship == 2 ~ "Other family",
+    der_relationship == 3 ~ "Outside family but known to victim",
+    der_relationship == 4 ~ "Stranger",
+    der_relationship == 5 ~ "Victim was Offender",
+    der_relationship == 6 ~ "Unknown relationship")),                               
+               
+                inlabel=merge7[[2]], incaptionstyle)
+
+
+#Victim Offender Age
+merge8 <- compareit(inraw="agg_victim_offender_age_1_4_victim.csv.gz", 			inimp="agg_victim_offender_age_1_4_victim_imp.csv.gz",			invar="der_victim_offender_age_1_4")
+
+formatfunction(indata=merge8[[1]] %>% 
+  mutate(label=case_when(
+    der_victim_offender_age_1_4 == 1 ~ "Victim juvenile X Offender juvenile",
+    der_victim_offender_age_1_4 == 2 ~ "Victim juvenile X Offender adult",
+    der_victim_offender_age_1_4 == 3 ~ "Victim adult X Offender adult",
+    der_victim_offender_age_1_4 == 4 ~ "Victim adult X Offender juvenile",
+    der_victim_offender_age_1_4 == 5 ~ "Unknown victim age or unknown offender age")),                               
+               
+                inlabel=merge8[[2]], incaptionstyle)
+
+
+merge9 <- compareit(inraw="agg_victim_offender_gender_1_4_victim.csv.gz", 		inimp="agg_victim_offender_gender_1_4_victim_imp.csv.gz",		invar="der_victim_offender_gender_1_4")
+
+formatfunction(indata=merge9[[1]] %>% 
+  mutate(label=case_when(
+    der_victim_offender_gender_1_4 == 1 ~ "Victim male X Offender male",
+    der_victim_offender_gender_1_4 == 2 ~ "Victim male X Offender female",
+    der_victim_offender_gender_1_4 == 3 ~ "Victim female X Offender female",
+    der_victim_offender_gender_1_4 == 4 ~ "Victim female X Offender male",
+    der_victim_offender_gender_1_4 == 5 ~ "Unknown victim sex or unknown offender sex")),                               
+               
+                inlabel=merge9[[2]], incaptionstyle)
+
+
+merge10 <- compareit(inraw="agg_victim_offender_race_1_10_victim.csv.gz", 			inimp="agg_victim_offender_race_1_10_victim_imp.csv.gz",		invar="der_victim_offender_race_1_10") 
+
+formatfunction(indata=merge10[[1]] %>% 
+  mutate(label=case_when(
+  der_victim_offender_race_1_10 == 1 ~ "Victim White X Offender White",
+  der_victim_offender_race_1_10 == 2 ~ "Victim White X Offender All Other Races Except White",
+  der_victim_offender_race_1_10 == 3 ~ "Victim Black X Offender Black",
+  der_victim_offender_race_1_10 == 4 ~ "Victim Black X Offender All Other Races Except Black",
+  der_victim_offender_race_1_10 == 5 ~ "Victim AIAN X Offender AIAN",
+  der_victim_offender_race_1_10 == 6 ~ "Victim AIAN X Offender All Other Races Except AIAN",
+  der_victim_offender_race_1_10 == 7 ~ "Victim Asian X Offender Asian",
+  der_victim_offender_race_1_10 == 8 ~ "Victim Asian X Offender All Other Races Except Asian",
+  der_victim_offender_race_1_10 == 9 ~ "Victim NHOPI X Offender NHOPI",
+  der_victim_offender_race_1_10 == 10 ~ "Victim NHOPI X Offender All Other Races Except NHOPI",
+  der_victim_offender_race_1_10 == 11 ~ "Unknown victim race or unknown offender race")),                               
+               
+                inlabel=merge10[[2]], incaptionstyle)
+
+
+#Arrestee
+merge11 <- compareit(inraw="agg_arrestee_age_cat_arrestee.csv.gz",      	inimp="agg_arrestee_age_cat_arrestee_imp.csv.gz", 		invar="der_arrestee_age_cat", indropnavar="arrestee_id")
+
+formatfunction(indata=merge11[[1]] %>% 
+  mutate(label=case_when(
+  der_arrestee_age_cat == 1 ~ "Under 5",
+  der_arrestee_age_cat == 2 ~ "5-14",
+  der_arrestee_age_cat == 3 ~ "15-17",
+  der_arrestee_age_cat == 4 ~ "18-24",
+  der_arrestee_age_cat == 5 ~ "25-34",
+  der_arrestee_age_cat == 6 ~ "35-64",
+  der_arrestee_age_cat == 7 ~ "65+",
+  der_arrestee_age_cat == 8 ~ "Unknown")),                               
+               
+                inlabel=merge11[[2]], incaptionstyle)
+
+
+merge12 <- compareit(inraw="agg_arrestee_age_cat_15_17_arrestee.csv.gz", 	inimp="agg_arrestee_age_cat_15_17_arrestee_imp.csv.gz", invar="der_arrestee_age_cat_15_17", indropnavar="arrestee_id")
+
+formatfunction(indata=merge12[[1]] %>% 
+  mutate(label=case_when(
+  der_arrestee_age_cat_15_17 == 1 ~ "Under 5",
+  der_arrestee_age_cat_15_17 == 2 ~ "5-14",
+  der_arrestee_age_cat_15_17 == 3 ~ "15",
+  der_arrestee_age_cat_15_17 == 4 ~ "16",
+  der_arrestee_age_cat_15_17 == 5 ~ "17",
+  der_arrestee_age_cat_15_17 == 6 ~ "18-24",
+  der_arrestee_age_cat_15_17 == 7 ~ "25-34",
+  der_arrestee_age_cat_15_17 == 8 ~ "35-64",
+  der_arrestee_age_cat_15_17 == 9 ~ "65+",
+  der_arrestee_age_cat_15_17 == 10 ~ "Unknown")),                               
+               
+                inlabel=merge12[[2]], incaptionstyle)
+
+
+merge13 <- compareit(inraw="agg_arrestee_gender_arrestee.csv.gz",       	inimp="agg_arrestee_gender_arrestee_imp.csv.gz", 		invar="der_arrestee_gender", indropnavar="arrestee_id")
+
+formatfunction(indata=merge13[[1]] %>% 
+  mutate(label=case_when(
+  der_arrestee_gender == 1 ~ "M",
+  der_arrestee_gender == 2 ~ "F",
+  der_arrestee_gender == 3 ~ "U")),                               
+               
+                inlabel=merge13[[2]], incaptionstyle)
+
+
+merge14 <- compareit(inraw="agg_arrestee_race_arrestee.csv.gz",         	inimp="agg_arrestee_race_arrestee_imp.csv.gz", 			invar="der_arrestee_race", indropnavar="arrestee_id") 
+
+formatfunction(indata=merge14[[1]] %>% 
+  mutate(label=case_when(
+  der_arrestee_race == 1 ~ "White",
+  der_arrestee_race == 2 ~ "Black",
+  der_arrestee_race == 3 ~ "American Indian or Alaska Native",
+  der_arrestee_race == 4 ~ "Asian",
+  der_arrestee_race == 5 ~ "Native Hawaiian or Other Pacific Islander",
+  der_arrestee_race == 6 ~ " Unknown")),                               
+               
+                inlabel=merge14[[2]], incaptionstyle)
+
+
+merge15 <- compareit(inraw="agg_arrestee_gender_race_arrestee.csv.gz",  	inimp="agg_arrestee_gender_race_arrestee_imp.csv.gz", 	invar="der_arrestee_gender_race", indropnavar="arrestee_id") 
+
+formatfunction(indata=merge15[[1]] %>% 
+  mutate(label=case_when(
+  der_arrestee_gender_race == 1 ~ "Male White",
+  der_arrestee_gender_race == 2 ~ "Male Black",
+  der_arrestee_gender_race == 3 ~ "Male American Indian or Alaska Native",
+  der_arrestee_gender_race == 4 ~ "Male Asian",
+  der_arrestee_gender_race == 5 ~ "Male Native Hawaiian or Other Pacific Islander",
+  der_arrestee_gender_race == 6 ~ "Male Unknown",
+  der_arrestee_gender_race == 7 ~ "Female White",
+  der_arrestee_gender_race == 8 ~ "Female Black",
+  der_arrestee_gender_race == 9 ~ "Female American Indian or Alaska Native",
+  der_arrestee_gender_race == 10 ~ "Female Asian",
+  der_arrestee_gender_race == 11 ~ "Female Native Hawaiian or Other Pacific Islander",
+  der_arrestee_gender_race == 12 ~ "Female Unknown",
+  der_arrestee_gender_race == 13 ~ "Unknown White",
+  der_arrestee_gender_race == 14 ~ "Unknown Black",
+  der_arrestee_gender_race == 15 ~ "Unknown American Indian or Alaska Native",
+  der_arrestee_gender_race == 16 ~ "Unknown Asian",
+  der_arrestee_gender_race == 17 ~ "Unknown Native Hawaiian or Other Pacific Islander",
+  der_arrestee_gender_race == 18 ~ "Unknown Unknown")),                               
+               
+                inlabel=merge15[[2]], incaptionstyle)
+
+
+merge16 <- compareit(inraw="agg_juvenile_disp_arrestee.csv.gz", 			inimp="agg_juvenile_disp_arrestee_imp.csv.gz", 			invar="der_juvenile_disp", indropnavar="arrestee_id")
+
+formatfunction(indata=merge16[[1]] %>% 
+  mutate(label=case_when(
+  der_juvenile_disp == 1 ~ "Handled within department",
+  der_juvenile_disp == 2 ~ "Referred to other authorities",
+  der_juvenile_disp == 3 ~ "Not applicable",
+  der_juvenile_disp == 4 ~ "Unknown")),                               
+               
+                inlabel=merge16[[2]], incaptionstyle)
+
+
+merge17 <- compareit(inraw="agg_multiple_arrest_arrestee.csv.gz",       	inimp="agg_multiple_arrest_arrestee_imp.csv.gz", 		invar="der_multiple_arrest", indropnavar="arrestee_id") 
+
+formatfunction(indata=merge17[[1]] %>% 
+  mutate(label=case_when(
+  der_multiple_arrest == 1 ~ "Multiple",
+  der_multiple_arrest == 2 ~ "Count",
+  der_multiple_arrest == 3 ~ "Not applicable")),                               
+               
+                inlabel=merge17[[2]], incaptionstyle)
+
+
+```
+

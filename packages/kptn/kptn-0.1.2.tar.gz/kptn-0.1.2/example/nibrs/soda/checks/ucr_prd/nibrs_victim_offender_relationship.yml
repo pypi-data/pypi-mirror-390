@@ -1,0 +1,11 @@
+checks for nibrs_victim_offender_relationship:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['victim_id', 'offender_id', 'relationship_code']
+        when wrong column type:
+          victim_id: bigint
+          offender_id: bigint
+          relationship_code: character(2)
+  - invalid_count(relationship_code) = 0:
+      valid values: ['AQ', 'BE', 'BG', 'CF', 'CH', 'CS', 'EE', 'ER', 'FR', 'GC', 'GP', 'HR', 'IL', 'NE', 'OF', 'OK', 'PA', 'RU', 'SB', 'SC', 'SE', 'SP', 'SS', 'ST', 'VO', 'XR', 'XS', 'CO', 'FP', 'FC']

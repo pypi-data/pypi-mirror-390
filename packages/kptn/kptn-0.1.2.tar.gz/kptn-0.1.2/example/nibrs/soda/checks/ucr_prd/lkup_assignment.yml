@@ -1,0 +1,12 @@
+checks for lkup_assignment:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['assignment_code', 'name']
+        when wrong column type:
+          assignment_code: character(1)
+          name: character varying(100)
+  - invalid_count(assignment_code) = 0:
+      valid values: ['F', 'G', 'H', 'I', 'J', 'K', 'L']
+  - invalid_count(name) = 0:
+      valid values: ['Detective or Special Assignment (Alone)', 'Detective or Special Assignment (Assisted)', 'One-Officer (Alone)', 'One-Officer (Assisted)', 'Other (Alone)', 'Other (Assisted)', 'Two-Officer Vehicle']

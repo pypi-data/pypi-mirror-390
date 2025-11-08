@@ -1,0 +1,10 @@
+checks for nibrs_criminal_activity:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['offense_id', 'criminal_activity_code']
+        when wrong column type:
+          offense_id: bigint
+          criminal_activity_code: character(1)
+  - invalid_count(criminal_activity_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'I', 'J', 'N', 'O', 'P', 'S', 'T', 'U']

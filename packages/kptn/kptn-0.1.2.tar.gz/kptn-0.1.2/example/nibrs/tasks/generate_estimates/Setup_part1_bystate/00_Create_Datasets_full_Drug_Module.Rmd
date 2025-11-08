@@ -1,0 +1,516 @@
+---
+title: '00-Create Datasets_full_Drug_Module'
+author: "Philip Lee"
+date: "July 22, 2020"
+output:
+  html_document:
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#install.packages("RPostgres")
+#install.packages("dbplyr")
+
+#Update on 20200803:
+#1.  Free up memory by deleting dataset and queries object after processing
+#2.  Make the in_univ variable for subsetting to eligible agencies if needed on task
+
+library(tidyverse)
+#library(xlsx)
+library(openxlsx)
+library(DT)
+library(lubridate)
+#library(dplyr)
+#library(dbplyr)
+#library(rlang)
+library(readxl)
+library(data.table)
+
+input_state <- Sys.getenv("INPUT_STATE")
+
+read_csv <- partial(read_csv, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+read_xlsx <- partial(read_xlsx, guess_max = 1000000) #For now, read thru the 1st 1,000,000 rows to determine variable type
+
+#Write the function for common offense recode
+
+offense_recode_drug <- function(data){
+
+  returndata <- data %>% mutate(
+
+
+  der_drug_narcotic	= fcase(
+    trim_upcase(offense_code) %in% c("35A") & attempt_complete_flag == "C", 1,
+    default = 0),
+
+  der_drug_equipment	= fcase(
+    trim_upcase(offense_code) %in% c("35B") & attempt_complete_flag == "C", 1,
+    default = 0)
+
+  )
+
+  return(returndata)
+
+}
+
+#Need the nibrs_offense table to recode the new drug variables - missing the attempt_complete_flag variable
+df_nibrs_offense_table <- read_csv(file=paste0(queried_data_path,"incidents_",input_state,".csv.gz"), 
+                                   col_types = cols(offense_code = col_character() )) %>% 
+  select(incident_id, offense_id, offense_code, attempt_complete_flag)
+
+log_dim(df_nibrs_offense_table)
+
+df_nibrs_offense_table2 <- df_nibrs_offense_table %>%
+  offense_recode_drug()
+
+#Check the recodes
+df_nibrs_offense_table2 %>% checkfunction(der_drug_narcotic, attempt_complete_flag, offense_code)
+df_nibrs_offense_table2 %>% checkfunction(der_drug_equipment,attempt_complete_flag, offense_code)
+
+#Output to share
+df_nibrs_offense_table2  %>%
+	write_csv(gzfile(paste0(der_bystate_file_path,"nibrs_offense_attempt_complete_flag_",input_state,".csv.gz")), na="")
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+
+#Dataset for incidents
+df1 <- read_csv(file=paste0(queried_data_path,"incidents_",input_state,".csv.gz"), 
+                col_types = cols(offense_code = col_character() )) %>% 
+  select(-offense_id)
+log_dim(df1)
+
+#Call the function
+df1_recoded <- offense_recode_drug(df1)
+
+#Summarise the data
+df1_recoded2 <- df1_recoded %>%
+  #Group by incident id
+  group_by(incident_id) %>%
+  summarise(
+	der_drug_narcotic_any = fcase(any(der_drug_narcotic == 1), 1,
+									  default = 0),
+	der_drug_equipment_any = fcase(any(der_drug_equipment == 1), 1,
+									  default = 0)) %>%
+  ungroup() %>%
+  #Create new categorical variable
+  mutate(
+  	der_drug_narcotic_equipment_cat = fcase(
+
+    der_drug_narcotic_any == 1 & der_drug_equipment_any == 1, 3, #Both drug/narcotic and drug equipment violations
+    der_drug_narcotic_any == 1, 1, #Only drug/narcotic violations
+    der_drug_equipment_any == 1, 2, #Only drug equipment violations
+    default = NA_real_)
+  )
+
+#Check the recodes
+df1_recoded %>% checkfunction(der_drug_narcotic, attempt_complete_flag, crime_against, offense_code, offense_name)
+df1_recoded %>% checkfunction(der_drug_equipment,attempt_complete_flag,  crime_against, offense_code, offense_name)
+
+#Check the recodes
+df1_recoded2 %>% checkfunction(der_drug_narcotic_equipment_cat, der_drug_narcotic_any, der_drug_equipment_any)
+
+
+#Drug_narcotic_equipment_cat
+NIBRS_count_agg(data=df1_recoded2, var=der_drug_narcotic_equipment_cat) %>%
+	write_csv(gzfile(paste0(der_bystate_file_path,"agg_drug_narcotic_equipment_cat_",input_state,".csv.gz")), na="")
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+
+#Read in query for criminal activity
+df2 <- read_csv(file=paste0(queried_data_path,"criminal_activity_",input_state,".csv.gz"), 
+                col_types = cols(offense_code = col_character() ))
+log_dim(df2)
+
+
+df2_recoded <- df2 %>%
+  #Recode drug offense indicator
+  offense_recode_drug() %>%
+  mutate(
+
+  der_crim_activity = fcase(
+
+  criminal_act_code == "B", 1, #1: B:  Buying/Receiving
+  criminal_act_code == "C", 2, #2: C:  Cultivating/Manufacturing/Publishing
+  criminal_act_code == "D", 3, #3: D:  Distributing/Selling
+  criminal_act_code == "E", 4, #4: E:  Exploiting Children
+  criminal_act_code == "O", 5, #5: O:  Operating/Promoting/Assisting
+  criminal_act_code == "P", 6, #6: P:  Possessing/Concealing
+  criminal_act_code == "T", 7, #7: T:  Transporting/Transmitting/Importing
+  criminal_act_code == "U", 8, #8: U:  Using/Consuming
+  criminal_act_code == "N", 9, #9: N:  None/Unknown
+  criminal_act_code == "G", 10, #10: G:  Other Gang
+  criminal_act_code == "J", 11, #11: J:  Juvenile Gang
+  criminal_act_code == "A", 12, #12: A:  Simple/Gross Neglect
+  criminal_act_code == "F", 13, #13: F:  Organized Abuse
+  criminal_act_code == "I", 14, #14: I:  Intentional Abuse and Torture
+  criminal_act_code == "S", 15, #15: S:  Animal Sexual Abuse
+  criminal_act_code == "R", 16 #16: R:  Stolen Firearm
+  ),
+  
+  der_crim_activity_35A_c = case_when(
+      der_drug_narcotic == 1 ~ der_crim_activity),
+
+      #####################New definitions 20230624#####################################
+  der_crim_activity_drug_poss_traff = fcase(
+
+  criminal_act_code == "B", 1, #1: B:  Buying/Receiving
+  criminal_act_code == "C", 1, #2: C:  Cultivating/Manufacturing/Publishing
+  criminal_act_code == "P", 1, #6: P:  Possessing/Concealing
+  criminal_act_code == "U", 1, #8: U:  Using/Consuming
+  criminal_act_code == "D", 1, #3: D:  Distributing/Selling
+  criminal_act_code == "O", 1, #5: O:  Operating/Promoting/Assisting
+  criminal_act_code == "T", 1, #7: T:  Transporting/Transmitting/Importing
+  default = 0
+  ),
+  
+  der_crim_activity_drug_poss_traff_35A_c = case_when(
+      der_drug_narcotic == 1 ~ der_crim_activity_drug_poss_traff),  
+  
+  der_crim_activity_drug_poss_pc = fcase(
+
+  criminal_act_code == "B", 1, #1: B:  Buying/Receiving
+  criminal_act_code == "C", 1, #2: C:  Cultivating/Manufacturing/Publishing
+  criminal_act_code == "P", 1, #6: P:  Possessing/Concealing
+  criminal_act_code == "U", 1, #8: U:  Using/Consuming
+  default = 0
+  
+  ),  
+
+  der_crim_activity_drug_poss_pc_35A_c = case_when(
+      der_drug_narcotic == 1 ~ der_crim_activity_drug_poss_pc),    
+  
+  
+  der_crim_activity_drug_poss_npc = fcase(
+    criminal_act_code == "D", 1, #3: D:  Distributing/Selling
+    criminal_act_code == "O", 1, #5: O:  Operating/Promoting/Assisting
+    criminal_act_code == "T", 1, #7: T:  Transporting/Transmitting/Importing  
+    default = 0
+  ),
+  
+  der_crim_activity_drug_poss_npc_35A_c = case_when(
+      der_drug_narcotic == 1 ~ der_crim_activity_drug_poss_npc)   
+  )
+
+#Check recodes
+df2_recoded %>% checkfunction(der_drug_narcotic, attempt_complete_flag, offense_code)
+df2_recoded %>% checkfunction(der_crim_activity, criminal_act_code, criminal_act_name)
+df2_recoded %>% checkfunction(der_crim_activity_35A_c, der_drug_narcotic, der_crim_activity)
+
+df2_recoded %>% checkfunction(der_crim_activity_drug_poss_traff, criminal_act_code, criminal_act_name)
+df2_recoded %>% checkfunction(der_crim_activity_drug_poss_traff_35A_c, der_drug_narcotic, der_crim_activity_drug_poss_traff)
+
+df2_recoded %>% checkfunction(der_crim_activity_drug_poss_pc, criminal_act_code, criminal_act_name)
+df2_recoded %>% checkfunction(der_crim_activity_drug_poss_pc_35A_c, der_drug_narcotic, der_crim_activity_drug_poss_pc)
+
+df2_recoded %>% checkfunction(der_crim_activity_drug_poss_npc, criminal_act_code, criminal_act_name)
+df2_recoded %>% checkfunction(der_crim_activity_drug_poss_npc_35A_c, der_drug_narcotic, der_crim_activity_drug_poss_npc)
+
+
+#Output to share
+#NIBRS_count_agg_offense(data=df2_recoded, var=der_crim_activity) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_crim_activity_offenses_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df2_recoded, var=der_crim_activity_35A_c) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_crim_activity_35A_c_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df2_recoded, var=der_crim_activity_drug_poss_traff_35A_c) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_crim_activity_drug_poss_traff_35A_c_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df2_recoded, var=der_crim_activity_drug_poss_pc_35A_c) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_crim_activity_drug_poss_pc_35A_c_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df2_recoded, var=der_crim_activity_drug_poss_npc_35A_c) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_crim_activity_drug_poss_npc_35A_c_",input_state,".csv.gz")), na="")
+
+#Using df2_recoded need to summarise the following variables at the incident level:
+# der_drug_narcotic
+# der_crim_activity_drug_poss_traff_35A_c
+# der_crim_activity_drug_poss_pc_35A_c
+# der_crim_activity_drug_poss_npc_35A_c
+
+
+df2_recoded_inc <- df2_recoded %>%
+  group_by(incident_id) %>%
+  summarise(across(
+    .cols = any_of(c("der_drug_narcotic", "der_crim_activity_drug_poss_traff_35A_c", "der_crim_activity_drug_poss_pc_35A_c", "der_crim_activity_drug_poss_npc_35A_c")),
+    .fns = ~ { fcase(any(.x == 1), 1,
+                         default = 0)},
+    .names = "{.col}_inc"
+  )) %>%
+  ungroup()
+
+#See the distribution
+df2_recoded_inc %>% checkfunction(der_drug_narcotic_inc, der_crim_activity_drug_poss_traff_35A_c_inc, der_crim_activity_drug_poss_pc_35A_c_inc, der_crim_activity_drug_poss_npc_35A_c_inc)
+
+#Output to share
+df2_recoded_inc %>% 
+  write_csv(gzfile(paste0(der_bystate_file_path, "drug_module_inc_additional_offenses_",input_state,".csv.gz")), na="")
+  
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+#Dataset for Property seized
+df3 <- read_csv(file=paste0(queried_data_path,"raw_property_",input_state,".csv.gz"), 
+                col_types = cols(prop_desc_code = col_character() ))%>% 
+  select(ori, state_abbr, incident_id, prop_loss_desc, prop_loss_code, prop_loss_name,
+         prop_desc_code, prop_desc_name)
+
+log_dim(df3)
+
+
+df3_recoded <- df3 %>%
+  mutate(
+
+  der_property_seized = fcase(
+
+	prop_loss_code == 6, 1, #6	Seized	Seized (to impound property that was not previously stolen)
+	default = 0),
+
+  der_property_seized_categories_full = fcase(
+	der_property_seized == 1 & prop_desc_code == '01', 1, #1:  Aircraft
+	der_property_seized == 1 & prop_desc_code == '02', 2, #2:  Alcohol
+	der_property_seized == 1 & prop_desc_code == '03', 3, #3:  Automobile
+	der_property_seized == 1 & prop_desc_code == '04', 4, #4:  Bicycles
+	der_property_seized == 1 & prop_desc_code == '05', 5, #5:  Buses
+	der_property_seized == 1 & prop_desc_code == '06', 6, #6:  Clothes/ Furs
+	der_property_seized == 1 & prop_desc_code == '07', 7, #7:  Computer Hard/ Software
+	der_property_seized == 1 & prop_desc_code == '08', 8, #8:  Consumable Goods
+	der_property_seized == 1 & prop_desc_code == '09', 9, #9:  Credit/ Debit cards
+	der_property_seized == 1 & prop_desc_code == '10', 10, #10:  Drugs/ Narcotics
+	der_property_seized == 1 & prop_desc_code == '11', 11, #11:  Drug Equipment
+	der_property_seized == 1 & prop_desc_code == '12', 12, #12:  Farm Equipment
+	der_property_seized == 1 & prop_desc_code == '13', 13, #13:  Firearms
+	der_property_seized == 1 & prop_desc_code == '14', 14, #14:  Gambling Equipment
+	der_property_seized == 1 & prop_desc_code == '15', 15, #15:  Industrial Equipment
+	der_property_seized == 1 & prop_desc_code == '16', 16, #16:  Household Goods
+	der_property_seized == 1 & prop_desc_code == '17', 17, #17:  Jewelry/ Precious Metals
+	der_property_seized == 1 & prop_desc_code == '18', 18, #18:  Livestock
+	der_property_seized == 1 & prop_desc_code == '19', 19, #19:  Merchandise
+	der_property_seized == 1 & prop_desc_code == '20', 20, #20:  Money
+	der_property_seized == 1 & prop_desc_code == '21', 21, #21:  Negotiable Instruments
+	der_property_seized == 1 & prop_desc_code == '22', 22, #22:  Non Negotiable Instruments
+	der_property_seized == 1 & prop_desc_code == '23', 23, #23:  Office Equipment
+	der_property_seized == 1 & prop_desc_code == '24', 24, #24:  Other Motor Vehicles
+	der_property_seized == 1 & prop_desc_code == '25', 25, #25:  Purse/ Wallet
+	der_property_seized == 1 & prop_desc_code == '26', 26, #26:  Radio/ TV/ VCR
+	der_property_seized == 1 & prop_desc_code == '27', 27, #27:  Recordings
+	der_property_seized == 1 & prop_desc_code == '28', 28, #28:  Recreational Vehicles
+	der_property_seized == 1 & prop_desc_code == '29', 29, #29:  Structure/ Single dwelling
+	der_property_seized == 1 & prop_desc_code == '30', 30, #30:  Structure/ Other residence
+	der_property_seized == 1 & prop_desc_code == '31', 31, #31:  Structure/ Other commercial
+	der_property_seized == 1 & prop_desc_code == '32', 32, #32:  Structure/ Other industrial
+	der_property_seized == 1 & prop_desc_code == '33', 33, #33:  Structure/ Public
+	der_property_seized == 1 & prop_desc_code == '34', 34, #34:  Structure/ Storage
+	der_property_seized == 1 & prop_desc_code == '35', 35, #35:  Structure/ Other
+	der_property_seized == 1 & prop_desc_code == '36', 36, #36:  Tools
+	der_property_seized == 1 & prop_desc_code == '37', 37, #37:  Trucks
+	der_property_seized == 1 & prop_desc_code == '38', 38, #38:  Vehicle Parts
+	der_property_seized == 1 & prop_desc_code == '39', 39, #39:  Watercraft
+	der_property_seized == 1 & prop_desc_code == '41', 40, #40:  Aircraft Parts/ Accessories
+	der_property_seized == 1 & prop_desc_code == '42', 41, #41:  Artistic Supplies/ Accessories
+	der_property_seized == 1 & prop_desc_code == '43', 42, #42:  Building Materials
+	der_property_seized == 1 & prop_desc_code == '44', 43, #43:  Camping/ Hunting/ Fishing Equipment/ Supplies
+	der_property_seized == 1 & prop_desc_code == '45', 44, #44:  Chemicals
+	der_property_seized == 1 & prop_desc_code == '46', 45, #45:  Collections/ Collectibles
+	der_property_seized == 1 & prop_desc_code == '47', 46, #46:  Crops
+	der_property_seized == 1 & prop_desc_code == '48', 47, #47:  Documents/ Personal or Business
+	der_property_seized == 1 & prop_desc_code == '49', 48, #48:  Explosives
+	der_property_seized == 1 & prop_desc_code == '59', 49, #49:  Firearm Accessories
+	der_property_seized == 1 & prop_desc_code == '64', 50, #50:  Fuel
+	der_property_seized == 1 & prop_desc_code == '65', 51, #51:  Identity Documents
+	der_property_seized == 1 & prop_desc_code == '66', 52, #52:  Identity-Intangible
+	der_property_seized == 1 & prop_desc_code == '67', 53, #53:  Law Enforcement Equipment
+	der_property_seized == 1 & prop_desc_code == '68', 54, #54:  Lawn/ Yard/ Garden Equipment
+	der_property_seized == 1 & prop_desc_code == '69', 55, #55:  Logging Equipment
+	der_property_seized == 1 & prop_desc_code == '70', 56, #56:  Medical/ Medical Lab Equipment
+	der_property_seized == 1 & prop_desc_code == '71', 57, #57:  Metals, Non-Precious
+	der_property_seized == 1 & prop_desc_code == '72', 58, #58:  Musical Instruments
+	der_property_seized == 1 & prop_desc_code == '73', 59, #59:  Pets
+	der_property_seized == 1 & prop_desc_code == '74', 60, #60:  Photographic/ Optical Equipment
+	der_property_seized == 1 & prop_desc_code == '75', 61, #61:  Portable Electronic Communications
+	der_property_seized == 1 & prop_desc_code == '76', 62, #62:  Recreational/ Sports Equipment
+	der_property_seized == 1 & prop_desc_code == '77', 63, #63:  Other
+	der_property_seized == 1 & prop_desc_code == '78', 64, #64:  Trailers
+	der_property_seized == 1 & prop_desc_code == '79', 65, #65:  Watercraft Equipment/ Parts/ Accessories
+	der_property_seized == 1 & prop_desc_code == '80', 66, #66:  Weapons-Other
+	der_property_seized == 1 & prop_desc_code == '88', 67, #67:  Pending Inventory
+	der_property_seized == 1 & prop_desc_code == '99', 68 #68:  Special
+),
+
+  der_property_seized_categories_short = fcase(
+	der_property_seized == 1 & prop_desc_code == '10', 1, #10:  Drugs/ Narcotics
+	der_property_seized == 1 & prop_desc_code == '11', 2, #11:  Drug Equipment
+	der_property_seized == 1 & prop_desc_code == '45', 3, #44:  Chemicals
+	der_property_seized == 1 & prop_desc_code == '20', 4, #20:  Money
+	der_property_seized == 1 & prop_desc_code == '13', 5 #13:  Firearms
+))
+
+
+#Create indicator for whether incident has any property seized
+df3_incident <- df3_recoded %>%
+  group_by(incident_id) %>%
+  summarise(der_property_seized_any = fcase(any(der_property_seized == 1), 1, default = 0)) %>%
+  ungroup()
+
+#Check recodes
+df3_recoded %>% checkfunction(der_property_seized, prop_loss_code, prop_loss_name)
+df3_recoded %>% checkfunction(der_property_seized_categories_full, der_property_seized, prop_desc_code, prop_desc_name)
+df3_recoded %>% checkfunction(der_property_seized_categories_short, der_property_seized, prop_desc_code, prop_desc_name)
+
+#Output to share
+NIBRS_count_agg(data=df3_recoded, var=der_property_seized_categories_full) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_property_seized_categories_full_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df3_recoded, var=der_property_seized_categories_short) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_property_seized_categories_short_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df3_incident, var=der_property_seized_any) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_property_seized_any_",input_state,".csv.gz")), na="")
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+#Counts of completed drug/narcotic violation offense incidents, by suspected type of drug
+df4 <- read_csv(paste0(queried_data_path,"drug_incidents_by_drug_type_",input_state,".csv.gz"), 
+                col_types = cols(prop_desc_code = col_character() ))
+
+log_dim(df4)
+
+df4_recoded <- df4 %>%
+  mutate(
+
+	#Could be dirty since property may or may not be drugs
+	der_suspected_type_of_drug = fcase(
+  suspected_drug_code == "A", 1,#  Cocaine/crack cocaine (A, B):  A: Crack Cocaine
+  suspected_drug_code == "B", 1,#  Cocaine/crack cocaine (A, B):  B: Cocaine
+  suspected_drug_code == "C", 2,#  Marijuana/hashish (C, E):  C: Hashish
+  suspected_drug_code == "D", 3,#  Opiate/narcotic (D, F, G, H):  D: Heroin
+  suspected_drug_code == "E", 2,#  Marijuana/hashish (C, E):  E: Marijuana
+  suspected_drug_code == "F", 3,#  Opiate/narcotic (D, F, G, H):  F: Morphine
+  suspected_drug_code == "G", 3,#  Opiate/narcotic (D, F, G, H):  G: Opium
+  suspected_drug_code == "H", 3,#  Opiate/narcotic (D, F, G, H):  H: Other Narcotics
+  suspected_drug_code == "I", 4,#  Hallucinogen (I, J, K):  I: LSD
+  suspected_drug_code == "J", 4,#  Hallucinogen (I, J, K):  J: PCP
+  suspected_drug_code == "K", 4,#  Hallucinogen (I, J, K):  K: Other Hallucingens
+  suspected_drug_code == "L", 5,#  Stimulant (L, M):  L: Meth/ Amphetamines
+  suspected_drug_code == "M", 5,#  Stimulant (L, M):  M: Other Stimulants
+  suspected_drug_code == "N", 6,#  Depressant (N, O):  N: Barbiturates
+  suspected_drug_code == "O", 6,#  Depressant (N, O):  O: Other Depressants
+  suspected_drug_code == "P", 7,#  Other (P):  P: Other Drugs
+  suspected_drug_code == "U", 8,#  Unknown (U):  U: Unknown
+  suspected_drug_code == "X", 9#  More Than 3 Types (X):  X: More Than 3 Types
+),
+  der_property_seized = fcase(
+	prop_loss_name == "Seized", 1, #6	Seized	Seized (to impound property that was not previously stolen)
+	default = 0),
+
+  der_property_drug = fcase(
+
+	prop_desc_code == "10", 1, #10	Drugs/ Narcotics
+	default = 0),
+  der_suspected_type_of_drug_seized = fcase(
+	der_property_seized == 1 & der_property_drug == 1, der_suspected_type_of_drug,
+	default = NA_real_
+  )
+)
+
+
+#Check recodes
+df4_recoded %>% checkfunction(der_suspected_type_of_drug, suspected_drug_code, suspected_drug_name)
+df4_recoded %>% checkfunction(der_property_seized, prop_loss_name)
+df4_recoded %>% checkfunction(der_property_drug, prop_desc_code, prop_desc_name)
+df4_recoded %>% checkfunction(der_suspected_type_of_drug_seized,der_property_seized,der_property_drug, suspected_drug_code, suspected_drug_name)
+
+
+#Output to share
+NIBRS_count_agg(data=df4_recoded, var=der_suspected_type_of_drug) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_suspected_type_of_drug_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df4_recoded, var=der_suspected_type_of_drug_seized) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_suspected_type_of_drug_seized_",input_state,".csv.gz")), na="")
+
+
+#Clear the objects and free up memory
+cleanup_memory()
+
+# Counts of completed drug/narcotic violation offense incidents, by suspected type of drug and criminal activity
+df5 <- read_csv(file=paste0(queried_data_path,"drug_offense_by_drug_and_activity_",input_state,".csv.gz"), 
+                col_types = cols(offense_code = col_character()))
+log_dim(df5)
+
+#Need to create indicators at incident_id level
+df5_recoded <- df5 %>%
+  #Recode drug offense indicator
+  offense_recode_drug() %>%
+	#Filter to Completed Drug/Narcotic Violation
+	filter(der_drug_narcotic == 1) %>%
+	#After filtering aggregate data at incident level
+	group_by(incident_id) %>%
+  mutate(der_distinct_suspected_drug = n_distinct(suspected_drug_code, na.rm=TRUE),
+		 der_distinct_criminal_activity = n_distinct(criminal_act_code, na.rm=TRUE)
+		 ) %>%
+  ungroup()
+
+log_dim(df5)
+log_dim(df5_recoded)
+
+df5_recoded_2 <- df5_recoded %>%
+  mutate(
+
+	#Could be dirty since property may or may not be drugs
+	der_suspected_type_of_drug = fcase(
+
+  	suspected_drug_code == "A", 1,#  Cocaine/crack cocaine (A, B):  A: Crack Cocaine
+    suspected_drug_code == "B", 1,#  Cocaine/crack cocaine (A, B):  B: Cocaine
+    suspected_drug_code == "C", 2,#  Marijuana/hashish (C, E):  C: Hashish
+    suspected_drug_code == "D", 3,#  Opiate/narcotic (D, F, G, H):  D: Heroin
+    suspected_drug_code == "E", 2,#  Marijuana/hashish (C, E):  E: Marijuana
+    suspected_drug_code == "F", 3,#  Opiate/narcotic (D, F, G, H):  F: Morphine
+    suspected_drug_code == "G", 3,#  Opiate/narcotic (D, F, G, H):  G: Opium
+    suspected_drug_code == "H", 3,#  Opiate/narcotic (D, F, G, H):  H: Other Narcotics
+    suspected_drug_code == "I", 4,#  Hallucinogen (I, J, K):  I: LSD
+    suspected_drug_code == "J", 4,#  Hallucinogen (I, J, K):  J: PCP
+    suspected_drug_code == "K", 4,#  Hallucinogen (I, J, K):  K: Other Hallucingens
+    suspected_drug_code == "L", 5,#  Stimulant (L, M):  L: Meth/ Amphetamines
+    suspected_drug_code == "M", 5,#  Stimulant (L, M):  M: Other Stimulants
+    suspected_drug_code == "N", 6,#  Depressant (N, O):  N: Barbiturates
+    suspected_drug_code == "O", 6,#  Depressant (N, O):  O: Other Depressants
+    suspected_drug_code == "P", 7,#  Other (P):  P: Other Drugs
+    suspected_drug_code == "U", 8,#  Unknown (U):  U: Unknown
+    suspected_drug_code == "X", 9#  More Than 3 Types (X):  X: More Than 3 Types
+
+
+	),
+
+	der_crim_activity = fcase(
+
+  	criminal_act_code == "B", 1, #1: B:  Buying/Receiving
+  	criminal_act_code == "C", 2, #2: C:  Cultivating/Manufacturing/Publishing
+  	criminal_act_code == "D", 3, #3: D:  Distributing/Selling
+  	criminal_act_code == "E", 4, #4: E:  Exploiting Children
+  	criminal_act_code == "O", 5, #5: O:  Operating/Promoting/Assisting
+  	criminal_act_code == "P", 6, #6: P:  Possessing/Concealing
+  	criminal_act_code == "T", 7, #7: T:  Transporting/Transmitting/Importing
+  	criminal_act_code == "U", 8 #8: U:  Using/Consuming
+	),
+
+	der_suspected_type_of_drug_crim_activity = case_when(
+	  TRUE ~ (der_suspected_type_of_drug-1)*8 + der_crim_activity),
+
+	der_1suspected_type_of_drug_1crim_activity = fcase(
+	  der_distinct_suspected_drug == 1 | der_distinct_criminal_activity == 1,   der_suspected_type_of_drug_crim_activity,
+	  default = NA_real_
+	)
+)
+
+#Check recodes
+df5_recoded_2 %>% checkfunction(der_drug_narcotic, attempt_complete_flag, crime_against, offense_code, offense_name)
+df5_recoded_2 %>% checkfunction(der_suspected_type_of_drug, suspected_drug_code, suspected_drug_name)
+df5_recoded_2 %>% checkfunction(der_crim_activity, criminal_act_code, criminal_act_name)
+df5_recoded_2 %>% checkfunction(der_suspected_type_of_drug_crim_activity, suspected_drug_name, criminal_act_name)
+df5_recoded_2 %>% checkfunction(der_1suspected_type_of_drug_1crim_activity, der_distinct_suspected_drug,  der_distinct_criminal_activity, suspected_drug_name, criminal_act_name)
+
+
+
+#Output to share
+NIBRS_count_agg(data=df5_recoded_2, var=der_suspected_type_of_drug_crim_activity) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_suspected_type_of_drug_crim_activity_35A_c_",input_state,".csv.gz")), na="")
+
+NIBRS_count_agg(data=df5_recoded_2, var=der_1suspected_type_of_drug_1crim_activity) %>% write_csv(gzfile(paste0(der_bystate_file_path, "agg_1suspected_type_of_drug_1crim_activity_35A_c_",input_state,".csv.gz")), na="")
+
+#Clear the objects and free up memory
+cleanup_memory()
+```

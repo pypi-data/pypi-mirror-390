@@ -1,0 +1,28 @@
+checks for nibrs_incident:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['incident_id', 'form_month_id', 'incident_number', 'incident_date', 'is_reported_date', 'incident_hour', 'cleared_exceptionally_code', 'cleared_exceptionally_date', 'did', 'is_cargo_theft', 'agency_id', 'judicial_district']
+        when wrong column type:
+          incident_id: bigint
+          form_month_id: bigint
+          incident_number: character varying(12)
+          incident_date: date
+          is_reported_date: boolean
+          incident_hour: numeric(2,0)
+          cleared_exceptionally_code: character(1)
+          cleared_exceptionally_date: date
+          did: bigint
+          is_cargo_theft: boolean
+          agency_id: integer
+          judicial_district: character varying(4)
+  - invalid_count(is_reported_date) = 0:
+      valid values: [False, True]
+  - invalid_count(incident_hour) = 0:
+      valid values: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0]
+  - invalid_count(cleared_exceptionally_code) = 0:
+      valid values: ['A', 'B', 'C', 'D', 'E', 'N']
+  - invalid_count(is_cargo_theft) = 0:
+      valid values: [False, True]
+  - invalid_count(judicial_district) = 0:
+      valid values: ['005M', '010N', '015S', '020A', '025A', '030E', '035W', '040C', '045E', '050N', '055S', '060A', '065A', '070A', '075A', '080M', '085N', '090S', '095M', '100N', '105S', '110A', '115A', '120C', '125N', '130S', '135N', '140S', '145N', '150S', '155A', '160E', '165W', '170E', '175M', '180W', '185A', '190A', '195A', '200E', '205W', '210A', '215N', '220S', '225E', '230W', '235A', '240A', '245A', '250A', '255A', '260A', '265E', '270N', '275S', '280W', '285E', '290M', '295W', '300A', '305N', '310S', '315E', '320N', '325W', '330A', '335E', '340M', '345W', '350A', '355A', '360A', '365E', '370M', '375W', '380E', '385N', '390S', '395W', '400A', '405A', '410E', '415W', '420E', '425W', '430N', '435S', '440E', '445W', '450A', '455A', '465A', '470A']

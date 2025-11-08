@@ -1,0 +1,10 @@
+checks for nibrs_victim_injury:
+  - row_count > 0
+  - schema:
+      fail:
+        when required column missing: ['victim_id', 'injury_code']
+        when wrong column type:
+          victim_id: bigint
+          injury_code: character(1)
+  - invalid_count(injury_code) = 0:
+      valid values: ['B', 'G', 'I','L','M','N','O','T','U']

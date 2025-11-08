@@ -1,0 +1,23 @@
+checks for sum_month_offense:
+- row_count > 0
+- schema:
+    fail:
+      when required column missing: ['form_month_id', 'breakdown_id', 'form_code', 'unfounded_count', 'actual_count', 'cleared_count', 'juvenile_cleared_count', 'uninhabited_count', 'estimated_damage_value', 'nibrs_incident_id']
+      when wrong column type:
+        form_month_id: bigint
+        breakdown_id: smallint
+        form_code: character(1)
+        unfounded_count: integer
+        actual_count: integer
+        cleared_count: integer
+        juvenile_cleared_count: integer
+        uninhabited_count: integer
+        estimated_damage_value: integer
+        nibrs_incident_id: bigint
+
+- invalid_count(breakdown_id) = 0:
+    valid values: [0, 11, 12, 20, 21, 22, 23, 24, 25, 30, 31, 32, 33, 34, 50, 51, 52, 53, 54, 55, 60, 61, 62, 63, 70, 90, 91, 92, 93, 101, 102, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 130, 131, 132]
+- invalid_count(form_code) = 0:
+    valid values: ['F', 'L', 'R', 'T']
+- invalid_count(uninhabited_count) = 0:
+    valid values: [-5, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 52, 53, 54, 75, 77, 85, 89, 100, 106, 109, 120, 151, 160, 197, 199, 215, 222, 233, 250, 325, 700, 1200, 10000, 30000, 73400]
