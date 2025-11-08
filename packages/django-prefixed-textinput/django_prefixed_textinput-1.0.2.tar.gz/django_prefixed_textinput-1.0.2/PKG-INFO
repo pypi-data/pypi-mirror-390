@@ -1,0 +1,165 @@
+Metadata-Version: 2.4
+Name: django-prefixed-textinput
+Version: 1.0.2
+Summary: An extension of the default TextInput widget that displays a read-only string prefix
+Home-page: http://github.com/BigglesZX/django-prefixed-textinput
+Author: James Tiplady
+Maintainer: James Tiplady
+License: MIT
+Keywords: django
+Platform: OS Independent
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Libraries :: Application Frameworks
+Classifier: Framework :: Django
+Classifier: Framework :: Django :: 4.2
+Classifier: Framework :: Django :: 5.0
+Classifier: Framework :: Django :: 5.1
+Classifier: Framework :: Django :: 5.2
+Requires-Python: >=3.8,<4
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=4.2
+Provides-Extra: dev
+Requires-Dist: black~=25.9.0; extra == "dev"
+Requires-Dist: Django~=5.2.8; extra == "dev"
+Requires-Dist: flake8~=7.3.0; extra == "dev"
+Requires-Dist: setuptools~=80.9.0; extra == "dev"
+Requires-Dist: tox~=4.32.0; extra == "dev"
+Requires-Dist: twine~=6.2.0; extra == "dev"
+Requires-Dist: wheel~=0.45.1; extra == "dev"
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: maintainer
+Dynamic: platform
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# django-prefixed-textinput
+
+An extension of the default `TextInput` widget that displays a read-only string prefix over the input field.
+
+![Screenshot showing widget in the Django admin](/images/screenshot.png)
+
+## Compatibility
+
+The widget has been tested on all Python/Django version combinations [officially supported](https://docs.djangoproject.com/en/5.2/faq/install/#what-python-version-can-i-use-with-django) by the Django project:
+
+|                | Django 4.2 | 5.0 | 5.1 | 5.2 |
+|---------------:|:----------:|:---:|:---:|:---:|
+| **Python 3.8** | ✔          |     |     |     |
+| **3.9**        | ✔          |     |     |     |
+| **3.10**       | ✔          | ✔   | ✔   | ✔   |
+| **3.11**       | ✔          | ✔   | ✔   | ✔   |
+| **3.12**       | ✔          | ✔   | ✔   | ✔   |
+| **3.13**       |            |     | ✔   | ✔   |
+| **3.14**       |            |     |     | ✔   |
+
+If you need to use `django-prefixed-textinput` with Django 3, please use a version of the package prior to `1.0.0`.
+
+Styling for the widget includes support for right-to-left (RTL) languages so this should work more or less as expected. Note that IE11 is **not** supported as the widget styling requires support for [CSS Custom Properties](https://caniuse.com/css-variables) ("CSS Variables").
+
+## Installation
+
+```
+$ pip install django-prefixed-textinput
+```
+
+## Usage
+
+Add `prefixed_textinput` to your `INSTALLED_APPS` setting:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    'prefixed_textinput',
+]
+```
+
+Import the widget:
+
+```python
+from prefixed_textinput import PrefixedTextInput
+```
+
+Define a custom admin form, which allows overriding the widget for a specific field:
+
+```python
+# forms.py
+from django import forms
+from prefixed_textinput import PrefixedTextInput
+
+
+class MyModelAdminForm(forms.ModelForm):
+    class Meta:
+        widgets = {
+            'myfield':
+                PrefixedTextInput(prefix='FOO'),
+        }
+        fields = '__all__'
+```
+
+Specify the custom admin form in your admin definition:
+
+```python
+# admin.py
+from django import admin
+
+from .forms import MyModelAdminForm
+from .models import MyModel
+
+
+@admin.register(MyModel)
+class ProductAdmin(admin.ModelAdmin):
+    form = MyModelAdminForm
+```
+
+## Development
+
+If working locally on the package you can install the development tools via `pip`:
+
+```shell
+$ pip install -e .[dev]
+```
+
+Run the bundled Django example project:
+
+```shell
+$ cd example_project
+$ python manage.py migrate
+$ python manage.py createsuperuser
+$ python manage.py runserver 0.0.0.0:8000
+$ open http://localhost:8000/admin/
+```
+
+Navigate to the example `Book` model in the `Bookshop` app to see the widget in action.
+
+Run the extremely basic test suite across environments using `tox`:
+
+```shell
+$ tox run
+```
+
+## Issues, Suggestions, Contributions
+
+...are welcome on GitHub. Thanks for your interest in `django-prefixed-textinput`!
