@@ -1,0 +1,25 @@
+def __GENERATED__(self, t, obj, ctx, /):
+    used = 1
+    try:
+        x_name = obj['name']
+    except KeyError:
+        raise MissingFieldError(t, 'name', ctx=ctx)
+    else:
+        v_name = x_name if type(x_name) is str else deserialize(self, str, x_name, ctx)
+    try:
+        x_aliases = obj['aliases']
+        used += 1
+    except KeyError:
+        v_aliases = list()
+    else:
+        v_aliases = method_map[t_list, type(x_aliases), Context](self, list1, x_aliases, ctx)
+    try:
+        x_cool = obj['cool']
+        used += 1
+    except KeyError:
+        v_cool = dflt
+    else:
+        v_cool = x_cool if type(x_cool) is bool else deserialize(self, bool, x_cool, ctx)
+    if used != len(obj):
+        raise UnrecognizedFieldError(t, expected, obj.keys(), ctx=ctx)
+    return Defaults(v_name, v_aliases, cool=v_cool)
