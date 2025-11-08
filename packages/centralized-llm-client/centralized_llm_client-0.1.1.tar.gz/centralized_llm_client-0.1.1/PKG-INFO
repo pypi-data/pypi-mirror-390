@@ -1,0 +1,102 @@
+Metadata-Version: 2.4
+Name: centralized-llm-client
+Version: 0.1.1
+Summary: Unified Python client for multiple LLM providers with fallback, file handling, and logging.
+Author-email: Hrithik <hrithik@qusandbox.com>
+License: MIT License
+        
+        Copyright (c) 2025 Hrithik
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: openai
+Requires-Dist: google-generativeai
+Requires-Dist: boto3
+Requires-Dist: python-dotenv
+Requires-Dist: fastapi
+Requires-Dist: pymongo
+Requires-Dist: cryptography
+Requires-Dist: starlette
+Dynamic: license-file
+
+# Centralized-LLM-Client
+
+Unified Python client for interacting with multiple LLM providers (OpenAI, Gemini, OpenRouter) with automatic fallback, secure key management, file handling, and MongoDB logging.
+
+## Features
+- Automatic provider fallback (OpenAI, Gemini, OpenRouter)
+- Secure API key management (encrypted, MongoDB Atlas)
+- File handling: supports local, S3, and FastAPI UploadFile
+- Detailed logging of all LLM calls to MongoDB Atlas
+- S3 integration for file storage/retrieval
+
+## Installation
+
+Python 3.9+ required.
+
+```bash
+pip install Centralized-LLM-Client
+# Or, for local development:
+pip install -r src/requirements.txt
+```
+
+## Quickstart
+
+```python
+from src.CentralizedClient import CentralizedLLMClient
+client = CentralizedLLMClient(username="alice")
+response = await client.completion("Summarize this document.")
+```
+
+## Architecture
+
+- **src/CentralizedClient/CentralizedLLMClient.py**: Main orchestration, provider fallback logic
+- **Providers**: `gemini_provider.py`, `openai_provider.py`, `openrouter_provider.py` (wrap LLM APIs)
+- **Key Management**: `key_manager.py` (encrypted keys, user/system fallback)
+- **File Handling**: `file_processor.py` (temp files, S3/local/FastAPI)
+- **Logging**: `llm_logger.py` (MongoDB Atlas logging)
+- **External Integrations**: S3 (`utils/s3_file_manager.py`), MongoDB Atlas (`utils/atlas_client.py`)
+
+## Environment Setup
+
+- Set environment variables for S3, MongoDB Atlas, and LLM provider keys (see `.env` usage in utils)
+- Place `key.bin` (encryption key) in project root for key decryption
+
+## Testing
+
+- Add tests in `tests/` and run with pytest:
+	```bash
+	pytest tests/
+	```
+
+## Contributing
+
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+MIT License
