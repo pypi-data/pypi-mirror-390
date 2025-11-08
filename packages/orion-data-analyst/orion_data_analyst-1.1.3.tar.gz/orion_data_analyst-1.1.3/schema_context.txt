@@ -1,0 +1,101 @@
+You can query ONLY these 4 tables in `bigquery-public-data.thelook_ecommerce`:
+
+1. orders – customer orders (order_id, user_id, status, gender, created_at, returned_at, shipped_at, delivered_at, num_of_item)
+2. order_items – products within each order (id, order_id, user_id, product_id, inventory_item_id, status, created_at, shipped_at, delivered_at, returned_at, sale_price)
+3. products – catalog metadata (id, cost, category, name, brand, retail_price, department, sku, distribution_center_id)
+4. users – customer demographics (id, first_name, last_name, email, age, gender, state, city, country, traffic_source, created_at, user_geom)
+
+Joins:
+- orders.user_id = users.id  
+- orders.order_id = order_items.order_id  
+- order_items.product_id = products.id
+
+Rules:
+- Prefix all tables with full path: `bigquery-public-data.thelook_ecommerce.<table>`
+- Always alias tables (o, oi, p, u) and qualify ambiguous columns
+- Use only these 4 tables; reject others
+
+Encoding facts:
+  • gender values: 'M', 'F' (uppercase)
+  • country names: full names (e.g., 'United States', 'Brasil', 'Canada')
+  • status values: 'Complete', 'Returned', 'Shipped', 'Processing', 'Cancelled'
+  • timestamps: UTC
+  • prices and costs: FLOAT
+  • IDs: INTEGER
+
+=======================================================================
+1. order_items — individual products sold per order
+=======================================================================
+id                    INTEGER    e.g. 142961
+order_id              INTEGER    joins to orders.order_id
+user_id               INTEGER    joins to users.id
+product_id            INTEGER    joins to products.id
+inventory_item_id     INTEGER    warehouse inventory reference
+status                STRING     'Complete', 'Returned', etc.
+created_at            TIMESTAMP  e.g. 2022-06-17 02:52:23 UTC
+shipped_at            TIMESTAMP
+delivered_at          TIMESTAMP
+returned_at           TIMESTAMP  may be NULL unless returned
+sale_price            FLOAT      e.g. 0.49
+
+Notes:
+  - One order → many items (avg 3–4)
+  - Use SUM(oi.sale_price) for revenue where oi.status='Complete'
+
+=======================================================================
+2. orders — overall purchase records
+=======================================================================
+order_id              INTEGER    e.g. 41
+user_id               INTEGER    joins to users.id
+status                STRING     'Complete', 'Returned', etc.
+gender                STRING     'M' or 'F'
+created_at            TIMESTAMP  order creation
+returned_at           TIMESTAMP
+shipped_at            TIMESTAMP
+delivered_at          TIMESTAMP
+num_of_item           INTEGER    e.g. 4
+
+Notes:
+  - Represents full order summary
+  - Link to users and order_items for details
+
+=======================================================================
+3. products — product catalog metadata
+=======================================================================
+id                    INTEGER    e.g. 13842
+cost                  FLOAT      e.g. 2.52
+category              STRING     e.g. 'Accessories', 'Electronics'
+name                  STRING     e.g. 'Low Profile Dyed Cotton Twill Cap'
+brand                 STRING     e.g. 'MG', 'Apple', 'Nike'
+retail_price          FLOAT      e.g. 6.25
+department            STRING     e.g. 'Men', 'Women', 'Unisex'
+sku                   STRING     unique product code
+distribution_center_id INTEGER   e.g. 1
+
+Notes:
+  - cost < retail_price for 99% of rows
+  - used for product joins from order_items
+
+=======================================================================
+4. users — customer demographics
+=======================================================================
+id                    INTEGER    e.g. 59933
+first_name            STRING     e.g. 'Greg'
+last_name             STRING     e.g. 'Hanson'
+email                 STRING     e.g. 'greghanson@example.net'
+age                   INTEGER    e.g. 58
+gender                STRING     'M' or 'F'
+state                 STRING     e.g. 'Acre'
+city                  STRING     may be NULL
+country               STRING     e.g. 'Brasil'
+traffic_source        STRING     e.g. 'Search', 'Email', 'Organic'
+created_at            TIMESTAMP  signup date
+user_geom             GEOGRAPHY  POINT(long lat)
+latitude              FLOAT      e.g. -8.06
+longitude             FLOAT      e.g. -72.87
+
+Notes:
+  - ~100k unique users, mostly from United States, Brasil, Canada
+  - countries stored as full names, not ISO codes
+
+
