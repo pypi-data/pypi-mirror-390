@@ -1,0 +1,184 @@
+Metadata-Version: 2.4
+Name: paytm-verifier
+Version: 1.0.3
+Summary: Verify Paytm merchant payments using MID and Order ID.
+Home-page: https://github.com/Uday-x-ai/paytm-verifier
+Author: UdayScripts
+Author-email: support@udayscripts.in
+Project-URL: Telegram, https://t.me/UdayScripts
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# 💳 Paytm Merchant Payment Verifier
+
+Easily **verify your Paytm merchant transactions** using just your **MID** and **Order ID**.  
+Built with ❤️ by [@UdayScripts](https://t.me/UdayScripts).
+
+---
+
+## 🧩 Overview
+
+This Python package provides a simple interface to verify any Paytm merchant payment status.  
+You can instantly check whether a payment is **successful**, **failed**, or **invalid**,  
+and get all transaction details in one function call.
+
+---
+
+## 🚀 Installation
+
+Install via **pip**:
+
+```bash
+pip install paytm-verifier
+```
+
+---
+
+## ⚙️ Usage Example
+
+### ✅ Basic Example
+
+```python
+from paytm_verifier import verify_paytm
+
+result = verify_paytm("MID", "ORDER_ID")
+print(result)
+```
+
+### Output (Example)
+```json
+{
+  "success": false,
+  "orderId": "2025063018480459595",
+  "status": "TXN_FAILURE",
+  "amount": null,
+  "message": "Invalid Order Id.",
+  "date": null,
+  "paymentMode": null,
+  "bankTxnId": null,
+  "missingFields": [
+    "TXNID",
+    "BANKTXNID",
+    "TXNAMOUNT",
+    "TXNTYPE",
+    "GATEWAYNAME",
+    "BANKNAME",
+    "PAYMENTMODE",
+    "REFUNDAMT",
+    "TXNDATE"
+  ],
+  "readable": "❌ Payment Failed\nOrder ID: 2025063018480459595\nReason: Invalid Order Id."
+}
+```
+
+---
+
+## 🧠 Parameters
+
+| Parameter | Type   | Required | Description |
+|------------|--------|-----------|-------------|
+| `mid`      | str | ✅ Yes | Your Paytm Merchant ID |
+| `order_id` | str | ✅ Yes | The Paytm Order ID of the transaction you want to verify |
+
+---
+
+## 🧾 Response Object
+
+| Field | Description |
+|-------|-------------|
+| `success` | Boolean — `True` if payment was successful |
+| `orderId` | Your Paytm Order ID |
+| `status` | Transaction status (`TXN_SUCCESS`, `TXN_FAILURE`, etc.) |
+| `amount` | Transaction amount (if available) |
+| `message` | Response message (e.g., “Txn Successful”, “Invalid Order Id.”) |
+| `date` | Transaction date (if available) |
+| `paymentMode` | Payment method used (UPI, Card, Wallet, etc.) |
+| `bankTxnId` | Bank transaction reference number |
+| `missingFields` | Any fields that were empty in the Paytm response |
+| `readable` | Human-friendly text summary |
+
+---
+
+## 🧪 Example Success Response
+
+```json
+{
+  "success": true,
+  "orderId": "ORDER12345",
+  "status": "TXN_SUCCESS",
+  "amount": "499.00",
+  "message": "Txn Successful.",
+  "date": "2025-11-08 14:32:05",
+  "paymentMode": "UPI",
+  "bankTxnId": "1234567890",
+  "readable": "✅ Payment Successful\nOrder ID: ORDER12345\nAmount: ₹499.00\nDate: 2025-11-08 14:32:05\nMode: UPI\nBank Txn ID: 1234567890"
+}
+```
+
+---
+
+## 🛠️ Error Handling
+
+If any required field or parameter is missing, the function raises an exception.
+
+### Example:
+
+```python
+from paytm_verifier import verify_paytm
+
+try:
+    verify_paytm("", "")
+except Exception as e:
+    print(e)
+```
+
+Output:
+```
+Both 'mid' and 'order_id' are required.
+```
+
+---
+
+## 🧩 Integrations
+
+You can integrate this Python package with:
+- 💬 Telegram bots (for checking payment status)
+- 🧾 Admin dashboards or backend systems
+- 🌐 Django / Flask / FastAPI web servers
+- ⚙️ Automation scripts or CRON jobs
+
+---
+
+## 👨‍💻 Author & Credits
+
+**Developer:** [@UdayScripts](https://t.me/UdayScripts)  
+**Channel:** [Join Updates on Telegram](https://t.me/UdayScripts)
+
+---
+
+## ⚖️ License
+
+This project is licensed under the **MIT License**.  
+You’re free to use, modify, and distribute it with proper credit.
+
+---
+
+⭐ **Support & Updates**  
+Join my Telegram channel for more APIs, scripts, and open-source projects:  
+👉 [t.me/UdayScripts](https://t.me/UdayScripts)
