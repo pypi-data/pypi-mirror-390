@@ -1,0 +1,242 @@
+[build-system]
+requires = ["setuptools>=42.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polarpandas"
+version = "0.9.0"
+description = "A pandas-compatible API layer built on top of Polars for high-performance data manipulation"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Odos Matthews", email = "odosmatthews@gmail.com"}
+]
+maintainers = [
+    {name = "Odos Matthews", email = "odosmatthews@gmail.com"}
+]
+keywords = ["pandas", "polars", "dataframe", "data-analysis", "performance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "polars>=0.15.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "black>=22.0.0",
+    "sqlalchemy>=1.4.0",
+    "types-tabulate>=0.9.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pandas>=1.5.0",  # Only for testing/comparison
+    "numpy>=1.20.0",  # Required for schema conversion tests
+    "sqlalchemy>=1.4.0",  # Required for enhanced SQL tests
+    "types-tabulate>=0.9.0",  # Type stubs for tabulate used in mypy runs
+]
+pandas = [
+    "pandas>=1.5.0",  # Optional: Required only for certain features (to_pandas, loc/iloc setters, etc.)
+]
+numpy = [
+    "numpy>=1.20.0",  # Optional: Required for using numpy dtype objects in schema conversion (e.g., np.int64, np.float64)
+]
+excel = [
+    "openpyxl>=3.0.0",  # For Excel file I/O (read_excel, to_excel)
+    "xlsxwriter>=3.0.0",  # For Excel file writing (to_excel)
+]
+hdf5 = [
+    "h5py>=3.0.0",  # For HDF5 file I/O (read_hdf, to_hdf)
+    "tables>=3.8.0",  # Alternative HDF5 backend (pytables)
+]
+html = [
+    "lxml>=4.0.0",  # For HTML/XML parsing (read_html, read_xml, to_xml)
+    "html5lib>=1.1",  # Alternative HTML parser (read_html)
+]
+spss = [
+    "pyreadstat>=1.0.0",  # For SPSS/Stata file I/O (read_spss, to_stata)
+]
+sas = [
+    "sas7bdat>=2.0.0",  # For SAS file I/O (read_sas)
+]
+xarray = [
+    "xarray>=2022.0.0",  # For xarray conversion (to_xarray)
+]
+clipboard = [
+    "pyperclip>=1.8.0",  # For clipboard operations (read_clipboard, to_clipboard)
+]
+formatting = [
+    "tabulate>=0.9.0",  # For table formatting (to_latex, to_markdown, to_html)
+    "types-tabulate>=0.9.0",  # Type stubs used by mypy when formatting extras are installed
+]
+sqlalchemy = [
+    "sqlalchemy>=1.4.0",  # For enhanced SQL operations (primary_key, auto_increment in to_sql)
+]
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+]
+all = [
+    "pandas>=1.5.0",
+    "numpy>=1.20.0",
+    "openpyxl>=3.0.0",
+    "xlsxwriter>=3.0.0",
+    "h5py>=3.0.0",
+    "tables>=3.8.0",
+    "lxml>=4.0.0",
+    "html5lib>=1.1",
+    "pyreadstat>=1.0.0",
+    "sas7bdat>=2.0.0",
+    "xarray>=2022.0.0",
+    "pyperclip>=1.8.0",
+    "tabulate>=0.9.0",
+    "sqlalchemy>=1.4.0",
+    "types-tabulate>=0.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/eddiethedean/polarpandas"
+Repository = "https://github.com/eddiethedean/polarpandas"
+Documentation = "https://github.com/eddiethedean/polarpandas#readme"
+"Bug Tracker" = "https://github.com/eddiethedean/polarpandas/issues"
+
+[project.scripts]
+polarpandas = "polarpandas.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+polarpandas = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=src/polarpandas",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--strict-markers",
+    "--strict-config",
+    "-v"
+]
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "benchmark: marks tests as benchmark tests",
+    "requires_sqlalchemy: tests that need SQLAlchemy installed",
+]
+
+[tool.coverage.run]
+source = ["src/polarpandas"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.mypy]
+mypy_path = "src"
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_reexport = true
+strict = true
+
+[[tool.mypy.overrides]]
+module = [
+    "polars.*",
+    "numpy.*",
+    "pandas.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+extend-select = ["C4", "SIM", "TCH", "UP"]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["polarpandas"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ty.rules]
+unresolved-import = "ignore"
