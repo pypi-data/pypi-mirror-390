@@ -1,0 +1,403 @@
+Metadata-Version: 2.4
+Name: securekit
+Version: 1.0.2
+Summary: Production-ready cryptography library for Python
+Author-email: SecureKit Team <anshumansingh3697@gmail.com>
+License: Apache-2.0
+Project-URL: Homepage, https://github.com/anshuman365/securekit
+Project-URL: Documentation, https://securekit.readthedocs.io
+Project-URL: Repository, https://github.com/anshuman365/securekit
+Project-URL: Issues, https://github.com/anshuman365/securekit/issues
+Keywords: cryptography,security,encryption,passwords
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security :: Cryptography
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: argon2-cffi>=21.3.0
+Requires-Dist: cryptography>=3.4.8
+Requires-Dist: pynacl>=1.5.0
+Provides-Extra: aws
+Requires-Dist: boto3>=1.26.0; extra == "aws"
+Provides-Extra: vault
+Requires-Dist: hvac>=1.0.0; extra == "vault"
+Provides-Extra: django
+Requires-Dist: Django>=3.2.0; extra == "django"
+Provides-Extra: flask
+Requires-Dist: Flask>=2.0.0; extra == "flask"
+Provides-Extra: fastapi
+Requires-Dist: fastapi>=0.68.0; extra == "fastapi"
+Requires-Dist: uvicorn>=0.15.0; extra == "fastapi"
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov>=2.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: isort>=5.0; extra == "dev"
+Requires-Dist: mypy>=0.910; extra == "dev"
+Dynamic: license-file
+
+# SecureKit 🔐
+
+A comprehensive cryptographic toolkit with secure defaults for Python applications. SecureKit provides production-ready cryptography primitives, key management, and framework integrations with a focus on security, ease of use, and best practices.
+
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![PyPI Version](https://img.shields.io/pypi/v/securekit)
+![Tests](https://img.shields.io/badge/tests-100%25%20passing-brightgreen)
+
+## Features ✨
+
+### Core Cryptography
+- **🔐 Argon2id Password Hashing** - Modern password hashing with automatic parameter calibration
+- **🔒 Authenticated Encryption** - ChaCha20-Poly1305 AEAD with XChaCha20 nonces
+- **🗝️ Digital Signatures** - Ed25519 for fast, secure signing and verification
+- **🔑 Key Derivation** - HKDF for secure key material derivation
+- **🎲 Secure Random** - Cryptographically secure random number generation
+- **⏱️ Constant-Time Operations** - Timing-attack resistant comparisons
+
+### Key Management
+- **💾 Local Encrypted Keystore** - File-based key storage with master key encryption
+- **☁️ AWS KMS Integration** - Seamless integration with AWS Key Management Service
+- **🏔️ HashiCorp Vault** - Support for Vault's transit secrets engine
+- **🔄 Key Rotation** - Automated key rotation policies
+- **🔐 Key Wrapping** - Secure key encryption key (KEK) operations
+
+### Framework Integrations
+- **🌶️ Flask** - Field encryption decorators and seamless integration
+- **🎸 Django** - Encrypted model fields for sensitive data
+- **⚡ FastAPI** - Dependency injection for cryptographic operations
+
+## Installation 📦
+
+```bash
+pip install securekit
+```
+
+For optional dependencies (AWS KMS, Vault, framework support):
+
+```bash
+# AWS KMS support
+pip install securekit[aws]
+
+# HashiCorp Vault support  
+pip install securekit[vault]
+
+# Framework integrations
+pip install securekit[flask]
+pip install securekit[django]
+pip install securekit[fastapi]
+
+# Development dependencies
+pip install securekit[dev]
+```
+
+## Quick Start 🚀
+
+### Password Hashing
+
+```python
+from securekit.crypto.password import hash_password, verify_password
+
+# Hash a password
+hashed = hash_password("MySecurePassword123!")
+# Returns: '$argon2id$v=19$m=65536,t=3,p=2$...'
+
+# Verify a password
+is_valid = verify_password("MySecurePassword123!", hashed)
+# Returns: True
+```
+
+### Authenticated Encryption
+
+```python
+from securekit.crypto.aead import aead_encrypt, aead_decrypt
+import os
+
+# Generate a key (in production, use a key management system)
+key = os.urandom(32)
+
+# Encrypt data
+plaintext = b"Sensitive user data"
+aad = b"user_12345"  # Additional authenticated data
+ciphertext = aead_encrypt(key, plaintext, aad)
+
+# Decrypt and verify
+decrypted = aead_decrypt(key, ciphertext, aad)
+# Returns: b"Sensitive user data"
+```
+
+### Digital Signatures
+
+```python
+from securekit.crypto.core import ed25519_keypair, ed25519_sign, ed25519_verify
+
+# Generate key pair
+private_key, public_key = ed25519_keypair()
+
+# Sign a message
+message = b"Important transaction data"
+signature = ed25519_sign(private_key, message)
+
+# Verify signature
+is_valid = ed25519_verify(public_key, message, signature)
+# Returns: True
+```
+
+### Local Key Management
+
+```python
+from securekit.kms.local import LocalKeyManager
+
+# Initialize key manager
+km = LocalKeyManager("./keystore.json")
+
+# Generate encryption keys
+user_key_id = km.generate_key("user_encryption")
+session_key_id = km.generate_key("session_encryption")
+
+# Use keys for encryption
+user_key = km.get_key(user_key_id)
+# Use with aead_encrypt/decrypt
+```
+
+## Framework Integrations 🛠️
+
+### Flask Integration
+
+```python
+from flask import Flask
+from securekit.adapters.flask import register_securekit, encrypt_fields
+from securekit.kms.local import LocalKeyManager
+
+app = Flask(__name__)
+key_manager = LocalKeyManager("./keystore.json")
+register_securekit(app, key_manager)
+
+@app.route('/profile')
+@encrypt_fields(['email', 'phone'])  # Automatically encrypts these fields
+def get_profile():
+    return {
+        'username': 'john_doe',
+        'email': 'john@example.com',     # Will be encrypted in response
+        'phone': '+1234567890'           # Will be encrypted in response
+    }
+```
+
+### Django Integration
+
+```python
+from django.db import models
+from securekit.adapters.django import EncryptedField
+
+class UserProfile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    ssn = EncryptedField(key_id="user_data")           # Encrypted at rest
+    credit_card = EncryptedField(key_id="payment_data") # Encrypted at rest
+    public_data = models.CharField(max_length=255)     # Stored in plain text
+```
+
+### FastAPI Integration
+
+```python
+from fastapi import FastAPI, Depends
+from securekit.adapters.fastapi import SecureKitDependency
+from securekit.kms.local import LocalKeyManager
+
+app = FastAPI()
+key_manager = LocalKeyManager("./keystore.json")
+securekit = SecureKitDependency(key_manager)
+
+@app.post("/encrypt-data")
+async def encrypt_data(
+    data: str,
+    securekit: SecureKitDependency = Depends()
+):
+    encrypted = securekit.encrypt(data.encode(), "user_data")
+    return {"encrypted_data": encrypted.hex()}
+```
+
+## Key Management Systems 🔑
+
+### AWS KMS
+
+```python
+from securekit.kms.aws import AWSKeyManager
+
+# Uses AWS credentials from environment or ~/.aws/credentials
+km = AWSKeyManager(region='us-east-1')
+
+# Generate a key in AWS KMS
+key_id = km.generate_key("production_encryption")
+
+# Wrap a data key
+data_key = os.urandom(32)
+wrapped_key = km.wrap_key(data_key, key_id)
+```
+
+### HashiCorp Vault
+
+```python
+from securekit.kms.vault import VaultKeyManager
+
+km = VaultKeyManager(
+    url="http://localhost:8200",
+    token="your-vault-token"
+)
+
+# Generate key in Vault transit
+key_id = km.generate_key("app_encryption")
+
+# Use for encryption/decryption
+wrapped = km.wrap_key(b"sensitive_data", key_id)
+```
+
+## Configuration ⚙️
+
+### Environment Variables
+
+```bash
+# Argon2 Parameters
+export SECUREKIT_ARGON2_TIME_COST=3
+export SECUREKIT_ARGON2_MEMORY_COST=65536
+export SECUREKIT_ARGON2_PARALLELISM=2
+
+# Key Management
+export SECUREKIT_KMS_TYPE=local  # local, aws, vault
+export SECUREKIT_LOCAL_KEYSTORE=~/.securekit/keystore.json
+
+# AWS KMS
+export AWS_REGION=us-east-1
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+
+# Vault
+export VAULT_ADDR=http://localhost:8200
+export VAULT_TOKEN=your_vault_token
+```
+
+### Programmatic Configuration
+
+```python
+from securekit.crypto.password import PasswordHasher
+
+# Custom Argon2 parameters
+hasher = PasswordHasher(
+    time_cost=4,        # Higher for more security
+    memory_cost=131072, # 128 MB
+    parallelism=2,      # Number of threads
+    hash_len=32,        # 256-bit output
+    salt_len=16         # 128-bit salt
+)
+```
+
+## Security Best Practices 🛡️
+
+### Password Security
+- Uses Argon2id (winner of the Password Hashing Competition)
+- Automatic parameter calibration for target hash time
+- Built-in protection against timing attacks
+- Secure salt generation
+
+### Encryption
+- XChaCha20-Poly1305 for large nonces and safe random generation
+- Additional authenticated data (AAD) for context binding
+- Tamper-proof ciphertext structure
+- Key commitment in the encryption format
+
+### Key Management
+- Master key encryption for local key storage
+- Secure key derivation using HKDF
+- Automatic key rotation support
+- Hardware security module (HSM) integration via cloud KMS
+
+## Examples 📚
+
+Check the `examples/` directory for complete working examples:
+
+- **Flask App** (`examples/flask_app.py`) - Complete web application with user registration and encrypted profiles
+- **FastAPI App** (`examples/fastapi_app.py`) - Modern async API with dependency injection
+- **Django Integration** (`examples/django_app/`) - Django models with encrypted fields
+
+## Testing 🧪
+
+Run the test suite to verify everything works:
+
+```bash
+# Install development dependencies
+pip install securekit[dev]
+
+# Run all tests
+pytest tests/ -v
+
+# Run specific test categories
+pytest tests/test_crypto.py -v
+pytest tests/test_kms.py -v
+pytest tests/test_adapters.py -v
+```
+
+## Contributing 🤝
+
+We welcome contributions! Please see our contributing guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+
+```bash
+git clone https://github.com/yourusername/securekit.git
+cd securekit
+pip install -e .[dev]
+pre-commit install
+```
+
+## Security Audit 🔍
+
+SecureKit undergoes regular security reviews:
+
+- **Cryptographic Review**: All algorithms follow industry standards
+- **Dependency Scanning**: Regular vulnerability scanning
+- **Timing Attack Analysis**: Constant-time operations where critical
+- **Memory Safety**: Secure memory handling practices
+
+Report security issues to: nexoraindustries@gmail.com
+
+## License 📄
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support 💬
+
+- **Documentation**: [https://securekit.readthedocs.io](https://securekit.readthedocs.io)
+- **Issue Tracker**: [https://github.com/anshuman365/securekit/issues](https://github.com/anshuman365/securekit/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/anshuman365/securekit/discussions)
+
+## Acknowledgments 🙏
+
+- **Argon2** team for the modern password hashing algorithm
+- **Libsodium** for reliable cryptographic primitives
+- **Cryptography.io** for Python bindings to OpenSSL
+- **PyNaCl** for Python bindings to Libsodium
+
+---
+
+<div align="center">
+
+**SecureKit** - Enterprise-grade cryptography made simple 🔐
+
+*"Security shouldn't be complicated"*
+
+</div>
