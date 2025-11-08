@@ -1,0 +1,58 @@
+# Example: Expression-Based Routing
+#
+# This demonstrates conditional routing using safe expression evaluation.
+# No eval() - uses safe parser for: ==, !=, <, >, <=, >=, and, or
+#
+# Pattern 5 from remaining patterns - ALREADY IMPLEMENTED!
+
+concepts:
+  Score:
+    description: "Quality score for routing decisions"
+    structure:
+      value:
+        type: number
+        required: true
+        min_value: 0.0
+        max_value: 1.0
+      confidence:
+        type: number
+        required: true
+
+workflow:
+  steps:
+    # Step 1: Score content
+    - node: score_content
+      type: llm
+      prompt: "Rate this content quality from 0.0 to 1.0"
+      output_concept: Score
+      result: quality_score
+
+    # Step 2: Route based on score using expression
+    - node: route_by_quality
+      type: condition
+      expression: "value >= 0.8"  # Safe expression - no eval()
+      inputs: [quality_score]
+      result: is_high_quality
+
+    # Branches (would be configured via graph actions in Python):
+    # - If is_high_quality == True: go to premium processing
+    # - If is_high_quality == False: go to standard processing
+
+    # Step 3: High quality path
+    - node: premium_processing
+      type: llm
+      prompt: "Enhanced processing for high-quality content"
+      result: premium_result
+
+    # Step 4: Standard quality path
+    - node: standard_processing
+      type: llm
+      prompt: "Standard processing for content"
+      result: standard_result
+
+# Expression examples supported:
+# - Simple: "score > 0.8"
+# - With and: "score > 0.5 and verified == True"
+# - With or: "status == 'approved' or priority == 'high'"
+# - String comparison: "category == 'premium'"
+# - Number comparison: "age >= 18"

@@ -1,0 +1,48 @@
+# Example: Named Intermediate Results
+#
+# This workflow demonstrates explicit data flow using named results.
+# Each step declares what result it produces, and later steps can
+# explicitly reference those results as inputs.
+
+workflow:
+  name: document_analysis
+  description: "Extract and analyze document with explicit data flow"
+
+  steps:
+    # Step 1: Extract text from document
+    - node: extract_text
+      type: extract
+      field: document
+      result: raw_text
+
+    # Step 2: Clean the extracted text
+    - node: clean_text
+      type: transform
+      inputs: [raw_text]          # Explicitly uses raw_text from step 1
+      operation: strip
+      result: cleaned_text
+
+    # Step 3: Analyze sentiment
+    - node: analyze_sentiment
+      type: llm
+      inputs: [cleaned_text]      # Explicitly uses cleaned_text from step 2
+      prompt: |
+        Analyze the sentiment of this text: {{cleaned_text}}
+
+        Return a JSON object with:
+        - sentiment: "positive" | "negative" | "neutral"
+        - score: 0.0 to 1.0
+      model: deepseek-chat
+      result: sentiment
+
+    # Step 4: Generate summary using both cleaned text and sentiment
+    - node: summarize
+      type: llm
+      inputs: [cleaned_text, sentiment]  # Uses results from steps 2 and 3
+      prompt: |
+        Text: {{cleaned_text}}
+        Sentiment: {{sentiment}}
+
+        Provide a brief summary incorporating the sentiment analysis.
+      model: deepseek-chat
+      result: summary

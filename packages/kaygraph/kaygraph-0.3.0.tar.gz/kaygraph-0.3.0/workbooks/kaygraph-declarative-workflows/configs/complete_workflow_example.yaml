@@ -1,0 +1,129 @@
+# Complete Example: Named Results + Inline Schemas
+#
+# This workflow demonstrates BOTH patterns working together:
+# 1. Named intermediate results for explicit data flow
+# 2. Inline schema definitions for type-safe validation
+
+# Define concepts inline - no Python code needed!
+concepts:
+  Document:
+    description: "Raw document data"
+    structure:
+      text:
+        type: text
+        required: true
+      source:
+        type: text
+        description: "Document source/filename"
+
+  ExtractedData:
+    description: "Data extracted from document"
+    structure:
+      entities:
+        type: text
+        description: "Named entities found (JSON array)"
+      key_points:
+        type: text
+        description: "Key points extracted"
+      metadata:
+        type: text
+        description: "Document metadata"
+
+  QualityScore:
+    description: "Document quality assessment"
+    structure:
+      score:
+        type: number
+        min_value: 0.0
+        max_value: 100.0
+        required: true
+      issues:
+        type: text
+        description: "List of quality issues found"
+
+  Summary:
+    description: "Final document summary"
+    structure:
+      summary_text:
+        type: text
+        required: true
+        description: "The summary"
+      confidence:
+        type: number
+        min_value: 0.0
+        max_value: 1.0
+      word_count:
+        type: number
+        min_value: 0
+
+# Workflow with explicit data flow and validation
+workflow:
+  name: comprehensive_document_analysis
+  description: "Complete document analysis with validation"
+
+  steps:
+    # Step 1: Extract data from document
+    - node: extract_data
+      type: llm
+      prompt: |
+        Extract key information from this document:
+        {{text}}
+
+        Return JSON with:
+        - entities: list of named entities (people, places, organizations)
+        - key_points: main points in the document
+        - metadata: any metadata you can infer
+      model: deepseek-chat
+      output_concept: ExtractedData  # Validates output structure
+      result: extracted                # Named result for later steps
+
+    # Step 2: Assess document quality
+    - node: assess_quality
+      type: llm
+      inputs: [extracted]               # Uses result from step 1
+      prompt: |
+        Assess the quality of this extracted data:
+        {{extracted}}
+
+        Rate on 0-100 scale and list any issues.
+
+        Return JSON with:
+        - score: number 0-100
+        - issues: list of quality concerns
+      model: deepseek-chat
+      output_concept: QualityScore    # Validates output
+      result: quality                  # Named result
+
+    # Step 3: Generate summary only if quality is good
+    - node: generate_summary
+      type: llm
+      inputs: [extracted, quality]     # Uses results from steps 1 and 2
+      prompt: |
+        Create a summary based on this extraction:
+        {{extracted}}
+
+        Quality score: {{quality.score}}
+
+        Generate a concise summary. Return JSON with:
+        - summary_text: the summary (required)
+        - confidence: how confident you are (0.0-1.0)
+        - word_count: number of words in summary
+      model: deepseek-chat
+      output_concept: Summary          # Validates final output
+      result: final_summary             # Final result
+
+# Example usage:
+# ```python
+# from workflow_loader import load_workflow
+#
+# graph = load_workflow("configs/complete_workflow_example.yaml")
+# shared = {
+#     "text": "Your document text here..."
+# }
+# result = graph.run(shared)
+#
+# # Access named results
+# print("Extracted:", shared["__results__"]["extracted"])
+# print("Quality:", shared["__results__"]["quality"])
+# print("Summary:", shared["__results__"]["final_summary"])
+# ```

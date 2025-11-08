@@ -1,0 +1,183 @@
+# Example: Parallel Operations Pattern
+#
+# This demonstrates task parallelism - running DIFFERENT operations simultaneously
+# rather than the same operation on multiple items.
+#
+# Pattern 8 from remaining patterns - NEWLY IMPLEMENTED!
+#
+# Use case: Analyze a job candidate by processing CV, job description,
+# and company research in parallel for maximum speed.
+
+concepts:
+  CVAnalysis:
+    description: "Analysis of candidate's CV"
+    structure:
+      skills:
+        type: array
+        required: true
+      experience_years:
+        type: number
+        required: true
+      strengths:
+        type: text
+        required: true
+
+  JobAnalysis:
+    description: "Analysis of job requirements"
+    structure:
+      requirements:
+        type: array
+        required: true
+      level:
+        type: text
+        required: true
+        choices: ["junior", "mid", "senior", "lead"]
+
+  CompanyInfo:
+    description: "Company research results"
+    structure:
+      culture:
+        type: text
+        required: true
+      size:
+        type: text
+        required: true
+
+  MatchScore:
+    description: "Final candidate-job match score"
+    structure:
+      score:
+        type: number
+        required: true
+        min_value: 0.0
+        max_value: 100.0
+      reasoning:
+        type: text
+        required: true
+
+workflow:
+  steps:
+    # Step 1: Load input documents
+    - node: load_documents
+      type: extract
+      field: documents
+      result: docs
+
+    # Step 2: PARALLEL ANALYSIS - Three independent operations run simultaneously
+    # This is the key feature - different operations in parallel!
+    - node: parallel_analysis
+      type: parallel
+      parallels:
+        # Operation A: Analyze CV (runs in parallel)
+        - node: analyze_cv
+          type: llm
+          prompt: |
+            Analyze this candidate's CV:
+
+            {{docs.cv}}
+
+            Extract:
+            - List of skills
+            - Years of experience
+            - Key strengths
+
+            Return structured data.
+          output_concept: CVAnalysis
+          result: cv_analysis
+
+        # Operation B: Analyze job requirements (runs in parallel)
+        - node: analyze_job
+          type: llm
+          prompt: |
+            Analyze this job description:
+
+            {{docs.job}}
+
+            Extract:
+            - Required skills
+            - Experience level needed
+            - Key requirements
+
+            Return structured data.
+          output_concept: JobAnalysis
+          result: job_analysis
+
+        # Operation C: Research company (runs in parallel)
+        - node: research_company
+          type: llm
+          prompt: |
+            Research this company:
+
+            {{docs.company_name}}
+
+            Provide:
+            - Company culture description
+            - Company size
+            - Work environment
+
+            Return structured data.
+          output_concept: CompanyInfo
+          result: company_info
+
+    # After parallel block, ALL results are available
+    # Sequential execution resumes here
+
+    # Step 3: Synthesize all parallel results
+    - node: calculate_match
+      type: llm
+      inputs: [cv_analysis, job_analysis, company_info]
+      prompt: |
+        Based on the following analyses, calculate a match score:
+
+        CV Analysis:
+        {{cv_analysis}}
+
+        Job Requirements:
+        {{job_analysis}}
+
+        Company Info:
+        {{company_info}}
+
+        Provide:
+        - Match score (0-100)
+        - Detailed reasoning
+
+        Return structured data.
+      output_concept: MatchScore
+      result: final_match
+
+    # Step 4: Generate report
+    - node: generate_report
+      type: transform
+      inputs: [final_match, cv_analysis, job_analysis]
+      mapping:
+        score: "{{final_match.score}}"
+        recommendation: "{{final_match.reasoning}}"
+        candidate_skills: "{{cv_analysis.skills}}"
+        job_level: "{{job_analysis.level}}"
+      result: final_report
+
+# Performance Benefit:
+#
+# Sequential execution:
+#   analyze_cv (3s) + analyze_job (2s) + research_company (4s) = 9 seconds
+#
+# Parallel execution:
+#   max(analyze_cv (3s), analyze_job (2s), research_company (4s)) = 4 seconds
+#
+# Speedup: 2.25x faster!
+#
+# All three analyses run simultaneously in separate threads,
+# then results are combined in the synthesis step.
+
+# Why This is Different from Batch Processing:
+#
+# Batch processing (batch_over):
+#   - Same operation on many items
+#   - Example: Extract text from 1000 PDFs
+#
+# Parallel operations (parallels):
+#   - Different operations on same/different data
+#   - Example: CV analysis + Job analysis + Company research
+#
+# Both are useful, different use cases!

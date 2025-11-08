@@ -1,0 +1,86 @@
+# Example: Inline Schema Definitions
+#
+# This workflow demonstrates defining concepts (schemas) inline in YAML
+# instead of requiring Python code. The schemas validate LLM outputs.
+
+# Define concepts inline
+concepts:
+  Invoice:
+    description: "A commercial invoice document"
+    structure:
+      invoice_number:
+        type: text
+        required: true
+        pattern: "^INV-\\d{6}$"
+        description: "Invoice number in format INV-NNNNNN"
+
+      date:
+        type: text
+        required: true
+        description: "Invoice date in YYYY-MM-DD format"
+
+      total_amount:
+        type: number
+        required: true
+        min_value: 0.0
+        description: "Total invoice amount"
+
+      status:
+        type: text
+        choices: ["pending", "paid", "cancelled"]
+        default: "pending"
+        description: "Invoice payment status"
+
+  SentimentAnalysis:
+    description: "Sentiment analysis result"
+    structure:
+      sentiment:
+        type: text
+        choices: ["positive", "negative", "neutral"]
+        required: true
+
+      score:
+        type: number
+        min_value: 0.0
+        max_value: 1.0
+        required: true
+
+      reasoning:
+        type: text
+        description: "Why this sentiment was assigned"
+
+# Workflow using the defined concepts
+workflow:
+  name: invoice_processing
+  description: "Extract and validate invoice with schema validation"
+
+  steps:
+    - node: extract_invoice
+      type: llm
+      prompt: |
+        Extract invoice data from this text: {{text}}
+
+        Return a JSON object matching this structure:
+        - invoice_number: string (format INV-NNNNNN)
+        - date: string (YYYY-MM-DD)
+        - total_amount: number (must be positive)
+        - status: "pending" | "paid" | "cancelled"
+      model: deepseek-chat
+      output_concept: Invoice         # Validates against Invoice schema
+      result: invoice
+
+    - node: analyze_sentiment
+      type: llm
+      inputs: [invoice]
+      prompt: |
+        Analyze the sentiment of this invoice's tone and language.
+
+        Invoice: {{invoice}}
+
+        Return JSON with:
+        - sentiment: "positive" | "negative" | "neutral"
+        - score: number between 0.0 and 1.0
+        - reasoning: why you chose this sentiment
+      model: deepseek-chat
+      output_concept: SentimentAnalysis  # Validates against SentimentAnalysis schema
+      result: sentiment

@@ -1,0 +1,41 @@
+[workflow]
+name = "sentiment_analysis_workflow"
+description = "Analyzes sentiment of text content"
+main_pipe = "analyze_sentiment"
+
+[concepts.sentiment_result]
+description = "Sentiment analysis result"
+structure = { sentiment = { type = "text", required = true, choices = ["positive", "negative", "neutral"] }, confidence = { type = "number", required = true, min_value = 0.0, max_value = 1.0 }, reasoning = { type = "text", required = false } }
+
+[nodes.text_processor]
+type = "mapper"
+description = "Preprocesses input text"
+inputs = { text = "Text" }
+outputs = { processed_text = "ProcessedText" }
+mapping_config = { sources = ["text"], mappings = { processed_text = { from = "text", transform = "normalize_text" } } }
+next_action = "analyze"
+
+[nodes.analyzer]
+type = "llm"
+description = "Analyzes sentiment of processed text"
+inputs = { processed_text = "ProcessedText" }
+outputs = { analysis = "SentimentAnalysis" }
+params = { model = "meta-llama/Llama-3.3-70B-Instruct", temperature = 0.3 }
+config = { prompt = "Analyze the sentiment of this text and respond with only 'positive', 'negative', or 'neutral': @processed_text", structured = false, system_prompt = "You are a sentiment analysis expert. Analyze the given text and determine if the sentiment is positive, negative, or neutral." }
+next_action = "validate"
+
+[nodes.validator]
+type = "validate"
+description = "Validates the analysis result"
+inputs = { analysis = "SentimentAnalysis" }
+outputs = { validation = "ValidationResult" }
+config = { validations = { sentiment = { required = true, pattern = "^(positive|negative|neutral)$" }, confidence = { required = true, min_value = 0.0, max_value = 1.0 } } }
+next_action = "format_output"
+
+[nodes.output_formatter]
+type = "mapper"
+description = "Formats the final output"
+inputs = { analysis = "SentimentAnalysis", validation = "ValidationResult" }
+outputs = { result = "FinalResult" }
+mapping_config = { sources = ["analysis", "validation"], mappings = { sentiment = { from = "analysis" }, confidence = { from = "analysis" }, is_valid = { from = "validation", computed = "{validation.valid}" } } }
+next_action = "default"

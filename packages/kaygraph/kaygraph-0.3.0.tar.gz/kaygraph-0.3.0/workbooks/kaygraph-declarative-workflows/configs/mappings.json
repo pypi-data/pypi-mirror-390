@@ -1,0 +1,99 @@
+{
+  "data_cleaning_mappings": {
+    "sources": ["raw_input"],
+    "mappings": {
+      "clean_text": {
+        "from": "raw_input",
+        "transform": "normalize_text"
+      },
+      "word_count": {
+        "computed": "len(clean_text.split())"
+      },
+      "has_contact_info": {
+        "from": "clean_text",
+        "transform": "regex_extract",
+        "params": {
+          "pattern": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
+        }
+      }
+    }
+  },
+  "user_profile_mappings": {
+    "sources": ["user_data", "preferences", "activity"],
+    "mappings": {
+      "full_name": {
+        "from": "user_data",
+        "transform": "title"
+      },
+      "email": {
+        "from": "user_data",
+        "transform": "lower"
+      },
+      "is_premium": {
+        "computed": "{preferences.plan} == 'premium'"
+      },
+      "last_login_days": {
+        "computed": "(current_date - activity.last_login) / 86400"
+      },
+      "risk_score": {
+        "computed": "max(0, min(1, (activity.failed_logins * 0.3) + (is_premium * 0.1)))"
+      }
+    }
+  },
+  "content_analysis_mappings": {
+    "sources": ["content", "metadata"],
+    "mappings": {
+      "content_type": {
+        "from": "metadata",
+        "computed": "metadata.get('type', 'unknown')"
+      },
+      "word_count": {
+        "from": "content",
+        "transform": "split",
+        "params": {
+          "separator": " "
+        }
+      },
+      "has_images": {
+        "computed": "len(metadata.get('images', [])) > 0"
+      },
+      "readability_score": {
+        "computed": "min(100, max(0, 100 - (average_sentence_length * 2) + (complex_words * 0.5)))"
+      },
+      "sentiment_indicators": {
+        "from": "content",
+        "transform": "regex_extract",
+        "params": {
+          "pattern": "\\b(great|excellent|amazing|wonderful|terrible|awful|horrible|disappointing)\\b"
+        }
+      }
+    }
+  },
+  "financial_data_mappings": {
+    "sources": ["transactions", "accounts"],
+    "mappings": {
+      "total_balance": {
+        "computed": "sum(account['balance'] for account in accounts)"
+      },
+      "monthly_income": {
+        "from": "transactions",
+        "computed": "sum(t['amount'] for t in transactions if t['type'] == 'income' and t['date'].startswith(current_month))"
+      },
+      "monthly_expenses": {
+        "from": "transactions",
+        "computed": "sum(abs(t['amount']) for t in transactions if t['type'] == 'expense' and t['date'].startswith(current_month))"
+      },
+      "savings_rate": {
+        "computed": "monthly_income / (monthly_income + monthly_expenses) if (monthly_income + monthly_expenses) > 0 else 0"
+      },
+      "account_types": {
+        "from": "accounts",
+        "computed": "[account['type'] for account in accounts]"
+      },
+      "high_value_transactions": {
+        "from": "transactions",
+        "computed": "[t for t in transactions if abs(t['amount']) > 1000]"
+      }
+    }
+  }
+}

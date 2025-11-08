@@ -1,0 +1,255 @@
+workflow:
+  name: "resume_job_matcher"
+  description: "Analyzes resume against job description and provides match analysis"
+  main_pipe: "analyze_match"
+
+concepts:
+  resume_data:
+    description: "Parsed resume information"
+    structure:
+      name:
+        type: text
+        required: true
+      experience:
+        type: text
+        required: true
+      skills:
+        type: list
+        required: false
+      education:
+        type: text
+        required: false
+
+  job_data:
+    description: "Job description information"
+    structure:
+      title:
+        type: text
+        required: true
+      requirements:
+        type: text
+        required: true
+      qualifications:
+        type: text
+        required: false
+      company:
+        type: text
+        required: false
+
+  match_analysis:
+    description: "Resume-job matching analysis"
+    structure:
+      overall_score:
+        type: number
+        required: true
+        min_value: 0.0
+        max_value: 1.0
+      strengths:
+        type: text
+        required: true
+      gaps:
+        type: text
+        required: true
+      recommendation:
+        type: text
+        required: true
+        choices: ["strong_recommend", "recommend", "consider", "not_recommended"]
+      key_matches:
+        type: list
+        required: false
+
+nodes:
+  resume_parser:
+    type: config
+    description: "Parses resume data"
+    inputs:
+      resume_text: ResumeText
+    outputs:
+      resume_data: ResumeData
+    config:
+      type: transform
+      transforms:
+        name:
+          from: resume_text
+          transform: regex_extract
+          params:
+            pattern: "^Name: (.+)$"
+            group: 1
+        experience:
+          from: resume_text
+          transform: regex_extract
+          params:
+            pattern: "Experience: (.+?)(?=Skills:|Education:|$)"
+            group: 1
+        skills:
+          from: resume_text
+          transform: split
+          params:
+            separator: ","
+        education:
+          from: resume_text
+          transform: regex_extract
+          params:
+            pattern: "Education: (.+?)(?=Experience:|$)"
+            group: 1
+    next_action: analyze_match
+
+  job_parser:
+    type: config
+    description: "Parses job description"
+    inputs:
+      job_text: JobText
+    outputs:
+      job_data: JobData
+    config:
+      type: transform
+      transforms:
+        title:
+          from: job_text
+          transform: regex_extract
+          params:
+            pattern: "Position: (.+)$"
+            group: 1
+        requirements:
+          from: job_text
+          transform: regex_extract
+          params:
+            pattern: "Requirements: (.+?)(?=Qualifications:|$)"
+            group: 1
+        qualifications:
+          from: job_text
+          transform: regex_extract
+          params:
+            pattern: "Qualifications: (.+?)(?=Company:|$)"
+            group: 1
+        company:
+          from: job_text
+          transform: regex_extract
+          params:
+            pattern: "Company: (.+)$"
+            group: 1
+    next_action: analyze_match
+
+  match_analyzer:
+    type: config
+    description: "Analyzes resume-job compatibility"
+    inputs:
+      resume_data: ResumeData
+      job_data: JobData
+    outputs:
+      analysis: MatchAnalysis
+    params:
+      model: "meta-llama/Llama-3.3-70B-Instruct"
+      temperature: 0.3
+      max_tokens: 1500
+    config:
+      type: llm
+      prompt: |
+        Analyze the following resume against the job requirements:
+
+        Resume:
+        Name: {resume_data.name}
+        Experience: {resume_data.experience}
+        Skills: {resume_data.skills}
+        Education: {resume_data.education}
+
+        Job Description:
+        Title: {job_data.title}
+        Requirements: {job_data.requirements}
+        Qualifications: {job_data.qualifications}
+        Company: {job_data.company}
+
+        Please provide a comprehensive analysis with:
+        1. Overall compatibility score (0.0 to 1.0)
+        2. Key strengths and matches
+        3. Notable gaps or areas of concern
+        4. Hiring recommendation (strong_recommend, recommend, consider, not_recommended)
+        5. Key matching points
+
+        Format your response as JSON with these fields:
+        {
+          "overall_score": 0.85,
+          "strengths": "Strong technical background in relevant areas...",
+          "gaps": "Limited experience in specific technologies...",
+          "recommendation": "recommend",
+          "key_matches": ["Python expertise", "5 years experience", "Relevant education"]
+        }
+      structured: true
+      system_prompt: "You are an expert HR analyst specializing in resume-job matching. Provide objective, detailed analysis."
+    next_action: score_calculator
+
+  score_calculator:
+    type: config
+    description: "Calculates final scores and categories"
+    inputs:
+      analysis: MatchAnalysis
+    outputs:
+      final_result: FinalResult
+    config:
+      type: condition
+      expression: "analysis['overall_score']"
+      outcomes:
+        high_score: "format_high_score"
+        medium_score: "format_medium_score"
+        low_score: "format_low_score"
+      default_outcome: "format_low_score"
+
+  format_high_score:
+    type: mapper
+    description: "Formats high score results"
+    inputs:
+      analysis: MatchAnalysis
+    outputs:
+      final_result: FinalResult
+    mapping_config:
+      sources: ["analysis"]
+      mappings:
+        category:
+          computed: "Excellent Match"
+        message:
+          computed: "Strong candidate with excellent qualifications"
+        next_steps:
+          computed: "Schedule interview immediately"
+        color:
+          computed: "green"
+    next_action: default
+
+  format_medium_score:
+    type: mapper
+    description: "Formats medium score results"
+    inputs:
+      analysis: MatchAnalysis
+    outputs:
+      final_result: FinalResult
+    mapping_config:
+      sources: ["analysis"]
+      mappings:
+        category:
+          computed: "Good Match"
+        message:
+          computed: "Qualified candidate with some gaps"
+        next_steps:
+          computed: "Schedule technical interview"
+        color:
+          computed: "yellow"
+    next_action: default
+
+  format_low_score:
+    type: mapper
+    description: "Formats low score results"
+    inputs:
+      analysis: MatchAnalysis
+    outputs:
+      final_result: FinalResult
+    mapping_config:
+      sources: ["analysis"]
+      mappings:
+        category:
+          computed: "Poor Match"
+        message:
+          computed: "Candidate does not meet key requirements"
+        next_steps:
+          computed: "Reject or consider for other positions"
+        color:
+          computed: "red"
+    next_action: default

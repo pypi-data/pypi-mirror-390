@@ -1,0 +1,279 @@
+workflow:
+  name: "enterprise_content_pipeline"
+  description: "Enterprise-grade content pipeline with advanced patterns"
+  version: "2.0"
+
+  # Advanced workflow configuration
+  features:
+    - circuit_breaker_protection
+    - intelligent_caching
+    - dynamic_orchestration
+    - advanced_templates
+    - tool_integration
+
+concepts:
+  content_request:
+    description: "Content generation request with metadata"
+    structure:
+      content_type:
+        type: text
+        required: true
+        choices: ["blog_post", "tutorial", "documentation", "marketing_copy"]
+      audience:
+        type: text
+        required: true
+        choices: ["developers", "beginners", "marketers", "executives"]
+      topic:
+        type: text
+        required: true
+      urgency:
+        type: text
+        required: false
+        choices: ["low", "medium", "high", "critical"]
+      requirements:
+        type: list
+        required: false
+
+  content_result:
+    description: "Generated content with metadata"
+    structure:
+      content:
+        type: text
+        required: true
+      metadata:
+        type: object
+        required: true
+      quality_score:
+        type: number
+        required: true
+        min_value: 0.0
+        max_value: 1.0
+      generation_time:
+        type: number
+        required: true
+
+nodes:
+  # Request validation with circuit breaker protection
+  request_validator:
+    type: circuit_breaker
+    description: "Validates content requests with circuit breaker protection"
+    params:
+      failure_threshold: 5
+      recovery_timeout: 30.0
+      expected_recovery_time: 10.0
+    inputs:
+      content_request: ContentRequest
+    outputs:
+      validated_request: ValidatedRequest
+    next_action: plan_generation
+
+  # Dynamic orchestration for content generation
+  content_orchestrator:
+    type: dynamic_orchestrator
+    description: "Dynamically plans content generation tasks"
+    params:
+      objective_template: "Generate {content_type} content for {audience} about {topic}"
+      planning_strategy: "ai_driven"
+      worker_pool:
+        researcher:
+          - analysis
+          - research
+          - fact_checking
+        writer:
+          - generation
+          - writing
+          - creativity
+        reviewer:
+          - validation
+          - quality_check
+          - editing
+        optimizer:
+          - optimization
+          - seo
+          - formatting
+    inputs:
+      validated_request: ValidatedRequest
+    outputs:
+      orchestration_plan: OrchestrationPlan
+    next_action: generate_content
+
+  # Advanced template-based content generation
+  content_generator:
+    type: advanced_template
+    description: "Generates content using advanced templates"
+    params:
+      template_engine: "jinja2"
+      template: |
+        # {{content_type.title()}} for {{audience}}
+
+        {% if urgency == 'critical' %}
+        ## 🚨 URGENT CONTENT
+        {% endif %}
+
+        ## Overview
+        This {{content_type.replace('_', ' ')}} is designed for {{audience}}
+        interested in {{topic}}.
+
+        {% if requirements %}
+        ## Requirements
+        {% for requirement in requirements %}
+        • {{requirement}}
+        {% endfor %}
+        {% endif %}
+
+        ## Key Points
+        {% for point in key_points %}
+        • {{point}}
+        {% endfor %}
+
+        ## Conclusion
+        {% if audience == 'developers' %}
+        This content provides technical insights and practical examples.
+        {% elif audience == 'beginners' %}
+        This content offers a gentle introduction with clear explanations.
+        {% elif audience == 'marketers' %}
+        This content focuses on business value and marketing opportunities.
+        {% elif audience == 'executives' %}
+        This content highlights strategic implications and ROI.
+        {% endif %}
+
+        Generated at: {{ generation_timestamp }}
+    variables:
+      content_type: validated_request.content_type
+      audience: validated_request.audience
+      topic: validated_request.topic
+      urgency: validated_request.urgency
+      requirements: validated_request.requirements
+      key_points:
+        from: orchestration_plan
+        transform: extract_key_points
+      generation_timestamp:
+        computed: "datetime.now().isoformat()"
+    filters:
+      extract_key_points: "extract_key_points_from_plan"
+      format_duration: "format_time_duration"
+    inputs:
+      validated_request: ValidatedRequest
+      orchestration_plan: OrchestrationPlan
+    outputs:
+      raw_content: RawContent
+    next_action: enhance_content
+
+  # Tool integration for content enhancement
+  content_enhancer:
+    type: tool_registry
+    description: "Enhances content using various tools"
+    params:
+      auto_discover: true
+      tools:
+        sentiment_analysis: "analyze_sentiment_tool"
+        seo_optimizer: "optimize_seo_tool"
+        readability_checker: "check_readability_tool"
+    inputs:
+      raw_content: RawContent
+      enhancement_tools: EnhancementTools
+    outputs:
+      enhanced_content: EnhancedContent
+    next_action: cache_content
+
+  # Intelligent caching for content
+  content_cache:
+    type: intelligent_cache
+    description: "Caches content with intelligent invalidation"
+    params:
+      cache_strategy: "multi_level"
+      ttl: 3600
+      max_size: 1000
+    inputs:
+      enhanced_content: EnhancedContent
+      cache_key: CacheKey
+    outputs:
+      cached_content: CachedContent
+    next_action: format_output
+
+  # Final output formatting
+  output_formatter:
+    type: mapper
+    description: "Formats final output with metadata"
+    params:
+      mapping_config:
+        sources: ["cached_content", "validated_request"]
+        mappings:
+          final_content:
+            from: cached_content
+          content_metadata:
+            from: validated_request
+            computed: |
+              {
+                "type": validated_request.content_type,
+                "audience": validated_request.audience,
+                "topic": validated_request.topic,
+                "generated_at": generation_timestamp,
+                "quality_score": quality_score,
+                "cache_hit": cache_hit
+              }
+          performance_metrics:
+            computed: |
+              {
+                "generation_time": generation_duration,
+                "cache_performance": cache_hit ? "HIT" : "MISS",
+                "tools_used": tools_count
+              }
+    inputs:
+      cached_content: CachedContent
+      validated_request: ValidatedRequest
+    outputs:
+      final_result: FinalResult
+    next_action: default
+
+# Error handling and fallback strategies
+error_handling:
+  circuit_breaker_open:
+    action: "use_cached_content"
+    fallback_message: "Service temporarily unavailable, using cached content"
+
+  orchestration_failed:
+    action: "use_simple_generation"
+    fallback_template: "Basic {{content_type}} about {{topic}} for {{audience}}"
+
+  tool_failure:
+    action: "continue_without_enhancement"
+    log_level: "warning"
+
+# Performance optimization
+optimization:
+  caching:
+    strategy: "multi_level"
+    l1_memory_size: 100
+    l2_redis_ttl: 3600
+    invalidation_triggers:
+      - content_updated
+      - template_changed
+      - requirements_modified
+
+  parallel_processing:
+    enabled: true
+    max_workers: 4
+    task_parallelism: true
+
+# Monitoring and metrics
+monitoring:
+  metrics:
+    - circuit_breaker_state
+    - cache_hit_rate
+    - generation_time
+    - tool_success_rate
+    - orchestration_efficiency
+
+  alerts:
+    circuit_breaker_open:
+      threshold: 1
+      action: "notify_admin"
+
+    cache_hit_rate_low:
+      threshold: 0.3
+      action: "review_cache_strategy"
+
+    generation_time_high:
+      threshold: 30.0
+      action: "optimize_templates"

@@ -1,0 +1,82 @@
+# Example: Batch-in-Sequence Pattern
+#
+# This demonstrates cleaner batch processing syntax using:
+#   batch_over: items    # Named result to batch
+#   batch_as: item       # Variable name for each item
+#
+# Pattern 3 from remaining patterns - NEWLY IMPLEMENTED!
+
+concepts:
+  Document:
+    description: "A document to process"
+    structure:
+      title:
+        type: text
+        required: true
+      content:
+        type: text
+        required: true
+
+  Summary:
+    description: "Document summary"
+    structure:
+      key_points:
+        type: text
+        required: true
+      word_count:
+        type: number
+        required: true
+
+workflow:
+  steps:
+    # Step 1: Get list of documents (simulated - in real workflow this would come from input)
+    - node: load_documents
+      type: extract
+      field: documents
+      result: doc_list
+
+    # Step 2: Process each document using batch_over syntax
+    - node: summarize_document
+      type: llm
+      batch_over: doc_list      # Batch over this named result
+      batch_as: doc             # Variable name for each document
+      prompt: |
+        Summarize this document:
+
+        Title: {{doc.title}}
+        Content: {{doc.content}}
+
+        Return a JSON object with:
+        - key_points: main points as a string
+        - word_count: number of words in original
+      output_concept: Summary
+      result: summaries          # Results will be a list
+
+    # Step 3: Aggregate summaries
+    - node: combine_summaries
+      type: transform
+      inputs: [summaries]
+      mapping:
+        total_docs: "{{len(summaries)}}"
+        all_summaries: "{{summaries}}"
+      result: final_report
+
+# Why This Works:
+# - batch_over: doc_list - Clear which data to iterate over
+# - batch_as: doc - Each item available as "doc" in prompt
+# - No separate BatchNode class needed
+# - LLM-friendly YAML syntax
+# - Results automatically collected into list
+
+# Before (required Python):
+# class SummarizeDocuments(BatchNode):
+#     def prep(self, shared):
+#         return shared["doc_list"]
+#     def exec(self, doc):
+#         return summarize(doc)
+
+# After (pure YAML):
+# - node: summarize_document
+#   batch_over: doc_list
+#   batch_as: doc
+#   ...

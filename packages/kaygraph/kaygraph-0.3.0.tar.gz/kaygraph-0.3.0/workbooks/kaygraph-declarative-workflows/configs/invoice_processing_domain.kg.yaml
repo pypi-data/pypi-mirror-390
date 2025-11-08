@@ -1,0 +1,145 @@
+# Example: Domain Organization Pattern
+#
+# This demonstrates single-file domains with:
+#   - Multiple related workflows
+#   - Shared concepts across workflows
+#   - Clear domain boundaries
+#   - Main workflow designation
+#
+# Pattern 4 from remaining patterns - NEWLY IMPLEMENTED!
+
+domain:
+  name: invoice_processing
+  version: 1.0
+  description: "Complete invoice processing system"
+  main_workflow: process_invoice
+
+# Shared concepts used across all workflows
+concepts:
+  Invoice:
+    description: "Commercial invoice document"
+    structure:
+      invoice_number:
+        type: text
+        required: true
+        pattern: "^INV-\\d{6}$"
+      date:
+        type: text
+        required: true
+      total_amount:
+        type: number
+        required: true
+        min_value: 0.0
+      status:
+        type: text
+        required: true
+        choices: ["pending", "approved", "rejected", "paid"]
+
+  InvoiceData:
+    description: "Extracted invoice data"
+    structure:
+      invoice_number:
+        type: text
+        required: true
+      line_items:
+        type: array
+        required: true
+      total:
+        type: number
+        required: true
+
+  ValidationResult:
+    description: "Invoice validation result"
+    structure:
+      is_valid:
+        type: boolean
+        required: true
+      errors:
+        type: array
+        required: false
+      warnings:
+        type: array
+        required: false
+
+# Multiple workflows in this domain
+workflows:
+  # Main workflow - end-to-end processing
+  process_invoice:
+    steps:
+      - node: extract_invoice_data
+        type: llm
+        prompt: "Extract invoice data from document"
+        output_concept: InvoiceData
+        result: extracted_data
+
+      - node: validate_invoice
+        type: llm
+        inputs: [extracted_data]
+        prompt: "Validate invoice data: {{extracted_data}}"
+        output_concept: ValidationResult
+        result: validation
+
+      - node: check_validation
+        type: condition
+        expression: "is_valid == True"
+        inputs: [validation]
+        result: is_valid
+
+      - node: approve_invoice
+        type: transform
+        inputs: [extracted_data]
+        mapping:
+          status: "approved"
+          invoice_data: "{{extracted_data}}"
+        result: approved_invoice
+
+  # Workflow 2 - Just extraction
+  extract_invoice:
+    steps:
+      - node: ocr_document
+        type: llm
+        prompt: "OCR this invoice document"
+        result: ocr_text
+
+      - node: parse_invoice
+        type: llm
+        inputs: [ocr_text]
+        prompt: "Parse invoice from: {{ocr_text}}"
+        output_concept: InvoiceData
+        result: invoice_data
+
+  # Workflow 3 - Batch processing
+  batch_process_invoices:
+    steps:
+      - node: load_invoice_batch
+        type: extract
+        field: invoice_documents
+        result: documents
+
+      - node: process_each
+        type: llm
+        batch_over: documents
+        batch_as: doc
+        prompt: "Extract invoice from: {{doc}}"
+        output_concept: InvoiceData
+        result: all_invoices
+
+      - node: aggregate_results
+        type: transform
+        inputs: [all_invoices]
+        mapping:
+          total_processed: "{{len(all_invoices)}}"
+          invoices: "{{all_invoices}}"
+        result: batch_summary
+
+# Why This Works:
+# - Single file contains complete domain
+# - Shared concepts across workflows
+# - main_workflow makes it clear which to run
+# - Easy to version and distribute
+# - LLM can generate entire domain in one file
+
+# CLI Usage:
+# kgraph run invoice_processing_domain.kg.yaml                # Runs main workflow
+# kgraph run invoice_processing_domain.kg.yaml:extract_invoice # Runs specific workflow
+# kgraph list                                                   # Shows all workflows in domain
