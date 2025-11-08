@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "djadmin-formset"
+dynamic = ["version"]
+description = "Django-formset integration for django-admin-deux Layout API"
+authors = [{name = "Emma Delescolle", email = "dev@levit.be"}]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Django",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "django-admin-deux>=0.1.2",
+    "django-formset>=1.3",
+    "Django>=5.2",
+]
+
+[project.urls]
+Repository = "https://gitlab.levitnet.be/levit/django-admin-deux/-/tree/main/djadmin-formset"
+Documentation = "https://django-admin-deux.readthedocs.io/en/latest/plugins/djadmin-formset/layout-integration/"
+Homepage = "https://django-admin-deux.readthedocs.io/en/latest/plugins/djadmin-formset/layout-integration/"
+
+[project.entry-points.djadmin]
+djadmin_formset = "djadmin_formset.djadmin_hooks"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-django>=4.5",
+    "pytest-cov>=4.1",
+    "pytest-factoryboy>=2.6",
+    "factory-boy>=3.3",
+    "ruff>=0.8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["djadmin_formset*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "djadmin_formset.__version__"}
+
+[tool.setuptools.package-data]
+djadmin_formset = [
+    "templates/**/*",
+    "static/**/*",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+django_find_project = false
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "DJ",  # flake8-django
+]
+ignore = [
+    "B905",  # zip without explicit strict parameter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/**/*.py" = [
+    "S101",  # Allow assert in tests
+    "ARG",   # Allow unused function arguments in tests
+    "FBT",   # Allow boolean positional values in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["djadmin_formset"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"

@@ -1,0 +1,18 @@
+{% extends "djadmin/base_action.html" %}
+
+{% block action_content %}
+  <django-formset endpoint="{{ request.path }}" csrf-token="{{ csrf_token }}" force-submission>
+    {# FormCollection renders itself via the DjAdminFormRenderer #}
+    {{ form_collection }}
+
+    <footer>
+      <button type="button" df-click="submit -> proceed" class="primary">Save Changes</button>
+      <a href="{{ list_url }}" class="secondary">Cancel</a>
+      {% if model_admin.record_actions %}
+        <menu>
+          {% include "djadmin/includes/_action_buttons.html" with actions=model_admin.record_actions object=object %}
+        </menu>
+      {% endif %}
+    </footer>
+  </django-formset>
+{% endblock %}
