@@ -1,0 +1,509 @@
+% General-purpose LaTeX style for professional reports and documentation
+% Based on NeurIPS conference style, adapted for business and personal use
+%
+% Features:
+% - Clean, professional typography
+% - Configurable document metadata (organization, type, ID)
+% - Flexible footer customization
+% - Support for confidential/draft/internal modes
+% - Optional line numbers for review
+%
+% Derived from NeurIPS 2025 submission style by Roman Garnett and contributors
+%
+% Last revision: October 2025
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{neurips}[2025/10/29 General-purpose professional report style]
+
+% declare final option, which creates clean final copy
+\newif\if@final\@finalfalse
+\DeclareOption{final}{
+  \@finaltrue
+}
+
+% declare draft option with line numbers  
+\newif\if@draft\@draftfalse
+\DeclareOption{draft}{
+  \@drafttrue
+}
+
+% declare confidential option
+\newif\if@confidential\@confidentialfalse
+\DeclareOption{confidential}{
+  \@confidentialtrue
+}
+
+% declare internal use option
+\newif\if@internal\@internalfalse
+\DeclareOption{internal}{
+  \@internaltrue
+}
+
+% declare nonatbib option, which does not load natbib in case of
+% package clash (users can pass options to natbib via
+% \PassOptionsToPackage)
+\newif\if@natbib\@natbibtrue
+\DeclareOption{nonatbib}{
+  \@natbibfalse
+}
+
+% explicit line number control
+\newif\if@linenumbers\@linenumbersfalse
+\DeclareOption{linenumbers}{
+  \@linenumberstrue
+}
+
+\ProcessOptions\relax
+
+% ============================================================================
+% CONFIGURATION COMMANDS
+% ============================================================================
+
+% Organization branding
+\def\@organization{}
+\newcommand{\setorganization}[1]{\def\@organization{#1}}
+
+\def\@department{}
+\newcommand{\setdepartment}[1]{\def\@department{#1}}
+
+% Document metadata
+\def\@doctype{}
+\newcommand{\setdoctype}[1]{\def\@doctype{#1}}
+
+\def\@docid{}
+\newcommand{\setdocid}[1]{\def\@docid{#1}}
+
+% Footer customization
+\def\@footerleft{}
+\newcommand{\setfooterleft}[1]{\def\@footerleft{#1}}
+
+\def\@footercenter{}
+\newcommand{\setfootercenter}[1]{\def\@footercenter{#1}}
+
+\def\@footerright{}
+\newcommand{\setfooterright}[1]{\def\@footerright{#1}}
+
+\def\@footertext{}
+\newcommand{\setfootertext}[1]{\def\@footertext{#1}}
+
+% Section name customization
+\def\@abstractname{Abstract}
+\newcommand{\setabstractname}[1]{\def\@abstractname{#1}}
+
+\def\@ackstitle{Acknowledgments}
+\newcommand{\setackstitle}[1]{\def\@ackstitle{#1}}
+
+% ============================================================================
+% FONTS
+% ============================================================================
+
+% fonts
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\sfdefault}{phv}
+
+% ============================================================================
+% ACKNOWLEDGMENTS
+% ============================================================================
+
+% acknowledgments
+\@ifpackageloaded{environ}{}{\usepackage{environ}}
+\newcommand{\acksection}{\section*{\@ackstitle}}
+\NewEnviron{ack}{%
+  \acksection
+  \BODY
+}
+
+% ============================================================================
+% LOAD PACKAGES
+% ============================================================================
+
+
+% load natbib unless told otherwise (with safe loading)
+\if@natbib
+  \@ifpackageloaded{natbib}{}{\RequirePackage{natbib}}
+\fi
+
+% For total page count
+\@ifpackageloaded{lastpage}{}{\RequirePackage{lastpage}}
+
+% For headers (status labels)
+\@ifpackageloaded{fancyhdr}{}{\RequirePackage{fancyhdr}}
+
+% For absolute positioning of status labels
+\@ifpackageloaded{eso-pic}{}{\RequirePackage{eso-pic}}
+
+% set page geometry
+\@ifpackageloaded{geometry}{}{\usepackage[verbose=true,letterpaper]{geometry}}
+\AtBeginDocument{
+  \newgeometry{
+    textheight=9in,
+    textwidth=5.5in,
+    top=1in,
+    headheight=12pt,
+    headsep=25pt,
+    footskip=30pt
+  }
+  \@ifpackageloaded{fullpage}
+    {\PackageWarning{neurips_2025}{fullpage package not allowed! Overwriting formatting.}}
+    {}
+}
+
+\widowpenalty=10000
+\clubpenalty=10000
+\flushbottom
+\sloppy
+
+
+% font sizes with reduced leading
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize\@xpt\@xipt
+  \abovedisplayskip      7\p@ \@plus 2\p@ \@minus 5\p@
+  \abovedisplayshortskip \z@ \@plus 3\p@
+  \belowdisplayskip      \abovedisplayskip
+  \belowdisplayshortskip 4\p@ \@plus 3\p@ \@minus 3\p@
+}
+\normalsize
+\renewcommand{\small}{%
+  \@setfontsize\small\@ixpt\@xpt
+  \abovedisplayskip      6\p@ \@plus 1.5\p@ \@minus 4\p@
+  \abovedisplayshortskip \z@  \@plus 2\p@
+  \belowdisplayskip      \abovedisplayskip
+  \belowdisplayshortskip 3\p@ \@plus 2\p@   \@minus 2\p@
+}
+\renewcommand{\footnotesize}{\@setfontsize\footnotesize\@ixpt\@xpt}
+\renewcommand{\scriptsize}{\@setfontsize\scriptsize\@viipt\@viiipt}
+\renewcommand{\tiny}{\@setfontsize\tiny\@vipt\@viipt}
+\renewcommand{\large}{\@setfontsize\large\@xiipt{14}}
+\renewcommand{\Large}{\@setfontsize\Large\@xivpt{16}}
+\renewcommand{\LARGE}{\@setfontsize\LARGE\@xviipt{20}}
+\renewcommand{\huge}{\@setfontsize\huge\@xxpt{23}}
+\renewcommand{\Huge}{\@setfontsize\Huge\@xxvpt{28}}
+
+% sections with less space
+\providecommand{\section}{}
+\renewcommand{\section}{%
+  \@startsection{section}{1}{\z@}%
+                {-2.0ex \@plus -0.5ex \@minus -0.2ex}%
+                { 1.5ex \@plus  0.3ex \@minus  0.2ex}%
+                {\large\bf\raggedright}%
+}
+\providecommand{\subsection}{}
+\renewcommand{\subsection}{%
+  \@startsection{subsection}{2}{\z@}%
+                {-1.8ex \@plus -0.5ex \@minus -0.2ex}%
+                { 0.8ex \@plus  0.2ex}%
+                {\normalsize\bf\raggedright}%
+}
+\providecommand{\subsubsection}{}
+\renewcommand{\subsubsection}{%
+  \@startsection{subsubsection}{3}{\z@}%
+                {-1.5ex \@plus -0.5ex \@minus -0.2ex}%
+                { 0.5ex \@plus  0.2ex}%
+                {\normalsize\bf\raggedright}%
+}
+\providecommand{\paragraph}{}
+\renewcommand{\paragraph}{%
+  \@startsection{paragraph}{4}{\z@}%
+                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+                {-1em}%
+                {\normalsize\bf}%
+}
+\providecommand{\subparagraph}{}
+\renewcommand{\subparagraph}{%
+  \@startsection{subparagraph}{5}{\z@}%
+                {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+                {-1em}%
+                {\normalsize\bf}%
+}
+\providecommand{\subsubsubsection}{}
+\renewcommand{\subsubsubsection}{%
+  \vskip5pt{\noindent\normalsize\rm\raggedright}%
+}
+
+% float placement
+\renewcommand{\topfraction      }{0.85}
+\renewcommand{\bottomfraction   }{0.4}
+\renewcommand{\textfraction     }{0.1}
+\renewcommand{\floatpagefraction}{0.7}
+
+\newlength{\@neuripsabovecaptionskip}\setlength{\@neuripsabovecaptionskip}{7\p@}
+\newlength{\@neuripsbelowcaptionskip}\setlength{\@neuripsbelowcaptionskip}{\z@}
+
+\setlength{\abovecaptionskip}{\@neuripsabovecaptionskip}
+\setlength{\belowcaptionskip}{\@neuripsbelowcaptionskip}
+
+% swap above/belowcaptionskip lengths for tables
+\renewenvironment{table}
+  {\setlength{\abovecaptionskip}{\@neuripsbelowcaptionskip}%
+   \setlength{\belowcaptionskip}{\@neuripsabovecaptionskip}%
+   \@float{table}}
+  {\end@float}
+
+% footnote formatting
+\setlength{\footnotesep }{6.65\p@}
+\setlength{\skip\footins}{9\p@ \@plus 4\p@ \@minus 2\p@}
+\renewcommand{\footnoterule}{\kern-3\p@ \hrule width 12pc \kern 2.6\p@}
+\setcounter{footnote}{0}
+
+% paragraph formatting
+\setlength{\parindent}{\z@}
+\setlength{\parskip  }{5.5\p@}
+
+% list formatting
+\setlength{\topsep       }{4\p@ \@plus 1\p@   \@minus 2\p@}
+\setlength{\partopsep    }{1\p@ \@plus 0.5\p@ \@minus 0.5\p@}
+\setlength{\itemsep      }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\parsep       }{2\p@ \@plus 1\p@   \@minus 0.5\p@}
+\setlength{\leftmargin   }{3pc}
+\setlength{\leftmargini  }{\leftmargin}
+\setlength{\leftmarginii }{2em}
+\setlength{\leftmarginiii}{1.5em}
+\setlength{\leftmarginiv }{1.0em}
+\setlength{\leftmarginv  }{0.5em}
+\def\@listi  {\leftmargin\leftmargini}
+\def\@listii {\leftmargin\leftmarginii
+              \labelwidth\leftmarginii
+              \advance\labelwidth-\labelsep
+              \topsep  2\p@ \@plus 1\p@    \@minus 0.5\p@
+              \parsep  1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \itemsep \parsep}
+\def\@listiii{\leftmargin\leftmarginiii
+              \labelwidth\leftmarginiii
+              \advance\labelwidth-\labelsep
+              \topsep    1\p@ \@plus 0.5\p@ \@minus 0.5\p@
+              \parsep    \z@
+              \partopsep 0.5\p@ \@plus 0\p@ \@minus 0.5\p@
+              \itemsep \topsep}
+\def\@listiv {\leftmargin\leftmarginiv
+              \labelwidth\leftmarginiv
+              \advance\labelwidth-\labelsep}
+\def\@listv  {\leftmargin\leftmarginv
+              \labelwidth\leftmarginv
+              \advance\labelwidth-\labelsep}
+\def\@listvi {\leftmargin\leftmarginvi
+              \labelwidth\leftmarginvi
+              \advance\labelwidth-\labelsep}
+
+% ============================================================================
+% STATUS LABEL (CONFIDENTIAL/DRAFT/INTERNAL)
+% ============================================================================
+
+% Place status label in top-left corner of first page using eso-pic (same as logo positioning)
+\newcommand{\@placestatus}{%
+  \if@confidential
+    \AddToShipoutPictureFG*{%
+      \AtPageUpperLeft{%
+        \raisebox{-0.5in}{%
+          \hspace{0.5in}%
+          \makebox[4in][l]{\small\textbf{CONFIDENTIAL {\scriptsize$\bullet$} DO NOT DISTRIBUTE}}%
+        }%
+      }%
+    }%
+  \else
+    \if@internal
+      \AddToShipoutPictureFG*{%
+        \AtPageUpperLeft{%
+          \raisebox{-0.5in}{%
+            \hspace{0.5in}%
+            \makebox[4in][l]{\small\textbf{INTERNAL {\scriptsize$\bullet$} FOR INTERNAL DISTRIBUTION ONLY}}%
+          }%
+        }%
+      }%
+    \else
+      \if@draft
+        \AddToShipoutPictureFG*{%
+          \AtPageUpperLeft{%
+            \raisebox{-0.5in}{%
+              \hspace{0.5in}%
+              \makebox[4in][l]{\small\textbf{DRAFT {\scriptsize$\bullet$} PRELIMINARY VERSION SUBJECT TO CHANGE}}%
+            }%
+          }%
+        }%
+      \fi
+    \fi
+  \fi
+}
+
+% ============================================================================
+% TITLE
+% ============================================================================
+
+% create title
+\providecommand{\maketitle}{}
+\renewcommand{\maketitle}{%
+  \par
+  \begingroup
+    \renewcommand{\thefootnote}{\fnsymbol{footnote}}
+    % for perfect author name centering
+    \renewcommand{\@makefnmark}{\hbox to \z@{$^{\@thefnmark}$\hss}}
+    % The footnote-mark was overlapping the footnote-text,
+    % added the following to fix this problem               (MK)
+    \long\def\@makefntext##1{%
+      \parindent 1em\noindent
+      \hbox to 1.8em{\hss $\m@th ^{\@thefnmark}$}##1
+    }
+    \thispagestyle{empty}
+    \@placestatus
+    \@maketitle
+    \@thanks
+    \@notice
+  \endgroup
+  \let\maketitle\relax
+  \let\thanks\relax
+}
+
+% rules for title box at top of first page
+\newcommand{\@toptitlebar}{
+  \hrule height 4\p@
+  \vskip 0.25in
+  \vskip -\parskip%
+}
+\newcommand{\@bottomtitlebar}{
+  \vskip 0.29in
+  \vskip -\parskip
+  \hrule height 1\p@
+  \vskip 0.09in%
+}
+
+% create title (includes both anonymized and non-anonymized versions)
+\providecommand{\@maketitle}{}
+\renewcommand{\@maketitle}{%
+  \vbox{%
+    \hsize\textwidth
+    \linewidth\hsize
+    \vskip 0.1in
+    \@toptitlebar
+    \centering
+    {\LARGE\bf \@title\par}
+    \@bottomtitlebar
+    \def\And{%
+      \end{tabular}\hfil\linebreak[0]\hfil%
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+    }
+    \def\AND{%
+      \end{tabular}\hfil\linebreak[4]\hfil%
+      \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\ignorespaces%
+    }
+    \begin{tabular}[t]{c}\bf\rule{\z@}{24\p@}\@author\end{tabular}%
+    \vskip 0.3in \@minus 0.1in
+  }
+}
+
+% add footer notice to bottom of first page
+\newcommand{\ftype@noticebox}{8}
+\newcommand{\@notice}{%
+  % give a bit of extra room back to authors on first page
+  \enlargethispage{2\baselineskip}%
+  % Place footer spanning page margins (not bound to textwidth)
+  \AddToShipoutPictureFG*{%
+    \AtPageLowerLeft{%
+      \raisebox{0.3in}{%
+        \hspace{1in}% left margin
+        \makebox[\dimexpr\paperwidth-2in\relax][c]{%
+          \footnotesize\@noticestring%
+        }%
+      }%
+    }%
+  }%
+}
+
+% abstract styling
+\renewenvironment{abstract}%
+{%
+  \vskip 0.075in%
+  \centerline%
+  {\large\bf Abstract}%
+  \vspace{0.5ex}%
+  \begin{quote}%
+}
+{
+  \par%
+  \end{quote}%
+  \vskip 1ex%
+}
+
+% ============================================================================
+% FOOTER / NOTICE SYSTEM
+% ============================================================================
+
+% Build the notice string based on options and user configuration
+\newcommand{\@noticestring}{%
+  \if\relax\detokenize\expandafter{\@footertext}\relax
+    % Build footer from parts
+    \@buildthreepartfooter
+  \else
+    % Use custom footer text
+    \@footertext
+  \fi
+}
+
+\newcommand{\@buildthreepartfooter}{%
+  % Build footer: Left | Center | Right
+  % Status labels now appear at top-left, not in footer
+  
+  % Left: Organization name
+  \if\relax\detokenize\expandafter{\@footerleft}\relax
+    \if\relax\detokenize\expandafter{\@organization}\relax
+    \else
+      \def\@footerleft{\@organization}%
+    \fi
+  \fi
+  
+  % Center: Document type
+  \if\relax\detokenize\expandafter{\@footercenter}\relax
+    \if\relax\detokenize\expandafter{\@doctype}\relax
+    \else
+      \def\@footercenter{\textsc{\@doctype}}%
+    \fi
+  \fi
+  
+  % Right: Document ID (no page numbers)
+  \if\relax\detokenize\expandafter{\@footerright}\relax
+    \if\relax\detokenize\expandafter{\@docid}\relax
+      % No docid, leave empty
+      \def\@footerright{}%
+    \else
+      % Just DocID
+      \def\@footerright{\@docid}%
+    \fi
+  \fi
+  
+  % Output footer line
+  \@footerleft\hfill\@footercenter\hfill\@footerright%
+}
+
+% ============================================================================
+% LINE NUMBERS (for draft/review mode)
+% ============================================================================
+
+\if@draft
+  \@ifpackageloaded{lineno}{}{\RequirePackage{lineno}}
+  \linenumbers
+
+  % fix incompatibilities between lineno and amsmath
+  \AtBeginDocument{%
+    \@ifpackageloaded{amsmath}{%
+      \newcommand*\patchAmsMathEnvironmentForLineno[1]{%
+        \expandafter\let\csname old#1\expandafter\endcsname\csname #1\endcsname
+        \expandafter\let\csname oldend#1\expandafter\endcsname\csname end#1\endcsname
+        \renewenvironment{#1}%
+                        {\linenomath\csname old#1\endcsname}%
+                        {\csname oldend#1\endcsname\endlinenomath}%
+      }%
+      \newcommand*\patchBothAmsMathEnvironmentsForLineno[1]{%
+        \patchAmsMathEnvironmentForLineno{#1}%
+        \patchAmsMathEnvironmentForLineno{#1*}%
+      }%
+      \patchBothAmsMathEnvironmentsForLineno{equation}%
+      \patchBothAmsMathEnvironmentsForLineno{align}%
+      \patchBothAmsMathEnvironmentsForLineno{flalign}%
+      \patchBothAmsMathEnvironmentsForLineno{alignat}%
+      \patchBothAmsMathEnvironmentsForLineno{gather}%
+      \patchBothAmsMathEnvironmentsForLineno{multline}%
+    }
+    {}
+  }
+\fi
+
+
+\endinput
