@@ -1,0 +1,179 @@
+Metadata-Version: 2.4
+Name: word2speech
+Version: 2.0.1
+Summary: Herramienta CLI para el manejo de modelos TTS
+Author-email: Alejandro Varela de Cora <alejandrodecora@gmail.com>
+License-Expression: GPL-3.0-only
+Project-URL: Homepage, https://github.com/adecora/proyecto-dislexia
+Project-URL: Repository, https://github.com/adecora/proyecto-dislexia
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: PyYAML>=6.0.0
+Requires-Dist: requests>=2.32.0
+Requires-Dist: silabeador>=1.2.1
+Requires-Dist: epitran>=1.26.0
+Requires-Dist: click>=8.0.0
+Provides-Extra: analyze
+Requires-Dist: torch>=2.0.0; extra == "analyze"
+Requires-Dist: librosa>=0.11.0; extra == "analyze"
+Provides-Extra: local-models
+Requires-Dist: torch>=2.0.0; extra == "local-models"
+Requires-Dist: transformers>=4.30.0; extra == "local-models"
+Requires-Dist: soundfile>=0.12.0; extra == "local-models"
+Requires-Dist: parler-tts>=0.1.0; extra == "local-models"
+Requires-Dist: llvmlite>=0.42.0; extra == "local-models"
+Requires-Dist: numba>=0.58.0; extra == "local-models"
+Provides-Extra: all
+Requires-Dist: word2speech[analyze,local-models]; extra == "all"
+Dynamic: license-file
+
+# word2speech
+
+Es una herramienta para la generación automatizada de material sonoro de alta calidad a través del uso de varios modelos de síntesis de voz (TTS, Text-to-Speech).
+
+Un **proyecto** de Alejandro de Cora.
+
+## Instalación
+
+Se necesita `python>=3.12`, se recomienda utilizar `pipx` para la instalación, aunque los comandos también funcionan con `pip` (en cuyo caso se recomienda un entorno virtual).
+
+La herramienta se puede instalar por niveles, dependiendo de las funcionalidades que se deseen utilizar:
+
+| Instalación         | Descripción                                                        | Comando de Instalación                   |
+| :------------------ | :----------------------------------------------------------------- | :--------------------------------------- |
+| **Básica**          | Soporte de generación TTS únicamente con speechgen.io.             | `pipx install word2speech`               |
+| **Modelos Locales** | Añade la generación TTS con modelos locales (Parler-TTS, MMS-TTS). | `pipx install word2speech[local-models]` |
+| **Análisis**        | Permite la evaluación terapéutica de los audios con el módulo MOS. | `pipx install word2speech[analysis]`     |
+| **Completa**        | Instalación completa.                                              | `pipx install word2speech[all]`          |
+
+## Configuración
+
+La configuración está diseñada para ser flexible. word2speech permite la gestión de las credenciales de las APIs a través de la línea de comandos.
+
+La aplicación busca la configuración siguiendo una estructura jerárquica:
+
+1.  Fichero de configuración local: `.word2speech/config.yml`.
+2.  Configuración global del usuario: `$HOME/.config/word2speech/config.yml` o `$HOME/.word2speech/config.yml`.
+
+### Gestión de Claves API
+
+Para el manejo de las claves API, se utiliza el comando `keys`.
+
+Para configurar el modelo principal, **speechgen.io**, es necesario configurar el token y el correo electrónico:
+
+```bash
+# Configurar el token API
+word2speech keys set speechgen TU_TOKEN
+
+# Configurar el correo electrónico asociado a la cuenta de SpeechGen.io
+word2speech keys set speechgen-email TU_EMAIL
+
+# Listar las claves API configuradas
+word2speech keys list
+```
+
+### Inicio rápido
+
+Para empezar a generar audios, se utiliza el comando `speak`.
+
+1.  **Generar audio básico con el modelo por defecto (speechgen.io):**
+
+    ```bash
+    word2speech speak "La universidad de Málaga"
+    ```
+
+2.  **Descubrir modelos y opciones disponibles:**
+
+    El comando `models` permite listar todos los modelos TTS disponibles, sus características (como el soporte de SSML o el modo *Offline*), y ejemplos de uso.
+
+    ```bash
+    word2speech models
+    ```
+
+3.  **Generar audio utilizando un modelo local (mms):**
+
+    ```bash
+    word2speech speak "El jugador estaba cansado" -m mms
+    ```
+
+## Ejemplos de Uso
+
+word2speech implementa comandos para generar audio de forma individual, por lotes y con funcionalidades específicas para el tratamiento de la dislexia. El parámetro `-m` permite especificar el modelo (ej. `mms`, `parler`, `speechgen`).
+
+### 1. Generación de Audio con Control Prosódico (`speak`)
+
+El comando `speak` permite controlar opciones de prosodia como velocidad, voz y emoción.
+
+```bash
+# Audio con voz femenina y velocidad reducida (0.8) usando speechgen.io
+$ word2speech speak "Tres tristes tigres" --voice female --speed 0.8
+[23:54:48]: Generando audio para: "Tres tristes tigres"
+[23:54:49]: Audio generado "out.wav" (coste: 19, saldo: 64927)
+
+# Audio generado con "parler" especificando la emoción
+$ word2speech speak "Salió a jugar" -m parler --emotion calm
+
+# Uso de puntos de contorno (pitch contours) para acentuar la sílaba tónica.
+# Nota: Esta función solo está disponible si el modelo soporta SSML (ej. speechgen.io).
+$ word2speech speak --voice female --speed 0.8 --pitch +2 -c 20,-80 -c 40,-80 -c 65,100 -c 80,-80 -c 100,-80 "hipopótamo"
+```
+
+### 2. Deletreo Silábico (`spell`)
+
+El módulo `spell` está diseñado para crear ejercicios de concienciación silábica mediante el **deletreo de palabras sílaba a sílaba**. Requiere que el modelo TTS soporte **SSML** (Speech Synthesis Markup Language).
+
+```bash
+# Deletrear una palabra sílaba a sílaba (ejemplo usando el modelo por defecto)
+$ word2speech spell "televisión" --include-word
+```
+
+Si el modelo seleccionado no soporta SSML, word2speech lo notifica:
+
+```bash
+$ word2speech spell "manzana" --model mms --include-word
+El modelo 'mms' no soporta deletreo (requiere SSML)
+```
+
+### 3. Generación por Lotes (`batch`)
+
+El comando `batch` permite a los terapeutas la **generación masiva de audios** de palabras y pseudopalabras a partir de un fichero de entrada en formato JSON.
+
+```bash
+# Generación masiva a partir de un fichero de datos (data.json)
+$ word2speech batch data-reduce.json
+
+# Aplicar prosodia específica a todo el lote
+$ word2speech batch data-reduce.json -m parler --voice female --speed 0.8 --emotion calm
+```
+
+### 4. Análisis de Calidad (`analyze`)
+
+El comando `analyze` utiliza un modelo de predicción de **Mean Opinion Score (MOS)** (UTMOS 2022 Strong). Esto permite **evaluar la calidad percibida del audio generado** (un valor continuo entre 1 y 5) y seleccionar el TTS más adecuado para los ejercicios terapéuticos.
+
+```bash
+# Analizar la calidad MOS de un fichero de audio específico
+$ word2speech analyze /ruta/a/mi/audio.wav
+```
+
+## Limitación windows
+
+En Windows debido a la codificación de la consola por defecto pueden surgir problemas a la hora de ejecutar el subcomando `prosody`, la solución pasa por forzar la codificación `UTF-8`
+
+```cmd
+> set PYTHONUTF8=1
+```
+
+Podemos establecer la codificación `UTF-8` de forma permanente con:
+
+```cmd
+> setx PYTHONUTF8 1
+```
+
+> **Nota**: Después de ejecutar `setx`, es necesario reiniciar la terminal (o abrir una nueva) para que el cambio tome efecto.
+
+
+## Enlaces de interés:
+
+- [Proyecto dislexia](https://github.com/adecora/proyecto-dislexia)
+- [speechgen API](https://speechgen.io/es/node/api/)
