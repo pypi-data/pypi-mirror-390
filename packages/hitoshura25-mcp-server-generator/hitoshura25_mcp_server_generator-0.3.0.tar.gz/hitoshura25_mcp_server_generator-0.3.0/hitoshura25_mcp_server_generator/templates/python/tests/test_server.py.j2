@@ -1,0 +1,68 @@
+"""
+Tests for MCP server implementation.
+"""
+
+import pytest
+from {{ package_name }}.server import mcp
+{% for tool in tools %}
+from {{ package_name }}.server import {{ tool.name }}
+{% endfor %}
+
+
+@pytest.mark.asyncio
+async def test_server_initialization():
+    """Test that the MCP server initializes correctly."""
+    assert mcp.name == "{{ package_name }}"
+
+    # Check that tools are registered
+    tools = await mcp.list_tools()
+    assert len(tools) == {{ tools|length }}
+
+    tool_names = [tool.name for tool in tools]
+    {% for tool in tools %}
+    assert "{{ tool.name }}" in tool_names
+    {% endfor %}
+
+
+{% for tool in tools %}
+def test_{{ tool.name }}_function():
+    """Test {{ tool.name }} tool function."""
+    # Test the function directly
+    result = {{ tool.name }}({% if tool.parameters %}
+        {% for param in tool.parameters %}
+        {{ param.name }}={% if param.type in ['string', 'str'] %}"test_value"{% elif param.type in ['number', 'int', 'integer'] %}42{% elif param.type in ['boolean', 'bool'] %}True{% else %}"test"{% endif %}{{ ',' if not loop.last else '' }}
+        {% endfor %}
+    {% endif %})
+
+    # Result should be a string (FastMCP tools return strings)
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+{% endfor %}
+
+
+@pytest.mark.asyncio
+async def test_all_tools_have_descriptions():
+    """Test that all tools have proper descriptions."""
+    tools = await mcp.list_tools()
+
+    for tool in tools:
+        assert hasattr(tool, 'description')
+        assert tool.description
+        assert len(tool.description) > 0
+
+
+@pytest.mark.asyncio
+async def test_tool_schemas():
+    """Test that all tools have proper input schemas."""
+    tools = await mcp.list_tools()
+
+    for tool in tools:
+        assert hasattr(tool, 'inputSchema')
+        schema = tool.inputSchema
+
+        # Check schema structure
+        assert 'type' in schema
+        assert schema['type'] == 'object'
+        assert 'properties' in schema

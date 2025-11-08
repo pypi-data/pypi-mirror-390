@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""
+MCP Server for {{ project_name }}.
+
+{{ description }}
+"""
+
+from mcp.server.fastmcp import FastMCP
+
+from . import generator
+
+# Initialize FastMCP server
+mcp = FastMCP("{{ package_name }}")
+
+{% for tool in tools %}
+
+@mcp.tool()
+def {{ tool.name }}({% if tool.parameters %}
+    {% for param in tool.parameters %}
+    {{ param.name }}: {% if param.type in ['string', 'str'] %}str{% elif param.type in ['number', 'int', 'integer'] %}int{% elif param.type in ['float'] %}float{% elif param.type in ['boolean', 'bool'] %}bool{% else %}str{% endif %}{% if not param.required %} = None{% endif %}{{ ',' if not loop.last else '' }}
+    {% endfor %}
+{% endif %}) -> str:
+    """{{ tool.description }}
+{% if tool.parameters %}
+
+    Args:
+        {% for param in tool.parameters %}
+        {{ param.name }}: {{ param.description }}
+        {% endfor %}
+{% endif %}
+
+    Returns:
+        Result from {{ tool.name }}
+    """
+    result = generator.{{ tool.name }}(
+        {% for param in tool.parameters %}
+        {{ param.name }}={{ param.name }}{{ ',' if not loop.last else '' }}
+        {% endfor %}
+    )
+    return str(result)
+{% endfor %}
+
+
+def main():
+    """Main entry point for MCP server."""
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()
