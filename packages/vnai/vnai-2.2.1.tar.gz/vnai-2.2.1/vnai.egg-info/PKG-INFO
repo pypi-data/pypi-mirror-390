@@ -1,0 +1,92 @@
+Metadata-Version: 2.4
+Name: vnai
+Version: 2.2.1
+Summary: Vnstock Analytics Interface
+Author-email: Vnstock Analytics Team <support@vnstocks.com>
+License: proprietary
+Project-URL: Homepage, https://vnstocks.com
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.25.0
+Requires-Dist: psutil>=5.8.0
+Requires-Dist: cffi>=1.17.1
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0.0; extra == "dev"
+
+# VNAI
+
+System resource management and performance optimization toolkit.
+
+## Installation
+
+```bash
+pip install vnai
+```
+
+## Usage
+
+```python
+from vnai import beam, flow, scope
+
+# Your code here
+```
+
+## Analytics & Telemetry Pipeline
+
+### Module: `vnai/flow/relay.py`
+
+This module is responsible for collecting, buffering, and securely transmitting system analytics and telemetry data for VNAI.
+
+#### Key Features & Logic
+
+- **Singleton Class: `Conduit`**
+  - Ensures only one analytics pipeline runs per process.
+  - Buffers analytics events (function calls, API requests, rate limits) in memory.
+
+- **Data Buffering**
+  - Data is grouped into three categories: `function_calls`, `api_requests`, `rate_limits`.
+  - Buffer size and sync interval are configurable (default: 50 events or 5 minutes).
+  - Periodic and event-driven dispatch logic ensures timely delivery without overloading the endpoint.
+
+- **Segment Detection**
+  - Each payload includes a top-level key `segment` to distinguish between `free` and `paid` users.
+  - The segment is determined by the license status (`ContentManager().is_paid_user`).
+
+- **Endpoint & Headers**
+  - All analytics data is POSTed to: `https://hq.vnstocks.com/analytics`
+  - Requires HTTP header: `x-api-key: 1yI8KgarntQr0ptriseHhb4kdomkenyNI8VPiyk5aoU`
+  - Content-Type is always `application/json`.
+
+- **Payload Structure**
+  - Example:
+    ```json
+    {
+      "segment": "free", // or "paid"
+      "analytics_data": { ... },
+      "metadata": { ... }
+    }
+    ```
+  - `analytics_data` contains buffered events; `metadata` includes timestamp, machine_id, trigger reason, and environment info.
+
+- **Retry & Failure Handling**
+  - If a POST fails, the payload is queued in `failed_queue` (max 10 entries).
+  - Retries are attempted on subsequent dispatches.
+
+- **Configuration**
+  - Use `from vnai.flow.relay import configure` to (re)configure the endpoint if needed (default is always hq.vnstocks.com/analytics).
+
+- **Usage Example**
+    ```python
+    from vnai.flow import relay
+    relay.track_function_call('my_func', 'user', 0.05)
+    relay.sync_now()  # Manually trigger immediate send
+    ```
+
+## License
+
+MIT License
