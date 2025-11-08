@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ragmint"
+version = "0.4.2"
+description = "A modular framework for evaluating and optimizing RAG pipelines."
+readme = "README.md"
+license = { text = "Apache License 2.0" }
+authors = [
+  { name = "Andre Oliveira", email = "oandreoliveira@outlook.com" }
+]
+keywords = ["RAG", "LLM", "retrieval", "optimization", "AI", "evaluation", "chunking", "autotuning"]
+requires-python = ">=3.9"
+dependencies = [
+  # Core ML + Embeddings
+  "numpy<2.0.0",
+  "pandas>=2.0",
+  "scikit-learn>=1.3",
+  "sentence-transformers>=2.2.2",
+
+  # Retrieval backends
+  "chromadb>=0.3.1",
+  "faiss-cpu; sys_platform != 'darwin'",       # For Linux/Windows
+  "faiss-cpu==1.7.4; sys_platform == 'darwin'", # Optional fix for macOS MPS
+  "rank-bm25>=0.2.2",                          # For BM25 retriever
+
+  # Optimization & evaluation
+  "optuna>=3.0",
+  "tqdm",
+  "colorama",
+
+  # RAG evaluation and data utils
+  "pyyaml",
+  "python-dotenv",
+
+  # Explainability and LLM APIs
+  "openai>=1.0.0",
+  "google-generativeai>=0.8.0",
+  "anthropic>=0.25.0",
+
+  # Testing
+  "pytest",
+
+  # LangChain integration layer
+  "langchain>=0.2.5",
+  "langchain-community>=0.2.5",
+  "langchain-text-splitters>=0.2.1"
+]
+
+[project.optional-dependencies]
+dev = ["black", "flake8", "isort", "pytest-cov"]
+docs = ["mkdocs", "mkdocs-material"]
+
+[project.urls]
+Homepage = "https://github.com/andyolivers/ragmint"
+Documentation = "https://andyolivers.com"
+Issues = "https://github.com/andyolivers/ragmint/issues"
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ragmint = ["experiments/*.json"]
+
+[tool.setuptools.data-files]
+"." = ["README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
