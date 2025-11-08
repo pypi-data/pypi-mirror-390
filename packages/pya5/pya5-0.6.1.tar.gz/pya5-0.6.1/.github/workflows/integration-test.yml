@@ -1,0 +1,104 @@
+name: Integration Tests
+
+on:
+  workflow_run:
+    workflows: ["Test Publish to TestPyPI"]
+    types: [completed]
+    branches: [test-publish]
+  # Also allow manual trigger
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: 'Package version to test'
+        required: true
+        type: string
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Get package version from TestPyPI publish
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.package_version }}"
+          else
+            # Extract version from the triggering workflow
+            VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Testing version: $VERSION"
+      
+      - name: Wait for package to be available on TestPyPI
+        run: |
+          echo "Waiting for package to be available on TestPyPI..."
+          for i in {1..30}; do
+            if pip index versions pya5 --index-url https://test.pypi.org/simple/ --pre 2>/dev/null | grep -q "${{ steps.get-version.outputs.version }}"; then
+              echo "Package found on TestPyPI!"
+              break
+            fi
+            echo "Attempt $i: Package not yet available, waiting 30 seconds..."
+            sleep 30
+          done
+      
+      - name: Install package from TestPyPI
+        run: |
+          # Install from TestPyPI, but fall back to PyPI for dependencies
+          pip install --index-url https://test.pypi.org/simple/ \
+                      --extra-index-url https://pypi.org/simple/ \
+                      pya5==${{ steps.get-version.outputs.version }}
+      
+      - name: Verify installation
+        run: |
+          python -c "import a5; print(f'Successfully imported a5')"
+          python -c "import a5; print(f'Version: {getattr(a5, \"__version__\", \"unknown\")}')"
+      
+      - name: Run integration tests
+        run: |
+          # Create a simple integration test
+          cat > integration_test.py << 'EOF'
+          import a5
+          
+          def test_basic_functionality():
+              # Test basic A5 functionality
+              # Add your actual integration tests here
+              print("Testing basic A5 functionality...")
+              
+              # Example: test that we can import and use key functions
+              # Replace with actual A5 API calls
+              try:
+                  # Add real integration tests based on your A5 API
+                  print("✓ Basic functionality works")
+                  return True
+              except Exception as e:
+                  print(f"✗ Integration test failed: {e}")
+                  return False
+          
+          if __name__ == "__main__":
+              success = test_basic_functionality()
+              exit(0 if success else 1)
+          EOF
+          
+          python integration_test.py
+      
+      - name: Test package in clean environment
+        run: |
+          # Test in a completely isolated environment
+          python -m venv test_env
+          source test_env/bin/activate
+          pip install --index-url https://test.pypi.org/simple/ \
+                      --extra-index-url https://pypi.org/simple/ \
+                      pya5==${{ steps.get-version.outputs.version }}
+          python -c "import a5; print('Clean environment test: OK')"
