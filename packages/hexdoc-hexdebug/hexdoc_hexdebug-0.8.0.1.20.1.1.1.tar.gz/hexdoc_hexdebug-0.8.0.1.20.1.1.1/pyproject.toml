@@ -1,0 +1,144 @@
+[build-system]
+requires = [
+    "hatchling",
+    "hatch-gradle-version>=0.9.8",
+]
+build-backend = "hatchling.build"
+
+# project metadata
+
+[project]
+name = "hexdoc-hexdebug"
+description = "Python web book docgen and hexdoc plugin for HexDebug."
+readme = "doc/README.md"
+authors = [
+    { name="object-Object" },
+]
+keywords = ["hexdoc"]
+requires-python = ">=3.12"
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.urls]
+Homepage = "https://hexdebug.hexxy.media"
+Source = "https://github.com/object-Object/HexDebug"
+
+# project version
+
+[tool.hatch.version]
+scheme = "gradle"
+source = "gradle-properties"
+py-path = "doc/src/hexdoc_hexdebug/__version__.py"
+key = "modVersion"
+gradle-version-regex = { regex='^(.+?)(-.+)?$', repl='\1.{minecraftVersion}\2' }
+
+# Python dependencies
+
+# required
+[tool.hatch.metadata.hooks.version-catalog]
+dependencies = [
+    "hexdoc>=1!0.1.0a34",
+    { package="hexdoc-hexcasting", op="~=", py-version="1.0", key="hexcasting" },
+    { package="hexdoc-ioticblocks", op=">=", py-version="1.0", key="ioticblocks" },
+]
+
+# dev-only
+[dependency-groups]
+dev = [
+    "ruff",
+]
+
+# directory inclusion
+
+[tool.hatch.build]
+only-include = [
+    "doc/src/hexdoc_hexdebug",
+    "gradle.properties",
+]
+artifacts = [
+    "/doc/src/hexdoc_hexdebug/_export/generated",
+    "/doc/src/hexdoc_hexdebug/__gradle_version__.py",
+]
+
+[tool.hatch.build.targets.wheel]
+sources = ["doc/src"]
+
+# hexdoc entry point
+
+[project.entry-points.hexdoc]
+hexdebug = "hexdoc_hexdebug._hooks:HexDebugPlugin"
+
+# linting/formatting
+
+[tool.ruff]
+preview = true
+extend-exclude = [
+    "**/venv",
+    "**/.*",
+    "**/__pycache__",
+]
+
+[tool.ruff.lint]
+extend-select = [
+    "I", # import sorting
+    "RUF022", # __all__ sorting
+    "TID252", # ban relative imports
+]
+extend-ignore = [
+    # covered by Pyright
+    "F821", # undefined variable
+    "F401", # imported but unused
+    "F841", # unused variable
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+# type checking
+
+[tool.pyright]
+pythonVersion = "3.12"
+pythonPlatform = "All"
+
+include = ["doc/src"]
+extraPaths = ["doc/src"]
+
+typeCheckingMode = "standard"
+
+strictDictionaryInference = true
+strictListInference = true
+strictSetInference = true
+
+reportConstantRedefinition = "error"
+reportIncompleteStub = "error"
+reportInconsistentConstructor = "error"
+reportInvalidStubStatement = "error"
+
+reportDeprecated = "warning"
+reportDuplicateImport = "warning"
+reportMatchNotExhaustive = "warning"
+reportMissingParameterType = "warning"
+reportMissingTypeArgument = "warning"
+reportMissingTypeStubs = "warning"
+reportPrivateUsage = "warning"
+reportTypeCommentUsage = "warning"
+reportUnknownArgumentType = "warning"
+reportUnknownLambdaType = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownParameterType = "warning"
+reportUnknownVariableType = "warning"
+reportUnnecessaryCast = "warning"
+reportUnnecessaryComparison = "warning"
+reportUnnecessaryContains = "warning"
+reportUnnecessaryIsInstance = "warning"
+reportUntypedBaseClass = "warning"
+reportUntypedClassDecorator = "warning"
+reportUntypedFunctionDecorator = "warning"
+reportUntypedNamedTuple = "warning"
+reportUnusedClass = "warning"
+reportUnusedExpression = "warning"
+reportUnusedFunction = "warning"
+reportUnusedImport = "warning"
+reportUnusedVariable = "warning"
