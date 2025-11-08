@@ -1,0 +1,308 @@
+# Python Extension Toolkit (PET)
+
+A powerful CLI tool for creating web extensions, microservices, and integrations with ease. PET provides a modern development workflow with support for both Node.js/Express and Python/Flask projects.
+
+## 🚀 Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install py-extension-toolkit
+```
+
+### From GitHub
+
+```bash
+pip install git+https://github.com/Aqary-Org/py-extension-toolkit.git
+```
+
+## ⚡ Quick Start
+
+```bash
+# Create a new extension project
+pet init
+
+# Start the development server
+pet run
+```
+
+## 📋 Available Project Types
+
+When you run `pet init`, you can choose from various project types:
+
+- **Web Extension** - Modern web extensions with Express.js
+- **Python Extension (Flask)** - Traditional Python extensions with Flask
+- **API Integration** - RESTful API integrations and connectors
+- **Microservice** - Containerized microservices
+- **Dashboard Extension** - Interactive dashboards and widgets
+- **Data Connector** - Database and external service connectors
+- **Webhook Handler** - Event-driven webhook processors
+- **Custom Widget** - Embeddable UI components
+- **Background Service** - Long-running background processes
+- **CLI Tool** - Command-line utilities and scripts
+
+## 🛠️ Usage
+
+### Interactive Project Creation
+
+```bash
+pet init
+```
+
+This will guide you through:
+1. **Project Type Selection** - Choose from 10+ extension types
+2. **Project Name** - Enter your project name
+3. **Dependencies** - Automatic NPM/pip package installation
+4. **Project Structure** - Complete scaffolding with best practices
+
+### Development Server
+
+```bash
+cd your-project
+pet run
+```
+
+Features:
+- **Interactive Prompts** - Configure port, host, and browser settings
+- **HTTPS Development** - Secure development environment
+- **Auto-reload** - File watching and automatic restarts
+- **Express/Flask Support** - Supports both Node.js and Python projects
+
+### Other Commands
+
+```bash
+# Validate project structure
+pet validate
+
+# Package for distribution
+pet pack
+
+# Login to extension platform (coming soon)
+pet login
+
+# List workspaces (coming soon)
+pet list-workspace
+```
+
+## 🏗️ Generated Project Structure
+
+### Web Extension
+```
+my-extension/
+├── package.json           # NPM configuration
+├── server.js             # Express server with security middleware
+├── public/               # Static assets
+│   ├── css/
+│   ├── js/
+│   └── assets/
+├── README.md             # Project documentation
+└── .gitignore           # Git ignore rules
+```
+
+### Python/Flask Project
+```
+my-extension/
+├── plugin-manifest.json         # Extension manifest
+├── app.py               # Flask application
+├── static/              # Static assets
+├── templates/           # Jinja2 templates
+├── requirements.txt     # Python dependencies
+└── README.md           # Project documentation
+```
+
+## 🔧 Features
+
+- 🚀 **Multiple Project Types** - 10+ extension templates for different use cases
+- ⚡ **Modern Tooling** - Express.js with security middleware, Flask with best practices
+- � **Security First** - CORS, rate limiting, helmet security headers included
+- 📦 **Auto Dependencies** - Automatic NPM/pip package installation
+- 🌐 **HTTPS Development** - Secure development server out of the box
+- 🔄 **Hot Reload** - File watching and automatic server restarts
+- 📱 **Cross Platform** - Works on Windows, macOS, and Linux
+- 🎯 **Production Ready** - Generated code follows industry best practices
+
+## 📖 Example Walkthrough
+
+```bash
+# 1. Install PET
+pip install py-extension-toolkit
+
+# 2. Create a new API integration project
+pet init
+# Select: API Integration
+# Enter name: my-api-connector
+
+# 3. Navigate to project
+cd my-api-connector
+
+# 4. Start development server
+pet run
+# Choose port: 3000
+# Choose host: 127.0.0.1 (default)
+# Auto-open browser: Y
+
+# 5. Your extension is now running at https://127.0.0.1:3000
+```
+
+This creates a complete Express.js server with:
+- CORS middleware for cross-origin requests
+- Rate limiting for API protection
+- Helmet security headers
+- Error handling middleware
+- Health check endpoints
+- Extension info API
+
+## 🔧 Configuration
+
+PET supports both interactive and configuration-based project setup:
+
+### Environment Variables
+```bash
+# Set default project type
+export PET_DEFAULT_TYPE="Web Extension"
+
+# Set default port for development server
+export PET_DEFAULT_PORT=5000
+
+# Set default host
+export PET_DEFAULT_HOST="127.0.0.1"
+```
+
+### Project Configuration
+Each generated project includes configuration files:
+- **package.json** - NPM scripts and dependencies for Node.js projects
+- **requirements.txt** - Python dependencies for Flask projects
+- **plugin-manifest.json** - Extension metadata and configuration
+
+## 🚀 API Reference
+
+### Express.js Projects Include:
+- **CORS** - Cross-Origin Resource Sharing support
+- **Rate Limiting** - Protection against abuse
+- **Helmet** - Security headers middleware
+- **Error Handling** - Comprehensive error management
+- **Health Endpoints** - `/api/health` and `/api/extension-info`
+
+### Flask Projects Include:
+- **Flask-CORS** - Cross-origin request handling
+- **Error Handling** - Custom error pages and API responses
+- **Template Engine** - Jinja2 templating system
+- **Static Files** - Optimized static file serving
+
+## 🌐 Development Workflow
+
+1. **Initialize Project**
+   ```bash
+   pet init
+   # Interactive prompts guide you through setup
+   ```
+
+2. **Develop Locally**
+   ```bash
+   pet run
+   # HTTPS development server with hot reload
+   ```
+
+3. **Validate & Test**
+   ```bash
+   pet validate
+   # Check project structure and dependencies
+   ```
+
+4. **Package & Deploy**
+   ```bash
+   pet pack
+   # Create distributable package
+   ```
+
+## 📦 Dependencies
+
+### Core Requirements
+- Python 3.8 or higher
+- Node.js 14+ (for Node.js projects)
+- npm (automatically installs with Node.js)
+
+### Python Dependencies
+- click>=8.0.0 - Command-line interface framework
+- flask>=2.0.1 - Web framework for Python projects
+- flask-cors>=4.0.0 - CORS support for Flask
+- requests>=2.25.0 - HTTP library
+
+### Node.js Dependencies (Auto-installed)
+- express - Fast web framework for Node.js
+- cors - CORS middleware
+- helmet - Security middleware
+- express-rate-limit - Rate limiting middleware
+
+## 🛠️ Development
+
+For contributing to PET development:
+
+```bash
+git clone https://github.com/Aqary-Org/py-extension-toolkit.git
+cd cli/python-extension-toolkit
+pip install -e .
+```
+
+### Running Tests
+```bash
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Run tests
+pytest tests/
+
+# Run with coverage
+pytest --cov=pet tests/
+```
+
+### Publishing to PyPI
+```bash
+# Build package
+python -m build
+
+# Upload to TestPyPI
+python -m twine upload --repository testpypi dist/*
+
+# Upload to PyPI
+python -m twine upload dist/*
+```
+
+## 📋 Version History
+
+### v2.0.1 (Latest)
+- ✅ Generic extension toolkit (removed platform-specific references)
+- ✅ 10+ project types for various use cases
+- ✅ Node.js/Express workflow with NPM support
+- ✅ Improved security with helmet and rate limiting
+- ✅ Fixed syntax issues in generated templates
+- ✅ Enhanced error handling and logging
+
+### v1.0.0
+- Initial release with basic extension scaffolding
+- Flask-based Python extensions
+- Basic project templates
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📞 Support
+
+- **Documentation**: [GitHub Wiki](https://github.com/Aqary-Org/py-extension-toolkit/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Aqary-Org/py-extension-toolkit/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Aqary-Org/py-extension-toolkit/discussions)
+
+## 🏆 Acknowledgments
+
+PET is inspired by modern extension development tools and follows industry best practices for security, performance, and developer experience.
