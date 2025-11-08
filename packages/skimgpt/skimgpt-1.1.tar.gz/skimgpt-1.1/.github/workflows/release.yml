@@ -1,0 +1,82 @@
+name: Release to PyPI
+
+# Publish to production PyPI when a version tag is pushed
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v1.0.0, v1.1, etc
+      - 'v*.*'
+  workflow_dispatch:
+
+jobs:
+  publish-pypi:
+    name: Publish to PyPI (production)
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: prod
+      url: https://pypi.org/project/skimgpt/
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Extract version from tag
+        id: get-version
+        run: |
+          # Get the pushed commit SHA
+          COMMIT_SHA="${{ github.sha }}"
+          echo "Checking for tags on commit: $COMMIT_SHA"
+          
+          # First check if this exact commit has any version tags (v*.*.*)
+          VERSION_TAG=$(git tag --points-at $COMMIT_SHA | grep -E '^v[0-9]+\.[0-9]+' | head -1 || echo "")
+          
+          # If no tag on the merge commit, check the last few commits (for PR merges)
+          if [ -z "$VERSION_TAG" ]; then
+            echo "No tag on merge commit, checking recent commits..."
+            for commit in $(git rev-list -n 5 $COMMIT_SHA); do
+              TAG=$(git tag --points-at $commit | grep -E '^v[0-9]+\.[0-9]+' | head -1 || echo "")
+              if [ -n "$TAG" ]; then
+                VERSION_TAG=$TAG
+                echo "Found version tag $VERSION_TAG on commit $commit"
+                break
+              fi
+            done
+          fi
+          
+          if [ -n "$VERSION_TAG" ]; then
+            VERSION_NUMBER=${VERSION_TAG#v}
+            echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+            echo "Version: $VERSION_NUMBER"
+          else
+            echo "ERROR: No version tag found!"
+            exit 1
+          fi
+
+      - name: Set version from git tag
+        run: |
+          echo "${{ steps.get-version.outputs.version_number }}" > VERSION
+          echo "Created VERSION file with: ${{ steps.get-version.outputs.version_number }}"
+          if [ -f "pyproject.toml" ] && grep -q "^version = " pyproject.toml; then
+            sed -i "s/^version = .*/version = \"${{ steps.get-version.outputs.version_number }}\"/" pyproject.toml
+          fi
+
+      - name: Build wheel & sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Publish to PyPI (production)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
