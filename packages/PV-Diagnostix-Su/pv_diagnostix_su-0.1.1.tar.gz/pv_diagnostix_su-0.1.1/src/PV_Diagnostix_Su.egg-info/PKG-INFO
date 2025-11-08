@@ -1,0 +1,119 @@
+Metadata-Version: 2.4
+Name: PV-Diagnostix-Su
+Version: 0.1.1
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: scikit-learn>=1.0.0
+Requires-Dist: plotly>=5.0.0
+Requires-Dist: pathlib
+Requires-Dist: logging
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: pywavelets
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: requires-dist
+Dynamic: requires-python
+
+# PV-Diagnostix-Su: Plateforme de Diagnostic AvancÃ© pour SystÃ¨mes PhotovoltaÃ¯ques
+
+**Une solution de diagnostic de nouvelle gÃ©nÃ©ration, issue de la recherche et du dÃ©veloppement, qui fusionne l'Intelligence Artificielle (IA) et le traitement avancÃ© du signal pour offrir une prÃ©cision inÃ©galÃ©e dans la maintenance prÃ©dictive des Ã©quipements photovoltaÃ¯ques.**
+
+---
+
+## Table des MatiÃ¨res
+- [Contexte Technologique](#contexte-technologique)
+- [Installation](#installation)
+- [DÃ©marrage Rapide](#dÃ©marrage-rapide)
+- [CapacitÃ©s de la Plateforme](#capacitÃ©s-de-la-plateforme)
+- [Structure du Projet](#structure-du-projet)
+- [Exemples d'Application](#exemples-dapplication)
+- [Contribution](#contribution)
+- [Licence](#licence)
+- [Citation](#citation)
+
+## Contexte Technologique
+
+PV-Diagnostix-Su est une initiative de R&D visant Ã  transformer la maintenance des infrastructures solaires. Notre approche unique combine des algorithmes de traitement du signal de pointe avec des modÃ¨les de Machine Learning pour analyser les signaux Ã©lectriques bruts. Cette synergie permet de dÃ©celer des anomalies subtiles, de prÃ©dire les dÃ©gradations et d'identifier des signatures de dÃ©fauts invisibles aux mÃ©thodes traditionnelles, garantissant ainsi une fiabilitÃ© et une performance optimales des actifs.
+
+## Installation
+
+### Via pip (RecommandÃ©)
+```bash
+pip install pv-diagnostix-su
+```
+
+### Installation Locale
+1. Clonez le dÃ©pÃ´t.
+2. CrÃ©ez et activez un environnement virtuel.
+3. Installez les dÃ©pendances :
+   ```bash
+   pip install -r requirements.txt
+   pip install -e .
+   ```
+
+## DÃ©marrage Rapide
+
+Lancez une analyse complÃ¨te en quelques minutes :
+1.  **PrÃ©parez les donnÃ©es :** Placez vos fichiers CSV dans `data/sample_data/`.
+2.  **Configurez l'Ã©quipement :** Assurez-vous qu'un fichier de configuration JSON correspondant existe dans `data/equipment_configs/`.
+3.  **ExÃ©cutez un scÃ©nario :**
+    ```bash
+    python examples/example_single_inverter_analysis.py
+    ```
+    Un rapport de diagnostic interactif sera gÃ©nÃ©rÃ© dans `examples/results/`.
+
+## CapacitÃ©s de la Plateforme
+
+*   **Moteur d'Ingestion et de Validation :** Chargement robuste des donnÃ©es CSV avec alignement temporel, interpolation intelligente et validation des plages physiques.
+*   **Noyau d'Analyse Hybride (IA & Traitement du Signal) :**
+    *   **Filtrage IA (BasÃ© sur Kalman) :** Denoising avancÃ© du signal pour une clartÃ© maximale.
+    *   **Analyse FrÃ©quentielle (FFT) :** DÃ©tection des harmoniques et des perturbations Ã©lectriques.
+    *   **Analyse Temps-FrÃ©quence (Wavelet) :** Identification prÃ©cise des dÃ©gradations progressives et des Ã©vÃ©nements transitoires.
+    *   **Analyse d'Enveloppe (Hilbert) :** DÃ©tection des anomalies d'amplitude et des instabilitÃ©s.
+    *   **Analyse de PÃ©riodicitÃ© (AutocorrÃ©lation) :** Identification des schÃ©mas rÃ©currents et des dÃ©fauts cycliques.
+*   **Scoring de SantÃ© PrÃ©dictif (PHS) :** Un algorithme propriÃ©taire qui convertit les analyses complexes en un score de santÃ© unifiÃ© (0-100), permettant une Ã©valuation rapide de l'Ã©tat des actifs.
+*   **Classification de SÃ©vÃ©ritÃ© par Machine Learning :** CatÃ©gorise automatiquement l'Ã©tat de l'Ã©quipement en 'OPTIMAL', 'SOUS SURVEILLANCE', 'CRITIQUE', ou 'DÃ‰FAILLANCE IMMINENTE'.
+*   **GÃ©nÃ©rateur de Recommandations :** Fournit des informations exploitables et des recommandations de maintenance basÃ©es sur les signatures de dÃ©fauts dÃ©tectÃ©es.
+*   **Configuration Flexible :** DÃ©finissez et personnalisez facilement tout type d'Ã©quipement (onduleurs, panneaux, batteries) via des fichiers de configuration simples.
+*   **Rapports Interactifs :** GÃ©nÃ¨re des rapports HTML dynamiques et autonomes avec des visualisations de donnÃ©es interactives (Plotly).
+
+## Structure du Projet
+```
+pv_diagnostix_su/
+â”œâ”€â”€ pv_diagnostix_su/      # Noyau de la bibliothÃ¨que
+â”‚   â”œâ”€â”€ core/              # Algorithmes centraux (IA, traitement signal, scoring)
+â”‚   â”œâ”€â”€ equipment/         # ModÃ¨les d'Ã©quipement (onduleur, panneau, etc.)
+â”‚   â””â”€â”€ utils/             # Utilitaires (validation, visualisation)
+â”œâ”€â”€ tests/
+â”œâ”€â”€ examples/
+â”œâ”€â”€ data/
+â”œâ”€â”€ docs/
+â”œâ”€â”€ setup.py
+â”œâ”€â”€ requirements.txt
+â””â”€â”€ README.md
+```
+
+## Exemples d'Application
+Le rÃ©pertoire `examples/` contient des cas d'usage dÃ©taillÃ©s pour dÃ©montrer la puissance de la plateforme.
+
+## Contribution
+Les contributions visant Ã  faire avancer la recherche dans ce domaine sont les bienvenues.
+
+## Licence
+Ce projet est sous licence MIT.
+
+## ConfidentialitÃ© des DonnÃ©es
+Cette plateforme est conÃ§ue pour le diagnostic technique et ne gÃ¨re aucune DonnÃ©e Ã  CaractÃ¨re Personnel (PII). L'utilisateur est entiÃ¨rement responsable de l'anonymisation de toutes les donnÃ©es d'entrÃ©e.
+
+## Citation
+Pour toute utilisation dans un cadre acadÃ©mique ou de recherche, veuillez citer :
+```
+@misc{pvequipmentdiagnostics,
+  author = {PV-Diagnostix Research Group},
+  title = {PV-Diagnostix-Su: An AI-Enhanced Diagnostic Platform for Photovoltaic Systems},
+  howpublished = {\url{https://github.com/your-username/pv-diagnostix-su}}
+}
+```
