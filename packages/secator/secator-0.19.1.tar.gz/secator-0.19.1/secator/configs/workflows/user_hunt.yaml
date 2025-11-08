@@ -1,0 +1,24 @@
+type: workflow
+name: user_hunt
+alias: userhunt
+description: User account search
+tags: [user_account]
+input_types:
+  - slug
+  - string
+  - email
+
+tasks:
+  _group/hunt_users:
+    maigret:
+      description: Hunt user accounts
+      targets_:
+        - type: target
+          field: name
+          condition: target.type != 'email'
+    h8mail:
+      description: Find password leaks
+      targets_:
+        - type: target
+          field: name
+          condition: target.type == 'email'
