@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+kishu = ["py.typed"]
+
+[tool.setuptools]
+# package-dir = { "" = "kishu" }
+packages = [
+    "kishu",
+    "kishu.jupyter",
+    "kishu.planning",
+    "kishu.storage",
+]
+
+[project]
+name = "kishu"
+authors = [
+    {name = "Yongjoo Park", email = "yongjoo@g.illinois.edu"},
+    {name = "Supawit Chockchowwat", email = "supawit2@illinois.edu"},
+    {name = "Zhaoheng Li", email = "zl20@illinois.edu"},
+]
+description = "Intelligent Python Checkpointing"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = [
+    "kishu", "elastic", "dart",
+    "python", "jupyter", "notebook", "server", "lab", 
+    "cli", "web", "gui", "extension",
+]
+license = { text = "Apache-2.0" }
+classifiers = [
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+version = "0.3.4"  # README: Keep in sync with kishu/__init__.py
+dependencies = [  # README: Keep in sync with requirements.txt
+    # Core
+    "dataclasses",
+    "dataclasses_json",
+    "dill",
+    "ipykernel",
+    "ipylab",
+    "jupyter_ui_poll<=1.0.0",
+    "loguru",
+    "nbconvert",
+    "nbformat",
+    "networkx",
+    "psutil",
+    "requests",
+    "typing",
+
+    # User interfaces: cli, backend, jupyterlab_kishu
+    "flask",
+    "rich",
+    "typer",
+    "Flask-CORS",
+
+    # Planning
+    "numpy",
+    "pandas",
+    "shortuuid",
+    "xxhash",
+]
+
+[project.optional-dependencies]
+dev = [  # README: Keep in sync with dev-requirements.txt
+    # Development tools
+    "black",
+    "flake8",
+    "isort",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "pytest-benchmark",
+    "pytest-xdist",
+
+    # Test cases
+    "matplotlib",
+    "numpy",
+    "scikit-learn",
+    "seaborn",
+    "textblob",
+    "pandas",
+    "pylatexenc",
+
+    # Testing framework/infra
+    "websocket-client",
+    "requests",
+    "types-requests",
+    "jupyter"
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "benchmark: mark a test as a benchmark test."
+]
+
+[project.scripts]
+kishu = "kishu.cli:main"
+
+[project.urls]
+repository = "https://github.com/illinoisdata/kishu"
