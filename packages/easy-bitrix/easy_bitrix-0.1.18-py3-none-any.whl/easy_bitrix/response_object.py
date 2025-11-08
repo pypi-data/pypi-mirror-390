@@ -1,0 +1,71 @@
+import json
+from collections.abc import Sequence
+
+
+class BitrixResponse(Sequence):
+    code: int
+    raw_data: str
+    data: object
+
+    def __init__(self, code: int, raw_data: str):
+        self.code = code
+        self.raw_data = raw_data
+        self.data = json.loads(raw_data)
+        self.error = None
+        self.time: dict | None = None
+        self.total: int = 0
+        self.next: int | None = self.data.get('next')
+        if 'error' in self.data:
+            self.error = self.data.get('error')
+        else:
+            if 'result' in self.data:
+                self.total = self.data.get('total')
+                self.time = self.data.get('time')
+                self.data = self.data['result']
+
+    def add_data(self, raw_data: str):
+        data = json.loads(raw_data)
+        self.next: int | None = data.get('next')
+        if 'error' in data:
+            self.error = data.get('error')
+        else:
+            if 'result' in data:
+                try:
+                    has_items = self.data.get('items')
+                except AttributeError:
+                    has_items = False
+                if not isinstance(data['result'], list) and data['result'].get('items'):
+                    if has_items:
+                        self.data['items'].extend(data['result']['items'])
+                    else:
+                        self.data.extend(data['result']['items'])
+                else:
+                    if has_items:
+                        self.data['items'].extend(data['result'])
+                    else:
+                        self.data.extend(data['result'])
+                data['result'] = self.data
+                data['time'] = self.time
+                self.raw_data = json.dumps(data)
+
+    def __iter__(self):
+        if self._check_items('items'):
+            return iter(self.data['items'])
+        elif self._check_items('item'):
+            return iter([self.data['item']])
+        return iter(self.data)
+
+    def __getitem__(self, key):
+        if self._check_items('items'):
+            return self.data['items'][key]
+        elif self._check_items('item'):
+            return self.data['item']
+        return self.data[key]
+
+    def __len__(self):
+        if self._check_items('items'):
+            return len(self.data['items'])
+        return len(self.data)
+
+    def _check_items(self, name, class_=list) -> bool:
+        return not isinstance(self.data, class_) and self.data.get(name) is not None
