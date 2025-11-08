@@ -1,0 +1,14 @@
+from enum import Enum
+
+
+class TokenType(Enum):
+    BOUND_RANGE = "BOUND_RANGE"
+    INDEX = "INDEX"
+    KEY = "KEY"
+    KEY_RANGE = "KEY_RANGE"
+    NESTED_RANGE = "NESTED"
+    PATTERN = "GLOB"
+    PATTERN_RANGE = "GLOB_RANGE"
+    UNBOUND_RANGE = "UNBOUND_RANGE"
+    WILDCARD = "WILDCARD"
+    WILDCARD_RANGE = "WILDCARD_RANGE"
