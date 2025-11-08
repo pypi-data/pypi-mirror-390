@@ -1,0 +1,54 @@
+[project]
+name = "iomaps"
+dynamic = ["version"]
+description = "Tools to handle data from indianopenmaps"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "py7zr>=1.0.0",
+    "multivolumefile>=0.2.3",
+    "shapely>=2.1.2",
+    "fiona>=1.10.1",
+    "tqdm>=4.67.1",
+    "PyQt5>=5.15.0",
+]
+
+[project.scripts]
+iomaps = "iomaps.cli:main_cli"
+
+
+[project.urls]
+homepage = "https://github.com/ramSeraph/indianopenmaps"
+repository = "https://github.com/ramSeraph/indianopenmaps.git"
+
+[build-system]
+requires = [
+    "hatchling",
+    "hatch-vcs"
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+tag_regex = "^(?:python-v)?(?P<version>[0-9.]+)$"
+search_parent_directories = true
+
+[tool.hatch.build.hooks.vcs]
+version-file = "iomaps/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "iomaps",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "iomaps",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
