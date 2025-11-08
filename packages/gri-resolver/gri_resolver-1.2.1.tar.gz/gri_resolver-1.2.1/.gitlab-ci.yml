@@ -1,0 +1,49 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHONUNBUFFERED: "1"
+
+cache:
+  paths:
+    - .cache/pip
+
+.default-python:
+  image: python:3.11-slim
+  before_script:
+    - python -V
+    - python -m pip install -U pip
+
+lint:
+  stage: lint
+  extends: .default-python
+  tags: ["docker-build"]
+  script:
+    - python -m pip install flake8
+    - flake8 gri_resolver --max-line-length=120
+
+pytest:
+  stage: test
+  extends: .default-python
+  tags: ["docker-build"]
+  script:
+    - python -m pip install -U build
+    - python -m pip install -e .
+    - python -m pip install pytest pytest-cov
+    - pytest -q --cov=gri_resolver --cov-report=term-missing
+  coverage: '/TOTAL\s+\d+\s+\d+\s+\d+%/'
+
+build:
+  stage: build
+  extends: .default-python
+  tags: ["docker-build"]
+  script:
+    - python -m pip install build
+    - python -m build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
