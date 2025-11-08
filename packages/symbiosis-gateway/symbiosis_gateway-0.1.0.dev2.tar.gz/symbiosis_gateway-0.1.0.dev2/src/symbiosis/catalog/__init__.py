@@ -1,0 +1,1 @@
+"""The model catalog manages configuration of available models."""
