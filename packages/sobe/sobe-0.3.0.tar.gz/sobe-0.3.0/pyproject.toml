@@ -1,0 +1,78 @@
+[project]
+name = "sobe"
+version = "0.3.0"
+description = "AWS-based drop box uploader"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: File Sharing",
+    "Topic :: Utilities",
+]
+authors = [
+    { name = "Liz Balbuena" },
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "boto3>=1.40.49",
+    "platformdirs>=4.5.0",
+    "puremagic>=1.30",
+]
+
+[project.optional-dependencies]
+# Extras used for building documentation on Read the Docs.
+docs = [
+    "furo>=2024.8.6",
+    "sphinx>=7.0.0",
+    "sphinx-autodoc-typehints>=2.0.0",
+]
+
+[project.scripts]
+sobe = "sobe.main:main"
+
+[project.urls]
+Homepage = "https://github.com/Liz4v/sobe"
+Documentation = "https://github.com/Liz4v/sobe/blob/main/README.md"
+Repository = "https://github.com/Liz4v/sobe.git"
+Issues = "https://github.com/Liz4v/sobe/issues"
+Changelog = "https://github.com/Liz4v/sobe/releases"
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=src/sobe",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=95",
+    "--strict-markers",
+    "-v",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests",
+]
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.0",
+]
