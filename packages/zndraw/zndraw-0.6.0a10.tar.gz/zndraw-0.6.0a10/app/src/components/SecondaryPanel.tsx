@@ -1,0 +1,229 @@
+import { useEffect, useMemo, useState, useRef, useCallback, memo } from "react";
+import {
+  Box,
+  Typography,
+  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  SelectChangeEvent,
+  Fade,
+} from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
+import { JsonForms } from "@jsonforms/react";
+import { materialCells } from "@jsonforms/material-renderers";
+import { useFormStore } from "../formStore";
+import {
+  useSchemas,
+  useExtensionData,
+  useSubmitExtension,
+  useFrameMetadata,
+} from "../hooks/useSchemas";
+import { useAppStore } from "../store";
+import { ExtensionStatusChips } from "./ExtensionStatusChips";
+import { debounce } from "lodash";
+import { customRenderers, injectDynamicEnums, schemaRequiresMetadata } from "../utils/jsonforms";
+import { PanelSkeleton, FormSkeleton } from "./shared/LoadingSkeletons";
+
+interface SecondaryPanelProps {
+  panelTitle: string;
+}
+
+const SecondaryPanel = ({ panelTitle }: SecondaryPanelProps) => {
+  // Use individual selectors to prevent unnecessary re-renders
+  const roomId = useAppStore((state) => state.roomId);
+  const userName = useAppStore((state) => state.userName);
+  const geometries = useAppStore((state) => state.geometries);
+  const [localFormData, setLocalFormData] = useState<any>({});
+  const ignoreFirstChangeRef = useRef(true);
+
+  if (!roomId || !userName) {
+    return <Typography sx={{ p: 2 }}>Joining room...</Typography>;
+  }
+
+  const { selectedExtensions, setSelectedExtension } = useFormStore();
+  const selectedExtension = selectedExtensions[panelTitle] || null;
+
+  const {
+    data: schemas,
+    isLoading: isLoadingSchemas,
+    isError: isSchemasError,
+  } = useSchemas(roomId, panelTitle);
+
+  // Check if the selected extension's schema requires metadata
+  const currentSchema = schemas?.[selectedExtension ?? ""]?.schema;
+  const needsMetadata = useMemo(
+    () => currentSchema ? schemaRequiresMetadata(currentSchema) : false,
+    [currentSchema]
+  );
+
+  // --- MODIFICATION: Fetch the frame metadata only when needed (deferred loading) ---
+  const { data: metadata, isLoading: isLoadingMetadata } = useFrameMetadata(
+    roomId,
+    0,
+    needsMetadata // Only fetch if the current schema needs it
+  );
+
+  const {
+    data: serverData,
+    isLoading: isLoadingData,
+    isError: isDataError,
+  } = useExtensionData(roomId, userName, panelTitle, selectedExtension || "");
+
+  useEffect(() => {
+    if (!isLoadingData && serverData !== undefined) {
+      setLocalFormData(serverData ?? {});
+      ignoreFirstChangeRef.current = true;
+    }
+  }, [isLoadingData, serverData, selectedExtension]);
+
+  const { mutate: submit, isPending: isSubmitting } = useSubmitExtension();
+
+  const debouncedSubmit = useMemo(
+    () =>
+      debounce((data: any) => {
+        if (!selectedExtension || !roomId || !userName) return;
+        submit({
+          roomId,
+          userName,
+          category: panelTitle,
+          extension: selectedExtension,
+          data: data,
+        });
+      }, 100), // Increased debounce time slightly
+    [selectedExtension, roomId, userName, panelTitle, submit],
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSubmit.cancel();
+    };
+  }, [debouncedSubmit]);
+
+  const handleFormChange = useCallback(
+    ({ data }: { data: any }) => {
+      const safeData = data ?? {};
+      if (ignoreFirstChangeRef.current) {
+        ignoreFirstChangeRef.current = false;
+        return;
+      }
+      setLocalFormData(safeData);
+
+      if (panelTitle === "settings") {
+        debouncedSubmit(safeData);
+      }
+    },
+    [panelTitle, debouncedSubmit],
+  );
+
+  const handleSelectionChange = (event: SelectChangeEvent<string>) => {
+    setSelectedExtension(panelTitle, event.target.value || null);
+  };
+
+  const handleSubmit = () => {
+    if (!selectedExtension || !roomId || !userName) return;
+    submit({
+      roomId,
+      userName,
+      category: panelTitle,
+      extension: selectedExtension,
+      data: localFormData,
+    });
+  };
+
+  // --- MODIFICATION: Create a dynamic schema by injecting metadata ---
+  const dynamicSchema = useMemo(() => {
+    const originalSchema = schemas?.[selectedExtension ?? ""]?.schema;
+    if (!originalSchema) return null;
+
+    // Call our new helper function to handle injection generically
+    return injectDynamicEnums(originalSchema, metadata, geometries);
+
+  }, [schemas, selectedExtension, metadata, geometries]);
+  const formOptions = useMemo(() => Object.keys(schemas || {}), [schemas]);
+
+  if (isSchemasError || isDataError) {
+    return (
+      <Typography color="error" sx={{ p: 2 }}>
+        Failed to load configuration.
+      </Typography>
+    );
+  }
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Typography variant="h6" sx={{ p: 2, pb: 1, flexShrink: 0 }}>
+        {panelTitle}
+      </Typography>
+      <Divider />
+
+      <Box sx={{ p: 2, pb: 12, flexGrow: 1, overflowY: "auto" }}>
+        {isLoadingSchemas ? (
+          <PanelSkeleton />
+        ) : (
+          <>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="panel-select-label">{panelTitle} Method</InputLabel>
+              <Select
+                labelId="panel-select-label"
+                value={selectedExtension || ""}
+                label={`${panelTitle} Method`}
+                onChange={handleSelectionChange}
+              >
+                {formOptions.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {item}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {selectedExtension && schemas && schemas[selectedExtension] && (
+              <ExtensionStatusChips metadata={schemas[selectedExtension]} />
+            )}
+
+            {selectedExtension && (
+              <>
+                {panelTitle !== "settings" && (
+                  <Button
+                    variant="contained"
+                    startIcon={<SaveIcon />}
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || isLoadingData || isLoadingMetadata}
+                    fullWidth
+                    color="primary"
+                    sx={{ mb: 2 }}
+                  >
+                    {isSubmitting ? "Running..." : "Run Extension"}
+                  </Button>
+                )}
+
+                {isLoadingData || isLoadingMetadata ? (
+                  <FormSkeleton />
+                ) : dynamicSchema ? (
+                  <Fade in={!isLoadingData && !isLoadingMetadata} timeout={200}>
+                    <Box>
+                      <JsonForms
+                        key={selectedExtension}
+                        schema={dynamicSchema}
+                        data={localFormData}
+                        renderers={customRenderers}
+                        cells={materialCells}
+                        onChange={handleFormChange}
+                      />
+                    </Box>
+                  </Fade>
+                ) : null}
+              </>
+            )}
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+// Memoize to prevent unnecessary re-renders
+export default memo(SecondaryPanel);

@@ -1,0 +1,738 @@
+import dataclasses
+import logging
+import threading
+import time
+import traceback
+import typing as t
+import warnings
+
+import socketio
+
+if t.TYPE_CHECKING:
+    from zndraw.zndraw import ZnDraw
+
+log = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class SocketIOLock:
+    """A client-side context manager for a distributed lock via Socket.IO.
+
+    This lock is re-entrant - the same client can acquire it multiple times
+    and must release it the same number of times.
+
+    Includes automatic lock renewal to prevent TTL expiration during long operations.
+
+    Optional metadata can be sent to describe the lock's purpose:
+        with vis.lock(msg="Uploading trajectory data"):
+            vis.extend(frames)
+    """
+
+    sio: socketio.Client
+    target: str
+    ttl: int = 60  # TTL in seconds (must be <= 300 as validated by server)
+    _lock_count: int = dataclasses.field(default=0, init=False)
+    _refresh_thread: threading.Thread | None = dataclasses.field(
+        default=None, init=False
+    )
+    _refresh_stop: threading.Event = dataclasses.field(
+        default_factory=threading.Event, init=False
+    )
+    _pending_metadata: dict | None = dataclasses.field(default=None, init=False)
+
+    def __call__(
+        self, msg: str | None = None, metadata: dict | None = None
+    ) -> "SocketIOLock":
+        """Set optional metadata for this lock acquisition.
+
+        Returns self to maintain singleton pattern and support re-entrant locking.
+
+        Parameters
+        ----------
+        msg : str | None
+            Human-readable message describing the lock purpose
+        metadata : dict | None
+            Additional metadata fields
+
+        Returns
+        -------
+        SocketIOLock
+            Returns self for use as context manager
+
+        Examples
+        --------
+        >>> with vis.lock(msg="Uploading trajectory"):
+        ...     vis.extend(frames)
+        >>> with vis.lock(metadata={"step": 1, "total": 10}):
+        ...     process_batch()
+        """
+        self._pending_metadata = {}
+        if msg is not None:
+            self._pending_metadata["msg"] = msg
+        if metadata:
+            self._pending_metadata.update(metadata)
+        return self
+
+    def _refresh_lock_periodically(self):
+        """Background thread that refreshes the lock periodically to prevent TTL expiration.
+
+        Refreshes at half the TTL interval to ensure the lock stays active.
+        """
+        refresh_interval = self.ttl / 2
+        while not self._refresh_stop.is_set():
+            # Wait for half the TTL or until stop signal
+            if self._refresh_stop.wait(timeout=refresh_interval):
+                break
+
+            # Refresh the lock by calling lock:refresh
+            try:
+                payload = {"target": self.target, "ttl": self.ttl}
+                response = self.sio.call("lock:refresh", payload, timeout=10)
+                if response and response.get("success"):
+                    log.debug(
+                        f"Lock refreshed for target '{self.target}' with TTL {self.ttl}s"
+                    )
+                else:
+                    error_msg = (
+                        response.get("error", "Unknown error")
+                        if response
+                        else "No response"
+                    )
+                    log.warning(
+                        f"Failed to refresh lock for target '{self.target}': {error_msg}"
+                    )
+            except Exception as e:
+                log.error(f"Error refreshing lock for target '{self.target}': {e}")
+
+    def _send_metadata(self):
+        """Send lock metadata to server after lock acquisition.
+
+        Logs warnings on failure but does not raise exceptions to avoid
+        breaking the lock acquisition flow.
+        """
+        payload = {"target": self.target, "metadata": self._pending_metadata}
+        try:
+            response = self.sio.call("lock:msg", payload, timeout=5)
+            if not (response and response.get("success")):
+                log.warning(
+                    f"Failed to send lock metadata for target '{self.target}': {response}"
+                )
+        except Exception as e:
+            log.error(
+                f"Error sending lock metadata for target '{self.target}': {e}",
+                exc_info=True,
+            )
+
+    def acquire(self, timeout: float = 60) -> bool:
+        """
+        Acquire a lock for the specific target.
+        If already held by this client, increment the lock count.
+        Starts a background thread to refresh the lock periodically.
+
+        Args:
+            timeout: Socket.IO call timeout (not the lock TTL)
+
+        Returns:
+            True if lock acquired successfully, False otherwise
+        """
+        # If we already hold the lock, just increment the count
+        if self._lock_count > 0:
+            self._lock_count += 1
+            return True
+
+        payload = {"target": self.target, "ttl": self.ttl}
+        # sio.call is inherently blocking, so it waits for the server's response.
+        response = self.sio.call("lock:acquire", payload, timeout=int(timeout))
+
+        # Check if server returned an error
+        if response and response.get("error"):
+            raise ValueError(f"Failed to acquire lock: {response['error']}")
+
+        success = response and response.get("success", False)
+        if success:
+            self._lock_count = 1
+            # Start the refresh thread
+            self._refresh_stop.clear()
+            self._refresh_thread = threading.Thread(
+                target=self._refresh_lock_periodically,
+                daemon=True,
+                name=f"lock-refresh-{self.target}",
+            )
+            self._refresh_thread.start()
+        return success
+
+    def release(self) -> bool:
+        """Release the lock. Only actually releases when count reaches 0.
+        Stops the refresh thread when the lock is fully released."""
+        if self._lock_count == 0:
+            warnings.warn(
+                f"Attempting to release lock for '{self.target}' but not held"
+            )
+            return False
+
+        self._lock_count -= 1
+
+        # Only actually release the lock when count reaches 0
+        if self._lock_count == 0:
+            # Stop the refresh thread first
+            self._refresh_stop.set()
+            if self._refresh_thread and self._refresh_thread.is_alive():
+                self._refresh_thread.join(timeout=2)
+
+            payload = {"target": self.target}
+            response = self.sio.call("lock:release", payload, timeout=10)
+            return response and response.get("success", False)
+
+        return True  # Successfully decremented count
+
+    def __enter__(self):
+        if not self.acquire():
+            raise RuntimeError(f"Failed to acquire lock for target '{self.target}'")
+
+        # Send metadata if present (works for both initial and re-entrant)
+        if self._pending_metadata:
+            self._send_metadata()
+
+        # Always clear to prevent stale metadata
+        self._pending_metadata = None
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.release():
+            warnings.warn(
+                f"Failed to release lock for target '{self.target}'. It may have expired."
+            )
+
+
+class SocketManager:
+    def __init__(self, zndraw_instance: "ZnDraw"):
+        self.zndraw = zndraw_instance
+        self.sio = socketio.Client()
+        self._register_handlers()
+
+    def _register_handlers(self):
+        self.sio.on("connect", self._on_connect)
+        self.sio.on("frame_update", self._on_frame_update)
+        self.sio.on("selection:update", self._on_selection_update)
+        self.sio.on("room:update", self._on_room_update)
+        self.sio.on("invalidate", self._on_invalidate)
+        self.sio.on("queue:update", self._on_queue_update)
+        self.sio.on("frame_selection:update", self._on_frame_selection_update)
+        self.sio.on("bookmarks:invalidate", self._on_bookmarks_invalidate)
+        self.sio.on("frames:invalidate", self._on_frames_invalidate)
+        self.sio.on("invalidate:geometry", self._on_geometry_invalidate)
+        self.sio.on("invalidate:figure", self._on_figure_invalidate)
+        self.sio.on("filesystem:list", self._on_filesystem_list)
+        self.sio.on("filesystem:metadata", self._on_filesystem_metadata)
+        self.sio.on("filesystem:load", self._on_filesystem_load)
+
+    def connect(self):
+        """Connect to server with JWT authentication."""
+        if self.sio.connected:
+            print("Already connected.")
+            return
+        # Connect with JWT token for authentication
+        self.sio.connect(
+            self.zndraw.url,
+            auth={"token": self.zndraw.api.jwt_token},
+            wait=True,
+        )
+
+    def disconnect(self):
+        if self.sio.connected:
+            self.sio.disconnect()
+            print("Disconnected.")
+
+    @property
+    def connected(self) -> bool:
+        return self.sio.connected
+
+    def _on_connect(self):
+        """Handle connection to server."""
+        log.debug(f"Connected to server")
+
+        # Re-register any extensions that were registered before connection
+        for name, ext in self.zndraw._extensions.items():
+            worker_id = self.zndraw.api.register_extension(
+                name=name,
+                category=ext["extension"].category,
+                schema=ext["extension"].model_json_schema(),
+                socket_manager=self,
+                public=ext["public"],
+            )
+            # Store the worker_id assigned by server
+            if worker_id:
+                self.zndraw._worker_id = worker_id
+
+        # Re-register any filesystems that were registered before connection
+        for name, fs in self.zndraw._filesystems.items():
+            provider = fs["provider"]
+            worker_id = self.zndraw.api.register_filesystem(
+                name=name,
+                provider_type=provider.__class__.__name__,
+                root_path=provider.root_path,
+                socket_manager=self,
+                public=fs["public"],
+            )
+            # Store the worker_id assigned by server
+            if worker_id:
+                self.zndraw._worker_id = worker_id
+
+        self._on_queue_update({})
+
+    def _on_frame_update(self, data):
+        if "frame" in data:
+            self.zndraw._step = data["frame"]
+
+    def _on_room_update(self, data):
+        """Handle room:update events (consolidated room metadata updates)."""
+        if "frameCount" in data:
+            self.zndraw._len = data["frameCount"]
+
+    def _on_selection_update(self, data):
+        if "indices" in data:
+            self.zndraw._selection = frozenset(data["indices"])
+
+    def _on_frame_selection_update(self, data):
+        if "indices" in data:
+            self.zndraw._frame_selection = frozenset(data["indices"])
+
+    def _on_bookmarks_invalidate(self, data):
+        """Handle bookmark invalidation by refetching from server."""
+        # Refetch all bookmarks from server to update local cache
+        bookmarks = self.zndraw.api.get_all_bookmarks()
+        self.zndraw._bookmarks = bookmarks
+
+    def _on_geometry_invalidate(self, data):
+        if key := data.get("key"):
+            # Refresh geometries from server to get updated state
+            response = self.zndraw.api.get_geometries()
+            if response is not None:
+                self.zndraw._geometries = response
+
+    def _on_figure_invalidate(self, data):
+        if key := data.get("key"):
+            self.zndraw._figures.pop(key, None)
+
+    def _on_queue_update(self, data: dict):
+        print(f"Queue update received: {data}")
+        if not self.zndraw.auto_pickup_jobs:
+            return
+
+        job_data = self.zndraw.api.get_next_job(self.zndraw.sid)
+        if job_data and "jobId" in job_data:
+            try:
+                self._on_task_run(
+                    data=job_data.get("data"),
+                    extension=job_data.get("extension"),
+                    category=job_data.get("category"),
+                    room=job_data.get("room"),  # Pass room from job metadata
+                )
+                self.zndraw.api.update_job_status(
+                    job_id=job_data.get("jobId"),
+                    status="completed",
+                    worker_id=self.zndraw.sid,
+                )
+            except Exception as e:
+                self.zndraw.log(f"Error processing job {job_data.get('jobId')}: {e}")
+                log.error(f"Error processing job {job_data.get('jobId')}: {e}")
+                traceback.print_exc()
+                self.zndraw.api.update_job_status(
+                    job_id=job_data.get("jobId"),
+                    status="failed",
+                    error=str(e),
+                    worker_id=self.zndraw.sid,
+                )
+            self._on_queue_update({})
+
+    def _on_task_run(self, data: dict, extension: str, category: str, room: str):
+        """Execute an extension job with proper room context.
+
+        Creates a temporary ZnDraw instance connected to the job's target room,
+        ensuring the extension operates in the correct room context.
+
+        Parameters
+        ----------
+        data : dict
+            Job input parameters
+        extension : str
+            Extension name
+        category : str
+            Extension category
+        room : str
+            Room where the job was triggered (may differ from worker's room)
+        """
+        from zndraw import ZnDraw
+
+        # Create temporary ZnDraw instance for the job's target room
+        temp_vis = ZnDraw.for_job_execution(
+            url=self.zndraw.url,
+            room=room,
+            user=self.zndraw.user,
+            password=getattr(self.zndraw, "password", None),
+        )
+
+        try:
+            ext = self.zndraw._extensions[extension]["extension"]
+            instance = ext(**(data))
+            instance.run(
+                temp_vis, **(self.zndraw._extensions[extension]["run_kwargs"] or {})
+            )
+        finally:
+            # Cleanup: disconnect temporary instance
+            if hasattr(temp_vis, "socket") and temp_vis.socket:
+                temp_vis.socket.disconnect()
+
+    def _on_invalidate(self, data: dict):
+        if data["category"] == "settings":
+            self.zndraw._settings.pop(data["extension"], None)
+
+    def _on_frames_invalidate(self, data: dict):
+        log.debug(f"Received cache invalidation event: {data}")
+        if self.zndraw.cache is None:
+            return
+
+        operation = data.get("operation")
+
+        if operation == "replace":
+            idx = data.get("affectedIndex")
+            if idx is not None:
+                self.zndraw.cache.pop(idx, None)
+        elif operation in ("insert", "delete", "bulk_replace"):
+            from_idx = data.get("affectedFrom")
+            if from_idx is not None:
+                self.zndraw.cache.invalidate_from(from_idx)
+        elif operation == "clear_all":
+            self.zndraw.cache.clear()
+        else:
+            log.warning(
+                "Unknown or broad invalidation event received. Clearing entire frame cache."
+            )
+            self.zndraw.cache.clear()
+
+    def _on_filesystem_list(self, data: dict):
+        """Handle filesystem list request from server.
+
+        Server sends: {requestId, fsName, path, recursive, filterExtensions, search}
+        Client responds: {requestId, success, files, error}
+        """
+        import re
+
+        request_id = data.get("requestId")
+        fs_name = data.get("fsName")
+        path = data.get("path", "")
+        recursive = data.get("recursive", False)
+        filter_extensions = data.get("filterExtensions")
+        search = data.get("search")
+
+        try:
+            # Get the filesystem instance
+            if fs_name not in self.zndraw._filesystems:
+                raise ValueError(f"Filesystem '{fs_name}' not found")
+
+            fs = self.zndraw._filesystems[fs_name]["fs"]
+
+            # Compile search pattern if provided
+            search_pattern = None
+            if search:
+                try:
+                    search_pattern = re.compile(search, re.IGNORECASE)
+                except re.error as e:
+                    raise ValueError(f"Invalid search pattern: {e}")
+
+            # List files using fsspec API
+            if recursive:
+                # Use glob for recursive listing
+                pattern = f"{path}/**" if path else "**"
+                all_paths = fs.glob(pattern, detail=True)
+            else:
+                # Use ls for non-recursive listing
+                all_paths = fs.ls(path or ".", detail=True)
+
+            # Convert fsspec info dicts to file metadata format
+            files_data = []
+            for item in all_paths:
+                # Handle both dict and tuple returns from fs.ls()
+                if isinstance(item, dict):
+                    info = item
+                    item_path = info.get("name", "")
+                else:
+                    # Fallback for simple path strings
+                    info = fs.info(item)
+                    item_path = item
+
+                item_name = item_path.split("/")[-1]
+
+                # Filter by extension if specified
+                if filter_extensions:
+                    if not any(item_path.endswith(ext) for ext in filter_extensions):
+                        continue
+
+                # Filter by search pattern if specified
+                if search_pattern:
+                    if not search_pattern.search(item_name):
+                        continue
+
+                # Build file metadata
+                file_data = {
+                    "name": item_name,
+                    "path": item_path,
+                    "size": info.get("size", 0),
+                    "type": info.get("type", "file"),
+                    "modified": info.get("mtime"),
+                }
+                files_data.append(file_data)
+
+            # Return response (for socketio.call() on server)
+            return {
+                "requestId": request_id,
+                "success": True,
+                "files": files_data,
+            }
+
+        except Exception as e:
+            log.error(f"Error listing files from filesystem '{fs_name}': {e}")
+            traceback.print_exc()
+            return {
+                "requestId": request_id,
+                "success": False,
+                "error": str(e),
+            }
+
+    def _on_filesystem_load(self, data: dict):
+        """Handle filesystem load request from server.
+
+        This triggers the client to read a file from the filesystem and upload
+        it to a target room using normal vis.extend() logic.
+
+        Server sends: {
+            requestId, fsName, path, room,
+            batchSize (optional), start (optional), stop (optional), step (optional)
+        }
+        Client: Reads file, uploads to room, sends completion response
+        """
+        import itertools
+        from pathlib import Path
+
+        import ase.db
+        import ase.io
+        import znh5md
+
+        request_id = data.get("requestId")
+        fs_name = data.get("fsName")
+        path = data.get("path")
+        target_room = data.get("room")
+        batch_size = data.get("batchSize", 10)
+        start = data.get("start")
+        stop = data.get("stop")
+        step = data.get("step")
+
+        temp_vis = None
+        try:
+            # Get the filesystem instance
+            if fs_name not in self.zndraw._filesystems:
+                raise ValueError(f"Filesystem '{fs_name}' not found")
+
+            fs = self.zndraw._filesystems[fs_name]["fs"]
+
+            # Create a temporary ZnDraw instance for the target room
+            from zndraw import ZnDraw
+
+            temp_vis = ZnDraw(
+                url=self.zndraw.url,
+                room=target_room,
+                user=self.zndraw.user,
+                password=getattr(self.zndraw, "password", None),
+            )
+
+            temp_vis.log(f"Loading {path} from {fs_name}...")
+
+            # Import utilities from tasks.py
+            from zndraw.app.tasks import (
+                FORMAT_BACKENDS,
+                add_connectivity,
+                batch_generator,
+                calculate_adaptive_resolution,
+            )
+
+            # Determine backend based on file extension
+            ext = Path(path).suffix.lstrip(".").lower()
+            backends = FORMAT_BACKENDS.get(ext, ["ASE"])
+            backend_name = backends[0]
+
+            loaded_frame_count = 0
+            max_particles = 0
+
+            with temp_vis.lock(msg=f"Loading {path}..."):
+                # Determine file mode based on format
+                # Binary formats need "rb", text formats need "r"
+                binary_formats = {"h5", "h5md", "traj", "db", "nc", "hdf5"}
+                mode = "rb" if ext in binary_formats else "r"
+
+                # Open file from fsspec filesystem
+                with fs.open(path, mode) as f:
+                    frame_iterator = None
+
+                    if backend_name == "ZnH5MD":
+                        # Use ZnH5MD for H5/H5MD files
+                        if step is not None and step <= 0:
+                            raise ValueError("Step must be a positive integer for H5MD files.")
+
+                        io = znh5md.IO(f)
+                        n_frames = len(io)
+
+                        if start is not None and start >= n_frames:
+                            raise ValueError(f"Start frame {start} exceeds file length")
+
+                        s = slice(start, stop, step)
+                        _start, _stop, _step = s.indices(n_frames)
+                        frame_iterator = itertools.islice(io, _start, _stop, _step)
+
+                    elif backend_name == "ASE-DB":
+                        # ASE database - note: this may not work with file objects
+                        temp_vis.log("⚠️ Warning: ASE database format may not support remote filesystems")
+                        # Try anyway in case fsspec filesystem supports it
+                        db = ase.db.connect(f)
+                        n_rows = db.count()
+
+                        if n_rows == 0:
+                            temp_vis.log("⚠️ Warning: Database is empty")
+                            raise ValueError("Database is empty")
+
+                        if step is not None and step <= 0:
+                            raise ValueError("Step must be a positive integer for database files.")
+
+                        _start = start if start is not None else 0
+                        _stop = stop if stop is not None else n_rows
+                        _step = step if step is not None else 1
+
+                        if _start >= n_rows:
+                            raise ValueError(f"Start row {_start} exceeds database size")
+
+                        if _stop > n_rows:
+                            _stop = n_rows
+
+                        selected_ids = list(range(_start + 1, _stop + 1, _step))
+
+                        def db_iterator():
+                            for row_id in selected_ids:
+                                try:
+                                    row = db.get(id=row_id)
+                                    yield row.toatoms()
+                                except KeyError:
+                                    temp_vis.log(
+                                        f"⚠️ Warning: Row ID {row_id} not found, skipping"
+                                    )
+                                    continue
+
+                        frame_iterator = db_iterator()
+
+                    else:
+                        # Use ASE for all other formats
+                        start_str = str(start) if start is not None else ""
+                        stop_str = str(stop) if stop is not None else ""
+                        step_str = str(step) if step is not None else ""
+                        index_str = f"{start_str}:{stop_str}:{step_str}"
+
+                        frame_iterator = ase.io.iread(f, index=index_str, format=ext or None)
+
+                    # Process frames in batches
+                    if frame_iterator:
+                        for batch in batch_generator(frame_iterator, batch_size):
+                            # Add connectivity for small structures
+                            for atoms in batch:
+                                if len(atoms) < 1000:
+                                    add_connectivity(atoms)
+                                max_particles = max(max_particles, len(atoms))
+
+                            temp_vis.extend(batch)
+                            loaded_frame_count += len(batch)
+
+            temp_vis.log(f"✓ Successfully loaded {loaded_frame_count} frames from {path}")
+
+            # Apply adaptive resolution if needed
+            if loaded_frame_count > 0 and max_particles > 0:
+                adaptive_resolution = calculate_adaptive_resolution(max_particles)
+                if adaptive_resolution < 16:
+                    try:
+                        from zndraw.geometries import Sphere
+
+                        sphere = temp_vis.geometries.get("particles")
+                        if sphere and isinstance(sphere, Sphere):
+                            sphere.resolution = adaptive_resolution
+                            temp_vis.geometries["particles"] = sphere
+                            temp_vis.log(
+                                f"ℹ️ Reduced particle resolution to {adaptive_resolution} for {max_particles} particles"
+                            )
+                    except Exception as e:
+                        log.warning(f"Failed to apply adaptive resolution: {e}")
+
+            # Return success response (for socketio.call() on server)
+            return {
+                "requestId": request_id,
+                "success": True,
+                "frameCount": loaded_frame_count,
+            }
+
+        except Exception as e:
+            log.error(f"Error loading file from filesystem '{fs_name}': {e}")
+            traceback.print_exc()
+            return {
+                "requestId": request_id,
+                "success": False,
+                "error": str(e),
+            }
+        finally:
+            # Always disconnect temp_vis to prevent resource leaks
+            if temp_vis is not None:
+                try:
+                    temp_vis.disconnect()
+                except Exception as e:
+                    log.error(f"Error disconnecting temp_vis: {e}")
+
+    def _on_filesystem_metadata(self, data: dict):
+        """Handle filesystem metadata request from server.
+
+        Server sends: {requestId, fsName, path}
+        Client responds: {requestId, success, metadata, error}
+        """
+        request_id = data.get("requestId")
+        fs_name = data.get("fsName")
+        path = data.get("path")
+
+        try:
+            # Get the filesystem instance
+            if fs_name not in self.zndraw._filesystems:
+                raise ValueError(f"Filesystem '{fs_name}' not found")
+
+            fs = self.zndraw._filesystems[fs_name]["fs"]
+
+            # Get metadata using fsspec API
+            info = fs.info(path)
+
+            # Convert to standard metadata format
+            metadata = {
+                "name": path.split("/")[-1],
+                "path": path,
+                "size": info.get("size", 0),
+                "type": info.get("type", "file"),
+                "modified": info.get("mtime"),
+                "created": info.get("created"),
+            }
+
+            # Return response (for socketio.call() on server)
+            return {
+                "requestId": request_id,
+                "success": True,
+                "metadata": metadata,
+            }
+
+        except Exception as e:
+            log.error(f"Error getting metadata from filesystem '{fs_name}': {e}")
+            traceback.print_exc()
+            return {
+                "requestId": request_id,
+                "success": False,
+                "error": str(e),
+            }
