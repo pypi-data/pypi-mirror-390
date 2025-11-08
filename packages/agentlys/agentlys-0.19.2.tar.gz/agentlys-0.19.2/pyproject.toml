@@ -1,0 +1,66 @@
+[project]
+name = "agentlys"
+version = "0.19.2"
+description = "Small OpenAI/Anthropic library to support chat templates, and function calls."
+authors = [
+    {name = "Benjamin Derville", email = "benderville@gmail.com"}
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pillow==11.3.0",
+    "pydantic==2.12.3",
+]
+
+[project.urls]
+Repository = "https://github.com/myriade-ai/agentlys"
+Changelog = "https://github.com/myriade-ai/agentlys/blob/master/CHANGELOG.md"
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.46.0"]
+openai = ["openai>=1.63.2"]
+mcp = [
+    "mcp>=1.6.0; python_version >= '3.10'",
+]
+all = [
+    "anthropic>=0.46.0",
+    "openai>=1.63.2",
+    "mcp>=1.6.0; python_version >= '3.10'",
+]
+
+[tool.semantic_release]
+version_source = "commit"
+version_toml = [
+    "pyproject.toml:project.version",
+]
+branch = "master"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install build && python -m build"
+changelog_file = "CHANGELOG.md"
+dist_path = "dist/"
+commit_message = "chore(release): bump version to {version}"
+
+[tool.uv.sources]
+agentlys = { workspace = true }
+vcrpy = { git = "https://github.com/tysonholub/vcrpy.git", rev = "fix.httpx-async" }
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "anthropic>=0.46.0",
+    "openai>=1.63.2",
+    "pytest-asyncio>=0.26.0",
+    "vcrpy",
+    "pytest-recording>=0.13.2",
+    "pytest>=8.3.4",
+    "ruff>=0.8.3",
+    "mcp>=1.6.0; python_version >= '3.10'",
+    "pre-commit>=4.2.0",
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+]
