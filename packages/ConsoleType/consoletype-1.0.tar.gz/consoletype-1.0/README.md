@@ -1,0 +1,1 @@
+This is a project with animations and other things and text output (In Beta)
