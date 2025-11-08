@@ -1,0 +1,107 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "international-urns-es"
+dynamic = ["version"]
+description = "Spain validator plugin for International URNs"
+authors = [{name = "Jesús Alonso Abad"}]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["urn", "spain", "validation", "dni", "nie", "nif", "cif", "nss", "matricula"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "international-urns>=1.0.0rc4",
+]
+
+[project.urls]
+Homepage = "https://gitlab.com/Kencho1/international-urns-es"
+Repository = "https://gitlab.com/Kencho1/international-urns-es"
+Issues = "https://gitlab.com/Kencho1/international-urns-es/-/issues"
+Documentation = "https://gitlab.com/Kencho1/international-urns-es/-/blob/main/README.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+pydantic = [
+    "pydantic>=2.0.0",
+]
+faker = [
+    "faker>=18.0.0",
+]
+all = [
+    "international-urns-es[pydantic,faker]",
+]
+
+[project.entry-points."international_urns.plugins"]
+es = "international_urns_es"
+
+[tool.hatch.version]
+path = "international_urns_es/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["international_urns_es"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["international_urns_es"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+ignore = []
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "international_urns"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
