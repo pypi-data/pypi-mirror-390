@@ -1,0 +1,169 @@
+Metadata-Version: 2.4
+Name: dorieh
+Version: 0.4.3
+Summary: Dorieh Data Engineering Platform
+Home-page: https://github.com/ForomePlatform/dorieh
+Author: Michael A Bouzinier
+Author-email: mbouzinier@g.harvard.edu
+License: Apache 2.0
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: aiohttp
+Requires-Dist: argcomplete>=1.12.1
+Requires-Dist: boto3
+Requires-Dist: certifi>=2024.7.4
+Requires-Dist: cwltest>=2.0.20200626112502
+Requires-Dist: cwltool>=3.0.20200710214758
+Requires-Dist: deprecated
+Requires-Dist: fiona>=1.10.1
+Requires-Dist: fsspec
+Requires-Dist: geopandas
+Requires-Dist: geopy
+Requires-Dist: GitPython
+Requires-Dist: googlesearch-python
+Requires-Dist: graphviz>=0.14.2
+Requires-Dist: h5py
+Requires-Dist: hydra-core
+Requires-Dist: humanfriendly>=8.2
+Requires-Dist: importlib-metadata>=2.0.0
+Requires-Dist: isodate>=0.6.0
+Requires-Dist: Markdown>=2.6.11
+Requires-Dist: marko
+Requires-Dist: MarkupSafe>=1.1.1
+Requires-Dist: mypy-extensions>=0.4.3
+Requires-Dist: myst-parser
+Requires-Dist: netCDF4
+Requires-Dist: numpy
+Requires-Dist: openpyxl
+Requires-Dist: pandas
+Requires-Dist: paramiko
+Requires-Dist: pyarrow
+Requires-Dist: psutil>=5.7.2
+Requires-Dist: psycopg2-binary>=2.8.6
+Requires-Dist: PyGithub
+Requires-Dist: pyresourcepool
+Requires-Dist: pyshp
+Requires-Dist: pytest
+Requires-Dist: python-dateutil>=2.8.1
+Requires-Dist: PyYAML>=5.3.1
+Requires-Dist: rasterstats
+Requires-Dist: requests>=2.32.4
+Requires-Dist: rioxarray
+Requires-Dist: rtree
+Requires-Dist: ruamel.yaml>=0.16.5
+Requires-Dist: ruamel.yaml.clib>=0.2.2
+Requires-Dist: sas7bdat
+Requires-Dist: schema-salad>=7.0.20200811075006
+Requires-Dist: setproctitle>=1.1.10
+Requires-Dist: shapely>=2.1.2
+Requires-Dist: shellescape>=3.4.1
+Requires-Dist: six>=1.15.0
+Requires-Dist: sortedcontainers
+Requires-Dist: sphinx
+Requires-Dist: sphinx_paramlinks
+Requires-Dist: sphinx_rtd_theme
+Requires-Dist: sphinxcontrib-mermaid
+Requires-Dist: sqlparse
+Requires-Dist: tqdm>=4.66.3
+Requires-Dist: typing-extensions
+Requires-Dist: tzlocal>=1.5.1
+Requires-Dist: unicodecsv>=0.14.1
+Requires-Dist: urllib3>=2.5.0
+Requires-Dist: websocket-client>=0.57.0
+Requires-Dist: sshtunnel
+Requires-Dist: xarray
+Requires-Dist: xlrd
+Provides-Extra: fst
+Requires-Dist: rpy2; extra == "fst"
+Provides-Extra: spark
+Requires-Dist: pyspark; extra == "spark"
+Requires-Dist: pyhive; extra == "spark"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Dorieh Data Platform for population and environmental health
+
+Detailed documentation: [Dorieh Documentation](https://foromeplatform.github.io/dorieh/)
+
+## Dorieh overview
+
+
+Dorieh Data Platform is intended for development and deployment of
+ETL/ELT pipelines that includes complex data processing and data
+cleansing workflows. Complex workflows require a workflow language,
+and we have chosen
+[Common Workflow Language (CWL)](https://www.commonwl.org/).
+
+We have tested deployment with the following CWL [implementations](https://www.commonwl.org/implementations/): 
+                                                                 
+* [Toil](https://toil.readthedocs.io/en/latest/running/cwl.html).
+* [CWL reference implementation](https://github.com/common-workflow-language/cwltool), 
+    primarily using [cwlref-runner ](https://pypi.org/project/cwlref-runner/) package
+* [CWL-Airflow](https://cwl-airflow.readthedocs.io/en/latest/) that provides a very nice 
+    Airflow graphical user interface (GUI) for running workflows.
+
+The data produced by the data processing workflows is eventually stored in 
+either CSV files, a PostgreSQL DBMS or Parquet files. Dorieh also supports storing
+results in [FST](https://www.fstpackage.org/) and [HDF5](https://www.hdfgroup.org/) files. 
+
+Some of the included data processing workflows use “Extract, Load, Transform,” (ELT) paradigm 
+rather than more traditional “Extract, Transform, Load” ETL. It means that these workflows 
+perform calculations, translations, filtering, cleansing, de-duplicating, validating, and 
+data analysis or summarizations inside a DBMS using DBMS internal tools.
+
+The data platform supports tools written in widely used languages such as
+Python, C/C++ and Java, R and PL/pgSQL.
+            
+
+## Setting up
+
+### Python Virtual Environment
+
+Install Toil:
+
+    pip install "toil[cwl,aws]"
+
+Install Dorieh (stable version):
+
+    pip install dorieh
+
+If you prefer to install the latest version from GitHub: 
+
+    pip install git+https://github.com/ForomePlatform/dorieh
+
+If FST support is desired, [R](https://www.r-project.org/) runtime has to be installed and R_HOME environment 
+variable set up. One of the simples ways of installing R is to use 
+[Conda package manager](https://docs.conda.io/projects/conda/en/stable/). Once R is set up, install
+Dorieh with either of the  following command:
+
+    pip install dorieh[FST]
+
+    pip install "git+https://github.com/ForomePlatform/dorieh[FST]"
+
+### Docker Container
+
+To build your own Dorieh Docker image see [docker directory](docker/README.md)
+
+A prebuilt docker image with Dorieh is provided:
+
+    docker pull forome/dorieh
+
+
+## Built-in Workflows
+
+For examples of data processing workflows, see [included data processing workflows](doc/pipelines.md)
+
