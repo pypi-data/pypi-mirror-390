@@ -1,0 +1,196 @@
+# 🐍 Chilo
+
+<p align="center">
+  <a href="https://chiloproject.io"><img src="https://raw.githubusercontent.com/dual/chilo-docs/main/img/logo-no-bg.png" alt="Chilo"></a>
+</p>
+<p align="center">
+    <em>Chilo is a lightweight, form-meets-function, opinionated (yet highly configurable) API framework.</em>
+</p>
+
+[![CircleCI](https://circleci.com/gh/dual/chilo.svg?style=shield)](https://circleci.com/gh/dual/chilo)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dual_chilo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dual_chilo)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=dual_chilo&metric=coverage)](https://sonarcloud.io/summary/new_code?id=dual_chilo)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=dual_chilo&metric=bugs)](https://sonarcloud.io/summary/new_code?id=dual_chilo)
+[![PyPI](https://img.shields.io/pypi/v/chilo-api?color=%2334D058&label=PyPI)](https://pypi.org/project/chilo-api/)
+[![Python](https://img.shields.io/pypi/pyversions/chilo-api.svg?color=%2334D058)](https://www.python.org/)
+[![Inline docs](https://inch-ci.org/github/dwyl/hapi-auth-jwt2.svg?branch=master)](https://chiloproject.io)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dual/chilo/issues)
+
+Chilo (short for *chilorhinophis*, the two-headed snake) auto-routes requests straight from your directory tree, applies OpenAPI or custom validation before your handlers run, and keeps REST + gRPC services declarative and composable.
+
+---
+
+## 📖 Documentation & Examples
+
+**[Full Documentation](https://chiloproject.io)** · **[Examples](https://github.com/dual/chilo-docs/tree/main/examples)** · **[Community Discussions](https://github.com/dual/chilo/discussions)**
+
+---
+
+## 🎯 Why Chilo?
+
+- **🚀 Zero Route Boilerplate** – File paths become URLs; dynamic segments are inferred from file names.
+- **✅ Built-in Validation** – Apply OpenAPI schemas (request + response) or lightweight requirement decorators.
+- **🧱 Middlewares Everywhere** – `before`, `after`, `when_auth_required`, and global hooks keep cross-cutting logic centralized.
+- **🔁 REST + gRPC** – Switch between HTTP and gRPC by flipping `api_type` and pointing at protobufs.
+- **📜 Spec Generation** – Inspect handlers + requirements to emit `openapi.yml`/`openapi.json` with a single CLI command.
+- **⚙️ Deploy-Friendly** – Works with gunicorn or the built-in CLI; supports TLS, CORS, hot reload, and custom executors.
+
+### Happy Path Programming
+
+Validate the world up front, then write business logic as if everything is already correct.
+
+```python
+# ❌ Without Chilo
+def handler(environ, start_response):
+    body = json.loads(environ.get('body') or '{}')
+    if 'email' not in body:
+        return error(400, 'email required')
+    if '@' not in body['email']:
+        return error(400, 'invalid email')
+    # more guards ...
+    return ok({'user': create(body)})
+```
+
+```python
+# ✅ With Chilo
+from chilo_api import requirements, Request, Response
+
+@requirements(required_body='v1-create-user')
+def post(request: Request, response: Response) -> Response:
+    response.body = {'user': create(request.body)}  # already validated
+    return response
+```
+
+---
+
+## 📦 Installation
+
+```bash
+pip install chilo_api
+# pipenv install chilo_api
+# poetry add chilo_api
+```
+
+### Supports Python 3.8
+
+---
+
+## 🚀 Quick Start · REST
+
+### 1. Configure the API (e.g., `api/main.py`)
+
+```python
+from chilo_api import Chilo
+
+api = Chilo(
+    base_path='/',
+    handlers='api/handlers',
+    cors=True,
+    openapi='api/openapi.yml',      # optional
+    openapi_validate_request=False, # flip on when ready
+    openapi_validate_response=False
+)
+```
+
+### 2. Create a Handler (`api/handlers/__init__.py`)
+
+```python
+from chilo_api import Request, Response, requirements
+
+@requirements(required_query=['greeting'])
+def get(request: Request, response: Response) -> Response:
+    response.body = {'hello': request.query_params['greeting']}
+    return response
+```
+
+### 3. Run It
+
+```bash
+python -m chilo_api serve --api=api.main --reload=true
+```
+
+Visit [http://127.0.0.1:3000/?greeting=developer](http://127.0.0.1:3000/?greeting=developer)
+
+#### Directory → Route Mapping
+
+```txt
+api/handlers
+├── __init__.py          → /
+├── user/__init__.py     → /user
+├── user/_user_id.py     → /user/{user_id}
+└── reports/daily.py     → /reports/daily
+```
+
+Dynamic segments are prefixed with `_` in file names (or directories) and become `{param}` tokens at runtime.
+
+---
+
+## 📡 Quick Start · gRPC
+
+### 1. Define the API (`api/main_grpc.py`)
+
+```python
+from chilo_api import Chilo
+
+api = Chilo(
+    api_type='grpc',
+    handlers='api/handlers',
+    protobufs='api/protobufs',
+    reflection=True,
+    port=50051
+)
+```
+
+### 2. Author Your Proto (`api/protobufs/calculator.proto`)
+
+```protobuf
+syntax = "proto3";
+package calculator;
+
+service Calculator {
+    rpc Add(CalcRequest) returns (CalcResponse);
+}
+
+message CalcRequest { double num1 = 1; double num2 = 2; }
+message CalcResponse { double result = 1; }
+```
+
+### 3. Implement the Handler (`api/handlers/__init__.py`)
+
+```python
+from chilo_api import requirements, Request, Response
+
+@requirements(protobuf='calculator.proto', service='Calculator', rpc='Add')
+def add(request: Request, response: Response) -> Response:
+    response.body = {'result': request.body.get('num1', 0) + request.body.get('num2', 0)}
+    return response
+```
+
+### 4. Serve It
+
+```bash
+python -m chilo_api serve --api=api.main_grpc
+```
+
+---
+
+## 🧰 CLI Highlights
+
+| Command | Description |
+| --- | --- |
+| `python -m chilo_api serve --api=api.main` | Run REST or gRPC servers with hot reload, TLS, verbose logging, etc. |
+| `python -m chilo_api generate-openapi --api=api.main --output=docs --format=yml,json` | Inspect handlers + requirements to (re)build OpenAPI docs. |
+
+Both commands accept switches for host, port, reload, private key/cert, worker count, and validation flags.
+
+---
+
+## 🤝 Contributing
+
+Issues and PRs are welcome! Check [SECURITY.md](SECURITY.md) before reporting vulnerabilities and open a discussion if you want to propose larger features. For docs fixes, see [chilo-docs](https://github.com/dual/chilo-docs).
+
+---
+
+## 📜 License
+
+Chilo is released under the [MIT License](LICENSE).
