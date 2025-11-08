@@ -1,0 +1,7 @@
+from fastfeatures.core.generate_settings import generate_settings_cli
+from fastfeatures.core.models_discoverer import get_sql_models
+from fastfeatures.core.routes_discoverer import add_features_routes
+
+get_sql_models = get_sql_models
+add_features_routes = add_features_routes
+generate_settings_cli = generate_settings_cli

@@ -1,0 +1,256 @@
+# Fast-Features: A Modular Approach to FastAPI Development
+
+`fast-features` is a powerful toolkit designed to supercharge your FastAPI development. It provides automatic discovery of project components and generates a production-ready, modular project structure with a focus on **asynchronous database connections**. This makes it an ideal foundation for high-performance applications, including those integrating with Large Language Models (LLMs) and other async services. By handling the boilerplate, `fast-features` lets you focus on what matters: your application's logic.
+
+## Core Concepts
+
+### Modular, Feature-Based Architecture
+
+`fast-features` promotes a feature-based architecture. A 'feature' is a self-contained unit of functionality (e.g., 'users', 'products', 'orders') that encapsulates its own models, routes, and services. This separation of concerns leads to a more organized, scalable, and maintainable codebase.
+
+### Async-First for Modern Applications
+
+The generated boilerplate is built around asynchronous database connections from the ground up. This is crucial for modern web applications that need to handle concurrent requests efficiently without blocking. This async-first approach makes `fast-features` particularly well-suited for applications that interact with other asynchronous services, such as LLMs, external APIs, or message queues.
+
+### Dependency Injection in FastAPI
+
+FastAPI's dependency injection system is a core part of the generated code. It allows you to declare dependencies (like a database session) that your route functions need to operate. FastAPI takes care of creating and managing these dependencies for you. For example, the `get_session` dependency provides a database session to your routes, ensuring that each request has a clean, isolated session to work with. This is a powerful feature that makes your code more reusable and easier to test.
+
+## Key Features
+
+*   **Project Scaffolding**: Kickstart your FastAPI project with a production-ready, modular structure in seconds.
+*   **Feature Generation**: Accelerate your development workflow by generating new features with a single command.
+*   **Automatic Settings Generation**: Simplify your application's configuration with automatic settings generation from your `.env` file.
+*   **Automatic Route and Model Discovery**: `fast-features` automatically discovers your routes and models, reducing boilerplate and simplifying your application's setup.
+
+## Installation
+
+### Installation with pip
+
+```bash
+pip install fastfeatures
+```
+
+### Installation with Poetry
+
+```bash
+poetry add fastfeatures
+```
+
+## Getting Started
+
+1.  **Create a new project:**
+
+    ```bash
+    ff-init
+    ```
+
+2.  **Generate a new feature:**
+
+    ```bash
+    ff-feature
+    ```
+
+3.  **Run your application:**
+
+    ```bash
+    uvicorn main:app --reload
+    ```
+
+## Usage
+
+### Project Scaffolding (`ff-init`)
+
+To create a new FastAPI project, use the `ff-init` command. This command will prompt you for the project name and description and create a new project scaffold in the current directory.
+
+```
+<PROJECT_NAME>/
+├── .env
+├── main.py
+└── app/
+    ├── __init__.py
+    ├── core/
+    │   ├── __init__.py
+    │   ├── settings.py
+    │   └── lib/
+    │       ├── __init__.py
+    │       └── database.py
+    ├── features/
+    │   └── __init__.py
+    └── main.py
+```
+
+### Feature Generation (`ff-feature`)
+A "feature" is a self-contained unit of functionality that encapsulates a specific part of your application's domain. Each feature has its own models, services, and routes, promoting a clean separation of concerns and making your code easier to understand and maintain.
+
+To generate a new feature, use the `ff-feature` command. This will create a new feature directory inside `app/features` with a predefined structure for models, routes, and services.
+
+**Customizing Your Feature**
+
+The generated files provide a solid starting point, but you'll want to customize them to fit your needs.
+
+*   **Models (`models/<feature_name>.py`):** The generated model is a `SQLModel` class. You can edit this file to define the fields and relationships for your model. For more information on creating and customizing `SQLModel` models, refer to the [official SQLModel documentation](https://sqlmodel.tiangolo.com/).
+
+*   **Routes (`routes.py`):** The generated routes are standard FastAPI `APIRouter` instances. You can add, remove, or modify the routes to expose the functionality you need. `fast-features` encourages you to keep the separation of concerns by providing a more granular routes declaration for each feature inside `app/features/<feature_name>/routes.py`. To learn more about creating routes, handling requests, and using dependency injection in FastAPI, check out the [official FastAPI documentation](https://fastapi.tiangolo.com/).
+
+```
+app/features/<feature_name>/
+├── __init__.py
+├── models/
+│   ├── __init__.py
+│   └── <feature_name>.py
+├── routes.py
+└── services/
+    ├── __init__.py
+    └── <feature_name>_services.py
+```
+
+### Settings Generation (`ff-settings`)
+
+To generate a `settings.py` file from your `.env` file, use the `ff-settings` command.
+
+```bash
+ff-settings --env-file=.env --output-path=app/core/settings.py
+```
+
+## Alembic Integration for Database Migrations
+
+`fast-features` is designed to work seamlessly with Alembic for handling database migrations. By leveraging automatic model discovery, you can keep your database schema in sync with your models with minimal effort.
+
+Here's a step-by-step guide to setting up and using Alembic in your `fast-features` project:
+
+### 1. Set up Your Database
+
+Before you can run migrations, you need a database. For this guide, we'll use a simple SQLite database, which is a single file on your filesystem.
+
+**a) Configure the Database URL:**
+
+In your `.env` file, make sure the `DATABASE_URL` is set correctly. For a SQLite database named `my_database.db` in your project's root directory, the URL should look like this:
+
+```
+DATABASE_URL="sqlite+aiosqlite:///my_database.db"
+```
+
+**b) Create the Database File:**
+
+While SQLAlchemy will create the database file for you when the application runs, it's good practice to create it manually before running migrations. This ensures that the file exists with the correct permissions and ownership in your project directory.
+
+Create an empty `my_database.db` file in your project's root directory with the `touch` command:
+
+```bash
+touch my_database.db
+```
+
+### 2. Initialize Alembic
+
+With your database file in place, you can now initialize Alembic. Use the `async` template, as your application's database connection is asynchronous.
+
+```bash
+alembic init --template async migrations
+```
+
+This command creates a `migrations` directory with the necessary configuration files.
+
+### 3. Configure `migrations/env.py` for Asynchronous Operations
+
+Next, you need to configure Alembic to discover your application's models and use the correct asynchronous database connection. Open the `migrations/env.py` file and make the following changes:
+
+**a) Import Modules and Discover Models:**
+
+Add the following imports at the top of your `env.py` file:
+
+```python
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel import SQLModel
+from app.core.settings import settings
+from fastfeatures import get_sql_models
+from app import features
+```
+
+Then, just after the line `config = context.config`, add the following code. This will discover all the SQL models from your features and set the database URL for Alembic.
+
+```python
+#### BEGIN OF CUSTOM CODE ####
+# Discover all SQL models from the features module
+get_sql_models(features)
+
+# Set the database URL for Alembic
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+#### END OF CUSTOM CODE ####
+```
+
+**b) Set the `target_metadata`:**
+
+Find the line `target_metadata = None` and change it to:
+
+```python
+target_metadata = SQLModel.metadata
+```
+
+This tells Alembic to use the metadata from your `SQLModel` base class to detect changes in your models.
+
+**c) Configure the Asynchronous Engine and Execution:**
+
+Ensure your `run_migrations_online` function is defined as `async` and uses `create_async_engine`. The `alembic init --template async` command should have set up a structure similar to this, but you should verify it. Locate the `run_migrations_online` function and ensure it looks like this:
+
+```python
+async def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+    connectable = create_async_engine(
+        config.get_main_option("sqlalchemy.url"),
+        # Add any other engine options here if needed, e.g., poolclass=pool.NullPool
+    )
+
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+
+    await connectable.dispose()
+```
+
+Finally, ensure the main execution block at the end of `env.py` calls `run_migrations_online` with `asyncio.run`:
+
+```python
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    asyncio.run(run_migrations_online())
+```
+
+### 4. Update Alembic Template for SQLModel
+
+To ensure Alembic correctly recognizes `SQLModel` definitions during autogeneration, it's a good practice to add `import sqlmodel` to the migration script template.
+
+Open `migrations/script.py.mako` and add the following to the import section:
+
+```python
+import sqlmodel
+```
+
+### 5. Generate Your First Migration
+
+Now you're ready to generate a migration. If you haven't already, create a feature with a model:
+
+```bash
+ff-feature
+```
+
+Then, run the following command to have Alembic automatically generate a migration script based on your models:
+
+```bash
+alembic revision --autogenerate -m "Initial migration"
+```
+
+### 6. Apply the Migration
+
+Finally, apply the migration to your database to create the tables:
+
+```bash
+alembic upgrade head
+```
+
+That's it! You have successfully set up Alembic to manage your database migrations in your `fast-features` project. For more information on Alembic, you can refer to the [official tutorial](https://alembic.sqlalchemy.org/en/latest/tutorial.html).
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
