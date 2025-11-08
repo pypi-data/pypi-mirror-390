@@ -1,0 +1,68 @@
+
+{% extends "base.html" %}
+
+{% block title %}Edit metadata for {{ target_type }} {% if database %}{{database}}{% endif %}{% if table %}/{{ table }}{% endif %}{% endblock %}
+
+{% block content %}
+
+<h1>Editing
+  {% if   target_type == "index" %}  Root-level
+  {% elif target_type == "database" %}  <a href="{{ urls.database(database) }}">{{ database }}</a>
+  {% elif target_type == "table" %}  <a href="{{ urls.table(database, table) }}">{{ database }}/{{ table }}</a>
+  {% elif target_type == "column" %}  <a href="{{ urls.table(database, table) }}">{{ database }}/{{ table }}/{{ column }}</a>
+{% endif %}
+metadata</h1>
+
+<form action="{{ urls.path("/-/datasette-metadata-editable/api/edit") }}" method="post">
+  {% if target_type == "index" %}
+  <div>
+    <label for="title">Title</label><br/>
+    <input type="text" id="title" name="title" value="{{defaults.get("title") or ""}}">
+  </div>
+  {% endif %}
+
+  <div>
+    <label for="description_markdown">Description</label><br/>
+    <textarea id="description_markdown" name="description_markdown" cols="80" rows="4">{{ defaults.get("description_markdown") or "" }}</textarea>
+    <p class="hint"><a href="https://commonmark.org/help/" target="_blank">Markdown</a> is supported</p>
+  </div>
+  
+  <details>
+    <summary>Licenses and Attribution</summary>
+    <div>
+      <label for="license">License</label><br/>
+      <input type="text" id="license" name="license" value="{{ defaults.get("license") or "" }}">
+    </div>
+  
+    <div>
+      <label for="license_url">License URL</label><br/>
+      <input type="text" id="license_url" name="license_url" value="{{ defaults.get("license_url") or "" }}">
+    </div>
+  
+    <div>
+      <label for="source">Source</label><br/>
+      <input type="text" id="source" name="source" value="{{ defaults.get("source") or "" }}">
+    </div>
+  
+    <div>
+      <label for="source_url">Source URL</label><br/>
+      <input type="text" id="source_url" name="source_url" value="{{ defaults.get("source_url") or "" }}">
+    </div>
+  </details>
+  
+  <input type="hidden" name="target_type" value="{{ target_type }}">
+
+  {% if target_type == "database" or target_type == "table" or target_type == "column"%}
+  <input type="hidden" name="_database" value="{{ database }}">
+  {% endif %}
+  {% if target_type == "table" or target_type == "column"%}
+  <input type="hidden" name="_table" value="{{ table }}">
+  {% endif %}
+  {% if target_type == "column"%}
+  <input type="hidden" name="_column" value="{{ column }}">
+  {% endif %}
+  <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+  <br/>
+  <input type="submit" value="Submit">
+</form>
+{% endblock %}
