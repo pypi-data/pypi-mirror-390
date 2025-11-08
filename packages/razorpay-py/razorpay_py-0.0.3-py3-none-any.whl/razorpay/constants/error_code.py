@@ -1,0 +1,9 @@
+"""Constants used in the SDK."""
+
+
+class ERROR_CODE:
+    """ERROR CODES used in SDK."""
+
+    BAD_REQUEST_ERROR = "BAD_REQUEST_ERROR"
+    GATEWAY_ERROR = "GATEWAY_ERROR"
+    SERVER_ERROR = "SERVER_ERROR"
