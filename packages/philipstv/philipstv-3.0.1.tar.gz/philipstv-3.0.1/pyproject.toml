@@ -1,0 +1,99 @@
+[project]
+name = "philipstv"
+dynamic = []
+description = "CLI and library to control Philips Android-powered TVs."
+readme = "README.rst"
+requires-python = ">=3.10"
+maintainers = [{ name = "Bazyli Cyran", email = "bazyli@cyran.dev" }]
+keywords = ["cli", "tv", "api-wrapper", "philips", "ambilight"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = ["requests>=2.27.1", "pydantic>=2.4.2"]
+version = "3.0.1"
+
+[project.optional-dependencies]
+cli = ["click>=8.2.0", "appdirs>=1.4.4"]
+docs = ["sphinx>=7.2.6", "furo>=2025.7.19", "enum-tools[sphinx]>=0.13.0"]
+
+[project.urls]
+repository = "https://github.com/bcyran/philipstv"
+documentation = "https://philipstv.readthedocs.io"
+
+[project.scripts]
+philipstv = "philipstv.__main__:wrapped_cli"
+
+[tool.poetry]
+license = "MIT"
+packages = [{ include = "philipstv", from = "src" }]
+include = [
+    { path = "src/philipstv/**/*.py" },
+    { path = "src/philipstv/py.typed" },
+    { path = "tests/**/*.py", format = "sdist" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+black = "^25.9.0"
+mypy = "^1.17"
+flake8 = "^7.3.0"
+isort = "^6.1.0"
+tox = "^4.30.3"
+types-requests = "^2.32.4"
+requests-mock = "^1.12.1"
+pytest-cov = "^7.0.0"
+types-appdirs = "^1.4.3"
+sphinx-autobuild = "^2024.10.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = false
+vcs = "git"
+style = "semver"
+pattern = """(?x)
+^(?P<base>\\d+(\\.\\d+)*)
+(-?((?P<stage>[a-zA-Z]+)\\.?(?P<revision>\\d+)?))?
+(\\+(?P<tagged_metadata>.+))?$
+"""
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["src/philipstv/__init__.py"]
+
+[tool.mypy]
+strict = true
+show_error_codes = true
+plugins = ["pydantic.mypy"]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.coverage.run]
+source = ["philipstv"]
+omit = ["src/philipstv/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+skip_empty = true
+exclude_lines = ["raise NotImplementedError", "pass"]
