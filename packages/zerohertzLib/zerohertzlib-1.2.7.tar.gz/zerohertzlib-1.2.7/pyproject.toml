@@ -1,0 +1,134 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zerohertzLib"
+dynamic = ["version"]
+description = "Zerohertz's Library"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = [
+    "Scientific/Engineering",
+    "Mathematics",
+    "Artificial Intelligence",
+    "Software Development",
+    "Libraries",
+]
+authors = [{ name = "zerohertz", email = "ohg3417@gmail.com" }]
+maintainers = [{ name = "zerohertz", email = "ohg3417@gmail.com" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    # monitoring
+    "psutil",
+
+    # plot
+    "matplotlib>=3.5.2",
+    "seaborn>=0.12",
+    "pandas",
+    "mplfinance",
+
+    # util
+    "tqdm",
+    "orjson",
+
+    # vision
+    "numpy",
+    "opencv-python",
+    "Pillow>=10.0.0",
+    "shapely",
+]
+
+[project.optional-dependencies]
+api = [
+    # api & quant & mlops
+    "requests",
+
+    # api
+    "slack_sdk",
+]
+mlops = [
+    # api & quant & mlops
+    "requests",
+
+    # api
+    "slack_sdk",
+
+    # mlops
+    "protobuf",
+    "tritonclient[grpc]>=2.44.0",
+    "prettytable",
+    "loguru",
+]
+quant = [
+    # api & quant & mlops
+    "requests",
+
+    # api
+    "slack_sdk",
+
+    # quant
+    "finance-datareader>=0.9.94",
+    "prettytable",
+]
+all = [
+    # api & quant & mlops
+    "requests",
+
+    # api
+    "slack_sdk",
+
+    # mlops & quant
+    "prettytable",
+
+    # mlops
+    "protobuf",
+    "tritonclient[grpc]>=2.44.0",
+    "loguru",
+
+    # quant
+    "finance-datareader>=0.9.94",
+]
+
+[project.urls]
+homepage = "https://zerohertzlib.readthedocs.io/"
+documentation = "https://zerohertzlib.readthedocs.io/"
+repository = "https://github.com/Zerohertz/zerohertzLib"
+changelog = "https://zerohertzlib.readthedocs.io/"
+
+[project.scripts]
+trictl = "zerohertzLib.mlops.cli:_trictl"
+vert = "zerohertzLib.vision.cli:_vert"
+grid = "zerohertzLib.vision.cli:_grid"
+img2gif = "zerohertzLib.vision.cli:_img2gif"
+vid2gif = "zerohertzLib.vision.cli:_vid2gif"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+zerohertzLib = ["plot/fonts/*.ttf", "plot/fonts/*.otf"]
+
+[tool.setuptools.dynamic]
+version = { attr = "zerohertzLib.__version__" }
+
+[tool.ruff.lint]
+ignore = []
