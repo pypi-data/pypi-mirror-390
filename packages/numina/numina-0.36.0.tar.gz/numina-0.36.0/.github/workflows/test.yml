@@ -1,0 +1,32 @@
+name: Test using tox
+
+# Run manually
+on: workflow_dispatch
+
+jobs:
+  test:
+    name: Test ${{ matrix.python }} on ${{ matrix.os }}
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: ["macos-latest", "ubuntu-latest"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup python for test ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Cache tox
+        id: cache-tox
+        uses: actions/cache@v4
+        with:
+          path: .tox
+          key: tox-${{ matrix.python }}-${{ matrix.os }}-${{ hashFiles('pyproject.toml', 'setup.cfg') }}
+      - name: Install tox
+        run: pip install tox
+      - name: Run tox
+        # Run tox using the version of Python in `PATH`
+        run: tox -e py

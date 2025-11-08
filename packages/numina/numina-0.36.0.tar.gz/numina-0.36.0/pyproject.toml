@@ -1,0 +1,112 @@
+[build-system]
+# Minimum requirements for the build system to execute.
+requires = ["setuptools >= 61.0.0", "setuptools_scm[toml]>=6.2",
+    "wheel", "cython >= 3", "numpy>=2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "numina"
+dynamic = ["version"]
+description = "Astronomy data reduction library"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+  {name = "Sergio Pascual", email = "sergiopr@fis.ucm.es"},
+]
+classifiers = [
+    "Programming Language :: C",
+    "Programming Language :: C++",
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+dependencies = [
+    'astropy >= 6.1.7',
+    'attrs',
+    'backports.entry_points_selectable',  # required only with python < 3.10a7
+    'ccdproc',
+    'importlib_resources',  # required with python < 3.9
+    'lmfit',
+    'matplotlib',
+    'numpy >= 2',
+    'python-dateutil>=2.7.0',
+    'PyYaml',
+    'reproject',
+    'rich',
+    'scikit-image',
+    'scipy',
+    'spherical-geometry',
+    'teareduce',
+    'typing-extensions',
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6",
+    "pytest-remotedata",
+]
+docs = [
+    "sphinx<7.0.0",
+    "sphinx_rtd_theme"
+]
+
+[project.urls]
+Homepage = "https://github.com/guaix-ucm/numina"
+Repository = "https://github.com/guaix-ucm/numina.git"
+Documentation = "https://numina.readthedocs.io/en/stable/"
+
+[project.scripts]
+numina = "numina.user.cli:main"
+numina-adr_correction_from_extension_in_3d_cube = "numina.tools.adr_correction_from_extension_in_3d_cube:main"
+numina-apply_integer_offsets = "numina.array.wavecalib.apply_integer_offsets:main"
+numina-bpm = "numina.array.bpm:main"
+numina-check_wlcalib = "numina.array.wavecalib.check_wlcalib:main"
+numina-compare_adr_extensions_in_3d_cube = "numina.tools.compare_adr_extensions_in_3d_cube:main"
+numina-compute_adr_wavelength = "numina.tools.compute_adr_wavelength:main"
+numina-crmasks = "numina.array.crmasks.__main__:main"
+numina-extract_2d_slice_from_3d_cube = "numina.tools.extract_2d_slice_from_3d_cube:main"
+numina-find_optimal_celestial_wcs_with_adr = "numina.tools.find_optimal_celestial_wcs_with_adr:main"
+numina-generate_mosaic_of_2d_images = "numina.tools.generate_mosaic_of_2d_images:main"
+numina-generate_mosaic_of_3d_cubes = "numina.tools.generate_mosaic_of_3d_cubes:main"
+numina-genimage = "numina.tools.genimage:main"
+numina-imath = "numina.tools.imath:main"
+numina-imath3d = "numina.tools.imath3d:main"
+numina-include_adrtheor_in_3d_cube = "numina.tools.include_adrtheor_in_3d_cube:main"
+numina-measure_slice_xy_offsets_in_3d_cube = "numina.tools.measure_slice_xy_offsets_in_3d_cube:main"
+numina-pixel_solid_angle_arcsec2 = "numina.tools.pixel_solid_angle_arcsec2:main"
+numina-pixel_to_world = "numina.tools.pixel_to_world:main"
+numina-resample_wave_3d_cube = "numina.tools.resample_wave_3d_cube:main"
+numina-sp3d_with_ds9 = "numina.tools.sp3d_with_ds9:main"
+numina-stack_hdus = "numina.tools.stack_hdus:main"
+numina-world_to_pixel = "numina.tools.world_to_pixel:main"
+numina-wavecalib = "numina.array.wavecalib.__main__:main"
+numina-ximshow = "numina.array.display.ximshow:main"
+numina-ximplotxy = "numina.array.display.ximplotxy:main"
+numina-r6-addnf = "numina.tools.r6_addnf:main"
+numina-r6-delete_extension = "numina.tools.r6_delete_extension:main"
+numina-r6-imcombine = "numina.tools.r6_imcombine:main"
+numina-r6-insert_keyword = "numina.tools.r6_insert_keyword:main"
+numina-r6-replace_image = "numina.tools.r6_replace_image:main"
+
+[tool.setuptools_scm]
+write_to = "src/numina/_version.py"
+
+# without this, still works, performs autodetection
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# xfail_strict = true
