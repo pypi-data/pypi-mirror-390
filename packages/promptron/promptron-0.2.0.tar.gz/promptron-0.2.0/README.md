@@ -1,0 +1,566 @@
+# Promptron
+
+A Python package for generating evaluation datasets using Large Language Models (LLMs). Promptron helps you create structured question datasets for testing and evaluating LLM applications through code-only API.
+
+## Features
+
+- **LLM-Powered Generation**: Uses Ollama to generate questions automatically
+- **5 Evaluation Categories**: Pre-configured templates for comprehensive LLM evaluation
+- **Code-Only API**: Simple Python functions for automation and integration
+- **Flexible Configuration**: Use YAML config file or pass prompts directly
+- **Structured Output**: Generates JSON datasets ready for evaluation pipelines
+
+## Installation
+
+### Prerequisites
+
+- Python 3.8 or higher
+- [Ollama](https://ollama.ai/) installed and running
+- At least one Ollama model downloaded (e.g., `llama3:latest`)
+
+### Install from PyPI
+
+```bash
+pip install promptron
+```
+
+### Install from Source
+
+```bash
+git clone <repository-url>
+cd promptron
+pip install -e .
+```
+
+## Quick Start
+
+### 1. Install Promptron
+
+```bash
+pip install promptron
+```
+
+### 2. Ensure Ollama is Running
+
+```bash
+ollama serve
+```
+
+### 3. Download a Model (default: llama3:latest)
+
+```bash
+ollama pull llama3:latest
+```
+
+**Optional:** Use a different model by setting environment variable:
+```bash
+export PROMPTRON_MODEL=llama3.2:latest
+```
+
+### 4. Initialize Configuration
+
+```python
+from promptron import init_config
+
+# Create config files in current directory
+init_config()
+
+# Or specify directory
+init_config(output_dir="./my_project")
+
+# Overwrite existing files
+init_config(force=True)
+```
+
+This creates:
+- `config.yml` - Your prompts configuration
+- `.env.example` - LLM configuration template (reference only)
+
+**Next steps:**
+```bash
+# Copy .env.example to .env (optional, if using .env file approach)
+cp .env.example .env
+# Edit .env with your settings
+```
+
+### 5. Edit config.yml
+
+Edit the `config.yml` file with your topics:
+
+```yaml
+prompts:
+  - category: "default"
+    topic: "openshift"
+    count: 5
+  
+  - category: "red_teaming"
+    topic: "kubernetes"
+    count: 3
+```
+
+### 6. Generate Questions
+
+**Option A: Using .env file (file-based approach)**
+```python
+from promptron import generate_prompts
+
+# Reads from .env file automatically
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./artifacts",
+    single_file=False
+)
+```
+
+**Option B: Using LLMConfig class (programmatic approach)**
+```python
+from promptron import generate_prompts, LLMConfig
+from dotenv import load_dotenv
+import os
+
+# Load .env file (user writes this code)
+load_dotenv()
+
+# Create LLMConfig class (user writes this code)
+class MyLLMConfig(LLMConfig):
+    name = os.getenv("PROMPTRON_MODEL", "llama3:latest")
+    provider = os.getenv("PROMPTRON_PROVIDER", "ollama")
+    url = os.getenv("PROMPTRON_BASE_URL", "http://localhost:11434")
+
+# Generate with LLMConfig
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./artifacts",
+    llm_config=MyLLMConfig
+)
+```
+
+## Recommended Categories
+
+Promptron provides 5 recommended categories for comprehensive LLM evaluation:
+
+1. **"default"** - Standard, straightforward questions for baseline evaluation
+2. **"red_teaming"** - Adversarial, tricky, or misleading questions to test robustness and safety
+3. **"out_of_scope"** - Questions outside the domain to test boundary handling
+4. **"edge_cases"** - Unusual, extreme, or corner-case scenarios to test edge case handling
+5. **"reasoning"** - Multi-step, complex, analytical questions to test reasoning depth
+
+**Note:** Using categories outside these recommended ones may reduce prompt accuracy. The system will fallback to the "default" template with a warning.
+
+## Usage Examples
+
+### Method 1: Using config.yml File with .env
+
+```python
+from promptron import generate_prompts
+
+# Reads LLM config from .env file
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./output",
+    single_file=True,
+    output_format="jsonl"
+)
+```
+
+### Method 2: Using config.yml File with LLMConfig
+
+```python
+from promptron import generate_prompts, LLMConfig
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+class MyLLMConfig(LLMConfig):
+    name = os.getenv("PROMPTRON_MODEL", "llama3:latest")
+    provider = os.getenv("PROMPTRON_PROVIDER", "ollama")
+    url = os.getenv("PROMPTRON_BASE_URL", "http://localhost:11434")
+
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./output",
+    llm_config=MyLLMConfig
+)
+```
+
+### Method 3: Direct Prompts (No YAML File)
+
+```python
+from promptron import generate_prompts, LLMConfig
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+class MyLLMConfig(LLMConfig):
+    name = os.getenv("PROMPTRON_MODEL", "llama3:latest")
+    provider = os.getenv("PROMPTRON_PROVIDER", "ollama")
+    url = os.getenv("PROMPTRON_BASE_URL", "http://localhost:11434")
+
+# Pass prompts directly
+generate_prompts(
+    prompts=[
+        {"category": "default", "topic": "openshift", "count": 5},
+        {"category": "red_teaming", "topic": "kubernetes", "count": 3}
+    ],
+    artifacts_location="./artifacts",
+    llm_config=MyLLMConfig
+)
+```
+
+### Complete Workflow Example
+
+**Workflow A: Using .env file**
+```python
+from promptron import init_config, generate_prompts
+
+# 1. Initialize config files
+init_config()
+
+# 2. Copy .env.example to .env and edit
+# cp .env.example .env
+
+# 3. Edit config.yml with your prompts
+
+# 4. Generate questions (reads from .env automatically)
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./evaluation_data",
+    single_file=True
+)
+```
+
+**Workflow B: Using LLMConfig class**
+```python
+from promptron import init_config, generate_prompts, LLMConfig
+from dotenv import load_dotenv
+import os
+
+# 1. Initialize config files
+init_config()
+
+# 2. Load .env (user writes this)
+load_dotenv()
+
+# 3. Create LLMConfig class (user writes this)
+class MyLLMConfig(LLMConfig):
+    name = os.getenv("PROMPTRON_MODEL", "llama3:latest")
+    provider = os.getenv("PROMPTRON_PROVIDER", "ollama")
+    url = os.getenv("PROMPTRON_BASE_URL", "http://localhost:11434")
+
+# 4. Edit config.yml with your prompts
+
+# 5. Generate questions with LLMConfig
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./evaluation_data",
+    llm_config=MyLLMConfig,
+    single_file=True
+)
+```
+
+## API Reference
+
+### `LLMConfig`
+
+Base class for LLM configuration. Create a subclass with mandatory class attributes.
+
+**Mandatory attributes:**
+- `name` (str): Model name (e.g., "llama3:latest")
+- `provider` (str): LLM provider (currently only "ollama" supported)
+- `url` (str): Base URL for the LLM service
+
+**Users can read from .env file or hardcode values.**
+
+**Example (reading from .env):**
+```python
+from promptron import LLMConfig
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+class MyLLMConfig(LLMConfig):
+    name = os.getenv("PROMPTRON_MODEL", "llama3:latest")
+    provider = os.getenv("PROMPTRON_PROVIDER", "ollama")
+    url = os.getenv("PROMPTRON_BASE_URL", "http://localhost:11434")
+```
+
+**Example (hardcoded):**
+```python
+from promptron import LLMConfig
+
+class MyLLMConfig(LLMConfig):
+    name = "llama3.2:latest"
+    provider = "ollama"
+    url = "http://localhost:11434"
+```
+
+### `init_config(output_dir=None, force=False)`
+
+Initialize example configuration files.
+
+**Parameters:**
+- `output_dir` (str, optional): Directory to create config files (default: current directory)
+- `force` (bool): If True, overwrite existing files. If False, raises error if exists.
+
+**Raises:**
+- `FileExistsError`: If config.yml or .env.example exists and force=False
+
+**Example:**
+```python
+from promptron import init_config
+
+# Create config files in current directory
+init_config()
+
+# Create in specific directory
+init_config(output_dir="./my_project")
+
+# Overwrite existing files
+init_config(force=True)
+```
+
+### `generate_prompts(prompts=None, config_file=None, artifacts_location="./artifacts", single_file=False, output_format="evaluation", llm_config=None)`
+
+Generate questions using the LLM service.
+
+**Parameters:**
+- `prompts` (list, optional): List of prompt configs. Each dict: `{"category": str, "topic": str, "count": int}`
+- `config_file` (str, optional): Path to config.yml file
+- `artifacts_location` (str): Directory to save output files (default: "./artifacts")
+- `single_file` (bool): If True, create one file with all categories. If False, separate file per category.
+- `output_format` (str): Output format - 'evaluation', 'jsonl', 'simple', 'openai', 'anthropic', 'plain'
+- `llm_config` (LLMConfig class, optional): LLM configuration class. If provided, overrides .env file settings.
+
+**Raises:**
+- `ValueError`: If both prompts and config_file are None
+
+**LLM Configuration Priority:**
+1. `llm_config` parameter (if provided)
+2. `.env` file (if exists)
+3. Defaults (ollama, llama3:latest, http://localhost:11434)
+
+**Example:**
+```python
+from promptron import generate_prompts, LLMConfig
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+class MyLLMConfig(LLMConfig):
+    name = os.getenv("PROMPTRON_MODEL", "llama3:latest")
+    provider = os.getenv("PROMPTRON_PROVIDER", "ollama")
+    url = os.getenv("PROMPTRON_BASE_URL", "http://localhost:11434")
+
+# Using LLMConfig
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./output",
+    llm_config=MyLLMConfig
+)
+
+# Or using .env file (no LLMConfig needed)
+generate_prompts(
+    config_file="./config.yml",
+    artifacts_location="./output"
+)
+```
+
+## Output Formats
+
+### 1. Evaluation Format (default)
+
+Best for tracking answers from multiple LLMs:
+
+```json
+{
+  "categories": [
+    {
+      "category": "default",
+      "prompts": [
+        {
+          "topic": "openshift",
+          "questions": [
+            {"user_question": "How do I configure pod resource limits?"},
+            {"user_question": "What is the difference between requests and limits?"}
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+When `single_file=False`, each category gets its own file: `artifacts/default.json`, `artifacts/red_teaming.json`, etc.
+
+### 2. JSONL Format
+
+Perfect for batch processing:
+
+```jsonl
+{"prompt": "How do I configure pod resource limits?", "topic": "openshift", "category": "default"}
+{"prompt": "What is the difference between requests and limits?", "topic": "openshift", "category": "default"}
+```
+
+### 3. Simple JSON Format
+
+Clean array format:
+
+```json
+[
+  {"question": "How do I configure pod resource limits?", "topic": "openshift", "category": "default"},
+  {"question": "What is the difference between requests and limits?", "topic": "openshift", "category": "default"}
+]
+```
+
+### 4. OpenAI API Format
+
+Ready to send to OpenAI:
+
+```json
+[
+  {
+    "messages": [{"role": "user", "content": "How do I configure pod resource limits?"}],
+    "metadata": {"topic": "openshift", "category": "default"}
+  }
+]
+```
+
+### 5. Anthropic API Format
+
+Ready to send to Anthropic:
+
+```json
+[
+  {
+    "messages": [{"role": "user", "content": "How do I configure pod resource limits?"}],
+    "metadata": {"topic": "openshift", "category": "default"}
+  }
+]
+```
+
+### 6. Plain Text Format
+
+Simple text file:
+
+```
+# Category: default
+
+## Topic: openshift
+
+How do I configure pod resource limits?
+What is the difference between requests and limits?
+```
+
+## Output Structure
+
+### When `single_file=True`:
+
+One file (`artifacts/questions.json`) with all categories:
+
+```json
+{
+  "categories": [
+    {
+      "category": "default",
+      "prompts": [
+        {
+          "topic": "openshift",
+          "questions": [{"user_question": "..."}, ...]
+        },
+        {
+          "topic": "kubernetes",
+          "questions": [{"user_question": "..."}, ...]
+        }
+      ]
+    },
+    {
+      "category": "red_teaming",
+      "prompts": [...]
+    }
+  ]
+}
+```
+
+### When `single_file=False`:
+
+Separate file per category (`artifacts/default.json`, `artifacts/red_teaming.json`, etc.):
+
+**File: `artifacts/default.json`**
+```json
+{
+  "category": "default",
+  "prompts": [
+    {
+      "topic": "openshift",
+      "questions": [{"user_question": "..."}, ...]
+    }
+  ]
+}
+```
+
+## Configuration
+
+### config.yml Structure
+
+```yaml
+prompts:
+  - category: "default"        # One of 5 recommended categories
+    topic: "openshift"         # User-defined topic (anything)
+    count: 5                   # Number of questions to generate
+  
+  - category: "red_teaming"
+    topic: "kubernetes"
+    count: 3
+```
+
+### LLM Configuration (.env file)
+
+Create a `.env` file in your project directory (or copy from `.env.example`):
+
+```bash
+# LLM Provider (currently only 'ollama' is supported)
+PROMPTRON_PROVIDER=ollama
+
+# Model name (for Ollama: e.g., llama3:latest, llama3.2:latest)
+PROMPTRON_MODEL=llama3:latest
+
+# Ollama base URL (optional, defaults to http://localhost:11434)
+PROMPTRON_BASE_URL=http://localhost:11434
+```
+
+**Note:** Currently only Ollama (local) is supported. Support for OpenAI, Anthropic, and other providers will be added in future versions.
+
+**Using environment variables directly:**
+```bash
+export PROMPTRON_PROVIDER=ollama
+export PROMPTRON_MODEL=llama3.2:latest
+export PROMPTRON_BASE_URL=http://localhost:11434
+```
+
+## Requirements
+
+- `langchain-ollama>=0.1.0`
+- `pyyaml>=6.0`
+- `python-dotenv>=1.0.0` (for automatic .env file loading)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Author
+
+**Hit Shiroya**
+
+- Email: 24.hiit@gmail.com
+
+## License
+
+MIT License
+
+## Support
+
+For issues and questions, please open an issue on the GitHub repository.
