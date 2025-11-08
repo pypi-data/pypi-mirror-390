@@ -1,0 +1,86 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Do the tests pass?
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    - name: Install dependencies and run tests
+      run: |
+        uv venv
+        uv pip install -r requirements.txt
+        uv pip install pytest pytest-cov
+        uv run pytest tests/ --cov=src --cov-report=xml
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+
+  good-practices:
+    runs-on: ubuntu-latest
+    name: Do the code respects Python standards?
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    - name: Run pre-commit (Ruff and hooks)
+      run: |
+        uvx pre-commit run --all-files --show-diff-on-failure
+    continue-on-error: true
+
+  release:
+    needs: [ test, good-practices ]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.67.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          VERBOSE: true
+          DEFAULT_BUMP: auto
+          MAJOR_STRING_TOKEN: 'BREAKING CHANGE:'
+          MINOR_STRING_TOKEN: 'feat:'
+          PATCH_STRING_TOKEN: 'fix:'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Build and publish
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          uv venv
+          uv pip install build twine
+          uv run python -m build
+          uv run twine upload dist/*
