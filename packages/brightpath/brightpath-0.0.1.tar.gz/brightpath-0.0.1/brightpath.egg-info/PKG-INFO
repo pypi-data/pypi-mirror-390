@@ -1,0 +1,140 @@
+Metadata-Version: 2.4
+Name: brightpath
+Version: 0.0.1
+Summary: Convert Brightway2 LCI data to Simapro and back.
+Author-email: Romain Sacchi <romain.sacchi@psi.ch>
+License: BSD 3-Clause License
+        
+        Copyright (c) 2020, Potsdam Institute for Climate Impact Research, Paul Scherrer Institut
+        All rights reserved.
+        
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions are met:
+        
+        * Redistributions of source code must retain the above copyright notice, this
+          list of conditions and the following disclaimer.
+        
+        * Redistributions in binary form must reproduce the above copyright notice,
+          this list of conditions and the following disclaimer in the documentation
+          and/or other materials provided with the distribution.
+        
+        * Neither the name of the copyright holder nor the names of its
+          contributors may be used to endorse or promote products derived from
+          this software without specific prior written permission.
+        
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+        FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+        DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+        SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+        CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+        OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+        OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+        
+Project-URL: Homepage, https://github.com/polca/brightpath
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Scientific/Engineering :: Information Analysis
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: bw2io
+Requires-Dist: prettytable>=3
+Requires-Dist: PyYAML>=6
+Dynamic: license-file
+
+# BrightPath
+[![License: BSD 3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue?style=flat-square)](https://opensource.org/license/bsd-3-clause)
+
+BrightPath bridges life-cycle assessment (LCA) data between
+[Brightway2](https://brightway.dev/) and [SimaPro](https://simapro.com/). It
+bundles the mappings that are required to translate units, flow names and
+metadata between both tools and exposes high-level helpers to perform the
+conversion in either direction.
+
+## Features
+
+* Convert Brightway2 inventories exported as Excel spreadsheets to the SimaPro
+  CSV format.
+* Import SimaPro CSV exports and normalise them so that they can be registered
+  as Brightway databases.
+* Ship curated mappings for biosphere flows, technosphere exchanges,
+  sub-compartments and blacklist entries required during the conversion.
+
+## Installation
+
+Install BrightPath from PyPI using [pip](https://pip.pypa.io/):
+
+```bash
+pip install brightpath
+```
+
+## Usage
+
+### Convert Brightway inventories to SimaPro CSV
+
+```python
+from brightpath import BrightwayConverter
+
+converter = BrightwayConverter(
+    filepath="/path/to/brightway-export.xlsx",
+    metadata="/path/to/metadata.yaml",  # optional
+    ecoinvent_version="3.9",
+)
+
+# Write the converted inventory to a CSV file (defaults to the current
+# working directory unless ``export_dir`` is provided during initialisation).
+output_path = converter.convert_to_simapro(database="ecoinvent")
+print(output_path)
+```
+
+The converter also accepts inventory data that has already been loaded into
+memory via the ``data`` argument and can return the converted rows directly by
+calling ``convert_to_simapro(format="data")``.
+
+### Convert SimaPro CSV exports to Brightway datasets
+
+```python
+from brightpath import SimaproConverter
+
+converter = SimaproConverter(
+    filepath="/path/to/simapro-export.csv",
+    ecoinvent_version="3.9",
+    db_name="my-simapro-import",
+)
+
+# Normalise exchange names, locations and metadata so that they align with
+# Brightway conventions.
+converter.convert_to_brightway()
+
+# The processed data lives on ``converter.i`` (an instance of
+# ``bw2io.SimaProCSVImporter``). You can now write the database to your
+# Brightway project if desired:
+# converter.i.write_database()
+```
+
+## Development
+
+* Source code is formatted with standard Python tools and tested with
+  `pytest`.
+* Data files required for the conversions live under `brightpath/data`.
+* Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidance on running tests
+  and submitting pull requests.
+
+## License
+
+BrightPath is distributed under the
+[BSD-3-Clause license](LICENSE).
+
