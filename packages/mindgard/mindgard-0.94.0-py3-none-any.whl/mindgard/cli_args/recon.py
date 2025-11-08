@@ -1,0 +1,32 @@
+from ..constants import ENABLE_DEV_FEATURES
+from .shared import add_shared_arguments
+from .types import _SubparserType
+
+
+def add_recon_command(subparsers: _SubparserType):
+    recon_parser = subparsers.add_parser(
+        "recon", help="Run various reconnaissance techniques against your target system"
+    )
+    recon_subparsers = recon_parser.add_subparsers(dest="recon_command")
+
+    # Define prod recon subcommands
+    subcommands = {
+        "guardrail": "Run guardrail reconnaissance against your target system",
+    }
+
+    # Add dev recon subcommands
+    if ENABLE_DEV_FEATURES:
+        subcommands["input-encoding"] = "Run input encoding reconnaissance against your target system"
+        subcommands["output-encoding"] = "Run output encoding reconnaissance against your target system"
+        subcommands["non-contextual"] = "Run non-contextual reconnaissance against your target system"
+        subcommands["output-format-generation"] = (
+            "Run output format generation reconnaissance against your target system"
+        )
+        subcommands["output-rendering-format"] = "Run output rendering format reconnaissance against your target system"
+        subcommands["code-generation"] = "Run code generation reconnaissance against your target system"
+
+    for cmd, help_text in subcommands.items():
+        subparser = recon_subparsers.add_parser(cmd, help=help_text)
+        add_shared_arguments(subparser)
+
+    return recon_parser
