@@ -1,0 +1,68 @@
+sensor_name: visir/slstr
+
+modifiers:
+  nir_reflectance:
+    modifier: !!python/name:satpy.modifiers.NIRReflectance
+    prerequisites:
+    - name: S8
+      resolution: 1000
+    optional_prerequisites:
+    - name: solar_zenith_angle
+      resolution: 1000
+    - name: S9
+      resolution: 1000
+    sunz_threshold: 85.0
+
+composites:
+  all_bands:
+    compositor: !!python/name:satctl.composites.MultiBandCompositor
+    prerequisites:
+    - name: S1
+      modifiers: [sunz_corrected]
+    - name: S2
+      modifiers: [sunz_corrected]
+    - name: S3
+      modifiers: [sunz_corrected]
+    - name: S4
+      modifiers: [sunz_corrected]
+    - name: S5
+      modifiers: [sunz_corrected]
+    - name: S6
+      modifiers: [sunz_corrected]
+    - name: S7
+      modifiers: [nir_reflectance]
+    - S8
+    - S9
+    - F1
+    - F2
+    standard_name: all_bands
+
+
+  all_bands_m:
+    compositor: !!python/name:satctl.composites.MultiBandCompositor
+    prerequisites:
+    - name: S7
+      modifiers: [nir_reflectance]
+    - S8
+    - S9
+    - F1
+    - F2
+    standard_name: all_bands_m
+
+  all_bands_h:
+    compositor: !!python/name:satctl.composites.MultiBandCompositor
+    prerequisites:
+    - name: S1
+      modifiers: [sunz_corrected]
+    - name: S2
+      modifiers: [sunz_corrected]
+    - name: S3
+      modifiers: [sunz_corrected]
+    - name: S4
+      modifiers: [sunz_corrected]
+    - name: S5
+      modifiers: [sunz_corrected]
+    - name: S6
+      modifiers: [sunz_corrected]
+    - name: S7
+    standard_name: all_bands_h
