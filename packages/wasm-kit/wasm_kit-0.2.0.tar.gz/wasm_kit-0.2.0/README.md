@@ -1,0 +1,487 @@
+# wasm-kit
+
+**The Docker of WebAssembly** — Build any codebase to WASM with zero setup.
+
+[![PyPI version](https://badge.fury.io/py/wasm-kit.svg)](https://badge.fury.io/py/wasm-kit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+## Installation
+
+```bash
+pip install wasm-kit
+```
+
+**Requirements:**
+- Python 3.8+
+- Docker (for builds)
+
+---
+
+## Quick Start
+
+### 1. Build a Project
+
+```bash
+# Auto-detect language and build
+wasm-kit build .
+
+# Build specific project
+wasm-kit build ./my-project
+
+# That's it! Output: <project-name>.wasm
+```
+
+### 2. Run Your Component
+
+```bash
+# Run the built WASM component
+wasm-kit run
+
+# Or use the generated script
+./run.sh
+```
+
+### 3. Serve via HTTP
+
+```bash
+# Serve on port 8080
+wasm-kit serve
+
+# Custom port
+wasm-kit serve --port 3000
+```
+
+---
+
+## File Types: `.wasm` vs `.wcmp`
+
+wasm-kit uses clear file extensions to distinguish WASM types, just like `.exe` vs `.dll`:
+
+| Extension | Type | Use Case | Runtime |
+|-----------|------|----------|---------|
+| **`.wasm`** | Standalone executable | CLI tools, entrypoint binaries | `wasmtime run file.wasm` |
+| **`.wcmp`** | Component model | Libraries, composable modules | `wasmtime run file.wcmp` |
+
+**Key Points:**
+- **`.wasm`** = Executable (like `.exe`) - has `main()` entry point, runs directly
+- **`.wcmp`** = Library (like `.dll`) - exports functions, composable
+- `wasm-kit run` **automatically handles both types** - you don't need to think about it!
+
+**Example:**
+```bash
+# Build standalone (Go, C/C++)
+wasm-kit build . --type standalone
+# → myproject.wasm
+
+# Build component (Python, JavaScript, Rust - default)
+wasm-kit build .
+# → myproject.wcmp (and myproject.wasm symlink for tool compatibility)
+
+# Run either type - wasm-kit handles it automatically
+wasm-kit run
+```
+
+**Note:** For `.wcmp` files, wasm-kit automatically creates a `.wasm` symlink so tools like `wasmtime` can recognize the file. You see `.wcmp` (clear component extension), tools use `.wasm` (standard extension).
+
+See [WASM Extensions Guide](docs/WASM_EXTENSIONS.md) for details.
+
+---
+
+## Supported Languages
+
+### Python
+
+```bash
+cd my-python-project
+wasm-kit build .
+```
+
+**Requirements:**
+- `pyproject.toml` or `requirements.txt`
+- `wit/world.wit` (auto-generated if missing)
+- Entry point: `app.py`, `main.py`, or any `.py` file
+
+### JavaScript/TypeScript
+
+```bash
+cd my-js-project
+wasm-kit build .
+```
+
+**Requirements:**
+- `package.json`
+- `wit/world.wit` (auto-generated if missing)
+- Entry point: `index.js`, `main.js`, or any `.js`/`.ts` file
+
+### Rust
+
+```bash
+cd my-rust-project
+wasm-kit build .
+```
+
+**Requirements:**
+- `Cargo.toml`
+- `src/lib.rs` or `src/main.rs`
+- Component Model metadata in `Cargo.toml` (for components)
+
+**Output:** `.wcmp` or `.wasm` (depending on type)
+
+### Go (TinyGo)
+
+```bash
+cd my-go-project
+wasm-kit build .
+```
+
+**Requirements:**
+- `go.mod` or `.go` files
+- Entry point: `main.go` or any `.go` file
+
+**Output:** `.wasm` (standalone binary)
+
+### C/C++
+
+```bash
+cd my-cpp-project
+wasm-kit build .
+```
+
+**Requirements:**
+- `.c` or `.cpp` files (or `CMakeLists.txt`/`Makefile`)
+- Entry point: `main.c`, `main.cpp`, or any `.c`/`.cpp` file
+
+**Output:** `.wasm` (standalone binary)
+
+---
+
+## WASM Types
+
+wasm-kit supports two types of WASM outputs:
+
+### 1. **Standalone WASM** (`.wasm`)
+- Entrypoint binary format
+- Run: `wasmtime run file.wasm`
+- Supported: Go, Rust, C/C++
+- Use: `wasm-kit build . --type standalone`
+
+### 2. **WASI Component** (`.wcmp`)
+- Component Model format
+- Interoperable, type-safe
+- Run: `wasmtime run file.wcmp`
+- Supported: Python, JavaScript/TypeScript, Rust
+- Use: `wasm-kit build .` (default)
+
+**File extensions make it clear:**
+- `.wasm` = Standalone binary
+- `.wcmp` = Component Model
+
+---
+
+## CLI Commands
+
+### `wasm-kit build [path]`
+
+Build any project to WebAssembly.
+
+```bash
+wasm-kit build .                    # Current directory (component)
+wasm-kit build . --type standalone  # Build standalone binary
+wasm-kit build . -o output.wasm     # Custom output path
+wasm-kit build ./my-project         # Specific project
+```
+
+**Auto-detects:**
+- Language (Python/JS/Rust/Go)
+- WIT files (for components)
+- Entry points
+- Build configuration
+
+### `wasm-kit run [path] [args...]`
+
+Run a WASM component instantly.
+
+```bash
+wasm-kit run                  # Run <project-name>.wasm in current dir
+wasm-kit run ./my-project     # Run from project dir
+wasm-kit run -- --arg value   # Pass arguments
+```
+
+### `wasm-kit serve [path]`
+
+Serve a WASM component via HTTP.
+
+```bash
+wasm-kit serve                # Serve on :8080
+wasm-kit serve --port 3000    # Custom port
+wasm-kit serve --host 0.0.0.0 # Bind to all interfaces
+```
+
+### `wasm-kit init <language>`
+
+Initialize a new WASM project.
+
+```bash
+wasm-kit init python
+wasm-kit init javascript
+wasm-kit init rust
+wasm-kit init wit  # Generate WIT file only
+```
+
+### `wasm-kit detect [path]`
+
+Detect project configuration.
+
+```bash
+wasm-kit detect .             # Show detected config
+```
+
+### `wasm-kit info`
+
+Show system information and available tools.
+
+```bash
+wasm-kit info
+```
+
+### `wasm-kit doctor`
+
+Diagnose environment and check for issues.
+
+```bash
+wasm-kit doctor
+```
+
+---
+
+## Auto-Detection
+
+wasm-kit automatically detects:
+
+- **Language**: `pyproject.toml`, `package.json`, `Cargo.toml`
+- **WIT files**: Searches `wit/`, `idl/`, `interfaces/`
+- **Entry points**: Common names (`app.py`, `index.js`, `src/lib.rs`)
+- **World names**: Extracted from WIT files
+
+**Zero configuration required.**
+
+---
+
+## WIT Files
+
+### Auto-Generation
+
+If no WIT file is found, wasm-kit creates a default:
+
+```wit
+package example:component;
+
+world app {
+  export run: func() -> string;
+}
+```
+
+### Manual Creation
+
+```bash
+wasm-kit init wit
+```
+
+Edit `wit/world.wit`:
+
+```wit
+package example:myapp;
+
+world myapp {
+  export greet: func(name: string) -> string;
+  export process: func(input: string) -> string;
+}
+```
+
+---
+
+## Error Messages
+
+wasm-kit provides clear error messages with fixes:
+
+```
+WIT file not found
+Run: wasm-kit init wit
+```
+
+```
+Language not detected
+Supported: Python (pyproject.toml), JS (package.json), Rust (Cargo.toml)
+```
+
+```
+Docker not found
+Install: https://docker.com
+```
+
+---
+
+## Project Structure
+
+```
+wasm-kit/
+├── src/                  # Source code
+│   ├── cli/              # CLI commands
+│   ├── engine/           # Build engine
+│   ├── system/           # Docker/system management
+│   └── utils/            # Utilities
+├── docker/               # Docker images
+├── examples/             # Example projects
+├── scripts/              # Automation scripts
+└── tests/                # Test suite
+```
+
+---
+
+## Architecture
+
+### Build Process
+
+1. **Detect** language from config files
+2. **Select** appropriate builder (Python/JS/Rust)
+3. **Ensure** Docker image exists (build if needed)
+4. **Build** project to WASM using Docker
+5. **Optimize** output with wasm-opt (if available)
+6. **Generate** `run.sh` and `serve.sh` scripts
+
+### Builder Pattern
+
+Each language has a dedicated builder:
+- `PythonWasmBuilder` - Uses `componentize-py`
+- `JavaScriptWasmBuilder` - Uses `componentize-js`
+- `RustWasmBuilder` - Uses `cargo-component`
+
+All builders implement the same interface for consistency.
+
+---
+
+## Docker Images
+
+wasm-kit uses Docker images with tools pre-installed, matching your system's runtime version:
+
+- `wasm-python-builder` - Python (auto-detected) + componentize-py
+- `wasm-js-builder` - Node.js (auto-detected) + componentize-js
+- `wasm-rust-builder` - Rust (auto-detected) + cargo-component
+
+**Images are built automatically on first use.**
+
+### Version Detection
+
+wasm-kit automatically detects your system's runtime version and uses the matching Docker image:
+
+```bash
+# Your system has Python 3.11
+$ python3 --version
+Python 3.11.5
+
+# wasm-kit uses python:3.11-slim
+$ wasm-kit build .
+Detected: Python 3.11
+Using Docker image: python:3.11-slim
+```
+
+**Fallback versions:**
+- Python: 3.12-slim
+- Node.js: 20-alpine
+- Rust: 1.82-slim
+
+---
+
+## Build Performance
+
+### First Build
+
+The **first build** for each language takes longer because Docker needs to install tools:
+
+| Language | First Build | Subsequent Builds |
+|----------|-------------|-------------------|
+| Python | 1-2 minutes | 5-30 seconds |
+| JavaScript/TypeScript | 1-2 minutes | 5-30 seconds |
+| Rust | 5-10 minutes | 5-30 seconds |
+
+**Why is the first build slow?**
+- Downloads base Docker image
+- Installs system dependencies
+- Installs WebAssembly build tools
+- (Rust compiles tools from source)
+
+### After First Build
+
+**Subsequent builds are much faster** because:
+- Docker image is cached
+- BuildKit caches package downloads
+- No re-installation needed
+
+### Is This Acceptable?
+
+**Benefits of Docker approach:**
+- Zero local setup required
+- Consistent builds everywhere
+- No version conflicts
+- Supports multiple languages
+- Isolated from system
+
+**Trade-off:**
+- Slower first build (one-time cost)
+
+For most users, a **1-10 minute one-time setup** for zero-config multi-language WASM builds is acceptable.
+
+See [BUILD_PERFORMANCE.md](BUILD_PERFORMANCE.md) for detailed benchmarks and optimizations.
+
+---
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/wasm-kit/wasm-kit.git
+cd wasm-kit
+pip install -e ".[dev]"
+```
+
+### Run Tests
+
+```bash
+pytest
+pytest --cov=wasmkit
+```
+
+### Generate Prebuilt ZIPs
+
+```bash
+./scripts/wasm-update-prebuilt.sh
+```
+
+### Build Docker Images
+
+```bash
+docker build -f docker/wasm_python.Dockerfile -t wasm-python-builder .
+docker build -f docker/wasm_js.Dockerfile -t wasm-js-builder .
+docker build -f docker/wasm_rust.Dockerfile -t wasm-rust-builder .
+```
+
+---
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+**Adding a new language:**
+1. Create `engine/builders/wasm_<lang>_builder.py`
+2. Implement `WasmBuilder` interface
+3. Add Dockerfile in `docker/`
+4. Update factory in `wasm_builder_factory.py`
+5. Add detection logic in `utils/wasm_detect.py`
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file.
