@@ -1,0 +1,875 @@
+---
+title: API Reference
+description: Complete API reference for HumaLab SDK
+---
+
+Complete reference for the HumaLab SDK API.
+
+## Core Functions
+
+### init()
+
+Initialize a new HumaLab run as a context manager.
+
+```python
+humalab.init(
+    project: str | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    id: str | None = None,
+    tags: list[str] | None = None,
+    scenario: str | list | dict | Scenario | None = None,
+    scenario_id: str | None = None,
+    seed: int | None = None,
+    auto_create_scenario: bool = False,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: float | None = None
+) -> Generator[Run, None, None]
+```
+
+**Parameters:**
+- `project`: The project name under which to create the run
+- `name`: The name of the run
+- `description`: A description of the run
+- `id`: The unique identifier for the run (auto-generated if None)
+- `tags`: A list of tags to associate with the run
+- `scenario`: The scenario configuration as a string, list, dict, or Scenario instance
+- `scenario_id`: The unique identifier of a pre-defined scenario to use
+- `seed`: An optional seed for scenario randomization
+- `auto_create_scenario`: Whether to automatically create the scenario if it does not exist
+- `base_url`: The base URL of the HumaLab server
+- `api_key`: The API key for authentication
+- `timeout`: The timeout for API requests
+
+**Example:**
+```python
+import humalab as hl
+
+# Using a dict
+with hl.init(
+    project="my_project",
+    name="experiment_1",
+    scenario={"param": "${uniform(0, 10)}"},
+    api_key="your_api_key"
+) as run:
+    episode = run.create_episode()
+    with episode:
+        # Run validation
+        pass
+
+# Or using a Scenario instance
+from humalab.scenarios import Scenario
+
+scenario = Scenario()
+scenario.init(scenario={"param": "${uniform(0, 10)}"}, seed=42)
+
+with hl.init(
+    project="my_project",
+    name="experiment_2",
+    scenario=scenario,
+    api_key="your_api_key"
+) as run:
+    episode = run.create_episode()
+    # The scenario is already initialized with seed=42
+    pass
+```
+
+### login()
+
+Configure HumaLab authentication and connection settings.
+
+```python
+humalab.login(
+    api_key: str | None = None,
+    relogin: bool | None = None,
+    host: str | None = None,
+    force: bool | None = None,
+    timeout: float | None = None
+) -> bool
+```
+
+**Parameters:**
+- `api_key`: API key for authentication
+- `host`: API host URL
+- `timeout`: Request timeout in seconds
+- `relogin`: (unused, for compatibility)
+- `force`: (unused, for compatibility)
+
+**Returns:**
+- `bool`: Always returns True
+
+**Example:**
+```python
+import humalab as hl
+
+hl.login(api_key="your_api_key", host="https://api.humalab.ai")
+```
+
+### finish()
+
+Finish the current run.
+
+```python
+humalab.finish(
+    status: RunStatus = RunStatus.FINISHED,
+    err_msg: str | None = None
+)
+```
+
+**Parameters:**
+- `status`: The final status of the run (defaults to FINISHED)
+- `err_msg`: Optional error message if the run errored
+
+**Example:**
+```python
+hl.finish()  # Mark run as finished
+```
+
+### discard()
+
+Discard the current run by finishing it with CANCELED status.
+
+```python
+humalab.discard()
+```
+
+**Example:**
+```python
+hl.discard()  # Cancel the run
+```
+
+## Scenario Class
+
+### Scenario()
+
+Create a new scenario instance.
+
+```python
+from humalab.scenarios import Scenario
+
+scenario = Scenario()
+```
+
+### Scenario.init()
+
+Initialize the scenario with configuration.
+
+```python
+scenario.init(
+    scenario: str | list | dict | None = None,
+    seed: int | None = None,
+    scenario_id: str | None = None
+)
+```
+
+**Parameters:**
+- `scenario`: Scenario configuration (YAML string, list, or dict)
+- `seed`: Random seed for reproducibility
+- `scenario_id`: Scenario identifier (format: "name:version")
+
+**Example:**
+```python
+scenario.init(
+    scenario={"param": "${uniform(0, 10)}"},
+    seed=42,
+    scenario_id="my_scenario:1"
+)
+```
+
+### Scenario.resolve()
+
+Resolve the scenario by sampling distributions.
+
+```python
+scenario.resolve() -> tuple[DictConfig | ListConfig, dict]
+```
+
+**Returns:**
+- Tuple of (resolved_config, episode_values)
+
+**Example:**
+```python
+config, vals = scenario.resolve()
+```
+
+### Scenario Properties
+
+```python
+scenario.template     # Get scenario template (OmegaConf)
+scenario.yaml         # Get scenario as YAML string
+scenario.scenario_id  # Get scenario ID (str | None)
+scenario.seed         # Get random seed (int | None)
+```
+
+**Example:**
+```python
+from humalab.scenarios import Scenario
+
+scenario = Scenario()
+scenario.init(
+    scenario={"param": "${uniform(0, 10)}"},
+    scenario_id="my_scenario:1",
+    seed=42
+)
+
+print(f"Scenario ID: {scenario.scenario_id}")  # Output: my_scenario
+print(f"Seed: {scenario.seed}")                 # Output: 42
+print(f"Template: {scenario.template}")
+print(f"YAML: {scenario.yaml}")
+```
+
+## Scenario Operations
+
+### list_scenarios()
+
+List all scenarios for a given project.
+
+```python
+from humalab.scenarios import list_scenarios
+
+scenarios = list_scenarios(
+    project: str = "default",
+    limit: int = 20,
+    offset: int = 0,
+    include_inactive: bool = False,
+    search: str | None = None,
+    status_filter: str | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: float | None = None
+) -> list[ScenarioMetadata]
+```
+
+**Parameters:**
+- `project`: The project name to list scenarios from (defaults to "default")
+- `limit`: Maximum number of scenarios to return (defaults to 20)
+- `offset`: Number of scenarios to skip for pagination (defaults to 0)
+- `include_inactive`: Whether to include inactive scenarios (defaults to False)
+- `search`: Search query to filter scenarios by name or description
+- `status_filter`: Filter scenarios by status
+- `base_url`: The base URL of the HumaLab API
+- `api_key`: The API key for authentication
+- `timeout`: The timeout for API requests in seconds
+
+**Returns:**
+- `list[ScenarioMetadata]`: A list of scenario metadata objects
+
+**Example:**
+```python
+from humalab.scenarios import list_scenarios
+
+# List all scenarios
+scenarios = list_scenarios(project="my_project")
+
+for scenario in scenarios:
+    print(f"{scenario.name} v{scenario.version}: {scenario.description}")
+```
+
+### get_scenario()
+
+Retrieve and initialize a scenario from HumaLab.
+
+```python
+from humalab.scenarios import get_scenario
+
+scenario = get_scenario(
+    scenario_id: str,
+    version: int | None = None,
+    project: str = "default",
+    seed: int | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: float | None = None
+) -> Scenario
+```
+
+**Parameters:**
+- `scenario_id`: The unique identifier of the scenario
+- `version`: Optional specific version to retrieve
+- `project`: The project name (defaults to "default")
+- `seed`: Optional seed for scenario randomization
+- `base_url`: Optional API host override
+- `api_key`: Optional API key override
+- `timeout`: Optional timeout override
+
+**Returns:**
+- `Scenario`: The initialized scenario instance
+
+**Example:**
+```python
+from humalab.scenarios import get_scenario
+
+# Get specific scenario
+scenario = get_scenario(
+    scenario_id="abc123",
+    version=2,
+    project="my_project",
+    seed=42
+)
+
+# Use in a run
+run = hl.Run(scenario=scenario, name="test_run")
+```
+
+## Run Class
+
+### Run()
+
+Create a new run instance.
+
+```python
+from humalab import Run
+
+run = Run(
+    scenario: Scenario,
+    project: str = "default",
+    name: str | None = None,
+    description: str | None = None,
+    id: str | None = None,
+    tags: list[str] | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: float | None = None
+)
+```
+
+**Parameters:**
+- `scenario`: Scenario instance (required)
+- `project`: Project name for organization
+- `name`: Run name
+- `description`: Run description
+- `id`: Custom run ID (auto-generated if not provided)
+- `tags`: List of tags
+- `base_url`: Custom API endpoint
+- `api_key`: API key
+- `timeout`: Request timeout in seconds
+
+**Example:**
+```python
+run = Run(
+    scenario=scenario,
+    project="my_project",
+    name="experiment_1",
+    description="Testing new parameters",
+    tags=["experiment", "v1"]
+)
+```
+
+### Run.create_episode()
+
+Create a new episode.
+
+```python
+run.create_episode(
+    episode_id: str | None = None
+) -> Episode
+```
+
+**Parameters:**
+- `episode_id`: Custom episode ID (auto-generated if not provided)
+
+**Returns:**
+- Episode instance
+
+**Example:**
+```python
+episode = run.create_episode()
+```
+
+### Run.add_metric()
+
+Add a metric to the run.
+
+```python
+run.add_metric(
+    name: str,
+    metric: Metrics
+)
+```
+
+**Parameters:**
+- `name`: Metric name
+- `metric`: Metrics instance
+
+**Example:**
+```python
+from humalab.metrics import Metrics
+
+metric = Metrics()
+run.add_metric("score", metric)
+```
+
+### Run.log()
+
+Log data to run metrics.
+
+```python
+run.log(
+    data: dict,
+    x: dict | None = None,
+    replace: bool = False
+)
+```
+
+**Parameters:**
+- `data`: Dictionary of metric name -> value
+- `x`: Dictionary of metric name -> x-axis value
+- `replace`: Replace last value instead of appending
+
+**Example:**
+```python
+run.log({"score": 0.95}, x={"score": 0})
+run.log({"score": 0.97}, x={"score": 1})
+```
+
+### Run.log_code()
+
+Log code content as an artifact.
+
+```python
+run.log_code(
+    key: str,
+    code_content: str
+)
+```
+
+**Parameters:**
+- `key`: Artifact key
+- `code_content`: Code content string
+
+**Example:**
+```python
+with open("agent.py") as f:
+    run.log_code("agent", f.read())
+```
+
+### Run.finish()
+
+Finish the run and upload metrics.
+
+```python
+run.finish(
+    status: RunStatus = RunStatus.FINISHED,
+    err_msg: str | None = None
+)
+```
+
+**Parameters:**
+- `status`: Final run status
+- `err_msg`: Error message (if errored)
+
+**Example:**
+```python
+from humalab.humalab_api_client import RunStatus
+
+run.finish(status=RunStatus.FINISHED)
+```
+
+### Run Properties
+
+```python
+run.id           # Run ID
+run.name         # Run name
+run.description  # Run description
+run.tags         # Run tags
+run.project      # Project name
+run.scenario     # Scenario instance
+```
+
+## Episode Class
+
+Episodes are created via `run.create_episode()`.
+
+### Episode.log()
+
+Log data to episode.
+
+```python
+episode.log(data: dict)
+```
+
+**Parameters:**
+- `data`: Dictionary of key-value pairs to log
+
+**Example:**
+```python
+episode.log({
+    "reward": 100.0,
+    "steps": 150,
+    "success": True
+})
+```
+
+### Episode.log_code()
+
+Log code artifact for this episode.
+
+```python
+episode.log_code(
+    key: str,
+    code_content: str
+)
+```
+
+**Parameters:**
+- `key`: Artifact key
+- `code_content`: Code content
+
+### Episode.finish()
+
+Finish the episode.
+
+```python
+episode.finish(
+    status: EpisodeStatus = EpisodeStatus.FINISHED,
+    err_msg: str | None = None
+)
+```
+
+**Parameters:**
+- `status`: Episode status
+- `err_msg`: Error message (if errored)
+
+**Example:**
+```python
+from humalab.humalab_api_client import EpisodeStatus
+
+episode.finish(status=EpisodeStatus.FINISHED)
+```
+
+### Episode Properties
+
+```python
+episode.episode_id   # Episode ID
+episode.run_id       # Parent run ID
+episode.scenario     # Resolved scenario config (DictConfig | ListConfig)
+episode.episode_vals # Sampled parameter values (dict)
+episode.is_finished  # Whether episode is finished (bool)
+episode.status       # Episode status (EpisodeStatus)
+```
+
+### Accessing Scenario Configuration
+
+Episodes provide convenient ways to access scenario configuration values:
+
+```python
+# Access via property
+config = episode.scenario
+print(config.param1)
+
+# Access via attribute (recommended)
+value = episode.param1
+
+# Access via subscript
+value = episode["param1"]
+
+# Nested access
+robot_speed = episode.robot.speed
+```
+
+**Example:**
+```python
+scenario.init(scenario={
+    "robot": {
+        "speed": "${uniform(1, 10)}",
+        "precision": "${gaussian(0.5, 0.1)}"
+    }
+})
+
+episode = run.create_episode()
+
+# All these work:
+speed1 = episode.scenario.robot.speed
+speed2 = episode.robot.speed
+speed3 = episode["robot"]["speed"]
+```
+
+## Metrics Class
+
+### Metrics()
+
+Create a metrics instance.
+
+```python
+from humalab.metrics import Metrics
+from humalab.constants import GraphType
+
+metric = Metrics(
+    graph_type: GraphType = GraphType.LINE
+)
+```
+
+**Parameters:**
+- `graph_type`: Graph visualization type (defaults to LINE). The metric dimensionality is automatically determined from the graph type.
+
+**Example:**
+```python
+metric = Metrics(
+    graph_type=GraphType.LINE
+)
+```
+
+### Metrics.log()
+
+Log a data point.
+
+```python
+metric.log(
+    data: Any,
+    x: Any = None,
+    replace: bool = False
+)
+```
+
+**Parameters:**
+- `data`: Data value
+- `x`: X-axis value (optional)
+- `replace`: Replace last value
+
+### Metrics.finalize()
+
+Finalize metric data (called automatically).
+
+```python
+metric.finalize() -> dict
+```
+
+## Summary Class
+
+Summary metrics aggregate logged values into a single statistic.
+
+### Summary()
+
+Create a summary metric instance.
+
+```python
+from humalab.metrics import Summary
+
+summary = Summary(
+    summary: str = "last"
+)
+```
+
+**Parameters:**
+- `summary`: The aggregation method. Supported values:
+  - `"min"`: Minimum value
+  - `"max"`: Maximum value
+  - `"mean"`: Mean/average value
+  - `"first"`: First logged value
+  - `"last"`: Last logged value (default)
+  - `"none"`: No aggregation
+
+**Example:**
+```python
+from humalab.metrics import Summary
+
+# Create summary metrics
+max_score = Summary(summary="max")
+avg_reward = Summary(summary="mean")
+
+run.add_metric("best_score", max_score)
+run.add_metric("avg_reward", avg_reward)
+
+# Log values
+run.log({"best_score": 95.0, "avg_reward": 87.5})
+run.log({"best_score": 98.0, "avg_reward": 89.2})
+# Final: best_score=98.0, avg_reward=88.35
+```
+
+## ScenarioStats Class
+
+Automatically tracks scenario parameter distributions and episode outcomes.
+
+### ScenarioStats()
+
+ScenarioStats metrics are created automatically when you use distributions in scenarios. They track:
+- Sampled values for each parameter
+- Episode status for each sample
+- Distribution type and configuration
+
+**Example:**
+```python
+# Scenario stats are created automatically
+scenario.init(scenario={
+    "learning_rate": "${log_uniform(0.001, 0.1)}",
+    "batch_size": "${discrete(3, [32, 64, 128], [0.3, 0.5, 0.2])}"
+})
+
+# ScenarioStats for both parameters are automatically tracked
+# - learning_rate: log_uniform distribution stats
+# - batch_size: discrete distribution stats
+```
+
+### ScenarioStats.log_status()
+
+Log the status of an episode (called automatically).
+
+```python
+scenario_stat.log_status(
+    episode_id: str,
+    episode_status: EpisodeStatus,
+    replace: bool = False
+)
+```
+
+**Parameters:**
+- `episode_id`: The unique identifier of the episode
+- `episode_status`: The status of the episode
+- `replace`: Whether to replace an existing status
+
+**Raises:**
+- `ValueError`: If status for the episode_id already exists and replace is False
+
+## Constants
+
+### MetricDimType
+
+```python
+from humalab.constants import MetricDimType
+
+MetricDimType.ONE_D    # One-dimensional
+MetricDimType.TWO_D    # Two-dimensional
+MetricDimType.THREE_D  # Three-dimensional
+```
+
+### GraphType
+
+```python
+from humalab.constants import GraphType
+
+GraphType.LINE         # Line graph
+GraphType.HISTOGRAM    # Histogram
+GraphType.BAR          # Bar chart
+GraphType.SCATTER      # Scatter plot
+GraphType.HEATMAP      # Heatmap
+GraphType.GAUSSIAN     # Gaussian distribution
+GraphType.THREE_D_MAP  # 3D visualization
+```
+
+### EpisodeStatus
+
+```python
+from humalab.humalab_api_client import EpisodeStatus
+
+EpisodeStatus.FINISHED  # Successfully completed
+EpisodeStatus.ERRORED   # Encountered error
+EpisodeStatus.CANCELED  # Canceled
+EpisodeStatus.TIMEOUT   # Timed out
+```
+
+### RunStatus
+
+```python
+from humalab.humalab_api_client import RunStatus
+
+RunStatus.FINISHED  # Successfully completed
+RunStatus.ERRORED   # Encountered error
+RunStatus.CANCELED  # Canceled
+```
+
+## Assets Module
+
+HumaLab provides asset management capabilities:
+
+```python
+from humalab import assets
+
+# Archive operations
+# Resource file management
+# URDF file handling
+```
+
+## Distribution Functions
+
+Available in scenario configurations:
+
+### Scalar (0D) Distributions
+
+```python
+"${uniform(min, max)}"
+"${gaussian(mean, std)}"
+"${truncated_gaussian(mean, std, min, max)}"
+"${log_uniform(min, max)}"
+"${bernoulli(p)}"
+"${categorical(n, probs)}"
+"${discrete(n, values, probs)}"
+```
+
+### Multi-Dimensional Distributions
+
+**Important**: 1D uses same scalar parameters as 0D. 2D and 3D use array parameters.
+
+```python
+# 1D (same parameters as 0D, returns 1-element array)
+"${uniform_1d(min, max)}"
+"${gaussian_1d(mean, std)}"
+"${truncated_gaussian_1d(mean, std, min, max)}"
+"${bernoulli_1d(p)}"
+"${log_uniform_1d(min, max)}"
+
+# 2D (array parameters)
+"${uniform_2d([min, min], [max, max])}"
+"${gaussian_2d([mean, mean], [std, std])}"
+"${truncated_gaussian_2d([mean, mean], [std, std], [min, min], [max, max])}"
+
+# 3D (array parameters)
+"${uniform_3d([min, min, min], [max, max, max])}"
+"${gaussian_3d([mean, mean, mean], [std, std, std])}"
+"${truncated_gaussian_3d([mean, mean, mean], [std, std, std], [min, min, min], [max, max, max])}"
+```
+
+## Error Handling
+
+### Common Exceptions
+
+```python
+# ValueError: Invalid parameters or reserved names
+try:
+    run.log({"scenario": value})  # "scenario" is reserved
+except ValueError as e:
+    print(f"Error: {e}")
+
+try:
+    run.log({"seed": value})  # "seed" is reserved
+except ValueError as e:
+    print(f"Error: {e}")
+
+# ValueError: Metric already exists
+try:
+    run.log({"metric": value})
+    run.log({"metric": value})  # Without replace=True
+except ValueError as e:
+    print(f"Error: {e}")
+```
+
+### Reserved Names
+
+The following names are reserved and cannot be used for metrics or artifacts:
+- `scenario` - Reserved for the scenario YAML configuration
+- `seed` - Reserved for the scenario random seed
+
+## Context Manager Support
+
+Both Run and Episode support context managers:
+
+```python
+# Automatic cleanup with context managers
+with run:
+    episode = run.create_episode()
+    with episode:
+        # Your code here
+        pass
+    # Episode automatically finishes
+# Run automatically finishes
+```
+
+
+# Use GUI
+
+<img src="/images/api1.png" alt="API Manager" />
+You can view the API Key status and history of each of the keys. You can also create new API keys here.
+
+<img src="/images/api2.png" alt="Add new API Key" />
+
+
