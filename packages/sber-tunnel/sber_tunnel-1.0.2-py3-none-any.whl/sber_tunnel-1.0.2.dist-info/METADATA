@@ -1,0 +1,209 @@
+Metadata-Version: 2.4
+Name: sber-tunnel
+Version: 1.0.2
+Summary: File synchronization service using Confluence API
+Author: apaem
+Author-email: apaem <emila1998@yandex.ru>
+License: MIT
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn[standard]>=0.24.0
+Requires-Dist: click>=8.1.0
+Requires-Dist: atlassian-python-api>=3.41.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: watchdog>=3.0.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: cryptography>=41.0.0
+Dynamic: author
+Dynamic: requires-python
+
+# Sber-tunnel
+
+File synchronization service using Confluence API as a storage backend.
+
+## Features
+
+- Synchronize directories between multiple devices using Confluence
+- Automatic file change detection and syncing
+- Support for large files (>100MB) with automatic chunking
+- Web UI for managing synchronized directories
+- CLI interface for easy operation
+- Conflict resolution using last-write-wins strategy
+
+## Installation
+
+### Using pip
+
+```bash
+pip install -e .
+```
+
+### From requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Initialize configuration
+
+```bash
+sber-tunnel init
+```
+
+This will prompt you for:
+- Confluence base URL
+- Username
+- Password (or API token)
+- Page ID for storing files
+- Optional: p12 certificate for secure connections
+
+### Add directory to sync
+
+```bash
+sber-tunnel add /path/to/directory
+```
+
+### Start sync service
+
+```bash
+sber-tunnel start
+```
+
+This will start:
+- File watcher for automatic change detection
+- Web UI at http://127.0.0.1:8000
+- Background sync service
+
+### Manual sync
+
+```bash
+sber-tunnel sync
+```
+
+### Check status
+
+```bash
+sber-tunnel status
+```
+
+### Stop service
+
+```bash
+sber-tunnel stop
+```
+
+## Architecture
+
+### Components
+
+1. **CLI** - Command-line interface built with Click
+2. **FastAPI Server** - Web API and UI
+3. **Confluence Service** - Handles file upload/download and chunking
+4. **Sync Service** - Manages synchronization logic
+5. **File Watcher** - Monitors directory changes
+6. **SQLite Database** - Local state management
+
+### Data Model
+
+**manifest.json** stored in Confluence contains:
+- List of files with path, size, mtime, sha256, version
+- Chunk information for large files
+- Deletion markers
+
+**Local SQLite database** contains:
+- `files` - File metadata and hashes
+- `dirs` - Tracked directories
+- `ops` - Pending operations queue
+- `config` - Configuration values
+
+### File Handling
+
+- Files ≤100MB: Uploaded as single chunk
+- Files >100MB: Split into 100MB chunks
+- Each chunk verified with SHA256 checksum
+- Final file verified after reassembly
+
+### Synchronization Strategy
+
+1. Download manifest from Confluence
+2. Scan local directory
+3. Compare local vs remote state
+4. Upload changed/new files
+5. Download remote changes
+6. Use last-write-wins for conflicts
+7. Upload updated manifest
+
+## Configuration
+
+Configuration is stored in `.sber-tunnel/config.json` in the directory where you run sber-tunnel
+
+Database is stored in `.sber-tunnel/sber-tunnel.db` in the same directory
+
+**Note:** The `.sber-tunnel/` directory is created in your current working directory, not in your home directory. This allows you to have different configurations for different projects.
+
+## Security
+
+- Credentials stored locally (consider using environment variables in production)
+- **Full support for p12 certificates** - Automatically extracts and uses PEM format
+- SHA256 checksums for file integrity
+- Hidden and temporary files excluded from sync
+- Temporary certificate files with restrictive permissions (600)
+- Automatic cleanup of temporary files
+
+### Certificate Support
+
+Sber-tunnel fully supports p12 (PKCS#12) certificates for secure authentication:
+
+```bash
+sber-tunnel init
+# When prompted, provide:
+# - Path to p12 certificate
+# - Certificate password
+```
+
+The service automatically:
+- Extracts certificate and private key from p12
+- Creates temporary PEM files for use with Confluence API
+- Manages file permissions securely
+- Cleans up temporary files on shutdown
+
+See [docs/CERTIFICATES.md](docs/CERTIFICATES.md) for detailed certificate documentation.
+
+## Limitations
+
+- Maximum chunk size: 100MB
+- Uses last-write-wins for conflict resolution
+- No support for symbolic links
+- Hidden files and directories are excluded
+
+## Development
+
+### Project Structure
+
+```
+sber-tunnel/
+├── sber_tunnel/
+│   ├── api/          # FastAPI server
+│   ├── cli/          # CLI commands
+│   ├── core/         # Configuration
+│   ├── db/           # Database schema
+│   ├── models/       # Data models
+│   └── services/     # Business logic
+├── tests/            # Unit tests
+├── docs/             # Documentation
+├── requirements.txt
+└── setup.py
+```
+
+### Running tests
+
+```bash
+pytest tests/
+```
+
+## License
+
+MIT License
