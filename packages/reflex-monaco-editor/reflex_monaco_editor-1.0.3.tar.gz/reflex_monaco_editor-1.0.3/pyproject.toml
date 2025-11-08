@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reflex-monaco-editor"
+version = "1.0.3"
+description = "Reflex Monaco Editor component with LSP capability"
+readme = "README.md"
+license = {file = "LICENSE" }
+
+requires-python = ">=3.11"
+authors = [{ name = "riebecj" }]
+keywords = ["reflex","reflex-custom-components", "monaco"]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development",
+    "Topic :: Utilities"
+]
+dependencies = [
+    "reflex>=0.8.16",
+    "reflex-vite-config-plugin==0.0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=7.4",
+    "pytest-cov~=4.1",
+    "pytest-asyncio~=0.23.8",
+    "uvicorn~=0.38.0",
+    "selenium~=4.38.0",
+    "pytest-playwright~=0.7.1",
+    "psutil~=7.1.2",
+]
+
+[project.urls]
+Repository = "https://github.com/riebecj/reflex-monaco-editor"
+Issues = "https://github.com/riebecj/reflex-monaco-editor/issues"
+Documentation = "https://github.com/riebecj/reflex-monaco-editor?tab=readme-ov-file#reflex-monaco-editor"
+
+[tool.setuptools.package-data]
+monaco_editors = ["*.vsix"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = [ "src",]
+force-exclude = true
+extend-exclude = [ "tests", "scripts", "docs", "resources" ]
+output-format = "grouped"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [ "D107", "D203", "D401", "D213", "UP006", "COM812", "ISC001", "S101", "INP001", ]
+
+[tool.ruff.lint.pylint]
+max-args = 6
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.pytest.ini_options]
+console_output_style = "count"
+pythonpath = "src"
+testpaths = [ "tests",]
+addopts = "--cov=monaco_editors --cov-report xml --cov-report html --cov-report term-missing --no-cov-on-fail"
+python_files = [ "test_*.py",]
+python_functions = [ "test_*",]
+filterwarnings = [ "ignore::DeprecationWarning",]
+asyncio_mode = "strict"
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [ 
+    "pragma: no cover", 
+    "def __repr__", 
+    "raise AssertionError", 
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:"
+]
+omit = [ "*setup.py", "*tests/*", "__global_coverage__/*" ]
+
+[tool.setuptools.packages.find]
+where = [ "src" ]
