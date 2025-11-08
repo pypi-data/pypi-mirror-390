@@ -1,0 +1,11 @@
+"""For JWST observations of space rocks."""
+
+# Welcome to jayrock
+__version__ = "0.0.3"
+
+from . import neatm, plotting
+from .logging import set_log_level  # noqa
+from .instrument import Instrument
+from .observe import get_cycle_dates, Observation, observe
+from .plotting import plot_snr
+from .target import Target
