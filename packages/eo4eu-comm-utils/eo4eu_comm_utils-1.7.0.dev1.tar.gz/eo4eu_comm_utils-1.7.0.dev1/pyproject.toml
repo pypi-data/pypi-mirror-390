@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=65.5.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = [
+    "eo4eu_comm_utils",
+    "eo4eu_comm_utils.kafka",
+    "eo4eu_comm_utils.comms",
+    "eo4eu_comm_utils.format",
+    "eo4eu_comm_utils.settings",
+]
+
+[project]
+name = "eo4eu_comm_utils"
+version = "1.7.0.dev1"
+authors = [
+    {name = "Apollon Grigoras", email = "apollon@uoa.gr"},
+]
+description = "General messaging utilities for EO4EU"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "eo4eu_base_utils >= 0.4.6",
+]
+
+[project.optional-dependencies]
+kafka = [
+    "confluent-kafka >= 2.1.1; python_version <= '3.11'",
+    "confluent-kafka >= 2.3.0; python_version == '3.12'",
+]
+prometheus = [
+    "prometheus-client ~= 0.16.0; python_version <= '3.11'",
+    "prometheus-client >= 0.16.0; python_version == '3.12'",
+]
+full = [
+    "eo4eu_comm_utils[kafka,prometheus]",
+]
+docs = [
+    "eo4eu_comm_utils[full]",
+    "sphinx           == 8.2.3",
+    "sphinx-rtd-theme == 3.0.2",
+]
