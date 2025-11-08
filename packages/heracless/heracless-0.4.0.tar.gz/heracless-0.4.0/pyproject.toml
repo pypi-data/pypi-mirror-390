@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools >= 69.5.1"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "heracless"
+version = "0.4.0"
+dependencies = [
+    "black",
+    "PyYAML",
+    "art",
+]
+requires-python = ">= 3.10"
+authors = [
+    {name = "Felix Schelling", email = "felix.schelling@protonmail.com"},
+]
+description = "Yaml to Dataclass parser for Config files"
+keywords = ["YAML", "Dataclass", "Config","config", "config management"]
+readme = {file = "README.md", content-type = "text/markdown"}
+classifiers = [
+    # How mature is this project? Common values are
+    # 3 - Alpha
+    # 4 - Beta
+    # 5 - Production / Stable
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.12",
+]
+[tool.setuptools]
+package-dir = {"" = "."}
+[project.urls]
+Repository = "https://github.com/felixscode/heracless.git"
+"Homepage" = "https://heracless.io"
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "types-PyYAML",
+]
+doc = [
+    "streamlit",
+    "streamlit_ace",
+]
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = "art.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "black.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "yaml.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "streamlit.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "streamlit_ace.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--tb=short",
+]
+
+[tool.coverage.run]
+source = ["heracless"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+precision = 2
+show_missing = true
