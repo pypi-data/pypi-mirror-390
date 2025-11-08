@@ -1,0 +1,152 @@
+Metadata-Version: 2.4
+Name: freezeee3
+Version: 1.8.5
+Summary: for a competetion
+Home-page: https://github.com/Hello-Mr-Crab/pywechat
+Author: freezeee4
+Author-email: 2062137439@qq.com
+License: Apache-2.0
+Keywords: rpa,windows,wechat,automation
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.26.4
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: summary
+
+import time
+import creabot
+
+def init(id, name):
+    bot = creabot.Creabot(id)
+    maplist = bot.list_map()
+    targetmap = next((f for f in maplist if f["name"] == name), None)
+    if targetmap:
+        mapid = targetmap["id"]
+        bot.set_map(mapid)
+        pointlist = bot.list_map_point(mapid)
+        print(pointlist)
+        return bot, mapid, pointlist
+    else:
+        print("目标地图未找到")
+        exit()
+
+def anchor():
+    bot, mapid, pointlist=init("192.168.197.144","0109")
+
+    dss = next((f for f in pointlist if f["type"] == "anchor_point"), None)
+    if dss:
+        print("正在重定位")
+        bot.tts_sync("开始重定位，请稍候")
+        bot.relocate_sync(dss["x"], dss["y"], dss["theta"])
+        bot.tts_sync("重定位完成")
+    else:
+        print("没有找到定位点")
+        bot.tts_sync("没有找到定位点")
+
+def nav_to(bot, pointlist, name):
+    bot, mapid,pointlist = init("192.168.197.144","0109")   
+    anchor()
+   
+    dst = next((f for f in pointlist if f["name"] == name), None)
+    if dst:
+        print(f"正在导航去{name}点")
+        bot.tts_sync(f"正在导航去{name}点，请稍候")
+        bot.start_navigation_sync(dst["x"], dst["y"], dst["theta"], 0.5)
+        bot.tts_sync(f"已到达{name}点")
+    else:
+        print("点位名称不存在")
+        bot.tts_sync("点位名称不存在，请确认指令")
+
+def check_object_and_door(bot):
+    bot.tts_sync("开始检测物体")
+    while True:
+        obj = bot.exist_object()
+        if obj:
+            bot.tts_sync('发现物体，正在关门')
+            bot.door_ctrl(0)
+            break
+        else:
+            bot.tts_sync('当前没有检测到物品')
+
+def main():
+    bot , mapid, pointlist = init("192.168.197.144",'0109') 
+    while True:
+        bot.tts_sync('黑子说话')
+        
+        res = bot.asr_sync(3)
+        print("你说的内容：", res)
+        
+        if res:
+            if '四五六' in res or '456' in res:
+                bot.tts_sync('我将去取货点，再去递货点')
+                nav_to(bot, pointlist, "03")
+                bot.tts_sync('放东西')
+                bot.door_ctrl(1)
+                bot.light_ctrl(1)
+                bot.tts_sync('三秒关门')
+                time.sleep(3)
+                check_object_and_door(bot)
+                bot.door_ctrl(0)
+                bot.light_ctrl(0)
+
+                bot.tts_sync('我要去递货点了')
+                nav_to(bot,pointlist,'01')
+                bot.door_ctrl(1)
+                while True:
+                    result = bot.exist_object()
+                    if result:
+                        bot.tts_sync('赶紧拿走')
+                        bot.light_ctrl(1)
+                    else:
+                        bot.tts_sync('拿走不谢')
+                        bot.light_ctrl(0)
+                        break
+                bot.tts_sync('两秒后关门')
+                time.sleep(2)
+                bot.door_ctrl(0)
+                break
+            else:
+                bot.tts_sync(f'我听到你说：{res}，我不知道啥意思')
+
+
+def charge():
+    bot,map,pointlist = init("192.168.197.144",'0109')
+    while True:
+        bot.tts_sync('请下达下一指令')
+        res = bot.asr_sync(3)
+        print('你说的内容',{res})
+        if res:
+            if "充电" in res:
+                bot.tts_sync('出发充电')
+                charge_ctrl()
+                break
+            else:
+                bot.tts_sync(f'我听到你说{res},我不理解')
+
+
+def charge_ctrl():
+    bot,map,pointlist = init("192.168.197.144",'0109')
+    dst =next((f for f in pointlist if f["type"] == "charge"), None)
+    print(dst['x'],dst['y'],dst['theta'])
+    print('开始上桩')
+    nav_to(bot,pointlist,'06')
+    step = bot.dock_charge_on_sync('0109',dst['x'],dst['y'],dst['theta'])
+    if step:
+        time.sleep(10)
+        bot.tts_sync('充电下桩')
+        bot.dock_charge_off_sync()
+        
+if __name__ == "__main__":
+    main()
+    nav_to("192.168.197.144",'0109','00')
+    charge()
+    #charge_ctrl()
+    
