@@ -1,0 +1,126 @@
+{% raw %}name: Create Release
+
+# Manual trigger for creating release tags
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of version bump'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      token_secret_name:
+        description: 'Name of the GitHub PAT secret to use for triggering workflows (default: RELEASE_PAT)'
+        required: false
+        type: string
+        default: 'RELEASE_PAT'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating tags and releases
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for tags
+          fetch-tags: true
+          persist-credentials: false  # Prevent default token from being stored in git config
+
+      - name: Validate PAT secret
+        env:
+          TOKEN_SECRET_NAME: ${{ github.event.inputs.token_secret_name || 'RELEASE_PAT' }}
+          TOKEN_VALUE: ${{ secrets[github.event.inputs.token_secret_name || 'RELEASE_PAT'] }}
+        run: |
+          if [ -z "$TOKEN_VALUE" ]; then
+            echo "::error::Secret '$TOKEN_SECRET_NAME' not found or is empty"
+            echo "::error::This workflow requires a Personal Access Token (PAT) to trigger the PyPI publish workflow"
+            echo "::error::Please follow these steps:"
+            echo "::error::1. Create a GitHub PAT with 'repo' scope: https://github.com/settings/tokens/new"
+            echo "::error::2. Add it to your repository secrets as '$TOKEN_SECRET_NAME'"
+            echo "::error::3. See documentation: https://github.com/${{ github.repository }}#setting-up-automated-release-publishing"
+            exit 1
+          fi
+          echo "✅ PAT secret '$TOKEN_SECRET_NAME' is configured"
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "Latest tag: $latest_tag"
+
+      - name: Calculate new version
+        id: calc_version
+        run: |
+          latest_tag="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$version"
+
+          release_type="${{ github.event.inputs.release_type }}"
+
+          case $release_type in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="v${major}.${minor}.${patch}"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "New version: $new_version"
+
+      - name: Create and push tag
+        env:
+          RELEASE_TOKEN: ${{ secrets[github.event.inputs.token_secret_name || 'RELEASE_PAT'] }}
+        run: |
+          new_version="${{ steps.calc_version.outputs.new_version }}"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create annotated tag
+          git tag -a "$new_version" -m "Release $new_version"
+
+          # Push tag using PAT (this will trigger other workflows)
+          # Note: Using RELEASE_TOKEN instead of GITHUB_TOKEN to avoid conflict with default token
+          git push https://x-access-token:${RELEASE_TOKEN}@github.com/${{ github.repository }}.git "$new_version"
+
+          echo "✅ Created and pushed tag: $new_version"
+
+      - name: Create GitHub Release
+        run: |
+          gh release create ${{ steps.calc_version.outputs.new_version }} \
+            --title "Release ${{ steps.calc_version.outputs.new_version }}" \
+            --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "### Release Created :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: ${{ steps.calc_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Type**: ${{ github.event.inputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Token Used**: ${{ github.event.inputs.token_secret_name || 'RELEASE_PAT' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The tag has been pushed and will trigger the PyPI publish workflow automatically." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.calc_version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Publish Workflow](https://github.com/${{ github.repository }}/actions/workflows/pypi-publish.yml)" >> $GITHUB_STEP_SUMMARY
+{% endraw %}
