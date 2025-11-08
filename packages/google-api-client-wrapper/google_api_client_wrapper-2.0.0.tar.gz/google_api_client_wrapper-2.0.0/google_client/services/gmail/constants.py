@@ -1,0 +1,2 @@
+MAX_BODY_LENGTH = 25000000  # ~25MB Gmail limit
+MAX_SUBJECT_LENGTH = 998  # RFC 2822 practical limit
