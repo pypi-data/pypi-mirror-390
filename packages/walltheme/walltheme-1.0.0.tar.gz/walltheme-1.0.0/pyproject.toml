@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "walltheme"
+authors = [{ name = "Leandro Pata", email = "lmfpata@gmail.com" }]
+description = "Generate color themes based on an image's dominant colors"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["matplotlib>=3.10.6", "jinja2>=3.1.6", "pillow>=11.3.0"]
+dynamic = ["version", "readme"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.4.2", "flake8>=7.3.0"]
+
+[project.scripts]
+walltheme = "walltheme.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "walltheme.settings.__version__" }
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
+## Pytest configuration
+[tool.pytest.ini_options]
+log_cli = true
+console_output_style = 'count'
+addopts = '--capture=tee-sys'
+
+## Ruff preferences
+[tool.ruff]
+indent-width = 2
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "tab"
+
+[tool.ruff.lint]
+# To prevent unused modules to be deleted upon formatting
+unfixable = ["F401"]
