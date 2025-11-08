@@ -1,0 +1,1 @@
+MIGMAN_PROJECT_POSTFIX_SEPARATOR = ":"  # Separator between project name and postfix in MigMan project names
