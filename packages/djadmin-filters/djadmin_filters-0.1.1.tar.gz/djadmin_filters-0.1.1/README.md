@@ -1,0 +1,554 @@
+# djadmin-filters
+
+Django-filter integration for django-admin-deux, providing filtering, ordering, and search capabilities.
+
+**Version**: 1.0.0
+**License**: MIT
+**Python**: 3.11+
+**Django**: 5.2+ (LTS - uses `{% querystring %}` tag introduced in 5.0)
+**Dependencies**: django-filter >=23.0
+
+## Features
+
+- **🔍 Filtering**: Column-based filtering using django-filter with sidebar UI
+- **↕️ Ordering**: Sortable column headers with visual indicators (↑↓)
+- **Column-centric Configuration**: Configure filters and ordering per column
+- **Boolean Normalization**: Simple `filter=True, order=True` syntax
+- **Legacy Support**: Compatible with `list_filter` and `order_fields`
+- **Query Parameter Preservation**: Filters, search, and ordering work seamlessly together
+
+**Note**: Search functionality is provided by the **core djadmin package**, not this plugin.
+
+## Installation
+
+### Option 1: Install with django-admin-deux
+
+```bash
+pip install django-admin-deux[djadmin-filters]
+```
+
+### Option 2: Install separately
+
+```bash
+pip install djadmin-filters
+```
+
+## Configuration
+
+Add both `djadmin` and `djadmin_filters` to your Django settings:
+
+```python
+# settings.py
+
+INSTALLED_APPS = [
+    # ... Django apps
+    'djadmin',          # Core package
+    'djadmin_filters',  # This plugin
+    'django_filters',   # Required dependency
+    # ... your apps
+]
+```
+
+**Important**: `django_filters` must be in `INSTALLED_APPS` for widget templates to be found.
+
+## Quick Start
+
+```python
+# myapp/djadmin.py
+
+from djadmin import ModelAdmin, register, Column
+from djadmin.dataclasses import Filter, Order
+
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    # Modern column-centric configuration
+    list_display = [
+        Column('name',
+               filter=Filter(lookup_expr='icontains'),
+               order=True),
+        Column('price',
+               filter=Filter(lookup_expr=['gte', 'lte']),  # Range filter
+               order=True),
+        Column('category',
+               filter=True,  # Simple exact match
+               order=False),  # Not sortable
+        Column('stock',
+               filter=False,  # No filter
+               order=True),
+    ]
+```
+
+That's it! The admin will now display:
+- A filter sidebar with filter inputs for name, price, and category
+- Sortable column headers for name, price, and stock
+- Visual sort indicators (↕️ ↑ ↓)
+
+## Filtering
+
+### Basic Filtering
+
+Use `filter=True` for simple exact-match filters:
+
+```python
+Column('category', filter=True)
+# Generates: <input name="category" type="text">
+```
+
+### Lookup Expressions
+
+Use `Filter(lookup_expr=...)` for different filter types:
+
+```python
+# Contains filter (case-insensitive)
+Column('name', filter=Filter(lookup_expr='icontains'))
+
+# Exact match
+Column('status', filter=Filter(lookup_expr='exact'))
+
+# Greater than / Less than
+Column('price', filter=Filter(lookup_expr='gte'))
+Column('price', filter=Filter(lookup_expr='lte'))
+
+# Range filter (min/max)
+Column('price', filter=Filter(lookup_expr=['gte', 'lte']))
+# Generates: <input name="price_min"> <input name="price_max">
+
+# Date filters
+Column('created_at', filter=Filter(lookup_expr=['gte', 'lte']))
+# Generates: <input type="date" name="created_at_after"> <input type="date" name="created_at_before">
+```
+
+**Common lookup expressions**:
+- `exact` - Exact match
+- `iexact` - Case-insensitive exact match
+- `contains` / `icontains` - Substring match
+- `startswith` / `istartswith` - Starts with
+- `endswith` / `iendswith` - Ends with
+- `gte` / `lte` - Greater/less than or equal
+- `gt` / `lt` - Greater/less than
+- `in` - In list
+- `isnull` - Is null
+
+### Custom Widgets
+
+Provide custom Django form widgets:
+
+```python
+from django import forms
+from djadmin.dataclasses import Filter
+
+Column('status',
+       filter=Filter(
+           lookup_expr='exact',
+           widget=forms.Select(choices=[
+               ('active', 'Active'),
+               ('inactive', 'Inactive'),
+           ])
+       ))
+```
+
+### Method Filters
+
+Use custom filter methods for complex logic:
+
+```python
+from djadmin.dataclasses import Filter
+
+def filter_is_featured(queryset, name, value):
+    """Custom filter method."""
+    if value:
+        return queryset.filter(featured=True, published=True)
+    return queryset
+
+Column('featured',
+       filter=Filter(method=filter_is_featured))
+```
+
+### Filter Labels
+
+Override the filter label:
+
+```python
+Column('price',
+       label='Price',  # Column header label
+       filter=Filter(
+           lookup_expr=['gte', 'lte'],
+           label='Price Range'  # Filter label in sidebar
+       ))
+```
+
+## Ordering
+
+### Basic Ordering
+
+Use `order=True` to make a column sortable:
+
+```python
+Column('name', order=True)
+# Clicking header cycles: neutral → ↑ → ↓ → neutral
+```
+
+### Disable Ordering
+
+Explicitly disable ordering:
+
+```python
+Column('description', order=False)
+# Header has no sort icon
+```
+
+### Custom Labels
+
+Provide custom labels for ascending/descending states:
+
+```python
+from djadmin.dataclasses import Order
+
+Column('price',
+       order=Order(
+           label='Price (low to high)',
+           descending_label='Price (high to low)'
+       ))
+```
+
+### Custom Fields
+
+Order by different field(s):
+
+```python
+Column('full_name',
+       order=Order(fields=['last_name', 'first_name']))
+# Clicking "Full Name" orders by last name, then first name
+```
+
+## Legacy Support
+
+The plugin supports Django admin's `list_filter` and a new `order_fields` attribute for backwards compatibility:
+
+```python
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    list_display = ['name', 'price', 'category']
+
+    # Old-style filtering (still works!)
+    list_filter = ['category', 'status']
+
+    # Old-style ordering (new attribute, similar to search_fields)
+    order_fields = ['name', 'price']
+```
+
+The metaclass normalizes these to Column-based configuration.
+
+## Migration from Column.sortable
+
+**Breaking change**: `Column.sortable` was removed in Milestone 2.
+
+**Before** (Milestone 1):
+```python
+Column('name', sortable=True)
+Column('description', sortable=False)
+```
+
+**After** (Milestone 2):
+```python
+Column('name', order=True)
+Column('description', order=False)
+```
+
+**Why**: Consistent naming with `list_display`, `list_filter` → `Column.filter`, `order_fields` → `Column.order`.
+
+## URL Parameters
+
+The plugin uses standard URL query parameters:
+
+- **Filtering**: `?field=value` or `?field__lookup=value`
+- **Ordering**: `?ordering=field` or `?ordering=-field` (descending)
+
+**Examples**:
+```
+# Filter by category
+/djadmin/webshop/product/?category=1
+
+# Filter by price range
+/djadmin/webshop/product/?price__gte=100&price__lte=500
+
+# Sort by price ascending
+/djadmin/webshop/product/?ordering=price
+
+# Sort by price descending
+/djadmin/webshop/product/?ordering=-price
+
+# Combined: filter + order + search
+/djadmin/webshop/product/?category=1&ordering=-price&search=laptop
+```
+
+## Query Parameter Preservation
+
+All features preserve other query parameters:
+
+- **Searching** preserves filters and ordering
+- **Filtering** preserves search and ordering
+- **Ordering** preserves search and filters
+- **Pagination** preserves all parameters
+
+This is handled automatically by the `{% query_params_as_hidden_inputs %}` template tag.
+
+## Complete Example
+
+```python
+# myapp/djadmin.py
+
+from djadmin import ModelAdmin, register, Column
+from djadmin.dataclasses import Filter, Order
+
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    list_display = [
+        # Text search
+        Column('name',
+               label='Product Name',
+               filter=Filter(lookup_expr='icontains'),
+               order=True),
+
+        # Exact match with custom widget
+        Column('category',
+               filter=Filter(
+                   lookup_expr='exact',
+                   widget=forms.Select(choices=Category.choices)
+               ),
+               order=False),
+
+        # Range filter
+        Column('price',
+               filter=Filter(lookup_expr=['gte', 'lte']),
+               order=Order(
+                   label='Price (low to high)',
+                   descending_label='Price (high to low)'
+               )),
+
+        # Simple filter, sortable
+        Column('stock',
+               filter=True,
+               order=True),
+
+        # Not filterable, not sortable
+        Column('description',
+               filter=False,
+               order=False),
+    ]
+
+    # Optional: Custom filterset class
+    # filterset_class = MyCustomFilterSet
+```
+
+## Advanced Usage
+
+### Custom FilterSet
+
+Provide a custom django-filter FilterSet:
+
+```python
+import django_filters
+
+class ProductFilterSet(django_filters.FilterSet):
+    # Custom filters
+    in_stock = django_filters.BooleanFilter(
+        method='filter_in_stock',
+        label='In Stock'
+    )
+
+    def filter_in_stock(self, queryset, name, value):
+        if value:
+            return queryset.filter(stock__gt=0)
+        return queryset
+
+    class Meta:
+        model = Product
+        fields = []
+
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    filterset_class = ProductFilterSet
+
+    list_display = [
+        Column('name', filter=True, order=True),
+        # Column-based filters extend the custom filterset
+    ]
+```
+
+### Filtering Related Fields
+
+Filter across relationships using Django's `__` syntax:
+
+```python
+Column('category__name',
+       label='Category',
+       filter=Filter(lookup_expr='icontains'),
+       order=True)
+```
+
+### Conditional Filtering
+
+Only show filters when conditions are met:
+
+```python
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    def get_list_display(self, request):
+        columns = [Column('name', filter=True, order=True)]
+
+        # Only show category filter for superusers
+        if request.user.is_superuser:
+            columns.append(
+                Column('category', filter=True, order=False)
+            )
+
+        return columns
+```
+
+## UI Customization
+
+### Override Filter Widget Template
+
+```django
+{# myapp/templates/djadmin/djadmin_filters/filter_widget.html #}
+<h3>Custom Filters</h3>
+<form method="get" action="">
+    {% load djadmin_tags %}
+    {% query_params_as_hidden_inputs 'page' filterset.form.fields %}
+
+    {# Custom rendering #}
+    {% for field in filterset.form %}
+        <div class="custom-field">
+            {{ field.label_tag }}
+            {{ field }}
+        </div>
+    {% endfor %}
+
+    <button type="submit">Filter</button>
+</form>
+```
+
+### Custom Icon Templates
+
+Override sort icons:
+
+```django
+{# myapp/templates/djadmin/icons/sort.html #}
+<svg><!-- Your custom neutral icon --></svg>
+
+{# myapp/templates/djadmin/icons/sort-up.html #}
+<svg><!-- Your custom ascending icon --></svg>
+
+{# myapp/templates/djadmin/icons/sort-down.html #}
+<svg><!-- Your custom descending icon --></svg>
+```
+
+## Performance
+
+### PostgreSQL
+
+For best performance with PostgreSQL, add indexes:
+
+```python
+from django.db import models
+from django.contrib.postgres.indexes import GinIndex
+
+class Product(models.Model):
+    name = models.CharField(max_length=200, db_index=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['category', 'price']),
+            GinIndex(fields=['name']),  # For text searches
+        ]
+```
+
+### Optimize Queries
+
+Use `select_related` and `prefetch_related`:
+
+```python
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    list_display = [
+        Column('name', filter=True, order=True),
+        Column('category__name', filter=True, order=True),
+    ]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('category')
+```
+
+## Troubleshooting
+
+### Filters not showing
+
+1. Check `django_filters` is in `INSTALLED_APPS`
+2. Check filter configuration: `Column('field', filter=True)`
+3. Check browser console for JavaScript errors
+
+### Ordering not working
+
+1. Check column has `order=True`
+2. Check field exists on model
+3. Check `ordering` URL parameter is present
+
+### Widget templates not found
+
+Add `django_filters` to `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    'djadmin',
+    'djadmin_filters',
+    'django_filters',  # Required for widget templates
+]
+```
+
+## Development
+
+### Running Tests
+
+```bash
+cd djadmin-filters
+pytest
+pytest --cov=djadmin_filters
+```
+
+### Running with Example App
+
+```bash
+# From repo root
+cd tests
+python manage.py runserver
+
+# Visit: http://localhost:8000/djadmin/webshop/product/
+```
+
+## Documentation
+
+- [Usage Guide](../docs/plugin-djadmin-filters-usage.md) - Detailed usage examples
+- [API Reference](../docs/plugin-djadmin-filters-api.md) - Complete API documentation
+- [Migration Guide](../docs/plugin-djadmin-filters-migration.md) - Upgrading from Milestone 1
+- [Hook Reference](../docs/plugin-development/hook-reference.md) - Plugin hooks
+
+## Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new features
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Credits
+
+- Built on [django-filter](https://github.com/carltongibson/django-filter)
+- Part of [django-admin-deux](https://gitlab.levitnet.be/levit/django-admin-deux)
