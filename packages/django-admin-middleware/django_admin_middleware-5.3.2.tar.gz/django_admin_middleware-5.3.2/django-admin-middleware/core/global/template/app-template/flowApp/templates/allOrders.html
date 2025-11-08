@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% block custom_css %}
+    <link rel="stylesheet" href="{% static "css/allOrders.css" %}">
+{% endblock custom_css %}
+{% block main_content %}
+
+    {% if orders %}
+        <ul class="order-list">
+            <li class="order-itel-titles">
+                <p>ID заявки</p>
+                <p>Предмет заявки</p>
+                <p>Описание</p>
+                <p>Дата подачи</p>
+                <p>Статус</p>
+                <p>Ответственный</p>
+            </li>
+            {% for order in orders %}
+                <li class="order-item">
+                    <p>{{order.id}}</p>
+                    <p>{{order.order_name}}</p>
+                    <p>{{order.order_description}}</p>
+                    <p>{{order.created_at}}</p>
+                    {% if order.order_status %}
+                        {% if order.response_person %}
+                            <p>В работе</p>
+                        {% else %}
+                             <p>Ожидает назначения рабочему</p>
+                        {% endif %}
+                    {% else %}
+                        <p>Завершена</p>
+                    {% endif %}
+                    {% if order.response_person %}
+                        <p>{{order.response_person.last_name}} {{order.response_person.first_name}}</p>
+                    {% else %}
+                        <p>Не назначен</p>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+        
+    {% else %}
+        <p>Заявки не найдены</p>
+    {% endif %}
+
+    
+{% endblock main_content %}
+
+{% block custom_js %}
+<script src="{% static "js/allOrders.js" %}"></script>
+{% endblock custom_js %}
