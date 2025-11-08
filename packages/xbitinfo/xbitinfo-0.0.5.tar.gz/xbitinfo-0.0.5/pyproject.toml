@@ -1,0 +1,205 @@
+[project]
+name = "xbitinfo"
+dynamic = []
+description = "Retrieve information content and compress accordingly."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+keywords = [
+    "xbitinfo",
+]
+dependencies = [
+    "dask",
+    "xarray",
+    "tqdm",
+    "numcodecs>=0.10.0",
+    "matplotlib>=3.9.0",
+    "prefect>=3.3.0",
+    "zarr",
+]
+version = "0.0.5"
+
+[project.license]
+text = "MIT license"
+
+[dependency-groups]
+viz = [
+    "matplotlib<3.9.1",
+    "cmcrameri",
+]
+prefect = [
+    "prefect>=3.3.0",
+]
+io = [
+    "netcdf4",
+    "zarr",
+]
+julia = [
+    "julia",
+]
+test = [
+    "pytest",
+    "pooch",
+    "netcdf4",
+    "dask",
+    "zarr",
+    "julia",
+    "cmcrameri",
+    "cfgrib",
+    "prefect>=3.3.0",
+    "prefect_dask",
+]
+docs = [
+    "sphinx",
+    "sphinxcontrib-napoleon",
+    "sphinx-copybutton",
+    "sphinx_book_theme",
+    "myst-nb",
+    "matplotlib<3.9.1",
+    "nbconvert",
+    "cmcrameri",
+    "prefect>=3.3.0",
+    "netcdf4",
+    "ipykernel",
+    "s3fs",
+    "zarr",
+    "julia",
+    "pooch",
+    "ipywidgets",
+    "pip",
+]
+
+[tool.setuptools]
+packages = [
+    "xbitinfo",
+    "xbitinfo.*",
+]
+include-package-data = true
+test-suite = "tests"
+
+[tool.setuptools.package-data]
+xbitinfo = [
+    "*.jl",
+]
+
+[tool.pytest]
+addopts = "--ignore=setup.py"
+
+[tool.pytest.ini_options]
+norecursedirs = [
+    ".git",
+    ".github",
+    "docs",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+exclude = [
+    ".git",
+    "asv_bench",
+    "docs",
+    "conftest.py",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "S",
+    "UP",
+    "I002",
+    "UP008",
+    "G010",
+    "PLR1722",
+    "PT014",
+    "PT006",
+    "PT007",
+    "PT018",
+]
+extend-select = [
+    "I",
+    "C4",
+]
+ignore = [
+    "S101",
+    "E203",
+    "E402",
+    "E731",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "RET504",
+    "S101",
+    "S108",
+    "D203",
+    "D205",
+    "D212",
+    "D213",
+    "D209",
+    "D400",
+    "D413",
+    "D401",
+    "D415",
+    "D416",
+    "D417",
+    "RUF100",
+    "C408",
+    "SIM118",
+    "RET506",
+    "TRY004",
+    "RET505",
+    "RET507",
+    "SIM108",
+    "SIM102",
+    "E501",
+    "E266",
+    "F403",
+    "F401",
+    "F841",
+    "RET",
+    "SIM",
+    "PT",
+]
+ignore-init-module-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"setup.py" = [
+    "S101",
+]
+"**/__init__.py" = [
+    "F401",
+    "F403",
+    "F405",
+    "F811",
+    "F821",
+    "E501",
+    "SIM102",
+]
+"tests/**" = [
+    "S605",
+    "S607",
+    "RET504",
+    "PT004",
+    "PT011",
+    "PT012",
+    "PT019",
+    "PT006",
+]
+
+[tool.blackdoc]
+exclude = "docs/index.rst"
+
+[tool.pdm.version]
+source = "scm"
+
+[build-system]
+requires = [
+    "pdm-backend",
+]
+build-backend = "pdm.backend"
