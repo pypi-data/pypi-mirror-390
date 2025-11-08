@@ -1,0 +1,106 @@
+[tool.poetry]
+name = "ptal-api"
+version = "1.0.0a21"
+description = "TALISMAN API adapter"
+authors = ["Evgeny Bechkalo <bechkalo@ispras.ru>", "Ivan Medvedev <medvedev.iv@ispras.ru>", "Alexey Isakov <isakov@ispras.ru>"]
+maintainers = ["Matvey Zvantsov <zvancov.mu@ispras.ru>"]
+readme = "README.md"
+packages = [{include = "ptal_api"}]
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Intended Audience :: Developers',
+    'Operating System :: OS Independent',
+]
+
+[tool.poetry.scripts]
+type_mapper = "ptal_api.scripts.type_mapper:generate_type_mapping_file"
+
+
+[tool.poetry.dependencies]
+python = "^3.10"
+sgqlc = ">=16.3"
+python-keycloak = ">=2.6.0"
+graphql-core = ">=3.2.3"
+transliterate = ">=1.10.2"
+marshmallow-dataclass = ">=8.5.11"
+"ruamel.yaml" = ">=0.17.21"
+click = ">=8.1.3"
+pyjwt = ">=2.7.0"
+deprecation = "^2.1.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.2.2"
+ruff = "^0.0.261"
+black = "^23.3.0"
+
+[tool.black]
+line-length = 120
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | ptal_api/schema
+  | __pycache__
+)/
+'''
+
+[tool.ruff]
+line-length = 120
+exclude = ["ptal_api/schema"]
+ignore = [
+    "A002", # id as argument
+    "A003", # id as field
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments
+    "S101", # assert
+]
+select = [
+    "A",
+    "ARG",
+    "B",
+    "C",
+    "C4",
+    "E",
+    "ERA",
+    "F",
+    "I",
+    "N",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "RET",
+    "S",
+    "T10",
+    "UP",
+    "W",
+]
+target-version = "py38"
+
+[tool.ruff.isort]
+known-third-party = [
+    "sgqlc",
+    "transliterate",
+]
+known-first-party = [
+    "ptal_api",
+]
+no-lines-before = ["local-folder"]
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

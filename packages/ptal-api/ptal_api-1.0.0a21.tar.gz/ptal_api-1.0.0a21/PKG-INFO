@@ -1,0 +1,52 @@
+Metadata-Version: 2.1
+Name: ptal-api
+Version: 1.0.0a21
+Summary: TALISMAN API adapter
+Author: Evgeny Bechkalo
+Author-email: bechkalo@ispras.ru
+Maintainer: Matvey Zvantsov
+Maintainer-email: zvancov.mu@ispras.ru
+Requires-Python: >=3.10,<4.0
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: click (>=8.1.3)
+Requires-Dist: deprecation (>=2.1.0,<3.0.0)
+Requires-Dist: graphql-core (>=3.2.3)
+Requires-Dist: marshmallow-dataclass (>=8.5.11)
+Requires-Dist: pyjwt (>=2.7.0)
+Requires-Dist: python-keycloak (>=2.6.0)
+Requires-Dist: ruamel.yaml (>=0.17.21)
+Requires-Dist: sgqlc (>=16.3)
+Requires-Dist: transliterate (>=1.10.2)
+Description-Content-Type: text/markdown
+
+# ptal-api
+
+Python adapter for Talisman-based app
+
+How to create trivial adapter:
+
+    graphql_url = 'https://demo.talisman.ispras.ru/graphql' # or another talisman-based app
+    auth_url = 'https://demo.talisman.ispras.ru/auth/'
+    realm = 'demo'
+    client_id = 'web-ui'
+    client_secret = '<some-secret>'
+
+    gql_client = KeycloakAwareGQLClient(
+        graphql_url, 10000, 5,
+        auth_url=auth_url,
+        realm=realm, client_id=client_id, user='admin', pwd='admin',
+        client_secret=client_secret
+    ).__enter__()
+
+    adapter = TalismanAPIAdapter(gql_client, {})
+
+    c = adapter.get_concept('ОК-123456')
+
