@@ -1,0 +1,126 @@
+
+{% macro css_devel_file(theme, path) -%}
+    <link rel="stylesheet"
+          type="text/css"
+          href="{{ static_url }}/css/{{ theme }}/{{ path }}?h={{ build_hash }}"
+          disabled
+          theme="{{ theme }}"/>
+{%- endmacro %}
+
+{% macro main_script_file(params={}) -%}
+    <script type="module"
+            src="{{ static_url }}{% if debug %}/js/index.js{% else %}/{{ name }}-bundle.js{% endif %}?h={{ build_hash }}"
+            data-app-name="{{ name }}"
+            data-app-latest-version="{{ version }}"
+            data-app-display-name="{{ display_name }}"
+            data-debug="{{ debug|lower }}"
+            data-navigation-base-prefix="{{ navigation_base_prefix }}"
+            data-themes="{{ themes|join(',') }}"
+            data-build-hash="{{ build_hash }}"
+            {% for n, v in params.items() -%}
+                {{ n }}="{{ v }}"
+            {% endfor %}>
+    </script>
+{%- endmacro %}
+
+<!DOCTYPE HTML>
+
+<html lang="en">
+    <head>
+        <title>{% block title %}{{ display_name }}{% endblock %}</title>
+
+        {% if enable_pwa %}
+        <link rel="manifest" href="{{ navigation_base_prefix }}/manifest.json?display_name={{
+                                   display_name|urlquote }}&theme_color={{
+                                   theme_color|urlquote }}&background_color={{
+                                   background_color|urlquote }}&description={{
+                                   description|urlquote }}&h={{ build_hash }}">
+        {% endif %}
+        <link rel="icon" href="{{ static_url }}/img/launcher-icon-32.png">
+        <link rel="apple-touch-icon" href="{{ static_url }}/img/launcher-icon-32.png">
+
+        {% block _meta %}
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+            <meta name="viewport" content="initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+            <meta name="mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="theme-color" content="{{ theme_color }}">
+            <meta name="apple-mobile-web-app-status-bar-style" content="{{ theme_color }}">
+        {% endblock %}
+        {% block meta %}{% endblock %}
+
+        {% block _style %}
+            <style>
+                html {
+                    background: #444444;
+                }
+                body {
+                    opacity: 0;
+                }
+            </style>
+            {% for theme in themes %}
+                {% if debug %}
+                    {{ css_devel_file(theme, "base.css") }}
+                    {{ css_devel_file(theme, "main-ui.css") }}
+                    {{ css_devel_file(theme, "no-effects.css") }}
+                    {{ css_devel_file(theme, "visibility-manager.css") }}
+                    {{ css_devel_file(theme, "icons.css") }}
+
+                    {{ css_devel_file(theme, "widgets/check-button.css") }}
+                    {{ css_devel_file(theme, "widgets/choice-buttons.css") }}
+                    {{ css_devel_file(theme, "widgets/color-combo.css") }}
+                    {{ css_devel_file(theme, "widgets/combo.css") }}
+                    {{ css_devel_file(theme, "widgets/common.css") }}
+                    {{ css_devel_file(theme, "widgets/common-buttons.css") }}
+                    {{ css_devel_file(theme, "widgets/labels.css") }}
+                    {{ css_devel_file(theme, "widgets/progress-disk.css") }}
+                    {{ css_devel_file(theme, "widgets/slider.css") }}
+                    {{ css_devel_file(theme, "widgets/input.css") }}
+                    {{ css_devel_file(theme, "widgets/updown.css") }}
+                    {{ css_devel_file(theme, "widgets/various.css") }}
+
+                    {{ css_devel_file(theme, "messages.css") }}
+                    {{ css_devel_file(theme, "global-glass.css") }}
+                    {{ css_devel_file(theme, "structured-view.css") }}
+                    {{ css_devel_file(theme, "progress-view.css") }}
+                    {{ css_devel_file(theme, "icon-label-view.css") }}
+
+                    {{ css_devel_file(theme, "pages/breadcrumbs.css") }}
+                    {{ css_devel_file(theme, "pages/common-pages.css") }}
+                    {{ css_devel_file(theme, "pages/page.css") }}
+
+                    {{ css_devel_file(theme, "forms/common-fields.css") }}
+                    {{ css_devel_file(theme, "forms/common-forms.css") }}
+                    {{ css_devel_file(theme, "forms/form.css") }}
+                    {{ css_devel_file(theme, "forms/form-button.css") }}
+                    {{ css_devel_file(theme, "forms/form-field.css") }}
+
+                    {{ css_devel_file(theme, "lists.css") }}
+                    {{ css_devel_file(theme, "tables.css") }}
+
+                    {{ css_devel_file(theme, "theme.css") }}
+                {% else %}
+                    <link rel="stylesheet"
+                          type="text/css"
+                          href="{{ static_url }}/{{ name }}-bundle-{{ theme }}.css?h={{ build_hash }}"
+                          disabled
+                          theme="{{ theme }}"/>
+                {% endif %}
+            {% endfor %}
+        {% endblock %}
+        {% block style %}{% endblock %}
+
+        <script type="text/javascript">
+            if (localStorage) {
+                document.documentElement.style.background = localStorage.getItem('theme.background-color') || ''
+            }
+        </script>
+
+        <noscript>This application requires JavaScript!</noscript>
+
+        {% block script %}
+            {{ main_script_file() }}
+        {% endblock %}
+    </head>
+    <body></body>
+</html>

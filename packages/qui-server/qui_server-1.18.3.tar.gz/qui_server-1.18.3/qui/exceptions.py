@@ -1,0 +1,2 @@
+class QUIException(Exception):
+    pass
