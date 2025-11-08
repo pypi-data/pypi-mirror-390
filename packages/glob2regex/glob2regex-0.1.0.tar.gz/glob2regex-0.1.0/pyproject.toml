@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = "glob2regex"
+license = "LGPL-3.0"
+dynamic = ["version"]
+requires-python = ">= 3.11"
+description = "Python library for converting glob formatted search to regex."
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+]
+
+dependencies = [
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+]
+test = ["pytest"]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[[project.authors]]
+name = "Adam Schubert"
+email = "adam.schubert@sg1-game.net"
+
+
+[project.urls]
+Homepage = "https://github.com/Salamek/glob2regex"
+
+[tool.setuptools.dynamic]
+version = {attr = "glob2regex.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*", "examples*"]
+
+[tool.ruff]
+line-length = 150
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 20
+
+[tool.ruff.lint.pylint]
+#allow-magic-value-types = ["int", "str"]
+max-args = 8
+max-branches = 16
+max-returns = 10
+
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "E501"]  # Use of assert detected, line too long
+"glob2regex/*" = ["PLR0912", "PLW2901"]  # Too many branches
+
+
+
+[tool.mypy]
+files = ["glob2regex", "tests"]
+python_version = 3.11
+strict = true
+# Make it bit lax
+show_error_codes = true
+exclude = "(.venv/.*|build/.*)"
+
+[tool.pytest.ini_options]
+# Tell pytest where to look for tests
+testpaths = [
+    "tests",
+]
+
+# Pattern to match test files
+python_files = [
+    "test_*.py",
+]
