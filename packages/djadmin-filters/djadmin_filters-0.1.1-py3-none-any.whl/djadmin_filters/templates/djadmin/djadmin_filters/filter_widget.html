@@ -1,0 +1,46 @@
+{% load djadmin_tags %}
+{# Filter widget content - rendered inside sidebar-widget div #}
+{% if filterset %}
+<div>
+    <h3>Filters</h3>
+
+    <form method="get" action="">
+        {# Preserve all parameters except filter fields and page #}
+        {% query_params_as_hidden_inputs 'page' filterset.form.fields %}
+
+        {% for field in filterset.form %}
+            <div class="filter-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                <div class="filter-field-widget">
+                    {{ field }}
+                </div>
+                {% if field.help_text %}
+                    <small>{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="errors">
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <div>
+            <button type="submit" class="primary">
+                {% include "djadmin/icons/funnel.html" %}
+                <span>Apply Filters</span>
+            </button>
+            {# Only show clear if there are actual filter values (not just search/ordering/page params) #}
+            {% if has_active_filters %}
+                <a href="{{ clear_filters_url }}" class="secondary">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if filterset.qs.count is not None %}
+        <div class="filter-results">
+            Showing {{ filterset.qs.count }} result{{ filterset.qs.count|pluralize }}
+        </div>
+    {% endif %}
+</div>
+{% endif %}
