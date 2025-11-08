@@ -1,0 +1,150 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tweepy-authlib"
+description = 'Twitter Web App (Web 版公式クライアント) の内部 API を使い、Tweepy でスクリーンネームとパスワードで認証するためのライブラリ'
+readme = "Readme.md"
+requires-python = ">=3.9"
+license = {file = "License.txt"}
+keywords = ["Twitter", "Tweepy", "Library"]
+authors = [
+    { name = "tsukumi" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Japanese",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "beautifulsoup4>=4.13.1",
+    "curl-cffi>=0.13.0",
+    "js2py-3.13>=0.74.1",
+    "pycryptodomex>=3.20.0",
+    "tweepy>=4.12.1",
+    "xclienttransaction>=1.0.0",
+]
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://github.com/tsukumijima/tweepy-authlib"
+Issues = "https://github.com/tsukumijima/tweepy-authlib/issues"
+Source = "https://github.com/tsukumijima/tweepy-authlib"
+
+[tool.hatch.version]
+path = "tweepy_authlib/__about__.py"
+
+[tool.hatch.envs.default]
+dependencies = [
+    "pytest",
+    "pytest-cov",
+    "pytest-dotenv",
+]
+[tool.hatch.envs.default.scripts]
+# Usage: `hatch run cov/no-cov`
+cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=tweepy_authlib --cov=tests {args}"
+no-cov = "cov --no-cov {args}"
+# Usage: `hatch run test`
+test = "python tests/test_main.py"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["39", "310", "311", "312", "313"]
+
+[tool.hatch.envs.style]
+dependencies = [
+    "ruff",
+    "pyright",
+    "pytest",
+    "pytest-dotenv",
+]
+[tool.hatch.envs.style.scripts]
+# Usage: `hatch run style:lint`
+lint = ["ruff check --fix . ; pyright"]
+# Usage: `hatch run style:format`
+format = ["ruff format ."]
+# Usage: `hatch run style:typecheck`
+typecheck = ["pyright"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+omit = [
+    "tweepy_authlib/__about__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+# 1行の長さを最大120文字に設定
+line-length = 120
+# インデントの幅を4スペースに設定
+indent-width = 4
+# Python 3.9 を利用する
+target-version = "py39"
+
+[tool.ruff.lint]
+# flake8, pycodestyle, pyupgrade, isort, Ruff 固有のルールを使う
+select = ["F", "E", "W", "UP", "I", "RUF"]
+ignore = [
+    "E501",    # 1行の長さを超えている場合の警告を抑制
+    "E731",    # Do not assign a `lambda` expression, use a `def` を抑制
+    "RUF001",  # 全角記号など `ambiguous unicode character` も使いたいため
+    "RUF002",  # 全角記号など `ambiguous unicode character` も使いたいため
+    "RUF003",  # 全角記号など `ambiguous unicode character` も使いたいため
+]
+
+[tool.ruff.lint.isort]
+# インポートブロックの後に2行空ける
+lines-after-imports = 2
+
+[tool.ruff.format]
+# シングルクオートを使う
+quote-style = "single"
+# インデントにはスペースを使う
+indent-style = "space"
+
+[tool.pyright]
+# Python バージョンを指定
+pythonVersion = "3.9"
+# TypeCheckingMode を strict に設定（VSCode の設定と同等）
+typeCheckingMode = "strict"
+# プロジェクトルートを指定
+pythonPlatform = "All"
+# インクルードするパッケージパス
+include = [
+    "tweepy_authlib/",
+    "tests/",
+]
+# 除外するパス
+exclude = [
+    "**/__pycache__",
+    "**/.venv",
+    "dist/",
+]
+# VSCode の settings.json の diagnosticSeverityOverrides に対応する設定
+reportConstantRedefinition = "none"
+reportDeprecated = "warning"
+reportMissingTypeStubs = "none"
+reportPrivateImportUsage = "none"
+reportShadowedImports = "none"
+reportUnnecessaryComparison = "none"
+reportUnknownArgumentType = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUnusedFunction = "none"
