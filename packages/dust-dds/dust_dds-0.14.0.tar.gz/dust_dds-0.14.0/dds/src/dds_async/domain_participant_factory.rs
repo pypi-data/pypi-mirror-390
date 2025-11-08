@@ -1,0 +1,262 @@
+use super::domain_participant::DomainParticipantAsync;
+use crate::{
+    configuration::DustDdsConfiguration,
+    dcps::{
+        actor::Actor,
+        domain_participant_factory::DcpsParticipantFactory,
+        domain_participant_factory_mail::DcpsParticipantFactoryMail,
+        domain_participant_mail::{
+            DcpsDomainParticipantMail, DiscoveryServiceMail, ParticipantServiceMail,
+        },
+        listeners::domain_participant_listener::DcpsDomainParticipantListener,
+    },
+    domain::domain_participant_listener::DomainParticipantListener,
+    infrastructure::{
+        domain::DomainId,
+        error::{DdsError, DdsResult},
+        qos::{DomainParticipantFactoryQos, DomainParticipantQos, QosKind},
+        status::StatusKind,
+    },
+    runtime::{ChannelSend, DdsRuntime, OneshotReceive},
+    transport::interface::TransportParticipantFactory,
+};
+use alloc::string::String;
+
+/// Async version of [`DomainParticipantFactory`](crate::domain::domain_participant_factory::DomainParticipantFactory).
+/// Unlike the sync version, the [`DomainParticipantFactoryAsync`] is not a singleton and can be created by means of
+/// a constructor by passing a DDS runtime. This allows the factory
+/// to spin tasks on an existing runtime which can be shared with other things outside Dust DDS.
+pub struct DomainParticipantFactoryAsync<R: DdsRuntime, T: TransportParticipantFactory> {
+    runtime: R,
+    domain_participant_factory_actor: Actor<R, DcpsParticipantFactory<R, T>>,
+}
+
+impl<R: DdsRuntime, T: TransportParticipantFactory> DomainParticipantFactoryAsync<R, T> {
+    /// Async version of [`create_participant`](crate::domain::domain_participant_factory::DomainParticipantFactory::create_participant).
+    pub async fn create_participant(
+        &self,
+        domain_id: DomainId,
+        qos: QosKind<DomainParticipantQos>,
+        a_listener: Option<impl DomainParticipantListener<R> + Send + 'static>,
+        mask: &[StatusKind],
+    ) -> DdsResult<DomainParticipantAsync<R>> {
+        let clock_handle = self.runtime.clock();
+        let timer_handle = self.runtime.timer();
+        let spawner_handle = self.runtime.spawner();
+        let status_kind = mask.to_vec();
+        let listener_sender =
+            a_listener.map(|l| DcpsDomainParticipantListener::spawn::<R>(l, &spawner_handle));
+        let (reply_sender, reply_receiver) = R::oneshot();
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::CreateParticipant {
+                domain_id,
+                qos,
+                listener_sender,
+                status_kind,
+                reply_sender,
+                clock_handle: clock_handle.clone(),
+                timer_handle: timer_handle.clone(),
+                spawner_handle: spawner_handle.clone(),
+            })
+            .await;
+
+        let (participant_address, participant_handle, builtin_subscriber_status_condition_address) =
+            reply_receiver.receive().await??;
+
+        let domain_participant = DomainParticipantAsync::new(
+            participant_address.clone(),
+            builtin_subscriber_status_condition_address,
+            domain_id,
+            participant_handle,
+            spawner_handle,
+            clock_handle,
+            timer_handle,
+        );
+
+        Ok(domain_participant)
+    }
+
+    /// Async version of [`delete_participant`](crate::domain::domain_participant_factory::DomainParticipantFactory::delete_participant).
+    pub async fn delete_participant(
+        &self,
+        participant: &DomainParticipantAsync<R>,
+    ) -> DdsResult<()> {
+        let (reply_sender, reply_receiver) = R::oneshot();
+        participant
+            .participant_address()
+            .send(DcpsDomainParticipantMail::Participant(
+                ParticipantServiceMail::IsEmpty { reply_sender },
+            ))
+            .await?;
+        let is_participant_empty = reply_receiver.receive().await?;
+        if is_participant_empty {
+            let (reply_sender, reply_receiver) = R::oneshot();
+            let handle = participant.get_instance_handle().await;
+
+            self.domain_participant_factory_actor
+                .send_actor_mail(DcpsParticipantFactoryMail::DeleteParticipant {
+                    handle,
+                    reply_sender,
+                })
+                .await;
+            let deleted_participant = reply_receiver.receive().await??;
+            deleted_participant
+                .send(DcpsDomainParticipantMail::Discovery(
+                    DiscoveryServiceMail::AnnounceDeletedParticipant,
+                ))
+                .await
+                .ok();
+            Ok(())
+        } else {
+            Err(DdsError::PreconditionNotMet(String::from(
+                "Domain participant still contains other entities",
+            )))
+        }
+    }
+
+    /// Async version of [`lookup_participant`](crate::domain::domain_participant_factory::DomainParticipantFactory::lookup_participant).
+    pub async fn lookup_participant(
+        &self,
+        _domain_id: DomainId,
+    ) -> DdsResult<Option<DomainParticipantAsync<R>>> {
+        todo!()
+    }
+
+    /// Async version of [`set_default_participant_qos`](crate::domain::domain_participant_factory::DomainParticipantFactory::set_default_participant_qos).
+    pub async fn set_default_participant_qos(
+        &self,
+        qos: QosKind<DomainParticipantQos>,
+    ) -> DdsResult<()> {
+        let (reply_sender, reply_receiver) = R::oneshot();
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::SetDefaultParticipantQos {
+                qos,
+                reply_sender,
+            })
+            .await;
+        reply_receiver.receive().await?
+    }
+
+    /// Async version of [`get_default_participant_qos`](crate::domain::domain_participant_factory::DomainParticipantFactory::get_default_participant_qos).
+    pub async fn get_default_participant_qos(&self) -> DdsResult<DomainParticipantQos> {
+        let (reply_sender, reply_receiver) = R::oneshot();
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::GetDefaultParticipantQos { reply_sender })
+            .await;
+        reply_receiver.receive().await
+    }
+
+    /// Async version of [`set_qos`](crate::domain::domain_participant_factory::DomainParticipantFactory::set_qos).
+    pub async fn set_qos(&self, qos: QosKind<DomainParticipantFactoryQos>) -> DdsResult<()> {
+        let (reply_sender, reply_receiver) = R::oneshot();
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::SetQos { qos, reply_sender })
+            .await;
+        reply_receiver.receive().await?
+    }
+
+    /// Async version of [`get_qos`](crate::domain::domain_participant_factory::DomainParticipantFactory::get_qos).
+    pub async fn get_qos(&self) -> DdsResult<DomainParticipantFactoryQos> {
+        let (reply_sender, reply_receiver) = R::oneshot();
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::GetQos { reply_sender })
+            .await;
+        reply_receiver.receive().await
+    }
+
+    /// Async version of [`set_configuration`](crate::domain::domain_participant_factory::DomainParticipantFactory::set_configuration).
+    pub async fn set_configuration(&self, configuration: DustDdsConfiguration) -> DdsResult<()> {
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::SetConfiguration { configuration })
+            .await;
+        Ok(())
+    }
+
+    /// Async version of [`get_configuration`](crate::domain::domain_participant_factory::DomainParticipantFactory::get_configuration).
+    pub async fn get_configuration(&self) -> DdsResult<DustDdsConfiguration> {
+        let (reply_sender, reply_receiver) = R::oneshot();
+        self.domain_participant_factory_actor
+            .send_actor_mail(DcpsParticipantFactoryMail::GetConfiguration { reply_sender })
+            .await;
+        reply_receiver.receive().await
+    }
+}
+
+impl<R: DdsRuntime, T: TransportParticipantFactory> DomainParticipantFactoryAsync<R, T> {
+    #[doc(hidden)]
+    pub fn new(
+        runtime: R,
+        app_id: [u8; 4],
+        host_id: [u8; 4],
+        transport: T,
+    ) -> DomainParticipantFactoryAsync<R, T> {
+        let domain_participant_factory_actor = Actor::spawn(
+            DcpsParticipantFactory::new(app_id, host_id, transport),
+            &runtime.spawner(),
+        );
+        DomainParticipantFactoryAsync {
+            runtime,
+            domain_participant_factory_actor,
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl
+    DomainParticipantFactoryAsync<
+        crate::std_runtime::StdRuntime,
+        crate::rtps_udp_transport::udp_transport::RtpsUdpTransportParticipantFactory,
+    >
+{
+    /// This operation returns the [`DomainParticipantFactoryAsync`] singleton. The operation is idempotent, that is, it can be called multiple
+    /// times without side-effects and it will return the same [`DomainParticipantFactoryAsync`] instance.
+    #[tracing::instrument]
+    pub fn get_instance() -> &'static DomainParticipantFactoryAsync<
+        crate::std_runtime::StdRuntime,
+        crate::rtps_udp_transport::udp_transport::RtpsUdpTransportParticipantFactory,
+    > {
+        use core::net::IpAddr;
+        use network_interface::{Addr, NetworkInterface, NetworkInterfaceConfig};
+        use std::sync::OnceLock;
+        use tracing::warn;
+
+        static PARTICIPANT_FACTORY_ASYNC: OnceLock<
+            DomainParticipantFactoryAsync<
+                crate::std_runtime::StdRuntime,
+                crate::rtps_udp_transport::udp_transport::RtpsUdpTransportParticipantFactory,
+            >,
+        > = OnceLock::new();
+        PARTICIPANT_FACTORY_ASYNC.get_or_init(|| {
+            let executor = crate::std_runtime::executor::Executor::new();
+            let timer_driver = crate::std_runtime::timer::TimerDriver::new();
+            let runtime = crate::std_runtime::StdRuntime::new(executor, timer_driver);
+            let interface_address = NetworkInterface::show()
+                .expect("Could not scan interfaces")
+                .into_iter()
+                .flat_map(|i| {
+                    i.addr
+                        .into_iter()
+                        .filter(|a| matches!(a, Addr::V4(v4) if !v4.ip.is_loopback()))
+                })
+                .next();
+            let host_id = if let Some(interface) = interface_address {
+                match interface.ip() {
+                    IpAddr::V4(a) => a.octets(),
+                    IpAddr::V6(_) => unimplemented!("IPv6 not yet implemented"),
+                }
+            } else {
+                warn!("Failed to get Host ID from IP address, use 0 instead");
+                [0; 4]
+            };
+
+            let app_id = std::process::id().to_ne_bytes();
+            let transport = crate::rtps_udp_transport::udp_transport::RtpsUdpTransportParticipantFactory::default();
+            DomainParticipantFactoryAsync::new(
+                runtime,
+                app_id,
+                host_id,
+                transport,
+            )
+        })
+    }
+}
