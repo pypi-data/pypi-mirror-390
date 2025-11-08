@@ -1,0 +1,161 @@
+# Dolphin Knowledge Store Configuration
+# This file is used as the default template for ~/.dolphin/config.toml
+
+# ======================================================================
+# STORAGE CONFIGURATION
+# ======================================================================
+[storage]
+# Root directory for knowledge store (databases, indexes, etc.)
+store_root = "~/.dolphin/knowledge_store"
+
+# ======================================================================
+# SERVER CONFIGURATION
+# ======================================================================
+[server]
+# API endpoint for the knowledge store service
+endpoint = "127.0.0.1:7777"
+
+# ======================================================================
+# COST CONTROL
+# ======================================================================
+# Maximum USD spending per indexing session to prevent runaway costs
+per_session_spend_cap_usd = 10.0
+
+# ======================================================================
+# EMBEDDING CONFIGURATION
+# ======================================================================
+# Note: Section name is "embedding" (singular), not "embeddings"
+[embedding]
+# Embedding provider: "openai" or "stub" (stub = zero vectors for testing)
+provider = "openai"
+
+# Default embedding model: "small" (1536-dim) or "large" (3072-dim)
+default_embed_model = "large"
+
+# Number of texts to embed per API call
+batch_size = 100
+
+# Environment variable containing OpenAI API key
+api_key_env = "OPENAI_API_KEY"
+
+# Number of concurrent embedding API requests
+concurrency = 3
+
+# ======================================================================
+# IGNORE PATTERNS
+# ======================================================================
+# Files and directories to ignore during indexing (gitignore-style glob patterns)
+ignore = [
+    ".git/",
+    ".idea/",
+    ".vscode/",
+    "__pycache__/",
+    "node_modules/",
+    "*.pyc",
+    "*.log",
+    "*.tmp",
+    "*.swp",
+    ".DS_Store",
+    "*.db",
+    "*.sqlite",
+    "*.sqlite3",
+]
+
+# Exceptions to ignore patterns - files matching these will NOT be ignored
+ignore_exceptions = [
+    "*.example",
+]
+
+# ======================================================================
+# RETRIEVAL CONFIGURATION
+# ======================================================================
+[retrieval]
+# Minimum similarity score threshold (0.0-1.0)
+# This is the final cutoff applied before results
+score_cutoff = 0.005
+
+# Maximum number of results to return
+top_k = 8
+
+# Maximum tokens per snippet in search results
+max_snippet_tokens = 300
+
+# Enable Maximal Marginal Relevance for result diversity
+mmr_enabled = false
+
+# MMR lambda parameter: 1.0 = max relevance, 0.0 = max diversity
+mmr_lambda = 0.7
+
+# ======================================================================
+# HYBRID SEARCH (BM25 + Vector Search)
+# ======================================================================
+[retrieval.hybrid_search]
+# Enable hybrid search combining lexical (BM25) and semantic (vector) search
+enabled = true
+
+# Fusion method for combining results: "rrf" (Reciprocal Rank Fusion)
+fusion_method = "rrf"
+
+# RRF constant (standard value is 60)
+fusion_k = 60
+
+# ======================================================================
+# ANN (Approximate Nearest Neighbor) PARAMETER TUNING
+# ======================================================================
+[retrieval.ann]
+# Strategy: "speed", "accuracy", "adaptive", or "custom"
+# - speed: Optimizes for latency (95% recall, ~2x faster)
+# - accuracy: Optimizes for recall (99% recall, default speed)
+# - adaptive: Dynamically adjusts based on query type and dataset size
+# - custom: Use specific nprobes/refine_factor values
+strategy = "adaptive"
+
+# Distance metric for similarity: "cosine", "L2", or "dot"
+metric = "cosine"
+
+# Estimated dataset size for adaptive tuning
+estimated_dataset_size = 100000
+
+# Default query type for adaptive logic: "identifier", "concept", or "example"
+default_query_type = "concept"
+
+# ======================================================================
+# CROSS-ENCODER RERANKING
+# ======================================================================
+[retrieval.reranking]
+# Enable cross-encoder reranking for improved relevance
+# WARNING: Requires torch and sentence-transformers (~2GB dependencies)
+# Install with: pip install pb-dolphin[reranking]
+enabled = false
+
+# HuggingFace model name
+model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+# Device: "cpu", "cuda", or "" for auto-detection
+device = ""
+
+# Batch size for reranking (higher = faster but more memory)
+batch_size = 32
+
+# Multiply top_k by this factor to get candidates for reranking
+candidate_multiplier = 4
+
+# Minimum relevance score for reranked results (0-1)
+score_threshold = 0.3
+
+# ======================================================================
+# CACHING CONFIGURATION
+# ======================================================================
+[cache]
+# Enable caching for embeddings and search results
+enabled = true
+
+# Redis URL for distributed caching (null = in-memory only)
+# Example: "redis://localhost:6379"
+# redis_url = "redis://localhost:6379"
+
+# Embedding cache TTL in seconds (0 = no expiration)
+embedding_ttl = 3600
+
+# Search result cache TTL in seconds (0 = no expiration)
+result_ttl = 900
