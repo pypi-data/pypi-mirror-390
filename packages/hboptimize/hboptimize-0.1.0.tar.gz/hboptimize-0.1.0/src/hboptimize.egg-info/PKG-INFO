@@ -1,0 +1,253 @@
+Metadata-Version: 2.4
+Name: hboptimize
+Version: 0.1.0
+Summary: Bias-Variance Aware Bayesian Optimization for Hyperparameter Tuning
+Author: Dashiell Decker
+License: MIT
+Project-URL: Homepage, https://github.com/DashDecker/HBOptimize
+Project-URL: Documentation, https://hboptimize.readthedocs.io
+Project-URL: Repository, https://github.com/DashDecker/HBOptimize
+Project-URL: Bug Tracker, https://github.com/DashDecker/HBOptimize/issues
+Keywords: bayesian-optimization,hyperparameter-tuning,machine-learning,bias-variance,cross-validation
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: scikit-learn>=1.0.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Provides-Extra: viz
+Requires-Dist: matplotlib>=3.5.0; extra == "viz"
+Dynamic: license-file
+
+# HBOptimize: Bias-Variance Aware Bayesian Optimization
+
+A lightweight Bayesian Optimization package designed for hyperparameter tuning with **bias-variance decomposition** via repeated cross-validation.
+
+## Features
+
+- 🎯 **Bias-Variance Aware**: Uses repeated K-fold CV to estimate both mean and variance of model performance
+- 🔬 **Heteroskedastic GP Surrogate**: Gaussian Process that models observation noise
+- 🚀 **Noisy Expected Improvement**: Acquisition function designed for noisy objectives
+- ⚡ **Multi-Fidelity Ready**: Architecture supports variable-cost evaluations
+- 🛠️ **Sklearn Integration**: Built-in adapters for Ridge, Lasso, Random Forest, GBM, SVR
+
+## Installation
+
+```bash
+# From source
+git clone https://github.com/DashDecker/HBOptimize.git
+cd HBOptimize
+pip install -e .
+
+# With visualization support
+pip install -e ".[viz]"
+
+# For development
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+```python
+import numpy as np
+from hboptimize import HBOptimize, SearchSpace, Real, Integer, Categorical, CVRisk
+from hboptimize.runners.sklearn_adapter import set_data
+
+# Prepare your dataset
+X = np.random.randn(200, 10)
+y = X[:, 0] + 2*X[:, 1] + np.random.randn(200) * 0.1
+set_data(X, y)
+
+# Define search space
+space = SearchSpace({
+    'model': Categorical(('ridge', 'lasso')),
+    'alpha': Real(1e-4, 1e2, log10=True),
+    'max_iter': Integer(100, 2000)
+})
+
+# Create CV risk estimator
+risk = CVRisk(k=5, repeats=3, metric='mse')
+
+# Run Bayesian Optimization
+from hboptimize.api import Config
+config = Config(budget_evals=50, batch_size=1, seed=42)
+bo = HBOptimize(space, risk, config=config)
+
+best_params, best_score = bo.run()
+print(f"Best parameters: {best_params}")
+print(f"Best CV MSE: {best_score:.6f}")
+```
+
+## Usage
+
+### 1. Define Search Space
+
+```python
+from hboptimize import SearchSpace, Real, Integer, Categorical
+
+space = SearchSpace({
+    # Continuous parameters (with optional log transform)
+    'learning_rate': Real(1e-4, 1e-1, log10=True),
+    
+    # Integer parameters
+    'n_estimators': Integer(10, 500),
+    
+    # Categorical parameters
+    'model': Categorical(('ridge', 'lasso', 'rf')),
+    'kernel': Categorical(('linear', 'rbf', 'poly'))
+})
+```
+
+### 2. Set Up Risk Estimator
+
+```python
+from hboptimize.risk.cv import CVRisk
+
+# Repeated K-fold cross-validation
+risk = CVRisk(
+    k=5,              # 5-fold CV
+    repeats=3,        # Repeat 3 times for variance estimation
+    metric='mse',     # or 'mae'
+    fixed_splits=True # Use same splits across all configs
+)
+```
+
+### 3. Run Optimization
+
+```python
+from hboptimize.api import HBOptimize, Config
+
+config = Config(
+    budget_evals=100,  # Total number of evaluations
+    batch_size=1,      # Sequential (batch_size > 1 for parallel)
+    seed=42            # For reproducibility
+)
+
+bo = HBOptimize(space, risk, config=config)
+best_params, best_score = bo.run()
+```
+
+### 4. Interactive Optimization
+
+For more control, use the suggest-observe pattern:
+
+```python
+bo = HBOptimize(space, risk)
+
+for i in range(100):
+    # Get next configuration to try
+    configs = bo.suggest(n=1)
+    
+    for cfg in configs:
+        # Evaluate configuration
+        mean, std, meta = risk.evaluate(cfg)
+        
+        # Provide feedback
+        bo.observe(cfg, mean, std, cost=meta.get('time'))
+    
+    # Check current best
+    best_params, best_score = bo.best()
+    print(f"Iteration {i+1}: Best score = {best_score:.6f}")
+```
+
+## Supported Models
+
+The built-in sklearn adapter supports:
+- `ridge`: Ridge Regression
+- `lasso`: Lasso Regression  
+- `rf`: Random Forest Regressor
+- `gbm`: Gradient Boosting Regressor
+- `svr`: Support Vector Regressor
+
+## API Reference
+
+### Core Classes
+
+- **`SearchSpace`**: Defines the hyperparameter search space
+- **`Real`**: Continuous parameter (with optional log10 transform)
+- **`Integer`**: Integer parameter
+- **`Categorical`**: Categorical parameter with finite choices
+- **`CVRisk`**: Repeated K-fold cross-validation risk estimator
+- **`HBOptimize`**: Main optimization coordinator
+
+### Key Methods
+
+- `HBOptimize.run()`: Run full optimization loop
+- `HBOptimize.suggest(n)`: Get next n configurations to evaluate
+- `HBOptimize.observe(x, mean, std, cost)`: Provide evaluation results
+- `HBOptimize.best()`: Get current best configuration and score
+
+## Architecture
+
+```
+HBOptimize/
+├── src/hboptimize/
+    ├── core/
+│   │   ├── search_space.py    # Parameter space transforms
+│   │   ├── surrogate.py       # Heteroscedastic GP
+│   │   ├── acquisition.py     # Noisy EI
+│   │   └── scheduler.py       # Batch proposal
+│   ├── risk/
+│   │   ├── base.py           # RiskEstimator interface
+│   │   └── cv.py             # CV implementation
+│   ├── runners/
+│   │   └── sklearn_adapter.py # Model builders
+│   └── utils/
+│       ├── seeding.py        # Reproducibility
+│       └── storage.py        # Result tracking
+```
+
+## Roadmap
+
+- [x] **v0.1.0**: Core Bayesian Optimization loop with CV risk
+- [ ] **v0.2.0**: Visualization tools and progress tracking
+- [ ] **v0.3.0**: Multi-fidelity support (early stopping, subsampling)
+- [ ] **v0.4.0**: Parallel batch evaluation
+- [ ] **v0.5.0**: Custom surrogate models (GPyTorch integration)
+
+## Contributing
+
+Contributions are welcome! Please open an issue or PR.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Citation
+
+If you use this package in your research, please cite:
+
+```bibtex
+@software{hboptimize2025,
+  title={HBOptimize: Bias-Variance Aware Bayesian Optimization},
+  author={Dashi},
+  year={2025},
+  url={https://github.com/DashDecker/HBOptimize}
+}
+```
+
+## Acknowledgments
+
+Built with:
+- [scikit-learn](https://scikit-learn.org/) for GP and CV
+- [scipy](https://scipy.org/) for optimization
+- [pydantic](https://pydantic.dev/) for configuration validation
