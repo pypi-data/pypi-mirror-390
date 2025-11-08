@@ -1,0 +1,417 @@
+Metadata-Version: 2.4
+Name: devlake-mcp
+Version: 0.3.0
+Summary: Model Context Protocol server for DevLake
+Author-email: wangzhong <wangzhong@g7.com.cn>
+License: MIT
+Project-URL: Homepage, https://git.chinawayltd.com/engineering-efficiency/devlake-mcp
+Project-URL: Repository, https://git.chinawayltd.com/engineering-efficiency/devlake-mcp
+Project-URL: Issues, https://git.chinawayltd.com/engineering-efficiency/devlake-mcp
+Keywords: mcp,devlake,model-context-protocol,ai,llm
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: fastmcp>=0.5.0
+Requires-Dist: requests>=2.31.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.12.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.2.0; extra == "dev"
+Requires-Dist: pytest-xdist>=3.5.0; extra == "dev"
+Requires-Dist: responses>=0.24.0; extra == "dev"
+Requires-Dist: freezegun>=1.4.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Dynamic: license-file
+
+# DevLake MCP Server
+
+一个基于 [FastMCP](https://gofastmcp.com) 框架的 DevLake MCP 服务器，允许 AI 助手（如 Claude）与 DevLake 进行交互。
+
+
+## 安装
+
+### 方式 1: 使用 pipx（推荐）
+
+pipx 会在隔离环境中安装 Python 应用程序：
+
+```bash
+# 安装 pipx（如果还没有安装）
+# macOS
+brew install pipx
+
+# Linux
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+
+# 使用 pipx 安装 devlake-mcp
+pipx install devlake-mcp
+```
+
+### 方式 2: 从源码安装
+
+```bash
+# 克隆仓库
+git clone https://github.com/yourusername/devlake-mcp.git
+cd devlake-mcp
+
+# 使用 pip 安装（开发模式）
+pip install -e .
+
+# 或使用 uv（推荐用于开发）
+uv pip install -e .
+```
+
+
+## 使用方法
+
+### CLI 命令
+
+DevLake MCP 提供了多个命令行工具：
+
+```bash
+# 启动 MCP 服务器（用于 Claude Desktop 集成）
+devlake-mcp
+
+# 初始化 Claude Code hooks 配置
+devlake-mcp init [--force]
+
+# 初始化 Cursor hooks 配置
+devlake-mcp init-cursor [--force]
+
+# 手动触发失败重试
+devlake-mcp retry
+
+# 查看失败队列状态
+devlake-mcp queue-status
+
+# 清理过期的失败记录
+devlake-mcp queue-clean
+
+# 显示版本信息
+devlake-mcp --version
+
+# 显示帮助信息
+devlake-mcp --help
+```
+
+### 与 Claude Desktop 集成
+
+```bash
+claude mcp add devlake-mcp devlake-mcp
+```
+
+### Cursor Hooks 支持
+
+DevLake MCP 现在支持 Cursor IDE！通过 Cursor hooks，可以自动采集 AI 编程数据，与 Claude Code 完全兼容。
+
+**快速安装**：
+
+```bash
+# 使用 CLI 命令安装（推荐）
+devlake-mcp init-cursor
+
+# 强制覆盖已有配置
+devlake-mcp init-cursor --force
+```
+
+**支持的 Hooks**：
+- ✅ **beforeSubmitPrompt**：用户提交 prompt 前触发，记录用户输入
+- ✅ **beforeReadFile**：读取文件前触发，记录文件访问
+- ✅ **beforeShellExecution**：执行 Shell 命令前触发，记录命令信息
+- ✅ **afterShellExecution**：Shell 命令执行后触发，检测文件变更
+- ✅ **afterFileEdit**：文件编辑后触发，上传文件变更
+- ✅ **afterAgentResponse**：AI 回复后触发，记录对话内容
+- ✅ **stop**：会话结束时触发，上传会话统计
+
+**功能特性**：
+- ✅ **原生 Cursor 集成**：直接使用 Cursor 提供的 `conversation_id` 作为 session_id，无需额外状态管理
+- ✅ **变更关联追踪**：通过 `generation_id` 关联同一次 AI 生成的多个文件变更
+- ✅ **精确工作目录**：使用 Cursor 的 `workspace_roots` 字段准确定位项目根目录
+- ✅ **文件变更记录**：自动记录 before/after diff，支持文件编辑和 Shell 命令
+- ✅ **Shell 命令支持**：智能检测 vim/nano/echo>/cp/mv 等文件操作命令
+- ✅ **与 Claude Code 完全兼容**：相同的数据格式和 API 接口
+
+**技术亮点**：
+- **简化的 Session 管理**：由 Cursor 管理对话生命周期，无需 30 分钟超时逻辑
+- **Hook 事件追踪**：记录每次变更的 `hook_event_name`（如 afterFileEdit、afterShellExecution）
+- **异步上传**：所有 API 调用异步执行，不阻塞 Cursor Agent 工作流
+- **失败重试队列**：上传失败自动加入重试队列，确保数据不丢失
+
+**详细文档**：查看 [CURSOR_HOOKS.md](CURSOR_HOOKS.md) 了解完整配置和使用指南。
+
+### Claude Code Hooks 支持
+
+DevLake MCP 支持 Claude Code 的 Hooks 机制，通过配置 `.claude/settings.json` 自动采集 AI 编程数据。
+
+**已实现的 Hooks**：
+- ✅ **SessionStart**：会话启动时记录会话信息
+- ✅ **SessionEnd**：会话结束时上传会话数据
+- ✅ **UserPromptSubmit**：用户提交 prompt 时记录用户输入
+- ✅ **PreToolUse**：工具使用前记录文件状态
+- ✅ **PostToolUse**：工具使用后上传文件变更
+- ✅ **Stop**：AI 循环停止时更新会话统计
+
+**UserPromptSubmit Hook**（新增）：
+- **触发时机**：用户点击发送按钮后、发起后端请求之前
+- **功能**：
+  - 检查并创建 session（如果是首次）
+  - 记录用户的 prompt 输入
+  - 上传到 DevLake API
+- **自动管理**：
+  - 使用 Claude Code 提供的 `session_id` 作为会话标识
+  - 自动检测会话切换
+  - 异步执行，不阻塞用户操作
+
+**配置位置**：`.claude/settings.json`
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m devlake_mcp.hooks.user_prompt_submit",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**技术特点**：
+- **静默失败**：Hook 执行失败不影响 Claude Code 正常工作
+- **失败重试**：上传失败自动保存到重试队列
+- **会话管理**：自动管理会话状态，检测会话切换
+
+
+## 环境变量配置
+
+在使用前，需要配置 DevLake API 连接信息。
+
+### 方式 1: 使用 .env 文件（推荐）
+
+```bash
+# 复制示例配置文件
+cp .env.example .env
+
+# 编辑配置文件，填写实际值
+vim .env
+```
+
+`.env` 文件内容：
+```bash
+# DevLake API 地址（必需）
+DEVLAKE_BASE_URL=http://devlake.test.chinawayltd.com
+
+# API 超时时间（秒，默认 30）
+DEVLAKE_TIMEOUT=30
+
+# API 认证 Token（可选）
+# DEVLAKE_API_TOKEN=your-token-here
+
+# 失败重试配置（可选）
+DEVLAKE_RETRY_ENABLED=true           # 启用失败重试（默认 true）
+DEVLAKE_RETRY_MAX_ATTEMPTS=5         # 最大重试次数（默认 5）
+DEVLAKE_RETRY_CLEANUP_DAYS=7         # 失败记录保留天数（默认 7）
+DEVLAKE_RETRY_CHECK_ON_HOOK=true     # Hook 执行时检查重试（默认 true）
+```
+
+### 方式 2: 直接设置环境变量
+
+```bash
+export DEVLAKE_BASE_URL="http://devlake.test.chinawayltd.com"
+export DEVLAKE_TIMEOUT=30
+```
+
+### Git 配置（必需）
+
+工具会自动从 Git 配置读取用户信息，请确保已配置：
+
+```bash
+# 配置 Git 用户信息
+git config user.name "Your Name"
+git config user.email "your.email@example.com"
+
+# 配置仓库远程地址
+git remote add origin <repository-url>
+```
+
+
+## 失败重试机制
+
+DevLake MCP 内置了智能的失败重试队列系统，确保数据不会因为网络问题或临时故障而丢失。
+
+### 工作原理
+
+当 API 调用失败时（如网络超时、服务器错误），失败的记录会自动保存到本地队列，并按照指数退避策略自动重试：
+
+**重试时间表**：
+- 第 1 次重试：1 分钟后
+- 第 2 次重试：5 分钟后
+- 第 3 次重试：15 分钟后
+- 第 4 次重试：60 分钟后
+- 第 5 次重试：4 小时后
+
+**队列类型**：
+- `session` - 会话记录
+- `prompt` - 用户输入记录
+- `prompt_update` - Prompt 更新记录
+- `file_change` - 文件变更记录
+
+### 管理失败队列
+
+```bash
+# 查看失败队列状态和统计信息
+devlake-mcp queue-status
+
+# 手动触发重试（不等待自动重试时间）
+devlake-mcp retry
+
+# 清理过期的失败记录（默认保留 7 天）
+devlake-mcp queue-clean
+```
+
+### 配置选项
+
+通过环境变量配置重试行为（参见"环境变量配置"章节）：
+
+- `DEVLAKE_RETRY_ENABLED` - 启用/禁用重试（默认 `true`）
+- `DEVLAKE_RETRY_MAX_ATTEMPTS` - 最大重试次数（默认 `5`）
+- `DEVLAKE_RETRY_CLEANUP_DAYS` - 失败记录保留天数（默认 `7`）
+- `DEVLAKE_RETRY_CHECK_ON_HOOK` - Hook 执行时检查重试（默认 `true`）
+
+### 自动重试
+
+当 `DEVLAKE_RETRY_CHECK_ON_HOOK=true` 时（默认），每次 Hook 执行时会自动检查并重试失败的记录（每次最多重试 3 条，避免阻塞）。
+
+如需禁用自动重试，可设置：
+```bash
+export DEVLAKE_RETRY_CHECK_ON_HOOK=false
+```
+
+然后使用 `devlake-mcp retry` 手动触发重试。
+
+
+## 可用工具
+
+当前服务器提供 3 个核心工具，用于记录 AI 编程会话和文件变更：
+
+### `record_session`
+记录 AI 会话的元数据和统计信息。
+
+**参数**：
+- `session_id` (string, 可选): 会话 ID，不提供则自动生成 UUID
+- `metadata` (dict, 可选): 会话元数据，支持字段：
+  - `user_intent`: 用户意图描述
+  - `model`: 模型名称（如 "claude-sonnet-4-5"）
+  - `ide`: IDE 类型（如 "cursor", "claude-code"）
+  - `project_path`: 项目路径
+
+**返回**：
+```json
+{
+  "success": true,
+  "session_id": "uuid-xxx",
+  "timestamp": "2025-01-07T10:00:00Z",
+  "git_info": {
+    "git_repo_path": "yourorg/devlake",
+    "git_branch": "main",
+    "git_author": "Your Name"
+  }
+}
+```
+
+**示例**：
+```
+调用 record_session 工具，metadata 设置为 {"ide": "cursor", "model": "claude-sonnet-4-5"}
+```
+
+---
+
+### `before_edit_file`
+在文件变更前调用，记录文件的当前状态。
+
+**参数**：
+- `session_id` (string, 必需): 会话唯一标识
+- `file_paths` (list[string], 必需): 即将变更的文件绝对路径列表
+
+**返回**：
+```json
+{
+  "success": true,
+  "session_id": "session-123",
+  "files_snapshot": {
+    "/path/to/file.py": {
+      "exists": true,
+      "line_count": 100,
+      "size": 2048
+    }
+  }
+}
+```
+
+**示例**：
+```
+调用 before_edit_file 工具，session_id 为 "session-123"，file_paths 为 ["/path/to/file.py"]
+```
+
+---
+
+### `after_edit_file`
+在文件变更后调用，上传变更数据到 DevLake API。
+
+**参数**：
+- `session_id` (string, 必需): 会话唯一标识（与 before_edit_file 一致）
+- `file_paths` (list[string], 必需): 已变更的文件绝对路径列表
+
+**返回**：
+```json
+{
+  "success": true,
+  "session_id": "session-123",
+  "uploaded_count": 1,
+  "changes": [
+    {
+      "file_path": "src/main.py",
+      "change_type": "edit",
+      "file_type": "py"
+    }
+  ]
+}
+```
+
+**工作流程**：
+```
+1. before_edit_file() - 记录文件变更前状态
+2. [执行文件变更操作]
+3. after_edit_file() - 对比差异并上传
+```
+
+**示例**：
+```
+调用 after_edit_file 工具，session_id 为 "session-123"，file_paths 为 ["/path/to/file.py"]
+```
+
+## 相关资源
+
+- [Model Context Protocol 官方文档](https://modelcontextprotocol.io)
+- [FastMCP 官方文档](https://gofastmcp.com)
+- [FastMCP GitHub](https://github.com/jlowin/fastmcp)
+- [Claude Desktop](https://claude.ai/download)
+- [Cursor 编辑器](https://cursor.sh)
