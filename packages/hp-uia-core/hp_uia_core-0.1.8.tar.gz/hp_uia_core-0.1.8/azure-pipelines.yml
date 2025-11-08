@@ -1,0 +1,67 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+trigger:
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - v*
+
+resources:
+  repositories:
+    - repository: self
+      fetchDepth: 0
+
+variables:
+  - group: pipy
+
+stages:
+- stage: test
+  jobs:
+  - job: test
+    pool:
+      vmImage: windows-latest
+
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.13'
+      displayName: 'Use Python 3.13'
+
+    # - script: |
+    #     python -m pip install --upgrade pip
+    #     pip install .
+    #   displayName: 'Install dependencies'
+- stage: release
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+  jobs:
+  - job: build_publish
+    pool:
+      vmImage: windows-latest
+    steps:
+    - checkout: self
+      fetchDepth: 0
+
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.13'
+      displayName: 'Use Python 3.13'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install build twine setuptools setuptools-scm
+        python -m build
+      displayName: Build sdist/wheel
+
+    - script: |
+        python -m twine upload dist/*
+      env:
+        TWINE_REPOSITORY_URL: 'https://upload.pypi.org/legacy/'
+        TWINE_USERNAME: '__token__'
+        TWINE_PASSWORD: $(PYPI_API_TOKEN)
+      displayName: Upload to PyPI
+
