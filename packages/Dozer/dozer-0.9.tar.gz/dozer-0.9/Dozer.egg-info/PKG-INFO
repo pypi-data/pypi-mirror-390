@@ -1,0 +1,216 @@
+Metadata-Version: 2.4
+Name: Dozer
+Version: 0.9
+Summary: WSGI Middleware version of the CherryPy memory leak debugger
+Home-page: https://github.com/mgedmin/dozer
+Author: Ben Bangert
+Author-email: ben@groovie.org
+Maintainer: Marius Gedminas
+Maintainer-email: marius@gedmin.as
+License: CC-PDM-1.0
+Keywords: web wsgi memory profiler
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Internet :: WWW/HTTP :: WSGI
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: WebOb>=1.2
+Requires-Dist: Mako
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: WebTest; extra == "test"
+Requires-Dist: Pillow; extra == "test"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: maintainer
+Dynamic: maintainer-email
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+Dozer
+=====
+
+.. image:: https://github.com/mgedmin/dozer/actions/workflows/build.yml/badge.svg?branch=master
+    :target: https://github.com/mgedmin/dozer/actions
+
+.. image:: https://ci.appveyor.com/api/projects/status/github/mgedmin/dozer?branch=master&svg=true
+    :target: https://ci.appveyor.com/project/mgedmin/dozer
+
+.. image:: https://coveralls.io/repos/mgedmin/dozer/badge.svg?branch=master
+    :target: https://coveralls.io/r/mgedmin/dozer
+
+Dozer was originally a WSGI middleware version of Robert Brewer's
+Dowser CherryPy tool that
+displays information as collected by the gc module to assist in
+tracking down memory leaks.  It now also has middleware for profiling
+and for looking at logged messages.
+
+
+Tracking down memory leaks
+--------------------------
+
+Usage::
+
+    from dozer import Dozer
+
+    # my_wsgi_app is a WSGI application
+    wsgi_app = Dozer(my_wsgi_app)
+
+Assuming you're serving your application on the localhost at port 5000,
+you can then load up ``http://localhost:5000/_dozer/index`` to view the
+gc info.
+
+
+Profiling requests
+------------------
+
+Usage::
+
+    from tempfile import mkdtemp
+    from dozer import Profiler
+
+    # my_wsgi_app is a WSGI application
+    wsgi_app = Profiler(my_wsgi_app, profile_path=mkdtemp(prefix='dozer-'))
+
+Assuming you're serving your application on the localhost at port 5000,
+you can then load up ``http://localhost:5000/_profiler`` to view the
+list of recorded request profiles.
+
+The profiles are stored in the directory specified via ``profile_path``.  If
+you want to keep seeing older profiles after restarting the web app, specify a
+fixed directory instead of generating a fresh empty new one with
+tempfile.mkdtemp.  Make sure the directory is not world-writable, as the
+profiles are stored as `insecure Python pickles, which allow arbitrary command
+execution during load
+<https://docs.python.org/3/library/pickle.html#module-pickle>`_.
+
+Here's a blog post by Marius Gedminas that contains `a longer description
+of Dozer's profiler <https://mg.pov.lt/blog/profiling-with-dozer.html>`_.
+
+
+Inspecting log messages
+-----------------------
+
+Usage::
+
+    from dozer import Logview
+
+    # my_wsgi_app is a WSGI application
+    wsgi_app = Logview(my_wsgi_app)
+
+Every text/html page served by your application will get some HTML and
+Javascript injected into the response body listing all logging messages
+produced by the thread that generated this response.
+
+Here's a blog post by Marius Gedminas that contains `a longer description
+of Dozer's logview <https://mg.pov.lt/blog/capturing-logs-with-dozer.html>`_.
+
+
+Dozer Changelog
+===============
+
+0.9 (November  7, 2025)
+-----------------------
+
+- Add support for Python 3.10, 3.11, 3.12, 3.13, and 3.14.
+- Drop support for Python 2.7, 3.6, 3.7, 3.8, and 3.9.
+- Stop using the cgi module (which wasn't really being used).
+- Possibly fix a bug where unbound methods were not being filtered out properly
+  in memory leak reports.
+
+
+0.8 (November 13, 2020)
+-----------------------
+
+- Add support for Python 3.8 and 3.9.
+- Drop support for Python 3.5.
+- Add UI input for existing "floor" query string parameter
+  (https://github.com/mgedmin/dozer/issues/2)
+- Add UI input to filter type charts by a regular expression
+- Add sorting option: monotonicity
+- Display traceback on 500 Internal Server Error
+- Dicts and sets with unsortable keys are no longer unrepresentable
+- Aggregate dynamically-created types with the same ``__name__`` and
+  ``__module__`` (`issue 9 <https://github.com/mgedmin/dozer/pull/9>`_).
+
+
+0.7 (April 23, 2019)
+--------------------
+
+* Add support for Python 3.7.
+* Drop support for Python 3.3 and 3.4.
+* Stop using cgi.escape on Python 3, which is especially important now that
+  it's been removed from Python 3.8.
+
+
+0.6 (May 18, 2017)
+------------------
+
+* Add support for Python 3.6.
+* Drop support for Python 2.6.
+* Fix rare TypeError when listing profiles, if two profiles happen to have
+  the exact same timestamp (https://github.com/mgedmin/dozer/pull/4).
+
+0.5 (December 2, 2015)
+----------------------
+* Make /_dozer show the index page (instead of an internal server
+  error).
+* Add support for Python 3.4 and 3.5.
+* Drop support for Python 2.5.
+* Move to GitHub.
+
+0.4 (March 21, 2013)
+--------------------
+* 100% test coverage.
+* Add support for Python 3.2 or newer.
+* Drop dependency on Paste.
+
+0.3.2 (February 10, 2013)
+--------------------------
+* More comprehensive fixes for issue #5 by Mitchell Peabody.
+* Fix TypeError: unsupported operand type(s) for +: 'property' and 'str'
+  (https://bitbucket.org/bbangert/dozer/issue/3).
+* Add a small test suite.
+
+0.3.1 (February 6, 2013)
+------------------------
+* Fix TypeError: You cannot set Response.body to a text object
+  (https://bitbucket.org/bbangert/dozer/issue/5).  Patch by Mitchell Peabody.
+
+0.3 (December 13, 2012)
+-----------------------
+* Emit the "PIL is not installed" only if the Dozer middleware is
+  actually used.
+* Give a name to the Dozer memleak thread.
+* You can now supply a function directly to Logview(stack_formatter=fn) 
+* New configuration option for Logview middleware: tb_formatter, similar
+  to stack_formatter, but for exception tracebacks.
+
+0.2 (December 5, 2012)
+----------------------
+* Adding logview that appends log events for the current request to the bottom
+  of the html output for html requests.
+* Adding profiler for request profiling and call tree viewing.
+* Refactored Dozer into its own leak package.
+* New maintainer: Marius Gedminas.
+
+0.1 (June 14, 2008)
+-------------------
+* Initial public release, port from Dowser, a CherryPy tool.
