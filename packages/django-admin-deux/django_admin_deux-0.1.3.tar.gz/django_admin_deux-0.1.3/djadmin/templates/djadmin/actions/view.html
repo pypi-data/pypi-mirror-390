@@ -1,0 +1,62 @@
+{% extends "djadmin/base_action.html" %}
+
+{% block action_content %}
+  <div>
+    {% if layout_items %}
+      {# Render layout items #}
+      {% for item in layout_items %}
+        {% if item.type == 'fieldset' %}
+          <fieldset {% if item.css_classes %}class="{{ item.css_classes|join:' ' }}"{% endif %}>
+            {% if item.legend %}<legend>{{ item.legend }}</legend>{% endif %}
+            {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+
+            {% for field_item in item.items %}
+              {% include "djadmin/actions/_detail_item.html" with item=field_item %}
+            {% endfor %}
+          </fieldset>
+
+        {% elif item.type == 'row' %}
+          <div class="row" {% if item.css_classes %}style="{{ item.css_classes|join:' ' }}"{% endif %}>
+            {% for field_item in item.items %}
+              {% include "djadmin/actions/_detail_item.html" with item=field_item %}
+            {% endfor %}
+          </div>
+
+        {% elif item.type == 'field' %}
+          {% include "djadmin/actions/_detail_item.html" with item=item %}
+
+        {% elif item.type == 'collection' %}
+          <section>
+            <h3>{{ item.legend }}</h3>
+            {% if item.items %}
+              <ul>
+                {% for collection_item in item.items %}
+                  <li>
+                    {% for field in collection_item.fields %}
+                      <strong>{{ field.label }}:</strong> {{ field.value }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p>No items.</p>
+            {% endif %}
+          </section>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      {# Fallback if no layout #}
+      <p>{{ object }}</p>
+    {% endif %}
+  </div>
+
+  <footer>
+    <a href="{{ list_url }}" class="secondary">Back to List</a>
+
+    {% if filtered_record_actions %}
+      <menu>
+        {% include "djadmin/includes/_action_buttons.html" with actions=filtered_record_actions object=object %}
+      </menu>
+    {% endif %}
+  </footer>
+{% endblock %}

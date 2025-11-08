@@ -1,0 +1,33 @@
+{% load djadmin_tags %}
+{# Search widget content - rendered inside sidebar-widget div #}
+{# Match filter widget structure for consistent spacing #}
+<div>
+    <h3>Search</h3>
+
+    <form method="get" action="">
+        {# Preserve all parameters except search and page #}
+        {% query_params_as_hidden_inputs 'search' 'page' %}
+
+        <div>
+            <input
+                type="search"
+                name="search"
+                value="{{ request.GET.search|default:'' }}"
+                placeholder="Search..."
+                aria-label="Search"
+            >
+        </div>
+
+        <div>
+            <button type="submit" class="primary">
+                {% include "djadmin/icons/magnifying-glass.html" %}
+                <span>Search</span>
+            </button>
+            {% if request.GET.search %}
+                <a href="{% querystring search=None page=None %}" class="secondary">
+                    Clear
+                </a>
+            {% endif %}
+        </div>
+    </form>
+</div>

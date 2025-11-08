@@ -1,0 +1,142 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-admin-deux"
+dynamic = ["version"]
+description = "A modern, extensible replacement for Django admin"
+authors = [{name = "Emma Delescolle", email = "dev@levit.be"}]
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Django",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "Django>=5.2",
+    "djp>=0.1.0",
+]
+
+[project.urls]
+Repository = "https://gitlab.levitnet.be/levit/django-admin-deux/-/tree/main"
+Documentation = "https://django-admin-deux.readthedocs.io/"
+Homepage = "https://django-admin-deux.readthedocs.io/"
+
+[project.optional-dependencies]
+full = [
+    "djadmin-formset>=0.1.0",
+    "djadmin-filters>=0.1.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-django>=4.0",
+    "pytest-cov>=4.0",
+    "pytest-factoryboy>=2.6.0",
+    "factory-boy>=3.3.0",
+    "faker>=22.0.0",
+    "ruff>=0.8.0",
+    "djlint>=1.34.0",
+    "pre-commit>=3.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["djadmin", "djadmin.*"]
+exclude = ["djadmin-*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "djadmin.__version__"}
+
+[tool.setuptools.package-data]
+djadmin = [
+    "templates/**/*",
+    "plugins/*/templates/**/*",
+    "plugins/*/static/**/*",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+python_files = ["test_*.py"]
+addopts = "--cov=djadmin --cov-report=html --cov-report=term-missing"
+testpaths = ["tests", "examples/webshop/tests"]
+django_find_project = false
+pythonpath = ["."]
+
+# Ruff configuration
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".pytest_cache",
+    ".coverage",
+    "htmlcov",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "DJ",  # flake8-django
+]
+ignore = [
+    "B905",  # zip without explicit strict parameter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/**/*.py" = [
+    "S101",  # Allow assert in tests
+    "ARG",   # Allow unused function arguments in tests
+    "FBT",   # Allow boolean positional values in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["djadmin"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# djLint configuration
+[tool.djlint]
+profile = "django"
+indent = 2
+max_line_length = 120
+format_attribute_template_tags = true
+preserve_blank_lines = true
+ignore = "H006,H030,H031"
+exclude = ".venv,venv,node_modules"
+extension = "html"
+
+[tool.djlint.css]
+indent_size = 2
+
+[tool.djlint.js]
+indent_size = 2

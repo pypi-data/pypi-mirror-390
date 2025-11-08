@@ -1,0 +1,46 @@
+{% extends "djadmin/admin_base.html" %}
+
+{% block title %}
+    Dashboard - {{ site_title|default:"Django Admin" }}
+{% endblock %}
+
+{% block content %}
+    <article>
+        <header>
+            <h1>Dashboard</h1>
+        </header>
+
+        <div>
+            {% for app in app_list %}
+                <section class="app-section">
+                    <header>
+                        <h2>
+                            <a href="{{ app.url }}">{{ app.verbose_name }}</a>
+                        </h2>
+                    </header>
+
+                    <div>
+                        <table>
+                            <tbody>
+                                {% for item in app.model_admins %}
+                                    <tr>
+                                        <td>{{ item.display_name }}</td>
+                                        <td>
+                                            <menu>
+                                                {% include "djadmin/includes/_action_buttons.html" with actions=item.general_actions default_css_class="primary" use_list_items=True %}
+                                            </menu>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            {% empty %}
+                <div>
+                    <p>No apps registered.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </article>
+{% endblock %}

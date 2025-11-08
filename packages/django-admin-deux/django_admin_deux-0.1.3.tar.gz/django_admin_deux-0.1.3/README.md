@@ -1,0 +1,555 @@
+# django-admin-deux
+
+A modern, extensible replacement for Django's admin interface, built on factory patterns and a robust plugin system.
+
+[![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Django Version](https://img.shields.io/badge/django-5.2+-green.svg)](https://www.djangoproject.com/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+## Overview
+
+**django-admin-deux** (pronounced "django admin two") is a complete reimagining of Django's admin interface. While maintaining familiar concepts and naming conventions, it provides superior extensibility, reusability, and modern UI/UX through a plugin-first architecture.
+
+### Key Features
+
+- **Plugin Architecture**: Built on [djp](https://github.com/simonw/djp), allowing easy extension and customization
+- **Factory Pattern**: Views are generated dynamically, enabling composition over inheritance
+- **Feature Advertising**: Fail-fast validation ensures plugins provide requested features
+- **Modern UI**: Tailwind-based default theme (coming in Milestone 4)
+- **Familiar API**: If you know Django admin, you'll feel right at home
+- **Incremental Adoption**: Can coexist with Django's built-in admin
+
+### Current Status
+
+🎉 **Milestone 5 Phase 2.7 Complete** - Permissions & Authorization System
+
+Major milestones completed:
+- ✅ **Milestone 1**: Foundation (Plugin system, AdminSite, URL routing, Feature validation)
+- ✅ **Milestone 2**: Django-Filter Plugin (Filtering, ordering, search via djadmin-filters)
+- ✅ **Milestone 3**: Layout API & Django-Formset Integration (Forms, inline editing via djadmin-formset)
+- ✅ **Milestone 4**: Developer Experience (djadmin_inspect, BaseCRUDTestCase, djadmin_apps)
+- ✅ **Milestone 5 Phase 2.7**: Permissions System (Core permissions, action filtering, ViewAction)
+
+**Test Results**: 720 passing tests, 82% coverage
+**Plugins Available**: djadmin-formset, djadmin-filters
+**Django Support**: 5.2, 6.0
+**Python Support**: 3.11, 3.12, 3.13, 3.14
+
+## Quick Start
+
+### Installation
+
+```bash
+# Basic installation
+pip install django-admin-deux
+
+# With all plugins (djadmin-formset + djadmin-filters)
+pip install django-admin-deux[full]
+
+# With specific plugins
+pip install django-admin-deux[formset]   # Just djadmin-formset
+pip install django-admin-deux[filters]   # Just djadmin-filters
+```
+
+### Basic Usage
+
+**1. Add to your `INSTALLED_APPS`:**
+
+```python
+# settings.py
+INSTALLED_APPS = [
+    # ...
+    'djadmin',
+    # ...
+]
+```
+
+**2. Create a `djadmin.py` file in your app:**
+
+```python
+# myapp/djadmin.py
+from djadmin import ModelAdmin, register, Layout, Field, Fieldset, Row
+from .models import Book
+
+@register(Book)
+class BookAdmin(ModelAdmin):
+    list_display = ['title', 'author', 'published_date']
+    search_fields = ['title', 'author']
+    list_filter = ['published_date']
+
+    # Optional: Customize form layout
+    layout = Layout(
+        Fieldset('Book Information',
+            Field('title'),
+            Row(
+                Field('author', css_classes=['flex-1', 'pr-2']),
+                Field('published_date', css_classes=['flex-1', 'pl-2']),
+            ),
+        ),
+        Fieldset('Content',
+            Field('description', widget='textarea', attrs={'rows': 6}),
+        ),
+    )
+```
+
+**3. Add to your URLs:**
+
+```python
+# urls.py
+from django.urls import path, include
+from djadmin import site
+
+urlpatterns = [
+    path('admin/', admin.site.urls),  # Django's admin (optional)
+    path('djadmin/', include(site.urls)),
+    path('accounts/', include('django.contrib.auth.urls')),  # Required for login/logout
+]
+```
+
+**4. Visit your admin:**
+
+```
+http://localhost:8000/djadmin/
+```
+
+## Development Setup
+
+### Prerequisites
+
+- Python 3.11 or higher
+- [just](https://github.com/casey/just) command runner (optional but recommended)
+- Git
+
+### Clone and Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/django-admin-deux.git
+cd django-admin-deux
+
+# Run the setup script
+./setup_dev.sh
+
+# Or manually:
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+pre-commit install
+```
+
+### Development Commands
+
+With `just` installed:
+
+```bash
+# Run tests
+just test
+
+# Run tests with coverage
+just test-coverage
+
+# Format code
+just format
+
+# Run linters
+just lint
+
+# Run development server
+just runserver
+
+# See all commands
+just --list
+```
+
+Without `just`:
+
+```bash
+# Run tests
+pytest
+
+# Run tests with coverage
+pytest --cov=djadmin --cov-report=html
+
+# Format code
+ruff format .
+ruff check . --fix
+djlint djadmin/ --reformat
+
+# Run linters
+ruff check .
+djlint djadmin/ --lint
+
+# Run development server
+cd tests && python manage.py runserver
+```
+
+### Project Structure
+
+```
+django-admin-deux/
+├── djadmin/              # Main package
+│   ├── plugins/          # Plugin system
+│   ├── sites.py          # AdminSite class
+│   ├── options.py        # ModelAdmin class
+│   └── decorators.py     # @register decorator
+├── examples/
+│   └── webshop/          # Example e-commerce app
+├── tests/                # Test infrastructure
+├── pyproject.toml        # Package configuration
+└── tox.ini               # CI test matrix
+```
+
+## Key Features
+
+## Architecture
+
+### Plugin System
+
+django-admin-deux uses [djp](https://github.com/simonw/djp) for its plugin architecture. Plugins can:
+
+- Add mixins to views
+- Provide default actions
+- Modify querysets
+- Add context data
+- Provide CSS/JS assets
+
+**Example plugin:**
+
+```python
+# myapp/djadmin_hooks.py
+from djadmin.plugins import hookimpl
+
+@hookimpl
+def djadmin_provides_features():
+    """Advertise features this plugin provides"""
+    return ['search', 'filter']
+
+@hookimpl
+def djadmin_get_action_view_mixins(action):
+    """Add search functionality to ListView"""
+    from djadmin.plugins.core.actions import ListAction
+    from .mixins import SearchMixin
+
+    return {
+        ListAction: [SearchMixin]
+    }
+```
+
+### Feature Advertising
+
+ModelAdmin configurations are validated at startup. If you request a feature (like search or filtering) but no plugin provides it, you'll get a clear error:
+
+```python
+class BookAdmin(ModelAdmin):
+    search_fields = ['title']  # Requires 'search' feature
+
+# If no plugin provides 'search':
+# ImproperlyConfigured: ModelAdmin BookAdmin requests features {'search'}
+# but no registered plugin provides them.
+```
+
+### View Factory Pattern
+
+Views are generated dynamically using class-based factories, allowing plugins to inject mixins and customize behavior without complex inheritance chains.
+
+```python
+# Conceptual example (Milestone 2)
+class ListViewFactory:
+    def create_view(self, model, admin_class, plugins):
+        # Collect mixins from plugins
+        mixins = []
+        for plugin in plugins:
+            mixins.extend(plugin.get_list_view_mixins())
+
+        # Generate view class dynamically
+        view_class = type(
+            f'{model.__name__}ListView',
+            tuple(mixins + [BaseListView]),
+            {'model': model, 'admin': admin_class}
+        )
+        return view_class
+```
+
+### Layout API
+
+django-admin-deux provides a powerful Layout API for customizing form layouts with progressive enhancement:
+
+```python
+from djadmin import ModelAdmin, register, Layout, Field, Fieldset, Row
+
+@register(Author)
+class AuthorAdmin(ModelAdmin):
+    layout = Layout(
+        Fieldset('Personal Information',
+            Row(
+                Field('first_name', css_classes=['flex-1', 'pr-2']),
+                Field('last_name', css_classes=['flex-1', 'pl-2']),
+            ),
+            Field('birth_date', label='Date of Birth'),
+        ),
+        Fieldset('Biography',
+            Field('bio', widget='textarea', attrs={'rows': 8}),
+        ),
+    )
+```
+
+**Action-Specific Layouts**:
+
+Use different layouts for create vs update actions (follows the same pattern as `create_form_class`/`update_form_class`):
+
+```python
+@register(Product)
+class ProductAdmin(ModelAdmin):
+    # Create-specific layout (simpler, focused on essentials)
+    create_layout = Layout(
+        Fieldset('New Product',
+            Field('name', required=True),
+            Row(
+                Field('price', css_classes=['flex-1']),
+                Field('cost', css_classes=['flex-1']),
+            ),
+        ),
+    )
+
+    # Update-specific layout (includes metadata fields)
+    update_layout = Layout(
+        Fieldset('Product Information',
+            Field('name'),
+            Field('description', widget='textarea'),
+        ),
+        Fieldset('Metadata',
+            Field('created_at', widget=DateTimeInput(attrs={'readonly': True})),
+            Field('updated_at', widget=DateTimeInput(attrs={'readonly': True})),
+        ),
+    )
+```
+
+**Core Features** (no plugin required):
+- ✅ **Fieldsets** - Group fields with legends and descriptions
+- ✅ **Rows** - Horizontal layouts using flexbox
+- ✅ **Field Customization** - Labels, widgets, help text, CSS classes
+- ✅ **Widget Shortcuts** - Use strings like `'textarea'`, `'email'`
+- ✅ **Django Admin Migration** - Automatic conversion of `fieldsets`
+- ✅ **Action-Specific Layouts** - Different layouts for create/update (`create_layout`, `update_layout`)
+
+**Plugin Features** (with djadmin-formset):
+- ✅ **Collections** - Inline editing of related objects
+- ✅ **Conditional Fields** - Show/hide fields based on values
+- ✅ **Computed Fields** - Auto-calculate values
+- ✅ **Client-side Validation** - Instant feedback
+- ✅ **Drag-and-drop** - Reorder inline items
+
+**Learn more**: [Layout API Documentation](docs/layout-api/index.md)
+
+## Testing
+
+The project uses pytest with extensive test coverage:
+
+```bash
+# Run all tests
+just test
+
+# Run specific test
+just test-file tests/test_plugins.py
+
+# Run tests matching pattern
+just test-match test_register
+
+# Run with coverage report
+just test-coverage
+```
+
+### Test Organization
+
+- **`tests/`** - Infrastructure tests (plugins, URLs, validation)
+- **`examples/webshop/tests/`** - Integration tests using example models
+
+### Test Best Practices: Avoiding Test Pollution
+
+When writing tests that register/unregister ModelAdmin classes, follow the **DynamicURLConf pattern** to avoid test pollution (tests that pass individually but fail in the suite):
+
+```python
+from django.test import TestCase, override_settings
+from django.urls import clear_url_caches
+from djadmin import ModelAdmin, site
+
+# Dynamic URLconf regenerates on each access
+class DynamicURLConf:
+    @property
+    def urlpatterns(self):
+        from django.urls import path, include
+        return [path('djadmin/', include(site.urls))]
+
+@override_settings(ROOT_URLCONF=DynamicURLConf())
+class TestMyFeature(TestCase):
+    def setUp(self):
+        # Clean registry before test
+        if MyModel in site._registry:
+            site.unregister(MyModel)
+        self.my_objects = MyModelFactory.create_batch(5)
+
+    def tearDown(self):
+        # Clean registry and caches after test
+        if MyModel in site._registry:
+            site.unregister(MyModel)
+        clear_url_caches()
+        if hasattr(self.client, '_cached_urlconf'):
+            delattr(self.client, '_cached_urlconf')
+
+    def test_my_feature(self):
+        # Register with override=True
+        class MyModelAdmin(ModelAdmin):
+            list_display = ['field1', 'field2']
+        site.register(MyModel, MyModelAdmin, override=True)
+        # ... test code
+```
+
+**Why this is needed**: Django caches URL patterns and view closures, so without this pattern, tests will use stale admin configurations from previous tests.
+
+**Reference**: This pattern is based on https://ጮ.cc/2019/11/09/django-testing-dynamic-urlconf.html
+
+See `tests/test_search.py` for a complete example.
+
+### Example Models
+
+The webshop example app provides realistic test data:
+
+- `Category` - Hierarchical product categories
+- `Product` - Products with SKU, pricing, stock
+- `Customer` - Customer accounts with addresses
+- `Order` - Orders with status tracking
+- `OrderItem` - Line items in orders
+- `Review` - Product reviews with ratings
+- `Tag` - Tags (many-to-many relationship example)
+
+All models have corresponding factory_boy factories for easy test data creation.
+
+## Continuous Integration
+
+The project uses GitLab CI with tox to test all Python/Django combinations:
+
+- Python: 3.11, 3.12, 3.13, 3.14
+- Django: 5.2, 6.0
+
+Pre-commit hooks run on every commit to catch issues early:
+- Ruff (linting and formatting)
+- djLint (Django template linting)
+- pytest (test suite)
+
+## Roadmap
+
+### Milestone 1: Foundation ✅ Complete
+- ✅ Plugin system with djp
+- ✅ AdminSite and ModelAdmin classes
+- ✅ URL routing
+- ✅ Feature validation
+- ✅ Basic templates
+
+### Milestone 2: View Factories & Actions ✅ Complete
+- ✅ Factory pattern implementation
+- ✅ ListView, CreateView, DetailView
+- ✅ Form handling
+- ✅ List actions (e.g., "Add New")
+- ✅ Bulk actions (e.g., "Delete Selected")
+- ✅ Record actions (e.g., "Edit", "Delete")
+
+### Milestone 3: Layout API & Django-Formset Integration ✅ Complete
+- ✅ Core Layout API (Field, Fieldset, Row, Collection)
+- ✅ Automatic Django admin fieldsets conversion
+- ✅ Feature advertising system
+- ✅ Basic flexbox rendering
+- ✅ FormFactory for django-formset integration
+- ✅ Inline editing (Collections)
+- ✅ Conditional fields (show_if/hide_if)
+- ✅ Computed fields (calculate)
+- ✅ 565 tests passing, 87% coverage
+
+### Milestone 4: Developer Experience ✅ Complete
+- ✅ djadmin_inspect management command
+- ✅ BaseCRUDTestCase for automated testing
+- ✅ Plugin-driven INSTALLED_APPS
+- ✅ Comprehensive documentation
+
+### Milestone 5: Permissions System (Current - Phase 2.7 Complete)
+- ✅ Core permission classes (IsAuthenticated, IsStaff, HasDjangoPermission)
+- ✅ Composition operators (AND/OR/NOT)
+- ✅ ModelAdmin permission integration
+- ✅ Action-level permissions
+- ✅ Object-level permissions support
+- ✅ Action filtering based on permissions
+- ✅ ViewAction for view-only users
+- ✅ Dashboard filtering
+- ✅ 720 tests passing, 82% coverage
+- 📋 Next: Guardian plugin (optional), UI integration & polish
+
+### Milestone 6: Quality & Polish (Planned)
+- Coverage improvements (>90%)
+- Accessibility audit (WCAG 2.1 AA)
+- Performance benchmarking
+- CI/CD infrastructure
+- Production-ready release
+
+## Contributing
+
+We welcome contributions! The project is in early development, so there are many opportunities to help shape the future of Django admin interfaces.
+
+### Development Workflow
+
+1. **Fork and clone** the repository
+2. **Create a feature branch**: `git checkout -b feature/my-feature`
+3. **Make your changes** and add tests
+4. **Run tests and linters**: `just test && just lint`
+5. **Commit** (pre-commit hooks will run automatically)
+6. **Push** and create a merge request
+
+### Code Style
+
+- **Python**: Ruff formatter (120 character line length)
+- **Templates**: djLint formatter
+- **Commits**: Use conventional commit format (e.g., `feat:`, `fix:`, `docs:`)
+- **Tests**: Pytest with >80% coverage required
+
+### Running Tests Locally
+
+```bash
+# Run full test suite
+just test
+
+# Test specific Python/Django combination
+tox -e py311-django52
+
+# Test all combinations (like CI)
+tox
+```
+
+## Documentation
+
+### User Documentation
+- **[Layout API Overview](docs/layout-api/index.md)** - Introduction to the Layout API
+- **[Component Reference](docs/layout-api/components.md)** - Detailed API for each component
+- **[Django Admin Migration Guide](docs/layout-api/django-admin-migration.md)** - Migrate from Django admin
+- **[Layout Examples](docs/layout-api/examples.md)** - Real-world usage patterns
+
+### Developer Documentation
+- **[CLAUDE.md](CLAUDE.md)** - Technical documentation for AI assistants
+- **[PRD](claude_docs/django-admin-deux-PRD.md)** - Complete product requirements (v2.7)
+- **[Milestone 5 Implementation Plan](claude_docs/milestone-5-implementation-plan.md)** - Current milestone plan
+- **[CHANGELOG](CHANGELOG.md)** - Version history and release notes
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Inspired by [django-admin2](https://github.com/jazzband/django-admin2)
+- Built with [djp](https://github.com/simonw/djp) by Simon Willison
+- Uses [factory_boy](https://github.com/FactoryBoy/factory_boy) for test data
+- Styled with [Tailwind CSS](https://tailwindcss.com/) (coming in Milestone 4)
+
+---
+
+**Status**: 🎉 Milestone 5 Phase 2.7 Complete
+**Python**: 3.11+
+**Django**: 5.2+
+**License**: MIT

@@ -1,0 +1,131 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Django Admin{% endblock %}</title>
+
+    {# Theme CSS loaded via plugin hooks #}
+    {% if assets.css %}
+    {% for css_asset in assets.css %}
+    <link rel="stylesheet" href="{% static css_asset.href %}"{% with attrs=css_asset.get_attributes %}{% for attr_name, attr_value in attrs.items %}{% if attr_value is True %} {{ attr_name }}{% else %} {{ attr_name }}="{{ attr_value }}"{% endif %}{% endfor %}{% endwith %}>
+    {% endfor %}
+    {% endif %}
+
+    {# Blocking JavaScript (loaded in head before rendering to prevent layout shift) #}
+    {% if assets.js %}
+    {% for js_asset in assets.js %}
+    {% if js_asset.blocking %}
+    <script src="{% static js_asset.src %}"{% with attrs=js_asset.get_attributes %}{% for attr_name, attr_value in attrs.items %}{% if attr_value is True %} {{ attr_name }}{% else %} {{ attr_name }}="{{ attr_value }}"{% endif %}{% endfor %}{% endwith %}></script>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="admin">
+        {# Navigation - Theme can override this partial #}
+        {% include "djadmin/_navigation.html" %}
+
+        {# Breadcrumbs #}
+        {% block breadcrumbs %}
+        {% if breadcrumb_list %}
+        <nav aria-label="Breadcrumb">
+            <ol>
+                {% for crumb in breadcrumb_list %}
+                <li>
+                    {% if crumb.url %}
+                    <a href="{{ crumb.url }}">{{ crumb.title }}</a>
+                    {% else %}
+                    <span>{{ crumb.title }}</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </nav>
+        {% endif %}
+        {% endblock %}
+
+        {# Messages #}
+        {% if messages %}
+        <div>
+            {% for message in messages %}
+            <div role="alert" class="{{ message.level_tag }}">
+                <p>{{ message }}</p>
+                <button type="button" aria-label="Dismiss">×</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {# Main Content with optional sidebar #}
+        <main>
+            <div class="content-wrapper">
+                {# Primary content #}
+                <div class="primary-content">
+                    {% block content %}{% endblock %}
+                </div>
+
+                {# Sidebar on the right (if widgets exist) #}
+                {% block sidebar %}
+                    {% include "djadmin/includes/_sidebar.html" %}
+                {% endblock %}
+            </div>
+        </main>
+
+        {# Footer #}
+        <footer>
+            {% block footer %}
+            <p>Powered by django-admin-deux {{ djadmin_version }} | Django {{ django_version }}</p>
+            {% endblock %}
+        </footer>
+    </div>
+
+    {# Non-blocking JavaScript (loaded at end of body for better performance) #}
+    {% if assets.js %}
+    {% for js_asset in assets.js %}
+    {% if not js_asset.blocking %}
+    <script src="{% static js_asset.src %}"{% with attrs=js_asset.get_attributes %}{% for attr_name, attr_value in attrs.items %}{% if attr_value is True %} {{ attr_name }}{% else %} {{ attr_name }}="{{ attr_value }}"{% endif %}{% endfor %}{% endwith %}></script>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+
+    {# Debug information (only when DEBUG=True) #}
+    {% if debug_loaded_plugins %}
+    <!-- Django Admin Deux Debug Info -->
+    <!-- Loaded Plugins: -->
+    {% for plugin in debug_loaded_plugins %}
+    <!--   - {{ plugin }} -->
+    {% endfor %}
+    <!-- Assets: -->
+    <!--   CSS assets: {{ assets.css|length }} -->
+    {% for css_asset in assets.css %}
+    <!--     - {{ css_asset.href }} -->
+    {% endfor %}
+    <!--   JS assets: {{ assets.js|length }} -->
+    {% for js_asset in assets.js %}
+    <!--     - {{ js_asset.src }} (module={{ js_asset.module }}) -->
+    {% endfor %}
+    {% if debug_view_mro %}
+    <!-- View MRO (first 10 classes): -->
+    {% for cls_name in debug_view_mro %}
+    <!--   {{ forloop.counter }}. {{ cls_name }} -->
+    {% endfor %}
+    {% endif %}
+    {% if debug_action_mro %}
+    <!-- Action MRO (first 10 classes): -->
+    {% for cls_name in debug_action_mro %}
+    <!--   {{ forloop.counter }}. {{ cls_name }} -->
+    {% endfor %}
+    {% endif %}
+    {% if debug_form_class %}
+    <!-- Form class: {{ debug_form_class }} -->
+    {% endif %}
+    <!-- End Debug Info -->
+    {% endif %}
+</body>
+</html>

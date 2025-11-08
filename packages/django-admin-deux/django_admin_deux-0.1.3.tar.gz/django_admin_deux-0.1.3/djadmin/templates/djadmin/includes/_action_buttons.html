@@ -1,0 +1,37 @@
+{% load djadmin_tags %}
+{% comment %}
+Reusable action button renderer
+Parameters:
+  - actions (required): List of action instances to render
+  - object (optional): Model instance for per-object permission filtering
+  - include_current (default=False): Whether to show current action
+  - default_css_class (optional): Fallback CSS class if action.css_class is empty
+  - use_list_items (default=False): Wrap each action in <li> tags
+Auto-inherited from parent context:
+  - action_namespace: For URL generation
+  - action: Current action (for exclusion logic)
+  - model_admin: For permission filtering
+  - request: For permission filtering
+{% endcomment %}
+{% if object %}
+    {% filter_record_actions actions object as actions_to_render %}
+{% else %}
+    {% assign actions as actions_to_render %}
+{% endif %}
+{% for action_item in actions_to_render %}
+    {% if include_current or action_item.url_name != action.url_name %}
+        {% if use_list_items %}<li>{% endif %}
+        {% if action_item.url %}
+            <a href="{{ action_item.url }}"{% if action_item.css_class %} class="{{ action_item.css_class }}"{% elif default_css_class %} class="{{ default_css_class }}"{% endif %}>
+                {% if action_item.icon %}{% include "djadmin/includes/_icon.html" with icon=action_item.icon %}{% endif %}
+                {{ action_item.label }}
+            </a>
+        {% else %}
+            <a href="{% if object %}{% url action_namespace|add:':'|add:action_item.url_name pk=object.pk %}{% else %}{% url action_namespace|add:':'|add:action_item.url_name %}{% endif %}"{% if action_item.css_class %} class="{{ action_item.css_class }}"{% elif default_css_class %} class="{{ default_css_class }}"{% endif %}>
+                {% if action_item.icon %}{% include "djadmin/includes/_icon.html" with icon=action_item.icon %}{% endif %}
+                {{ action_item.label }}
+            </a>
+        {% endif %}
+        {% if use_list_items %}</li>{% endif %}
+    {% endif %}
+{% endfor %}

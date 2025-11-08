@@ -1,0 +1,50 @@
+{# Theme navigation with dark mode toggle #}
+<header>
+    <nav>
+        {# Brand/Logo #}
+        <a href="{{ index_url|default:'/' }}">
+            {% block site_title %}{{ site_header|default:"Django Admin" }}{% endblock %}
+        </a>
+
+        {# Spacer to push items to the right #}
+        <div style="flex: 1;"></div>
+
+        {# User Menu - Only show if user is authenticated and logout URL exists #}
+        {% if request.user.is_authenticated %}
+        {% url 'logout' as logout_url %}
+        {% if logout_url %}
+        <div class="user-menu">
+            <button type="button"
+                    id="user-menu-toggle"
+                    aria-label="User menu"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                <span>{{ request.user.get_username }}</span>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <menu id="user-menu-dropdown" hidden>
+                <li>
+                    <form method="post" action="{{ logout_url }}">
+                        {% csrf_token %}
+                        <button type="submit">Sign Out</button>
+                    </form>
+                </li>
+            </menu>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {# Dark Mode Toggle #}
+        <button type="button"
+                id="dark-mode-toggle"
+                aria-label="Toggle dark mode"
+                title="Toggle dark mode">
+            {# Sun icon (shown in dark mode) #}
+            {% include "djadmin/icons/sun.html" %}
+            {# Moon icon (shown in light mode) #}
+            {% include "djadmin/icons/moon.html" %}
+        </button>
+    </nav>
+</header>
