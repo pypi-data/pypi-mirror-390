@@ -1,0 +1,160 @@
+# optycode SDK
+
+A lightweight Python SDK to interact with the optycode API for logging model interactions and analytics.
+
+## Installation
+
+```bash
+pip install optycode-sdk
+```
+
+## Getting Started
+
+### Authentication
+
+To use the optycode SDK, you'll need an authentication token and model ID. Both can be obtained from your optycode account dashboard.
+
+1. **Auth Token**: Your API authentication token (available in your optycode account)
+2. **Model ID**: The identifier for your model (available in your optycode account)
+
+### Basic Usage
+
+```python
+from optycode_sdk import OptycodeAPI
+
+# Initialize the client with your auth token
+client = OptycodeAPI(auth_token="your-auth-token-here")
+
+# Log a simple interaction
+client.log_data(
+    user_question="What is machine learning?",
+    model_answer="Machine learning is a subset of artificial intelligence...",
+    model_id="your-model-id-here"
+)
+```
+
+### Parameters
+
+The `log_data` and `log_data_async` methods accept the following parameters:
+
+- `user_question` (required): The user's question or input
+- `model_answer` (required): The model's response
+- `model_id` (required): Your model identifier from optycode account
+- `session_id` (optional): Session identifier for grouping related interactions
+- `model_input` (optional): The actual input sent to the model (defaults to `user_question` if not provided)
+- `question_id` (optional): Unique identifier for the question
+- `rag_elements` (optional): RAG (Retrieval-Augmented Generation) elements used
+- `attachment` (optional): Binary attachment data (e.g., images, documents)
+- `signed_url` (optional): only if attachement is not present, it's retourned from the upload_attachement function
+
+## Production Usage
+
+### Using `log_data_async` for Production
+
+For production environments, **always use `log_data_async`** instead of `log_data`. The async method:
+
+- Uses a very short timeout to avoid blocking your application
+- Doesn't wait for the server response, improving performance
+- Is designed for high-throughput scenarios where you don't need immediate confirmation
+
+We also recommend always logging a session_id and a question_id, for better visualizations in the dashboard
+
+```python
+from optycode_sdk import OptycodeAPI
+
+client = OptycodeAPI(auth_token="your-auth-token-here")
+
+# Production-ready async logging
+client.log_data_async(
+    user_question="What is the weather today?",
+    model_answer="The weather is sunny with a high of 75°F.",
+    model_id="your-model-id-here",
+    session_id="session-123",
+    question_id=42
+)
+```
+
+### Handling Attachments Separately
+
+If your attachment processing happens in a different part of your codebase than your model processing, use `upload_attachment` to upload the file first, then pass the returned `signed_url` to `log_data_async`.
+
+**Use case**: You process attachments in one service/module, and log model interactions in another.
+
+```python
+from optycode_sdk import OptycodeAPI
+
+client = OptycodeAPI(auth_token="your-auth-token-here")
+
+# Upload attachment separately (e.g., in a different service/module)
+with open("document.pdf", "rb") as f:
+    attachment_data = f.read()
+
+signed_url = client.upload_attachement(
+    attachment=attachment_data,
+    model_id="your-model-id-here",
+    question_id=42,
+    session_id="session-123"
+)
+
+# Later, in a different part of your code, log the interaction with the signed URL
+client.log_data_async(
+    user_question="Analyze this document",
+    model_answer="The document contains...",
+    model_id="your-model-id-here",
+    session_id="session-123",
+    question_id=42,
+    signed_url=signed_url  # Use the pre-uploaded attachment
+)
+```
+
+### Complete Example with Attachment
+
+If you have the attachment available at the same time as logging:
+
+```python
+from optycode_sdk import OptycodeAPI
+
+client = OptycodeAPI(auth_token="your-auth-token-here")
+
+# Read attachment
+with open("image.png", "rb") as f:
+    image_data = f.read()
+
+# Log with attachment (handled automatically)
+client.log_data_async(
+    user_question="What's in this image?",
+    model_answer="The image shows a cat sitting on a mat.",
+    model_id="your-model-id-here",
+    session_id="session-123",
+    question_id=42,
+    attachment=image_data
+)
+```
+
+## Error Handling
+
+The SDK will raise exceptions if:
+- The authentication token is invalid
+- The API request fails
+- Required parameters are missing
+
+Always wrap your calls in try-except blocks for production code:
+
+```python
+try:
+    client.log_data_async(
+        user_question="Test question",
+        model_answer="Test answer",
+        model_id="your-model-id-here"
+    )
+except Exception as e:
+    # Handle error appropriately
+    print(f"Failed to log data: {e}")
+```
+
+## Notes
+
+- The SDK automatically verifies your token upon initialization
+- All timestamps are automatically generated
+- The `log_data_async` method is fire-and-forget, so it won't block your application
+- For best performance in production, always use `log_data_async`
