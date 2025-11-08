@@ -1,0 +1,75 @@
+# Process this file with autoconf to produce a configure script.
+
+define(ZZ_COPYRIGHT,[[
+Copyright (C) 2024, 2025 Sergey B Kirpichev
+
+This file is part of the ZZ Library.
+
+The ZZ Library is free software: you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License (LGPL) as published by the
+Free Software Foundation; either version 3 of the License, or (at your option)
+any later version.  See <https://www.gnu.org/licenses/>.
+
+]])
+define(ZZ_COPYRIGHT_C,[[/*
+    Copyright (C) 2024, 2025 Sergey B Kirpichev
+
+    This file is part of the ZZ Library.
+
+    The ZZ Library is free software: you can redistribute it and/or modify it
+    under the terms of the GNU Lesser General Public License (LGPL) as
+    published by the Free Software Foundation; either version 3 of the License,
+    or (at your option) any later version.  See
+    <https://www.gnu.org/licenses/>.
+*/]])
+
+AC_COPYRIGHT(ZZ_COPYRIGHT)
+AH_TOP(ZZ_COPYRIGHT_C)
+
+AC_PREREQ(2.62)
+
+AC_INIT([zz],[0.1],[skirpichev@gmail.com])
+#AC_CONFIG_SRCDIR(zz.h)
+AC_CONFIG_MACRO_DIRS([m4])
+
+AM_INIT_AUTOMAKE([gnu no-dependencies])
+AC_CONFIG_HEADERS([config.h])
+AM_MAINTAINER_MODE
+
+AC_PROG_MAKE_SET
+
+# Check for which system.
+AC_CANONICAL_HOST
+
+# Disable unnecessary libtool tests...
+define([AC_LIBTOOL_LANG_CXX_CONFIG],[:])dnl
+define([AC_LIBTOOL_LANG_F77_CONFIG],[:])dnl
+define([AC_LIBTOOL_LANG_GCJ_CONFIG],[:])dnl
+
+# Checks for programs.
+AC_PROG_CC
+AC_LANG(C)
+LT_INIT
+
+# Checks for libraries...
+AC_CHECK_LIB(gmp,__gmpz_init,,AC_MSG_ERROR([GNU GMP library is required.]))
+
+AC_CHECK_LIB([pthread], [pthread_create], [HAVE_PTHREAD=yes], [HAVE_PTHREAD=no])
+AS_IF([test "x$HAVE_PTHREAD" = xyes],
+      [AC_DEFINE_UNQUOTED([HAVE_PTHREAD_H], [1], [Define to 1 if you have the <pthread.h> header file.])
+       LIBS="$LIBS -lpthread"],
+      [AC_DEFINE_UNQUOTED([HAVE_PTHREAD_H], [0], [Define to 0 if you do not have the <pthread.h> header file.])])
+
+# Checks for header files.
+AC_CHECK_HEADERS([assert.h ctype.h float.h inttypes.h math.h setjmp.h
+                  stdlib.h string.h stdbool.h stddef.h stdint.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+
+AC_ARG_ENABLE(gcov,[AS_HELP_STRING([--enable-gcov], [enable coverage test])])
+AM_CONDITIONAL([ENABLE_GCOV],[test "x${enable_gcov}" = "xyes"])
+
+AC_CONFIG_FILES([makefile doc/makefile tests/makefile zz.pc])
+AC_OUTPUT
