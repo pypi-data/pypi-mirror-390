@@ -1,0 +1,56 @@
+# Docker Compose configuration for secure-string-cipher
+
+services:
+  cipher:
+    image: ghcr.io/theredtower/secure-string-cipher:latest
+    
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    #   pull: true
+    
+    container_name: secure-cipher
+    stdin_open: true
+    tty: true
+    
+    volumes:
+      - ./data:/data
+      - cipher-vault:/home/cipheruser/.secure-cipher
+    
+    environment:
+      - CIPHER_VAULT_PATH=/home/cipheruser/.secure-cipher/passphrase_vault.enc
+      - PYTHONUNBUFFERED=1
+    
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+    read_only: false
+    
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=100m
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    restart: unless-stopped
+    network_mode: bridge
+
+volumes:
+  cipher-vault:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/.secure-cipher-docker
