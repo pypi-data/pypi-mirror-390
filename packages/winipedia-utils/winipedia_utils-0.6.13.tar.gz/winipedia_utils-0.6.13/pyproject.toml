@@ -1,0 +1,55 @@
+# Project section
+[project]
+name = "winipedia-utils"
+version = "0.6.13"
+description = "A package with many utility functions"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Winipedia", email = "win.steveker@gmx.de"}
+]
+license = "MIT"
+dependencies = ["polars", "pyyaml", "keyring", "pygithub", "pathspec", "networkx", "setuptools", "tqdm", "defusedxml", "cryptography", "tomlkit", "dotenv"]
+
+# Build system section[build-system]
+[build-system]
+requires = [ "poetry-core>=2.0.0,<3.0.0",]
+build-backend = "poetry.core.masonry.api"
+
+# Poetry section
+[[tool.poetry.packages]]
+include = "winipedia_utils"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+pre-commit = "*"
+mypy = "*"
+pytest = "*"
+bandit = "*"
+types-setuptools = "*"
+types-tqdm = "*"
+types-defusedxml = "*"
+types-pyyaml = "*"
+pytest-mock = "*"
+types-networkx = "*"
+
+[tool.ruff]
+exclude = [ ".*", "**/migrations/*.py",]
+[tool.ruff.lint]
+select = [ "ALL",]
+ignore = [ "D203", "D213", "COM812", "ANN401",]
+fixable = [ "ALL",]
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+show_error_codes = true
+files = "."
+
+[tool.pytest.ini_options]
+testpaths = [ "tests",]
+
+[tool.bandit]
+exclude_dirs = ["experiment.py"]
