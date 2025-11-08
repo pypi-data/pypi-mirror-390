@@ -1,0 +1,66 @@
+Metadata-Version: 2.1
+Name: ckdl
+Version: 1.0
+Summary: KDL parser and writer with a C back-end
+Home-page: https://github.com/tjol/ckdl
+Author: Thomas Jollans
+Project-URL: Documentation, https://ckdl.readthedocs.io/
+Keywords: kdl parser configuration
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Description-Content-Type: text/markdown
+License-File: COPYING
+
+
+# ckdl - KDL reading and writing using a C backend
+
+**ckdl** is a C library that implements reading and writing a the
+[KDL Document Language](https://kdl.dev/).
+
+This package lets Python programs read and write KDL (both version 2.0.0 and
+version 1.0.0) files, using *ckdl* as a back-end.
+
+Install with
+
+    pip install ckdl
+
+## Examples
+
+### Reading
+
+```pycon
+>>> import ckdl
+>>> kdl_txt = """
+... best-primes 2 3 5 7
+... colours importance=(%)1000 { green; blue shade=синий; blue shade=голубой; violet }
+... """
+>>> doc = ckdl.parse(kdl_txt)
+>>> doc
+<Document; 2 nodes>
+>>> doc[0]
+<Node best-primes; 4 args>
+>>> doc[0].args
+[2, 3, 5, 7]
+>>> doc[1].properties
+{'importance': <Value (%)1000>}
+>>> doc[1].properties['importance'].value
+1000
+>>> doc[1].properties['importance'].type_annotation
+'%'
+>>> doc[1].children
+[<Node green>, <Node blue; 1 property>, <Node blue; 1 property>, <Node violet>]
+>>> doc[1].children[1].properties['shade']
+'синий'
+```
+
+### Writing
+
+```pycon
+>>> mydoc = ckdl.Document(ckdl.Node("best-primes", 7, 11, 13), ckdl.Node("worst-values", ckdl.Value("scary", None)))
+>>> print(str(mydoc))
+best-primes 7 11 13
+worst-values (scary)#null
+
+```
