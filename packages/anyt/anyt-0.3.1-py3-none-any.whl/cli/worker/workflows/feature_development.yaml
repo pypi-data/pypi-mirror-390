@@ -1,0 +1,135 @@
+# Feature Development Workflow
+name: Feature Development
+description: Automated workflow for feature implementation
+
+# Trigger conditions
+"on":
+  task_created:
+    labels: ["feature"]
+  task_updated:
+    status: ["todo"]
+    labels: ["feature"]
+
+# Job definition
+jobs:
+  implement_feature:
+    name: Implement Feature
+    runs-on: local
+    timeout-minutes: 60
+
+    steps:
+      # Step 1: Checkout and prepare
+      - name: Checkout code
+        uses: anyt/checkout@v1
+        with:
+          branch: main
+          clean: true
+
+      # Step 2: Cache dependencies
+      - name: Cache dependencies
+        uses: anyt/cache@v1
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.cache/pnpm
+            node_modules
+          key: deps-${{ hashFiles('**/requirements.txt', '**/package.json') }}
+          restore-keys: |
+            deps-
+
+      # Step 3: Analyze task with Claude
+      - name: Analyze task requirements
+        uses: anyt/claude-prompt@v1
+        id: analysis
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Analyze this task and create detailed implementation plan:
+
+            Task: ${{ task.identifier }}
+            Title: ${{ task.title }}
+            Description: ${{ task.description }}
+
+            Provide:
+            1. Technical approach
+            2. Files to modify
+            3. Potential risks
+            4. Testing strategy
+          output: plan
+
+      # Step 4: Implement with Claude Code
+      - name: Implement changes
+        uses: anyt/claude-code@v1
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Implement the following task:
+
+            ${{ task.description }}
+
+            Implementation plan:
+            ${{ steps.analysis.outputs.plan }}
+
+            Make all necessary code changes, following the project's coding standards.
+          stream: true
+          dangerously-skip-permissions: true
+
+      # Step 5: Run linting
+      - name: Lint code
+        run: make lint
+        continue-on-error: false
+
+      # Step 6: Run tests
+      - name: Run tests
+        run: make test
+        continue-on-error: false
+        timeout-minutes: 10
+
+      # Step 7: Commit changes
+      - name: Commit changes
+        uses: anyt/git-commit@v1
+        with:
+          message: |
+            feat: ${{ task.title }}
+
+            Task: ${{ task.identifier }}
+
+            ${{ steps.analysis.outputs.plan }}
+
+            🤖 Generated with Claude Code
+            Co-Authored-By: Claude <noreply@anthropic.com>
+          add: all
+
+      # Step 8: Update task status
+      - name: Mark task complete
+        uses: anyt/task-update@v1
+        with:
+          status: done
+          note: |
+            ✅ Completed successfully by Claude Worker
+
+            Changes committed: ${{ steps.commit.outputs.commit_hash }}
+            Tests passed: ${{ steps.test.outputs.passed }}
+
+    # Handle failures
+    on-failure:
+      - name: Add error note
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ❌ Failed during: ${{ failure.step }}
+            Error: ${{ failure.message }}
+
+      - name: Create follow-up task
+        uses: anyt/task-create@v1
+        with:
+          title: "Fix: ${{ task.title }} (automated failure recovery)"
+          description: |
+            Original task ${{ task.identifier }} failed during execution.
+
+            Failed step: ${{ failure.step }}
+            Error: ${{ failure.message }}
+
+            Please investigate and fix.
+          labels: ["bug", "automated"]
+          priority: high

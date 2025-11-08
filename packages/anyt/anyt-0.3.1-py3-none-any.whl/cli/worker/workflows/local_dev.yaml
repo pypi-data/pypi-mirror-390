@@ -1,0 +1,122 @@
+# Local Development Workflow
+# Operates directly on current repository without branch switching
+# Ideal for quick iterations and local testing
+name: Local Development
+description: Direct implementation on current repository state
+
+# Trigger conditions - matches any todo task with "local" label
+"on":
+  task_created:
+  task_updated:
+    status: ["todo"]
+
+# Job definition
+jobs:
+  local_implementation:
+    name: Local Implementation
+    runs-on: local
+    timeout-minutes: 30
+
+    steps:
+      # No checkout - work directly on current state
+      # This allows the worker to operate on whatever branch/state the repo is in
+
+      # Step 1: Analyze task
+      - name: Analyze task
+        uses: anyt/claude-prompt@v1
+        id: analysis
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Analyze this development task:
+
+            Task: ${{ task.identifier }}
+            Title: ${{ task.title }}
+            Description: ${{ task.description }}
+
+            Provide:
+            1. What needs to be implemented
+            2. Files that need to be modified
+            3. Implementation approach
+            4. Any potential risks
+          output: result
+
+      # Step 2: Post analysis to task
+      - name: Post analysis to task
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ## 🔍 Task Analysis
+
+            ${{ steps.analysis.outputs.result }}
+          timestamp: true
+
+      # Step 3: Implement with Claude Code
+      - name: Implement changes
+        uses: anyt/claude-code@v1
+        id: implementation
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Implement the following task on the current repository:
+
+            ${{ task.description }}
+
+            Analysis:
+            ${{ steps.analysis.outputs.result }}
+
+            Work directly on the current codebase. Make all necessary changes.
+          stream: true
+          dangerously-skip-permissions: true
+
+      # Step 4: Post implementation summary
+      - name: Post implementation summary
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ## 🔨 Implementation Summary
+
+            ${{ steps.implementation.outputs.summary }}
+          timestamp: true
+
+      # Step 5: Run linting (continue even if fails)
+      - name: Lint code
+        run: make lint || true
+        continue-on-error: true
+
+      # Step 6: Run tests (continue even if fails)
+      - name: Run tests
+        run: make test || true
+        continue-on-error: true
+
+      # Step 7: Commit changes
+      - name: Commit changes
+        uses: anyt/git-commit@v1
+        with:
+          message: |
+            feat: ${{ task.title }}
+
+            Task: ${{ task.identifier }}
+
+            🤖 Local development with Claude Code
+            Co-Authored-By: Claude <noreply@anthropic.com>
+          add: all
+
+      # Step 8: Mark complete
+      - name: Mark task complete
+        uses: anyt/task-update@v1
+        with:
+          status: done
+          note: |
+            ✅ Completed by Local Development Worker
+
+            Implementation completed on current repository state.
+
+    # Handle failures
+    on-failure:
+      - name: Add error note
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ❌ Failed during: ${{ failure.step }}
+            Error: ${{ failure.message }}

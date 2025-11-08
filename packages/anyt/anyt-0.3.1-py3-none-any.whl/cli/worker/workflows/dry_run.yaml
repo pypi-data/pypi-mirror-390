@@ -1,0 +1,153 @@
+# Dry Run Workflow
+# Tests workflow orchestration without invoking Claude Code or making real changes
+# Perfect for workflow development, testing, and CI/CD validation
+name: Dry Run
+description: Test workflow execution with simulated actions (no real changes)
+
+# Trigger conditions - matches any todo task
+"on":
+  task_created:
+  task_updated:
+    status: ["todo"]
+
+# Job definition
+jobs:
+  dry_run_simulation:
+    name: Dry Run Simulation
+    runs-on: local
+    timeout-minutes: 10
+
+    steps:
+      # Step 1: Analyze task (dry run)
+      - name: Analyze task
+        uses: anyt/dry-run-claude-prompt@v1
+        id: analysis
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Analyze this development task:
+
+            Task: ${{ task.identifier }}
+            Title: ${{ task.title }}
+            Description: ${{ task.description }}
+
+            Provide:
+            1. What needs to be implemented
+            2. Files that need to be modified
+            3. Implementation approach
+            4. Any potential risks
+          output: result
+
+      # Step 2: Post analysis to task
+      - name: Post analysis to task
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ## 🔍 Task Analysis (DRY RUN)
+
+            ${{ steps.analysis.outputs.result }}
+
+            *This is a dry run simulation - no actual analysis was performed*
+          timestamp: true
+
+      # Step 3: Implement with Claude Code (dry run)
+      - name: Implement changes
+        uses: anyt/dry-run-claude-code@v1
+        id: implementation
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Implement the following task on the current repository:
+
+            ${{ task.description }}
+
+            Analysis:
+            ${{ steps.analysis.outputs.result }}
+
+            Work directly on the current codebase. Make all necessary changes.
+          stream: true
+          dangerously-skip-permissions: true
+
+      # Step 4: Post implementation summary
+      - name: Post implementation summary
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ## 🔨 Implementation Summary (DRY RUN)
+
+            ${{ steps.implementation.outputs.summary }}
+
+            **Files Read**: ${{ steps.implementation.outputs.files_read }}
+            **Files Written**: ${{ steps.implementation.outputs.files_written }}
+
+            *This is a dry run simulation - no actual files were modified*
+          timestamp: true
+
+      # Step 5: Run linting (dry run - skip actual execution)
+      - name: Lint code (simulated)
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            🔧 Lint check simulated (dry run) - would run: `make lint`
+          timestamp: true
+
+      # Step 6: Run tests (dry run - skip actual execution)
+      - name: Run tests (simulated)
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            🧪 Test execution simulated (dry run) - would run: `make test`
+          timestamp: true
+
+      # Step 7: Commit changes (dry run)
+      - name: Commit changes
+        uses: anyt/dry-run-git-commit@v1
+        id: commit
+        with:
+          message: |
+            feat: ${{ task.title }}
+
+            Task: ${{ task.identifier }}
+
+            🤖 Dry run simulation with Claude Code
+            Co-Authored-By: Claude <noreply@anthropic.com>
+          add: all
+
+      # Step 8: Post commit info
+      - name: Post commit info
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            📝 Commit simulated (dry run)
+            - Commit SHA: ${{ steps.commit.outputs.short_sha }}
+            - Files changed: ${{ steps.commit.outputs.files_changed }}
+            - Branch: ${{ steps.commit.outputs.branch }}
+
+            *This is a dry run simulation - no actual commit was made*
+          timestamp: true
+
+      # Step 9: Mark complete
+      - name: Mark task complete
+        uses: anyt/task-update@v1
+        with:
+          status: done
+          note: |
+            ✅ Dry Run Completed Successfully
+
+            This workflow executed all steps with simulated outputs.
+            No actual changes were made to the codebase.
+
+            **Purpose**: Workflow orchestration testing
+            **Benefits**: Fast, cost-free, no external dependencies
+
+    # Handle failures
+    on-failure:
+      - name: Add error note
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ❌ Dry Run Failed during: ${{ failure.step }}
+            Error: ${{ failure.message }}
+
+            Even though this is a dry run, the workflow execution encountered an error.
+            This may indicate an issue with the workflow configuration or step execution logic.

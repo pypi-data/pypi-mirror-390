@@ -1,0 +1,452 @@
+Metadata-Version: 2.4
+Name: anyt
+Version: 0.3.1
+Summary: AI-native task management CLI for coding agents and human developers
+Project-URL: Homepage, https://anyt.dev
+Project-URL: Documentation, https://anyt.dev/docs/cli
+Project-URL: Support, https://anyt.dev/support
+Author-email: AnyTransformer Inc <contact@anytransformer.com>
+Maintainer-email: AnyTransformer Inc <contact@anytransformer.com>
+License: Proprietary
+License-File: LICENSE
+Keywords: ai,cli,developer-tools,productivity,task-management
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: Other/Proprietary License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Utilities
+Requires-Python: >=3.12
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: keyring>=25.0.0
+Requires-Dist: langchain-anthropic>=0.3.21
+Requires-Dist: langchain-openai>=0.3.34
+Requires-Dist: langgraph>=0.6.8
+Requires-Dist: mcp>=1.17.0
+Requires-Dist: pydantic>=2.11.9
+Requires-Dist: pyperclip>=1.8.2
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: rich>=14.0.0
+Requires-Dist: tenacity>=9.1.2
+Requires-Dist: typer>=0.15.3
+Description-Content-Type: text/markdown
+
+# AnyTask CLI
+
+> AI-native task management CLI for coding agents and human developers
+
+AnyTask CLI is a command-line interface for managing tasks and projects, designed specifically for AI agents and developers working together. It provides Linear-style task management with agent-aware features, MCP (Model Context Protocol) integration, and powerful AI-assisted commands.
+
+## Features
+
+- **Linear-style Task Management**: Human-readable task IDs (DEV-123), status workflows, priorities, and dependencies
+- **Multi-Environment Support**: Manage tasks across dev, staging, and production environments
+- **Workspace & Project Organization**: Isolated workspaces with role-based access
+- **Rich Terminal UI**: Beautiful, color-coded task boards and visualizations
+- **Agent Integration**: Native support for AI agents via API keys and MCP server
+- **Worker System**: Automated task execution using declarative YAML workflows
+- **AI-Powered Commands**: Task decomposition, smart suggestions, and context-aware assistance
+
+## Installation
+
+### Recommended: Install with uvx or pipx
+
+For the best experience, install using `uvx` (recommended) or `pipx`:
+
+```bash
+# Install uv first (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Using uvx (recommended - no installation needed)
+uvx anyt --help
+
+# Or using pipx (install once, use everywhere)
+pipx install anyt
+anyt --help
+```
+
+### Alternative: Install with pip
+
+```bash
+pip install anyt
+```
+
+
+## Quick Start
+
+### 1. Set Up Authentication
+
+Set the `ANYT_API_KEY` environment variable with your API key:
+
+```bash
+export ANYT_API_KEY=anyt_agent_xxxxxxxxxxxxx
+```
+
+For production API (default):
+```bash
+export ANYT_API_URL=https://api.anyt.dev
+```
+
+For local development:
+```bash
+export ANYT_API_URL=http://localhost:8000
+```
+
+### 2. Initialize Workspace
+
+Initialize AnyTask in your project directory:
+
+```bash
+# Production API
+anyt init --workspace-id 123 --identifier DEV
+
+# Development API
+anyt init --workspace-id 123 --identifier DEV --dev
+```
+
+This creates a `.anyt/` directory with workspace configuration.
+
+### 3. Create Your First Task
+
+```bash
+anyt task add "Implement user authentication" --status todo --priority 1
+```
+
+### 4. View Your Tasks
+
+```bash
+# View as a Kanban board
+anyt board
+
+# List all tasks
+anyt task list
+
+# Show specific task
+anyt task show DEV-1
+```
+
+## Core Commands
+
+### Initialization & Configuration
+
+```bash
+anyt init                         # Initialize workspace in current directory
+  --workspace-id <id>             # Link to existing workspace
+  --identifier <prefix>           # Workspace identifier (e.g., DEV)
+  --dev                           # Use development API
+```
+
+### Health Check
+
+```bash
+anyt health check                 # Check backend server status
+```
+
+### Task Management
+
+**Create and update tasks:**
+
+```bash
+anyt task add <title>             # Create new task
+  --status <status>               # backlog, todo, in_progress, done, cancelled
+  --priority <-2 to 2>            # Priority level (default: 0)
+  --owner <user-id>               # Assign to user or agent
+  --labels <labels>               # Comma-separated labels
+  --phase <phase>                 # Phase/milestone identifier
+
+anyt task create <title>          # Create from template
+  --template <name>               # Template to use
+  --no-edit                       # Skip editor
+
+anyt task edit <identifier>       # Update task fields
+  --title <title>                 # New title
+  --status <status>               # New status
+  --priority <priority>           # New priority (-2 to 2)
+  --labels <labels>               # Replace all labels
+
+anyt task done <identifier>       # Mark task(s) as done
+  --note <message>                # Add completion note
+
+anyt task rm <identifier>         # Delete task
+  --force                         # Skip confirmation
+
+anyt task bulk-update <ids>       # Update multiple tasks
+  --status <status>               # New status for all
+  --priority <priority>           # New priority for all
+  --yes                           # Skip confirmation
+```
+
+**View tasks:**
+
+```bash
+anyt task list                    # List all tasks
+  --status <status>               # Filter by status
+  --mine                          # Show only my tasks
+  --assignee <user-id>            # Filter by assignee
+  --labels <labels>               # Filter by labels
+  --phase <phase>                 # Filter by phase
+  --sort <field>                  # Sort by field
+  --limit <n>                     # Max tasks to show
+
+anyt task show <identifier>       # Show task details
+  --show-metadata                 # Include workflow metadata
+
+anyt board                        # View Kanban board
+  --mine                          # Show only my tasks
+  --group-by <field>              # Group by status, priority, owner, labels
+  --compact                       # Compact display
+
+anyt task suggest                 # Suggest next tasks
+  --limit <n>                     # Number of suggestions
+  --include-assigned              # Include assigned tasks
+```
+
+**Task dependencies:**
+
+```bash
+anyt task dep add <identifier>    # Add dependencies
+  --on <task-ids>                 # Tasks this depends on
+
+anyt task dep rm <identifier>     # Remove dependencies
+  --on <task-ids>                 # Tasks to remove dependency on
+
+anyt task dep list <identifier>   # List dependencies
+
+anyt graph <identifier>           # Visualize dependencies
+  --format <ascii|dot|json>       # Output format
+  --depth <n>                     # Max dependency depth
+```
+
+**Active task tracking:**
+
+```bash
+anyt task pick <identifier>       # Pick task to work on
+anyt active                       # Show current task
+```
+
+**Comments:**
+
+```bash
+anyt comment add <identifier>     # Add comment
+  --message <text>                # Comment content
+
+anyt comment list <identifier>    # List all comments
+```
+
+**Sharing:**
+
+```bash
+anyt task share <identifier>      # Generate shareable link
+  --copy                          # Copy to clipboard
+```
+
+### Visualization & Reporting
+
+```bash
+anyt summary                      # Workspace summary
+  --period <today|weekly|monthly> # Summary period
+  --phase <phase>                 # Filter by phase
+  --format <text|markdown|json>   # Output format
+
+anyt timeline <identifier>        # Task timeline
+  --since <YYYY-MM-DD>            # Show events since date
+  --last <24h|7d>                 # Show last N hours/days
+  --compact                       # Compact format
+```
+
+### Worker System
+
+Automated task execution for AI agents:
+
+```bash
+anyt worker start                 # Start worker
+  --agent-id <id>                 # Agent identifier (required)
+  --workspace <path>              # Workspace directory
+  --workflow <name>               # Specific workflow to run
+  --workflows <dir>               # Custom workflows directory
+  --poll-interval <seconds>       # Polling interval
+  --project-id <id>               # Project scope
+
+anyt worker list-workflows        # List available workflows
+anyt worker validate-workflow <file>  # Validate workflow definition
+```
+
+**Built-in workflows:**
+- `local_dev`: Direct implementation on current repository
+- `feature_development`: Full feature workflow with branch management
+- `general_task`: General-purpose task execution
+
+**Secret management:**
+
+```bash
+anyt worker secret set <name>     # Store secret
+  --value <value>                 # Secret value (or prompt)
+
+anyt worker secret get <name>     # Retrieve secret
+  --show                          # Show value (default: masked)
+
+anyt worker secret delete <name>  # Delete secret
+
+anyt worker secret test <text>    # Test secret interpolation
+```
+
+**Workflow artifacts & attempts:**
+
+```bash
+anyt attempt list <task-id>       # List task attempts
+anyt attempt show <attempt-id>    # Show attempt details
+
+anyt artifact download <id>       # Download artifact
+  --output <path>                 # Output file
+  --stdout                        # Print to stdout
+```
+
+## Usage Examples
+
+### Daily Workflow
+
+```bash
+# View your board
+anyt board
+
+# Pick a task
+anyt task pick DEV-42
+
+# Show active task
+anyt active
+
+# Update progress
+anyt task edit DEV-42 --status in_progress
+
+# Add a comment
+anyt comment add DEV-42 -m "Completed implementation"
+
+# Complete the task
+anyt task done DEV-42 --note "All tests passing"
+```
+
+### Team Collaboration
+
+```bash
+# List all tasks
+anyt task list
+
+# Filter by status and phase
+anyt task list --status in_progress --phase T7
+
+# View task details
+anyt task show DEV-123
+
+# Add dependencies
+anyt task dep add DEV-124 --on DEV-123
+
+# Visualize dependency graph
+anyt graph DEV-124
+
+# Share task link
+anyt task share DEV-123 --copy
+```
+
+### Workflow Automation
+
+```bash
+# Get task suggestions for agent
+anyt task suggest --limit 5
+
+# Start worker with specific workflow
+export ANYT_API_KEY=anyt_agent_xxx
+anyt worker start --agent-id agent-xxx --workflow local_dev
+
+# View workflow attempts
+anyt attempt list DEV-42
+anyt attempt show attempt-123
+
+# Download artifacts
+anyt artifact download artifact-456 --output result.json
+```
+
+### Bulk Operations
+
+```bash
+# Update multiple tasks at once
+anyt task bulk-update DEV-1,DEV-2,DEV-3 --status done --yes
+
+# Mark multiple tasks as done
+anyt task done DEV-4 DEV-5 DEV-6
+```
+
+## MCP Server Integration
+
+AnyTask includes a Model Context Protocol (MCP) server for seamless integration with Claude Code and other AI tools.
+
+The MCP server is bundled with the CLI - no separate installation needed. Simply configure it in your Claude Code settings to access your tasks directly from AI conversations.
+
+For detailed setup instructions, see [docs/user/MCP_INTEGRATION.md](docs/user/MCP_INTEGRATION.md).
+
+## Configuration
+
+### Environment Variables
+
+Authentication and API configuration via environment variables:
+
+```bash
+# Required: API key for authentication
+export ANYT_API_KEY=anyt_agent_xxxxxxxxxxxxx
+
+# Optional: Override API URL (defaults to https://api.anyt.dev)
+export ANYT_API_URL=http://localhost:8000
+
+# Optional: Override config directory (defaults to ~/.config/anyt)
+export ANYT_CONFIG_DIR=/custom/path
+```
+
+### Workspace Configuration
+
+After running `anyt init`, workspace settings are stored in `.anyt/anyt.json`:
+
+```json
+{
+  "workspace_id": 123,
+  "workspace_name": "Development",
+  "workspace_identifier": "DEV",
+  "api_url": "https://api.anyt.dev",
+  "current_project_id": 456,
+  "last_sync": "2025-11-06T10:30:00Z"
+}
+```
+
+### Active Task Tracking
+
+The currently picked task is stored in `.anyt/active_task.json`:
+
+```json
+{
+  "identifier": "DEV-42",
+  "title": "Implement OAuth callback",
+  "picked_at": "2025-11-06T10:30:00Z"
+}
+```
+
+## Documentation
+
+### User Guides
+
+- [CLI Complete Reference](docs/user/CLI_COMPLETE_REFERENCE.md) - Auto-generated command reference
+- [MCP Integration Guide](docs/user/MCP_INTEGRATION.md) - Claude Code integration setup
+
+### Developer Documentation
+
+For contributors and internal development:
+
+- [CLAUDE.md](CLAUDE.md) - Project overview and development guide
+- [docs/developer/](docs/developer/) - Developer documentation
+- [docs/INDEX.md](docs/INDEX.md) - Complete documentation map
+
+## Support
+
+For issues and questions, contact: contact@anytransformer.com
+
+## License
+
+Proprietary - AnyTransformer Inc.

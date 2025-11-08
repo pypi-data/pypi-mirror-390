@@ -1,0 +1,91 @@
+# General Task Workflow
+# Matches ANY task with status "todo" - no label required!
+name: General Task Handler
+description: Catch-all workflow for any TODO task
+
+# Trigger conditions - matches ANY todo task
+"on":
+  task_created:
+    status: ["todo"]
+  task_updated:
+    status: ["todo"]
+
+# Job definition
+jobs:
+  process_task:
+    name: Process Task
+    runs-on: local
+    timeout-minutes: 60
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: anyt/checkout@v1
+        with:
+          branch: main
+          clean: false
+
+      # Step 2: Analyze with Claude
+      - name: Analyze task
+        uses: anyt/claude-prompt@v1
+        id: analysis
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Analyze this task:
+
+            Task: ${{ task.identifier }}
+            Title: ${{ task.title }}
+            Description: ${{ task.description }}
+
+            Provide:
+            1. What needs to be done
+            2. Suggested approach
+            3. Files to modify
+
+      # Step 3: Implement with Claude Code
+      - name: Implement changes
+        uses: anyt/claude-code@v1
+        with:
+          model: claude-haiku-4-5-20251001
+          prompt: |
+            Work on this task: ${{ task.description }}
+
+            Analysis: ${{ steps.analysis.outputs.result }}
+
+            Make necessary changes.
+          stream: true
+          dangerously-skip-permissions: true
+
+      # Step 4: Run tests
+      - name: Run tests
+        run: make test
+        continue-on-error: true
+
+      # Step 5: Commit changes
+      - name: Commit changes
+        uses: anyt/git-commit@v1
+        with:
+          message: |
+            chore: ${{ task.title }}
+
+            Task: ${{ task.identifier }}
+
+            🤖 Generated with Claude Code
+          add: all
+
+      # Step 6: Mark complete
+      - name: Mark task complete
+        uses: anyt/task-update@v1
+        with:
+          status: done
+          note: "✅ Completed by Claude Worker"
+
+    # Handle failures
+    on-failure:
+      - name: Add error note
+        uses: anyt/task-update@v1
+        with:
+          note: |
+            ❌ Failed during: ${{ failure.step }}
+            Error: ${{ failure.message }}
