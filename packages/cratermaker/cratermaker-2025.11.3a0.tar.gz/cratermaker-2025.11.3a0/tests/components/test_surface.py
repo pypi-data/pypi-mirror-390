@@ -1,0 +1,487 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+import numpy as np
+
+from cratermaker import Simulation, Surface, Target
+from cratermaker.utils.general_utils import normalize_coords
+from cratermaker.utils.montecarlo_utils import get_random_location
+
+surfacetypes = Surface.available()
+
+
+class TestSurface(unittest.TestCase):
+    def setUp(self):
+        # Initialize a target and surface for testing
+        self.target = Target(name="Moon")
+        self.pix = self.target.radius / 10.0
+        self.gridlevel = 4
+
+        return
+
+    def test_initialize_surface(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            # Initializing it first should run the mesh generator
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True)
+            del surface
+
+            # Try initializing the surface again with the same parameters. This should find the existing grid file and load it
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=False)
+
+            # Test regridding if the parameters change
+            n_face_orig = surface.uxgrid.n_face
+            del surface
+
+            surface = Surface.maker(
+                simdir=simdir,
+                gridlevel=self.gridlevel - 1,
+                target=self.target,
+                reset=False,
+                ask_overwrite=False,
+            )
+            self.assertGreater(n_face_orig, surface.uxds.uxgrid.n_face)
+            del surface
+
+            # Test different target values
+            surface = Surface.maker(
+                simdir=simdir,
+                gridlevel=self.gridlevel,
+                target=Target(name="Mars"),
+                reset=False,
+                ask_overwrite=False,
+            )
+            del surface
+
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target="Mercury", reset=False, ask_overwrite=False)
+            del surface
+
+            # Test bad values
+            with self.assertRaises(TypeError):
+                Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=1, reset=False, ask_overwrite=False)
+            with self.assertRaises(ValueError):
+                Surface.maker(
+                    simdir=simdir,
+                    gridlevel=self.gridlevel,
+                    target="Arrakis",
+                    reset=False,
+                    ask_overwrite=False,
+                )
+            with self.assertRaises(ValueError):
+                Surface.maker(
+                    simdir=simdir,
+                    gridlevel=self.gridlevel,
+                    target=Target(name="Salusa Secundus"),
+                    reset=False,
+                    ask_overwrite=False,
+                )
+        return
+
+    def test_update_elevation(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True, ask_overwrite=False)
+            # Test with valid elevation data
+            new_elev = np.random.rand(surface.uxds.uxgrid.n_node)  # Generate random elevation data
+            surface.update_elevation(new_elev)
+
+            # Test with invalid elevation data (wrong size)
+            new_elev = np.random.rand(surface.uxds.uxgrid.n_node + 1)  # Incorrect size
+
+            # Expect ValueError for incorrect size
+            with self.assertRaises(ValueError):
+                surface.update_elevation(new_elev)
+
+            surface.update_elevation(0.0, overwrite=True)
+
+            # Check if the elevation data is set to zero
+            np.testing.assert_array_equal(
+                surface.uxds["node_elevation"].values,
+                np.zeros(surface.uxds.uxgrid.n_node),
+            )
+            np.testing.assert_array_equal(
+                surface.uxds["face_elevation"].values,
+                np.zeros(surface.uxds.uxgrid.n_face),
+            )
+
+        return
+
+    def test_calculate_haversine_distance(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            # Example coordinates (lat/lon in radians)
+            lon1, lat1 = np.radians(0), np.radians(0)  # Equator, prime meridian
+            lon2, lat2 = np.radians(90), np.radians(0)  # 90 degrees East, equator
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target="Earth", ask_overwrite=False, reset=True)
+
+            # Known distance should be 1/4 the circumference of the Earth
+            expected_distance = np.pi * surface.radius / 2
+            calculated_distance = surface._calculate_distance(lon1, lat1, lon2, lat2)[0]
+
+            # Compare the expected and calculated distances
+            self.assertAlmostEqual(calculated_distance, expected_distance, places=1)
+
+    def test_get_face_distance(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True, ask_overwrite=False)
+
+            location = get_random_location()[0]
+            lon = location[0]
+            lat = location[1]
+
+            # Convert important points to radians
+            north = (lon, lat + 90)
+            south = (lon, lat - 90)
+            antipode = (lon - 180, -lat)
+
+            north = normalize_coords(north)
+            south = normalize_coords(south)
+            antipode = normalize_coords(antipode)
+
+            north_idx = surface.find_nearest_face(north)
+            south_idx = surface.find_nearest_face(south)
+            antipode_idx = surface.find_nearest_face(antipode)
+
+            north_distance = surface.target.radius * np.pi / 2
+            south_distance = surface.target.radius * np.pi / 2
+            antipode_distance = surface.target.radius * np.pi
+            delta = 2 * self.pix
+
+            # Test distances
+            distances, _ = surface.calculate_face_and_node_distances(location)
+            self.assertAlmostEqual(
+                distances[north_idx],
+                north_distance,
+                delta=delta,
+                msg=f"North face distance ratio: {distances[north_idx].item() / north_distance}",
+            )
+            self.assertAlmostEqual(
+                distances[south_idx],
+                south_distance,
+                delta=delta,
+                msg=f"South face distance ratio: {distances[south_idx].item() / south_distance}",
+            )
+            self.assertAlmostEqual(
+                distances[antipode_idx],
+                antipode_distance,
+                delta=delta,
+                msg=f"Antipode face distance ratio: {distances[antipode_idx].item() / antipode_distance}",
+            )
+
+    def test_get_node_distance(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True)
+
+            location = get_random_location()[0]
+            lon = location[0]
+            lat = location[1]
+
+            # Convert important points to radians
+            north = (lon, lat + 90)
+            south = (lon, lat - 90)
+            antipode = (lon + 180, -lat)
+
+            north = normalize_coords(north)
+            south = normalize_coords(south)
+            antipode = normalize_coords(antipode)
+
+            north_idx = surface.find_nearest_node(north)
+            south_idx = surface.find_nearest_node(south)
+            antipode_idx = surface.find_nearest_node(antipode)
+
+            north_distance = surface.target.radius * np.pi / 2
+            south_distance = surface.target.radius * np.pi / 2
+            antipode_distance = surface.target.radius * np.pi
+            delta = 2 * self.pix
+
+            # Test distances
+            _, node_distances = surface.calculate_face_and_node_distances(location)
+            self.assertAlmostEqual(
+                node_distances[north_idx],
+                north_distance,
+                delta=delta,
+                msg=f"North node distance ratio: {node_distances[north_idx].item() / north_distance}",
+            )
+            self.assertAlmostEqual(
+                node_distances[south_idx],
+                south_distance,
+                delta=delta,
+                msg=f"South node distance ratio: {node_distances[south_idx].item() / south_distance}",
+            )
+            self.assertAlmostEqual(
+                node_distances[antipode_idx],
+                antipode_distance,
+                delta=delta,
+                msg=f"Antipode node distance ratio: {node_distances[antipode_idx].item() / antipode_distance}",
+            )
+
+    def test_calculate_initial_bearing(self):
+        # Example coordinates (lat/lon in radians)
+        lon1, lat1 = np.radians(0), np.radians(0)  # Equator, prime meridian
+        lon2, lat2 = np.radians(90), np.radians(0)  # 90 degrees East, equator
+
+        # The bearing from (0, 0) to (90, 0) should be 90 degrees in radians
+        expected_bearing = np.radians(90)
+        calculated_bearing = Surface._calculate_bearing(lon1, lat1, lon2, lat2)
+
+        # Compare the expected and calculated bearings
+        self.assertAlmostEqual(calculated_bearing, expected_bearing, places=1)
+
+    def test_get_random_on_face(self):
+        # Tests that the random location is within the face we expect
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True)
+            n_per_face = 10
+            for original_face_index in range(surface.n_face):
+                for _ in range(n_per_face):
+                    location = surface.get_random_location_on_face(face_index=original_face_index)
+                    new_face_index = surface.find_nearest_face(location.item())
+                    neighbors = surface.face_face_connectivity[new_face_index].tolist()
+                    neighbors.append(new_face_index)
+                    self.assertIn(
+                        original_face_index,
+                        neighbors,
+                        msg=f"Face {original_face_index} not found in neighbors of face {new_face_index}",
+                    )
+
+    def test_face_surface_values(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            # Tests that the face_surface generates the correct values
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True, ask_overwrite=False)
+            total_area_1 = surface.uxgrid.calculate_total_face_area()
+            total_area_2 = surface.face_area.sum().item()
+            ratio = np.sqrt(total_area_2 / total_area_1) / self.target.radius
+            self.assertAlmostEqual(ratio, 1.0, places=2)
+            self.assertAlmostEqual(total_area_2 / (4 * np.pi * self.target.radius**2), 1.0, places=2)
+
+    def test_generate_grid(self):
+        gridargs = {
+            "icosphere": {
+                "gridlevel": self.gridlevel,
+            },
+            "arbitrary_resolution": {
+                "pix": self.pix,
+            },
+            "hireslocal": {
+                "pix": self.pix / 100.0,
+                "local_location": (0, 0),
+                "local_radius": self.pix * 2,
+                "superdomain_scale_factor": 100,
+            },
+        }
+
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            for name, args in gridargs.items():
+                surface = Surface.maker(name, simdir=simdir, ask_overwrite=False, **args)
+                self.assertTrue(Path(surface.grid_file).exists())
+
+        return
+
+    def test_add_data(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            test_value = 76.0
+            surface = Surface.maker(simdir=simdir, gridlevel=self.gridlevel, target=self.target, reset=True, ask_overwrite=False)
+            region = surface.extract_region(location=(0, 0), region_radius=100e3)
+
+            for obj, uxds in zip([surface, region], [surface.uxds, region.surface.uxds], strict=False):
+                surface.reset(ask_overwrite=False)
+                obj.add_data(
+                    name="test_data",
+                    long_name="data for testing",
+                    units="furlongs per fortnight",
+                    data=test_value,
+                )
+                n_face = obj.n_face
+                n_node = obj.n_node
+                face_indices = obj.face_indices
+                node_indices = obj.node_indices
+                # Test that the attributes were added correctly
+                self.assertIn("test_data", uxds)
+                self.assertEqual(uxds["test_data"].long_name, "data for testing")
+                self.assertEqual(uxds["test_data"].units, "furlongs per fortnight")
+                np.testing.assert_array_equal(
+                    uxds["test_data"].sel(n_face=face_indices).values,
+                    np.full(n_face, test_value),
+                )
+
+                obj.add_data(
+                    name="test_data",
+                    data=-test_value,
+                    long_name="this should be ignored",
+                    units="slug angstrom^2 / fortnight^2",
+                    overwrite=True,
+                )
+                # test that the attributes were ignored but the data was added
+                self.assertIn("test_data", uxds)
+                self.assertEqual(uxds["test_data"].long_name, "data for testing")
+                self.assertEqual(uxds["test_data"].units, "furlongs per fortnight")
+                np.testing.assert_array_equal(
+                    uxds["test_data"].sel(n_face=face_indices).values,
+                    np.full(n_face, -test_value),
+                )
+
+                # Add scalar node data
+                obj.add_data(name="scalar_node", data=test_value, isfacedata=False)
+                self.assertIn("scalar_node", uxds)
+                np.testing.assert_array_equal(
+                    uxds["scalar_node"].sel(n_node=node_indices).values,
+                    np.full(n_node, test_value),
+                )
+
+                # Add array face data
+                data_array = np.arange(n_face)
+                obj.add_data(name="array_face", data=data_array)
+                np.testing.assert_array_equal(uxds["array_face"].sel(n_face=face_indices).values, data_array)
+
+                # Overwrite behavior
+                obj.add_data(name="array_face", data=np.ones(n_face), overwrite=False)
+                np.testing.assert_array_equal(
+                    uxds["array_face"].sel(n_face=face_indices).values,
+                    data_array + 1,
+                )
+
+                obj.add_data(name="array_face", data=np.zeros(n_face), overwrite=True)
+                np.testing.assert_array_equal(
+                    uxds["array_face"].sel(n_face=face_indices).values,
+                    np.zeros(n_face),
+                )
+
+    def test_diffusion(self):
+        def initial_elevation(r, h0, sigma):
+            return h0 * np.exp(-(r**2) / (2 * sigma**2))
+
+        def analytical_elevation(r, h0, sigma, kappa):
+            variance_t = sigma**2 + 2 * kappa
+            return h0 * (sigma**2 / variance_t) * np.exp(-(r**2) / (2 * variance_t))
+
+        local_radius = 2000.0
+        pix = 10.0
+        local_location = (0, 0)
+        h0 = 100.0
+        sigma = 200.0
+        kdiff = 20000.0
+
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+            sim = Simulation(
+                simdir=simdir,
+                surface="hireslocal",
+                local_location=local_location,
+                pix=pix,
+                local_radius=local_radius,
+                ask_overwrite=False,
+            )
+
+            region_view = sim.surface.local
+            rvals = region_view.face_distance
+
+            # Initial elevation setup
+            h_initial = initial_elevation(rvals, h0, sigma)
+            region_view.update_elevation(h_initial)
+
+            # Compute the analytical solution result after
+            h_analytical = analytical_elevation(rvals, h0, sigma, kdiff)
+            hnorm = h_analytical.max()
+            h_analytical /= hnorm  # Normalize the elevations so that the maximum expected value is 1.0
+            region_view.apply_diffusion(kdiff)
+            h_numerical = region_view.face_elevation / hnorm
+            np.testing.assert_array_almost_equal(
+                h_analytical, h_numerical, decimal=2, err_msg="Diffusion did not match analytical solution"
+            )
+
+    def test_export(self):
+        gridargs = {
+            "icosphere": {
+                "gridlevel": self.gridlevel,
+            },
+            "arbitrary_resolution": {"pix": self.pix},
+            "hireslocal": {
+                "pix": self.pix,
+                "local_location": (0, 0),
+                "local_radius": self.pix * 2,
+                "superdomain_scale_factor": 100,
+            },
+        }
+        # Test a non-continguous set of save intervals
+        save_intervals = [0, 1, 2, 4]
+
+        # Export argument test cases
+        export_args_list = [
+            {
+                "driver": "GPKG",
+                "interval_number": None,
+            },
+            {
+                "driver": "VTK",
+                "interval_number": None,
+            },
+            {
+                "driver": "ESRI Shapefile",
+                "interval_number": None,
+            },
+            {
+                "driver": "VTK",
+                "interval_number": 0,
+            },
+            {
+                "driver": "VTK",
+                "interval_number": 4,
+            },
+            {
+                "driver": "VTK",
+                "interval_number": -1,
+            },
+        ]
+
+        # Expected output files:
+        expected_file_list = [
+            [f"surface{i:06d}.gpkg" for i in save_intervals],
+            [f"surface{i:06d}.vtp" for i in save_intervals] + ["grid.vtp"],
+            [f"surface{i:06d}.shp" for i in save_intervals]
+            + [f"surface{i:06d}.shx" for i in save_intervals]
+            + [f"surface{i:06d}.dbf" for i in save_intervals]
+            + [f"surface{i:06d}.cpg" for i in save_intervals]
+            + [f"surface{i:06d}.prj" for i in save_intervals],
+            [f"surface{export_args_list[3]['interval_number']:06d}.vtp"] + ["grid.vtp"],
+            [f"surface{export_args_list[4]['interval_number']:06d}.vtp"] + ["grid.vtp"],
+            [f"surface{save_intervals[-1]:06d}.vtp"] + ["grid.vtp"],
+        ]
+
+        hireslocal_extra_files_list = [
+            [f"local_surface{i:06d}.gpkg" for i in save_intervals],
+            [f"local_surface{i:06d}.vtp" for i in save_intervals] + ["local_grid.vtp"],
+            [f"local_surface{i:06d}.shp" for i in save_intervals]
+            + [f"local_surface{i:06d}.shx" for i in save_intervals]
+            + [f"local_surface{i:06d}.dbf" for i in save_intervals]
+            + [f"local_surface{i:06d}.cpg" for i in save_intervals]
+            + [f"local_surface{i:06d}.prj" for i in save_intervals],
+            [f"local_surface{export_args_list[3]['interval_number']:06d}.vtp"] + ["local_grid.vtp"],
+            [f"local_surface{export_args_list[4]['interval_number']:06d}.vtp"] + ["local_grid.vtp"],
+            [f"local_surface{save_intervals[-1]:06d}.vtp"] + ["local_grid.vtp"],
+        ]
+
+        # for surface_name in surfacetypes:
+        for surface_name in surfacetypes:
+            for i, export_args in enumerate(export_args_list):
+                expected_files = expected_file_list[i].copy()
+                if surface_name == "hireslocal":
+                    expected_files += hireslocal_extra_files_list[i]
+                with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as simdir:
+                    # for simdir in ["."]:
+                    surface_dir = Path(simdir) / "surface"
+                    if surface_dir.exists():
+                        for f in surface_dir.iterdir():
+                            f.unlink()
+
+                    surface = Surface.maker(surface=surface_name, simdir=simdir, **gridargs[surface_name])
+                    for interval_number in save_intervals:
+                        surface.save(interval_number=interval_number)
+                    if surface_name == "hireslocal":
+                        surface.export(**export_args, superdomain=True)
+                    else:
+                        surface.export(**export_args)
+                    for file in expected_files:
+                        output_file = surface.output_dir / file
+                        if not output_file.exists():
+                            raise FileNotFoundError(f"Expected output file not created: {output_file}")
+
+
+if __name__ == "__main__":
+    unittest.main()
