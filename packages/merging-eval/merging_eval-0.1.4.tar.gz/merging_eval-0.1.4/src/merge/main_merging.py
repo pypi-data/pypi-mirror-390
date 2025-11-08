@@ -1,0 +1,121 @@
+import argparse
+import os
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from .merging_methods import MergingMethod
+from .config import get_hf_config
+
+
+def main():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--merge_method", type=str, required=True, default="average_merging")
+    arg_parser.add_argument("--output_dir", type=str)
+    arg_parser.add_argument('--base_model', type=str, help='base model')
+    arg_parser.add_argument("--models_to_merge", type=str, required=True)
+    arg_parser.add_argument("--exclude_param_names_regex", type=str, default=[])
+    arg_parser.add_argument("--scaling_coefficient", type=float, default=1.0)
+    arg_parser.add_argument("--param_value_mask_rate", type=float, default=0.8)
+    arg_parser.add_argument("--use_gpu", action='store_true', default=False)
+    arg_parser.add_argument("--mask_apply_method", type=str, default="average_merging")
+    arg_parser.add_argument("--weight_mask_rates", type=str, default=None)
+    # HF authentication arguments
+    arg_parser.add_argument("--hf_token", type=str, default=None,
+                          help="Hugging Face token for authentication")
+    arg_parser.add_argument("--use_hf_auth", action='store_true', default=False,
+                          help="Use Hugging Face authentication (will use cached token if available)")
+    arg_parser.add_argument("--local_files_only", action='store_true', default=False,
+                          help="Use only local files (no network access)")
+    args = arg_parser.parse_args()
+
+    models_to_merge = args.models_to_merge.split(",")
+    print(f"Base model is: {args.base_model}")
+    print(f"Models to be merged are: {models_to_merge}")
+    print(f"Scaling coefficient is {args.scaling_coefficient}")
+    device = "cuda" if args.use_gpu else "cpu"
+    print(f"Merging conducted on {device}")
+
+    # Initialize HF configuration
+    hf_config = get_hf_config(token=args.hf_token, use_auth=args.use_hf_auth)
+
+    # Prepare model loading kwargs
+    model_kwargs = {
+        'torch_dtype': torch.bfloat16,
+        'trust_remote_code': True
+    }
+
+    # Add authentication kwargs if needed
+    if not args.local_files_only:
+        model_kwargs.update(hf_config.get_model_loading_kwargs())
+    else:
+        model_kwargs['local_files_only'] = True
+        print("Running in local files only mode")
+
+    # Add authentication info to print
+    if hf_config.should_use_auth():
+        print("Using Hugging Face authentication")
+        if hf_config.get_token():
+            print("HF token provided")
+
+    # Load base model
+    print("Loading base model...")
+    base_model = AutoModelForCausalLM.from_pretrained(
+        args.base_model,
+        **model_kwargs
+    ).to(device)
+
+    # Load tokenizer
+    print("Loading tokenizer...")
+    tokenizer_kwargs = {'trust_remote_code': True}
+    if not args.local_files_only:
+        tokenizer_kwargs.update(hf_config.get_tokenizer_loading_kwargs())
+    else:
+        tokenizer_kwargs['local_files_only'] = True
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.base_model,
+        **tokenizer_kwargs
+    )
+
+    # 注入默认 chat_template 如果没有设置
+    from scripts.eval import inject_default_chat_template
+    tokenizer = inject_default_chat_template(tokenizer)
+    
+    # 加载候选模型
+    candidate_models = []
+    for i, model_to_merge in enumerate(models_to_merge):
+        print(f"Loading candidate model {i+1}/{len(models_to_merge)}: {os.path.basename(model_to_merge)}")
+        candidate_models.append(AutoModelForCausalLM.from_pretrained(
+            model_to_merge,
+            **model_kwargs
+        ).to(device))
+    merging_engine = MergingMethod(merging_method_name=args.merge_method)
+    if args.weight_mask_rates is not None:
+        weight_mask_rates = args.weight_mask_rates.split(",")
+        weight_mask_rates = [float(_) for _ in weight_mask_rates]
+    else:
+        weight_mask_rates = None
+    exclude_param_names_regex = args.exclude_param_names_regex
+    if args.exclude_param_names_regex:
+        exclude_param_names_regex = args.exclude_param_names_regex.split(",")
+        print(f"Following params are excluded: {exclude_param_names_regex}")
+    merged_model = merging_engine.get_merged_model(
+        merged_model=base_model,
+        models_to_merge=candidate_models,
+        exclude_param_names_regex=exclude_param_names_regex,
+        param_value_mask_rate=args.param_value_mask_rate,
+        scaling_coefficient=args.scaling_coefficient,
+        mask_apply_method=args.mask_apply_method,
+        weight_mask_rates=weight_mask_rates
+    )
+    print(f"Saving model to {args.output_dir}")
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir, exist_ok=True)
+
+    merged_model = merged_model.to(torch.bfloat16)
+    merged_model.save_pretrained(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
+
+
+if __name__ == '__main__':
+    main()
