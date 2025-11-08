@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static "css/base.css" %}">
+    
+    {% block custom_css %}{% endblock custom_css %}
+    <title>Мастер заявки - {{user.person.role}}</title>
+</head>
+<body>
+<div class="main-wrapper">
+    <section class="navigation">
+        <nav class="nav-wrapper">
+            <h3 class="nav-title">Навигационное меню</h3>
+            <ul class="nav-list">
+                {% if user.person.role_id == 1 %}
+                    <li class="nav-item" id="menu-all-task"> <a href="{% url 'all-orders' %}">Просмотр всех заявок</a></li>  
+                    <li class="nav-item" id="menu-send-in-work"><a href="{% url 'resposibleOrder' %}">Назначить ответственного</a></li>
+                    <li class="nav-item" id="menu-info-panel"><a href="{% url 'info-panel' %}">Информационная панель</a></li>
+                    {% comment %} <li class="nav-item" id="menu-ai"><a href="{% url 'ai-bot' %}">ИИ Чат-бот</a></li> {% endcomment %}
+                {% elif user.person.role_id == 2 %}
+                    <li class="nav-item" id="my-task"><a href="{% url 'my-orders' %}">Мои заявки</a></li>  
+                    <li class="nav-item" id="create-order"><a href="{% url 'create-order' %}">Создать заявку</a></li>
+                    <li class="nav-item" id="menu-ai"><a href="{% url 'ai-bot' %}">ИИ Чат-бот</a></li>
+                    
+                {% elif user.person.role_id == 3 %}
+                    <li class="nav-item" id="menu-all-task"><a href="{% url 'all-orders' %}">Просмотр всех заявок</a></li>  
+                    <li class="nav-item" id="menu-send-in-work" > <a href="{% url 'resposibleOrder' %}">Назначить ответственного</a></li>
+                    <li class="nav-item" id="menu-info-panel"><a href="{% url 'info-panel' %}">Информационная панель</a></li>
+                    <li class="nav-item" id="my-task"><a href="{% url 'my-orders' %}">Мои заявки</a></li>  
+                    <li class="nav-item" id="create-order"><a href="{% url 'create-order' %}">Создать заявку</a></li>
+                    <li class="nav-item" id="menu-ai"><a href="{% url 'ai-bot' %}">ИИ Чат-бот</a></li>
+                {% elif user.person.role_id == 4 %}
+                    <li class="nav-item" id="menu-all-task"><a href="">Обработка заявок (в разработке)</a></li>
+                {% endif %}
+                <a href="{% url 'logout' %}" style="color: white; font-size: 18px;">Выход</a>
+            </ul>
+        </nav>
+    </section>
+    <section class="content">
+        <header class="main-header">{{title}}</header>
+        <main class="main-content">
+            {% block main_content %}{% endblock main_content %}
+        </main>
+    </section>
+    
+</div>
+<script src="{% static "js/base.js" %}"></script>
+{% block custom_js %}{% endblock custom_js %}
+</body>
+</html>
