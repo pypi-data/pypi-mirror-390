@@ -1,0 +1,37 @@
+"""
+Content loading helper.
+"""
+import requests
+
+from .exceptions import *
+from .finished import finished
+
+def loadFromWeb(url: str, overrideException: bool = False) -> str:
+    """
+    Loads content from the given URL with the given data.
+    Overrides ServerAlreadyGeneratedError if overrideException is True.
+    """
+    if finished.value and not overrideException:
+        raise ServerAlreadyGeneratedError()
+    if not url.endswith(".pyhtml"):
+        raise InvalidFiletypeError()
+
+    # trick GitHub Pages guardian
+    headers = {"User-Agent": "Mozilla/5.0"}
+    rq = requests.get(url, headers=headers, data={"realAccessDeviceMonitorAgent": "PyWSGIRef/1.1"})
+    if rq.status_code != 200:
+        raise AccessToTemplateForbidden()
+    rq_content = rq.content
+    return rq_content.decode()
+
+def loadFromFile(filename: str) -> str:
+    """
+    Loads a file from the given filename.
+    """
+    if finished.value:
+        raise ServerAlreadyGeneratedError()
+    if not filename.endswith(".pyhtml"):
+        raise InvalidFiletypeError()
+    with open(filename, "r", encoding="utf-8") as f:
+        content = f.read()
+    return content
