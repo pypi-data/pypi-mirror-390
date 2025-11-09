@@ -1,0 +1,357 @@
+# Fin Classifier
+
+Motor de classificação inteligente de linhas de extrato bancário com suporte a PyOdide.
+
+## Descrição
+
+`fin-classifier` é uma biblioteca Python que fornece um sistema flexível e extensível para classificar transações bancárias, encontradas usualmente em extratos bancários e demonstrativos de caixa, baseado em regras customizáveis. Pode ser usado para categorizar linhas de extratos de forma automática e inteligente.
+
+### Características
+
+- **Baseado em Regras**: Defina regras de classificação usando uma DSL intuitiva
+- **Operadores Lógicos**: Combine condições com AND (&), OR (|) e NOT (~)
+- **Condições Flexíveis**: Suporte para condições de texto e valor
+- **Sem Dependências**: Compatível com PyOdide, sem dependências externas
+- **Type-safe**: Desenvolvido com type hints completos
+- **Well-tested**: Cobertura de testes abrangente
+
+## Instalação
+
+### Do PyPI
+
+```bash
+pip install fin-classifier
+```
+
+### Do repositório
+
+```bash
+pip install git+https://github.com/tpougy/fin-classifier.git
+```
+
+### Com dependências de desenvolvimento
+
+```bash
+pip install fin-classifier[dev]
+```
+
+## Uso Rápido
+
+```python
+from extrato_classifier import BaseClassifier, Rule, Text, Amount, Transaction
+
+class MinhaClassificacao(BaseClassifier):
+    """Defina um classificador herdando de BaseClassifier"""
+
+    # Regra 1: Rendimentos
+    __salario = Rule(
+        Text.contains("salario") & Amount.positive()
+    )
+
+    # Regra 2: Despesas
+    __despesa = Rule(
+        Text.contains("despesa", "custo") & Amount.negative()
+    )
+
+    # Regra fallback (deve ser a última)
+    __outros = Rule()
+
+# Classifique uma transação
+trans = Transaction("Salário Mensal", 5000.00)
+resultado = MinhaClassificacao.classify(trans)
+print(resultado)  # Output: salario (prioridade: 0, regra: salario)
+```
+
+## Condições de Texto
+
+### `Text.contains(*terms, case_sensitive=False)`
+
+Verifica se o texto contém TODOS os termos (AND lógico).
+
+```python
+condition = Text.contains("banco", "brasil")
+# Matches: "Banco do Brasil"
+# Not matches: "Banco Itau"
+```
+
+### `Text.any_of(*terms, case_sensitive=False)`
+
+Verifica se o texto contém QUALQUER um dos termos (OR lógico).
+
+```python
+condition = Text.any_of("cri", "deb", "lci")
+# Matches: "Rendimento CRI"
+# Matches: "DEB ABC"
+```
+
+### `Text.starts_with(*terms, case_sensitive=False)`
+
+Verifica se o texto começa com algum dos termos.
+
+```python
+condition = Text.starts_with("pix", "ted")
+# Matches: "PIX para João"
+# Not matches: "Transferência PIX"
+```
+
+### `Text.ends_with(*terms, case_sensitive=False)`
+
+Verifica se o texto termina com algum dos termos.
+
+```python
+condition = Text.ends_with("mensais", "anuais")
+# Matches: "Juros Mensais"
+```
+
+### `Text.equals(*terms, case_sensitive=False)`
+
+Verifica se o texto é exatamente igual a algum dos termos.
+
+```python
+condition = Text.equals("pix")
+# Matches: "PIX"
+# Not matches: "PIX para João"
+```
+
+## Condições de Valor
+
+### `Amount.gt(value)` - Maior que
+
+```python
+condition = Amount.gt(100)
+```
+
+### `Amount.lt(value)` - Menor que
+
+```python
+condition = Amount.lt(100)
+```
+
+### `Amount.gte(value)` - Maior ou igual
+
+```python
+condition = Amount.gte(100)
+```
+
+### `Amount.lte(value)` - Menor ou igual
+
+```python
+condition = Amount.lte(100)
+```
+
+### `Amount.eq(value, tolerance=0.01)` - Igual
+
+```python
+condition = Amount.eq(100, tolerance=0.01)
+```
+
+### `Amount.between(min_value, max_value)` - Entre
+
+```python
+condition = Amount.between(100, 1000)
+```
+
+### `Amount.positive()` - Positivo
+
+```python
+condition = Amount.positive()  # > 0
+```
+
+### `Amount.negative()` - Negativo
+
+```python
+condition = Amount.negative()  # < 0
+```
+
+## Operadores Lógicos
+
+```python
+# AND (&)
+condition = Text.contains("banco") & Amount.positive()
+
+# OR (|)
+condition = Text.contains("banco") | Text.contains("caixa")
+
+# NOT (~)
+condition = ~Text.contains("custodia")
+
+# Composição complexa
+condition = (
+    (Text.any_of("cri", "deb") | Text.contains("tesouro"))
+    & Amount.positive()
+    & ~Text.contains("provisao")
+)
+```
+
+## Classificação em Lote
+
+```python
+transactions = [
+    Transaction("Salário", 5000.00),
+    Transaction("Despesa", -100.00),
+    Transaction("Outro", 50.00),
+]
+
+resultados = MinhaClassificacao.classify_batch(transactions)
+for resultado in resultados:
+    print(resultado)
+```
+
+## Inspecionando Regras
+
+```python
+# Obter todas as regras
+regras = MinhaClassificacao.get_rules()
+
+# Obter descrição detalhada das regras
+print(MinhaClassificacao.describe_rules())
+```
+
+## Estrutura do Projeto
+
+```
+fin-classifier/
+├── src/
+│   └── classifier/
+│       ├── __init__.py
+│       ├── classifier.py      # BaseClassifier e Rule
+│       ├── models.py          # Transaction e ClassificationResult
+│       └── conditions.py      # Condições de texto e valor
+├── tests/
+│   ├── conftest.py           # Fixtures compartilhadas
+│   ├── unit/                 # Testes unitários
+│   ├── integration/          # Testes de integração
+│   └── __init__.py
+├── pyproject.toml
+├── pytest.ini
+└── README.md
+```
+
+## Desenvolvimento
+
+### Instalar dependências de desenvolvimento
+
+```bash
+uv add --group dev pytest-xdist pytest-cov pytest-mock pytest-benchmark ruff mypy black
+```
+
+### Executar testes
+
+```bash
+pytest                    # Todos os testes
+pytest -m unit           # Apenas unitários
+pytest -m integration    # Apenas integração
+pytest -v                # Verbose
+pytest --cov=src         # Com cobertura
+pytest -n auto           # Paralelo (xdist)
+```
+
+### Verificar cobertura de testes
+
+```bash
+pytest --cov=src --cov-report=html
+# Abrir htmlcov/index.html
+```
+
+### Formatar código
+
+```bash
+ruff format src tests
+ruff check --fix src tests
+```
+
+### Type checking
+
+```bash
+ty src
+```
+
+## Compatibilidade com PyOdide
+
+Esta biblioteca é totalmente compatível com [PyOdide](https://pyodide.org/), permitindo usar classificação financeira diretamente no excel com xlwings lite.
+
+```html
+<script
+  defer
+  src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
+></script>
+<script>
+  async function main() {
+    let pyodide = await loadPyodide();
+    await pyodide.loadPackage("fin-classifier");
+
+    pyodide.runPython(`
+            from extrato_classifier import BaseClassifier, Rule, Text, Amount, Transaction
+            # ... seu código aqui
+        `);
+  }
+  main();
+</script>
+```
+
+## Exemplos Avançados
+
+### Classificador de Extratos Bancários
+
+```python
+from extrato_classifier import BaseClassifier, Rule, Text, Amount, Transaction
+
+class ClassificadorExtrato(BaseClassifier):
+    """Classificador para extratos de investimentos"""
+
+    # Ativos de Renda Fixa - Juros
+    __ativo_juros = Rule(
+        Text.any_of("cri", "deb", "lci", "lca")
+        & Text.contains("juros")
+        & Amount.positive()
+    )
+
+    # Ativos de Renda Fixa - Amortização
+    __ativo_amort = Rule(
+        Text.any_of("cri", "deb", "lci", "lca")
+        & Text.contains("amort")
+        & Amount.positive()
+    )
+
+    # Tesouro Direto
+    __tesouro_direto = Rule(
+        Text.contains("tesouro", "direto")
+        & Amount.positive()
+    )
+
+    # Dividendos
+    __dividendos = Rule(
+        Text.any_of("dividendo", "jcp", "jscp")
+        & Amount.positive()
+    )
+
+    # Despesas Operacionais
+    __despesas = Rule(
+        Text.contains("custo")
+        & ~Text.any_of("custodia", "oferta")
+        & Amount.negative()
+    )
+
+    # Taxas e Impostos
+    __taxas_impostos = Rule(
+        Text.any_of("taxa", "imposto", "ir", "iof")
+        & Amount.negative()
+    )
+
+    # Fallback
+    __outros = Rule()
+
+# Uso
+trans = Transaction("Rendimento CRI XPTO Juros Mensais", 150.50)
+resultado = ClassificadorExtrato.classify(trans)
+print(resultado)
+```
+
+## Licença
+
+MIT
+
+## Contato
+
+- Autor: Thomaz Pougy
+- Email: thomazpougy@gmail.com
