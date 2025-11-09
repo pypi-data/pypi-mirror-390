@@ -1,0 +1,160 @@
+Metadata-Version: 2.4
+Name: ShellSteward
+Version: 0.2.0
+Summary: ShellSteward: AI-powered CLI assistant for shell command generation and retrieval
+Author: Lucifer
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Utilities
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: typer[all]
+Requires-Dist: requests
+Requires-Dist: questionary
+Requires-Dist: rich
+Requires-Dist: pyperclip
+Requires-Dist: sentence-transformers
+Requires-Dist: faiss-cpu; platform_system != "Windows"
+Requires-Dist: scikit-learn
+Requires-Dist: numpy
+Requires-Dist: httpx
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# 🧠 ShellSteward — Your AI-Powered Shell Companion
+
+ShellSteward is a smart command-line assistant that translates natural language prompts into shell commands using semantic search. Whether you're navigating directories, inspecting files, or debugging your environment, ShellSteward helps you do it faster and smarter.
+
+---
+
+## 🚀 Features
+
+- 🔍 Natural language to shell command retrieval  
+- 🧠 Semantic search using SentenceTransformers + FAISS  
+- 🛠️ Cross-shell support (bash, zsh, cmd, PowerShell)  
+- 🧪 Doctor command to verify setup and dependencies  
+- 📋 History tracking and clipboard support  
+- ⚙️ Configurable shell preferences and onboarding  
+
+---
+
+## 📦 Installation
+
+```bash
+pip install shellsteward
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/ABHIJEETRAI-AV/Catalyst.git
+cd shellsteward
+pip install -e .
+```
+
+---
+
+## 🧑‍💻 CLI Usage
+
+### `shellsteward init`
+
+Initializes the FAISS index from `commands.json`.
+
+- Embeds all prompt-command pairs  
+- Saves the index to `index/faiss.index`  
+- Required before using `ask`
+
+```bash
+shellsteward init
+```
+
+---
+
+### `shellsteward ask "<your prompt>"`
+
+Retrieves the best matching shell command for your natural language query.
+
+```bash
+shellsteward ask "How do I list all files including hidden ones?"
+```
+
+Options:
+- `--copy` → Copies the command to clipboard  
+- `--explain` → Shows the explanation instead of the command  
+- `--shell bash|zsh|cmd|powershell` → Tailors output to your shell  
+
+---
+
+### `shellsteward doctor`
+
+Checks if your environment is ready.
+
+- Verifies `commands.json` is accessible  
+- Confirms FAISS index exists  
+- Checks if SentenceTransformer model is loaded  
+
+```bash
+shellsteward doctor
+```
+
+---
+
+### `shellsteward history`
+
+Displays previously retrieved commands.
+
+```bash
+shellsteward history
+```
+
+Options:
+- `--copy <index>` → Copies a specific command from history  
+- `--explain <index>` → Shows explanation for a specific entry  
+
+---
+
+### `shellsteward config` *(coming soon)*
+
+Manage persistent settings like default shell, verbosity, and model preferences.
+
+---
+
+## 🧠 How It Works
+
+ShellSteward uses:
+
+- `commands.json` → A curated list of prompt-command-explanation triples  
+- `SentenceTransformer` → Converts prompts into embeddings  
+- `FAISS` → Performs fast vector similarity search  
+- `Typer` → Powers the CLI interface  
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome! For major changes, open an issue first to discuss what you'd like to improve.
+
+---
+
+Made with ❤️ by Abhijeet Rai
+
+---
+
+
