@@ -1,0 +1,75 @@
+version: "1.0"
+sources:
+  fspacker:
+    type: codeup
+    name: fspacker
+    endpoint: https://codeup.aliyun.com/678008df52027c9a54e70902/pypi/fspacker.git
+    branch: develop
+    triggerEvents:
+      - push
+      - tagPush
+      - mergeRequestMerged
+      - mergeRequestOpenedOrUpdate
+    certificate:
+      type: serviceConnection
+      serviceConnection: x9jakytjkjrnm8sb
+variables:
+  - key: PYPI_TSINGHUA
+    type: String
+    value: "https://pypi.tuna.tsinghua.edu.cn/simple/"
+  - key: PYPI_ALIYUN
+    type: String
+    value: "https://mirrors.aliyun.com/pypi/simple/"
+  - key: CACHE_DIR
+    type: String
+    value: "/root/.m2/cache"
+stages:
+  scan_test_stage:
+    name: "代码扫描、测试"
+    jobs:
+      python_scan_job:
+        name: "Python 代码扫描"
+        runsOn:
+          group: public/cn-hangzhou
+        steps:
+          python_code_scan_step:
+            name: "Python 代码扫描"
+            step: PythonCodeScan
+            with:
+              pythonVersion: "3.8"
+              incrementalScan: true
+              exclusion: |
+                examples/
+                tests/
+                docs/
+      python_unit_test_job:
+        name: "Python 单元测试"
+        runsOn:
+          group: public/cn-hangzhou
+          container: build-steps-public-registry.cn-hangzhou.cr.aliyuncs.com/build-steps/alinux3:latest
+        steps:
+          setup_python_step:
+            name: "安装Python"
+            step: SetupPython
+            with:
+              pythonVersion: "3.8"
+          command_step:
+            name: "执行命令"
+            step: Command
+            with:
+              run: |
+                pip install uv -i ${PYPI_ALIYUN}
+                export UV_INDEX_URL=${PYPI_ALIYUN}
+                uv sync
+                uv run pytest tests/ --cov=app --cov-report=xml:coverage.xml -v --html=report/index.html
+          unit_test_report_step:
+            name: "单元测试报告"
+            step: UnitTestReport
+            with:
+              reportPath: report/index.html
+              reporter: Python-Pytest
+              failOnError: true
+              qualityGate:
+                - key: passRate
+                  operator: ge
+                  threshold: 95
