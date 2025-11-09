@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "vt-err-hndlr"
+version = "0.0.0dev6"
+description = "Common errors and warnings for Vaastav Technologies (vt) projects."
+readme = "README.md"
+keywords = ["error", "error-handling", "error-handler", "warning", "warn"]
+authors = [
+    {name = "Suhas Krishna Srivastava", email = "suhas.srivastava@vaastav.tech"}
+]
+maintainers = [
+    {name = "Suhas Krishna Srivastava", email = "suhas.srivastava@vaastav.tech"}
+]
+requires-python = ">=3.12"
+
+classifiers = [
+  "Development Status :: 1 - Planning",
+
+  "Intended Audience :: Developers",
+  "Intended Audience :: Education",
+
+  "Topic :: Education",
+  "Topic :: Software Development :: Libraries",
+
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Programming Language :: Python :: 3 :: Only",
+
+  "Typing :: Typed"
+]
+license = "Apache-2.0"
+
+dependencies = [
+  "vt-commons >= 0.0.1dev9"
+]
+
+[dependency-groups]
+lint = ["ruff"]
+typecheck = ["mypy"]
+dev = [{include-group = "lint"}, {include-group = "typecheck"}]
+test = ["pytest"]
+cover = [{include-group = "test"}, "pytest-cov"]
+multitest = ["tox"]
+doc = ["sphinx", "sphinx-argparse"]
+
+[project.urls]
+homepage = "https://github.com/Vaastav-Technologies/py-err-hndlr"
+source = "https://github.com/Vaastav-Technologies/py-err-hndlr"
+issues = "https://github.com/Vaastav-Technologies/py-eerr-hndlr/issues"
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+namespaces = true
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    env_list =
+        py312
+
+    [testenv]
+    deps =
+      pytest
+      sphinx
+      sphinx-argparse
+    commands =
+      python -m pytest --doctest-glob=*.rst --doctest-modules .
+      python -m doctest README.md
+      sphinx-build -q -b doctest docs/source docs/build/doctest
+      # TODO: try to see if docs/enc/*.md can work
+      # python -m doctest docs/enc/enc-init.md
+
+    [testenv:docs]
+    deps =
+      sphinx
+      sphinx-argparse
+    commands =
+      sphinx-build -q -b html docs/source docs/build/html
+"""
+
+[tool.pytest.ini_options]
+addopts = ["--doctest-modules", # Test all the doctests
+    "--doctest-glob=*.md"] # Test doctests included as examples in the md files.
