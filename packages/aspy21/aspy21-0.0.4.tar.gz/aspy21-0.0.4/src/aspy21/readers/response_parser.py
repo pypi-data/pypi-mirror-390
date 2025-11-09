@@ -1,0 +1,478 @@
+"""Response parsers for converting API responses to DataFrames.
+
+This module implements the Strategy Pattern for parsing different API response formats.
+Each parser handles a specific response format (SQL snapshot, SQL history, XML history).
+"""
+
+from __future__ import annotations
+
+import logging
+from abc import ABC
+from collections import defaultdict
+
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+class ResponseParser(ABC):  # noqa: B024
+    """Abstract base class for response parsing strategies.
+
+    Each parser implements a specific strategy for parsing API responses
+    into pandas DataFrames with metadata (descriptions, status).
+
+    Note: Subclasses implement parse() with signatures specific to their
+    response format. The varying signatures are intentional as each parser
+    handles fundamentally different API response structures.
+    """
+
+    pass
+
+
+class SqlSnapshotResponseParser(ResponseParser):
+    """Parser for SQL snapshot responses.
+
+    Parses SQL query responses containing current (snapshot) values for multiple tags.
+    Returns a single-row DataFrame at the snapshot timestamp.
+    """
+
+    def parse(
+        self,
+        response: list[dict],
+        tag_names: list[str],
+        include_status: bool,
+        snapshot_time: pd.Timestamp,
+    ) -> tuple[pd.DataFrame, dict[str, str]]:
+        """Parse SQL snapshot response into DataFrame with descriptions/status.
+
+        Args:
+            response: SQL query response as list of records
+            tag_names: List of tag names to extract
+            include_status: Whether to include status column
+            snapshot_time: Timestamp to use for the snapshot
+
+        Returns:
+            Tuple of (DataFrame with single row, tag descriptions dict)
+        """
+        try:
+            if not response or not isinstance(response, list):
+                logger.warning("No data in snapshot SQL response")
+                return pd.DataFrame(), {}
+
+            values: dict[str, object] = {}
+            descriptions: dict[str, str] = {}
+            status_map: dict[str, object] = {}
+
+            for record in response:
+                tag_name = record.get("name")
+                if not tag_name or tag_name not in tag_names:
+                    continue
+
+                # Extract value
+                if "name->ip_input_value" in record:
+                    values[tag_name] = record.get("name->ip_input_value")
+
+                # Extract description
+                if "name->ip_description" in record and record["name->ip_description"] is not None:
+                    descriptions[tag_name] = record["name->ip_description"]
+
+                # Extract status if requested
+                if include_status and "name->ip_input_quality" in record:
+                    status_map[tag_name] = record.get("name->ip_input_quality")
+
+            if not values:
+                logger.warning("Snapshot SQL response contained no values")
+                return pd.DataFrame(), descriptions
+
+            # Build single-row DataFrame at snapshot time
+            df = pd.DataFrame([values])
+            df.index = pd.DatetimeIndex([snapshot_time], name="time")
+
+            # Add status columns if requested
+            if include_status and status_map:
+                status_df = pd.DataFrame([status_map])
+                status_df.index = df.index
+                status_df.columns = [f"{col}_status" for col in status_df.columns]
+                df = pd.concat([df, status_df], axis=1)
+
+            return df, descriptions
+
+        except Exception as e:
+            logger.error(f"Error parsing snapshot SQL response: {e}")
+            logger.debug(f"Response was: {response}")
+            return pd.DataFrame(), {}
+
+
+class SqlHistoryResponseParser(ResponseParser):
+    """Parser for SQL history responses.
+
+    Parses SQL query responses containing historical data for multiple tags.
+    Returns a list of DataFrames (one per tag).
+    """
+
+    def parse(
+        self,
+        response: list[dict],
+        tag_names: list[str],
+        include_status: bool,
+        max_rows: int,
+    ) -> tuple[list[pd.DataFrame], dict[str, str]]:
+        """Parse SQL history response for multiple tags into separate DataFrames.
+
+        Args:
+            response: SQL query response as list of records
+            tag_names: List of tag names to extract
+            include_status: Whether to include status column
+            max_rows: Maximum rows per tag (0 = unlimited)
+
+        Returns:
+            Tuple of (list of DataFrames, tag descriptions dict)
+        """
+        try:
+            if not response or not isinstance(response, list):
+                logger.warning("No data in SQL response")
+                return [], {}
+
+            # Group records by tag name
+            tag_records = defaultdict(list)
+            tag_descriptions = {}
+
+            for record in response:
+                tag_name = record.get("name")
+                if not tag_name:
+                    continue
+
+                tag_records[tag_name].append(record)
+
+                # Extract description from first record of each tag
+                if tag_name not in tag_descriptions and "name->ip_description" in record:
+                    tag_descriptions[tag_name] = record["name->ip_description"] or ""
+
+            # Build DataFrame for each tag
+            frames = []
+            for tag_name in tag_names:
+                records = tag_records.get(tag_name, [])
+
+                if not records:
+                    logger.warning(f"No data in SQL response for tag {tag_name}")
+                    continue
+
+                # Build DataFrame from records
+                rows = []
+                for record in records:
+                    timestamp = pd.to_datetime(record["ts"])
+                    value = record["value"]
+                    row = {"time": timestamp, tag_name: value}
+
+                    # Include status if present in response
+                    if include_status and "status" in record:
+                        row["status"] = record["status"]
+
+                    rows.append(row)
+
+                if rows:
+                    df = pd.DataFrame(rows)
+                    df = df.set_index("time")
+                    if max_rows > 0:
+                        df = df.iloc[:max_rows]
+                    if include_status and "status" in df.columns:
+                        df = df.rename(columns={"status": f"{tag_name}_status"})
+                    frames.append(df)
+                    logger.debug(f"Parsed {len(df)} data points for tag {tag_name}")
+
+            return frames, tag_descriptions
+
+        except Exception as e:
+            logger.error(f"Error parsing multi-tag SQL response: {e}")
+            logger.debug(f"Response was: {response}")
+            return [], {}
+
+
+class XmlHistoryResponseParser(ResponseParser):
+    """Parser for XML-style history responses.
+
+    Parses XML REST API responses containing historical data for a single tag.
+    Returns a single DataFrame.
+    """
+
+    def parse(
+        self, response: dict, tag_name: str, include_status: bool, max_rows: int
+    ) -> tuple[pd.DataFrame, str]:
+        """Parse Aspen REST API response into DataFrame.
+
+        Args:
+            response: XML-style API response as dict
+            tag_name: Tag name being queried
+            include_status: Whether to include status column
+            max_rows: Maximum rows to return (0 = unlimited)
+
+        Returns:
+            Tuple of (DataFrame, description string)
+        """
+        try:
+            # Get data array
+            data = response.get("data", [])
+            if not data or not isinstance(data, list):
+                logger.warning(f"No data array in response for tag {tag_name}")
+                return pd.DataFrame(), ""
+
+            # Get first element (should contain samples)
+            tag_data = data[0] if len(data) > 0 else {}
+
+            # Extract description if available (from IP_DESCRIPTION field)
+            description = ""
+            if "l" in tag_data and isinstance(tag_data["l"], list) and len(tag_data["l"]) > 0:
+                # "l" contains list of field values, IP_DESCRIPTION is second field if requested
+                fields = tag_data["l"]
+                if len(fields) > 1:
+                    description = fields[1] if fields[1] is not None else ""
+
+            # Check for errors in samples
+            samples = tag_data.get("samples", [])
+            if samples and isinstance(samples, list) and len(samples) > 0:
+                first_sample = samples[0]
+                # Check if first sample contains an error
+                if "er" in first_sample and first_sample.get("er", 0) != 0:
+                    error_msg = first_sample.get("es", "Unknown error")
+                    logger.warning(f"API error for tag {tag_name}: {error_msg}")
+                    return pd.DataFrame(), description
+
+            if not samples:
+                logger.warning(f"No samples found for tag {tag_name}")
+                return pd.DataFrame(), description
+
+            # Build DataFrame
+            rows = []
+            for sample in samples:
+                # Skip error samples
+                if "er" in sample:
+                    continue
+
+                row = {
+                    "time": pd.to_datetime(sample["t"], unit="ms", utc=True).tz_convert(None),
+                    tag_name: sample.get("v"),
+                }
+                if include_status:
+                    row[f"{tag_name}_status"] = sample.get("s", 0)
+                rows.append(row)
+
+            if not rows:
+                logger.warning(f"No valid data samples for tag {tag_name}")
+                return pd.DataFrame(), description
+
+            df = pd.DataFrame(rows)
+            if not df.empty:
+                df = df.set_index("time")
+                if max_rows > 0:
+                    df = df.iloc[:max_rows]
+
+            return df, description
+
+        except Exception as e:
+            logger.error(f"Error parsing response for tag {tag_name}: {e}")
+            logger.debug(f"Response was: {response}")
+            return pd.DataFrame(), ""
+
+
+class SqlAggregatesResponseParser(ResponseParser):
+    """Parser for SQL aggregates table responses.
+
+    Parses SQL aggregates responses containing min, max, avg, or rng values.
+    """
+
+    def parse(
+        self,
+        response: dict | list,
+        tag_names: list[str],
+        value_column: str,  # "min", "max", "avg", or "rng"
+        max_rows: int,
+    ) -> tuple[list[pd.DataFrame], dict[str, str]]:
+        """Parse SQL aggregates response.
+
+        Args:
+            response: SQL query response (can be dict with "data" wrapper or list of records)
+            tag_names: List of tag names to extract
+            value_column: Name of the value column (min, max, avg, or rng)
+            max_rows: Maximum rows per tag (0 = unlimited)
+
+        Returns:
+            Tuple of (list of DataFrames, dict of tag descriptions)
+        """
+        from collections import defaultdict
+
+        try:
+            logger.debug("SqlAggregatesResponseParser.parse called")
+            logger.debug(f"Response type: {type(response)}")
+            keys = response.keys() if isinstance(response, dict) else "N/A"
+            logger.debug(f"Response keys (if dict): {keys}")
+            logger.debug(f"Response content (first 500 chars): {str(response)[:500]}")
+            logger.debug(f"Tag names: {tag_names}")
+            logger.debug(f"Value column: {value_column}")
+
+            if not response:
+                logger.warning("Empty SQL aggregates response")
+                return [], {}
+
+            # Handle SQL response format: {"data": [{"cols": [...], "rows": [...]}]}
+            records = []
+            if isinstance(response, dict):
+                logger.debug("Response is dict, extracting 'data' field")
+                if "data" not in response:
+                    logger.error(
+                        f"Response dict has no 'data' field. Keys: {list(response.keys())}"
+                    )
+                    return [], {}
+
+                data_array = response["data"]
+                length = len(data_array) if isinstance(data_array, list) else "N/A"
+                logger.debug(f"data_array type: {type(data_array)}, length: {length}")
+
+                if not isinstance(data_array, list) or not data_array:
+                    logger.error("Invalid or empty 'data' array in response")
+                    return [], {}
+
+                # Get first result set
+                result_set = data_array[0]
+                logger.debug(f"result_set type: {type(result_set)}")
+                keys = result_set.keys() if isinstance(result_set, dict) else "N/A"
+                logger.debug(f"result_set keys (if dict): {keys}")
+
+                if not isinstance(result_set, dict):
+                    logger.error(f"result_set is not a dict: {type(result_set)}")
+                    return [], {}
+
+                # Check for errors
+                if "result" in result_set:
+                    result = result_set["result"]
+                    if isinstance(result, dict) and result.get("er", 0) != 0:
+                        error_msg = result.get("es", "Unknown error")
+                        logger.error(f"API error in aggregates response: {error_msg}")
+                        return [], {}
+
+                # Extract column definitions and row data
+                cols = result_set.get("cols", [])
+                rows = result_set.get("rows", [])
+
+                logger.debug(f"Found {len(cols)} columns and {len(rows)} rows")
+                logger.debug(f"Column definitions: {cols}")
+
+                if not cols or not rows:
+                    logger.warning("No columns or rows in SQL aggregates response")
+                    return [], {}
+
+                # Build column name mapping from index to name
+                col_map = {}
+                for col in cols:
+                    if isinstance(col, dict) and "i" in col and "n" in col:
+                        col_map[col["i"]] = col["n"]
+
+                logger.debug(f"Column mapping: {col_map}")
+
+                # Convert rows to list of dicts
+                for row_idx, row in enumerate(rows):
+                    if not isinstance(row, dict) or "fld" not in row:
+                        logger.warning(f"Row {row_idx} has invalid structure: {row}")
+                        continue
+
+                    fields = row["fld"]
+                    record = {}
+
+                    for field in fields:
+                        if isinstance(field, dict) and "i" in field and "v" in field:
+                            field_idx = field["i"]
+                            field_value = field["v"]
+                            if field_idx in col_map:
+                                record[col_map[field_idx]] = field_value
+
+                    if record:
+                        records.append(record)
+                        logger.debug(f"Row {row_idx} record: {record}")
+
+                logger.debug(f"Extracted {len(records)} records from SQL response")
+
+            elif isinstance(response, list):
+                logger.debug("Response is already a list of records")
+                records = response
+            else:
+                logger.error(f"Unexpected response type: {type(response)}")
+                return [], {}
+
+            if not records:
+                logger.warning("No records extracted from SQL aggregates response")
+                return [], {}
+
+            # Group records by tag name
+            tag_records: dict[str, list[dict]] = defaultdict(list)
+            tag_descriptions: dict[str, str] = {}
+
+            for i, record in enumerate(records):
+                logger.debug(f"Processing record {i}: {record}")
+
+                # Tag name might be in different fields depending on query structure
+                tag_name = record.get("name") or record.get("ip_tag_name")
+                if not tag_name:
+                    logger.warning(f"Record {i} has no tag name field: {list(record.keys())}")
+                    continue
+
+                tag_records[tag_name].append(record)
+
+                # Extract description if available
+                desc_field = record.get("name->ip_description") or record.get("ip_description")
+                if tag_name not in tag_descriptions and desc_field:
+                    tag_descriptions[tag_name] = desc_field or ""
+
+            logger.debug(f"Grouped records into {len(tag_records)} tags")
+
+            # Build DataFrame for each tag
+            frames = []
+            for tag_name in tag_names:
+                records_for_tag = tag_records.get(tag_name, [])
+
+                if not records_for_tag:
+                    logger.warning(f"No data in SQL aggregates response for tag {tag_name}")
+                    continue
+
+                logger.debug(
+                    f"Building DataFrame for {tag_name} with {len(records_for_tag)} records"
+                )
+
+                # Build DataFrame from records
+                rows = []
+                for record in records_for_tag:
+                    # Timestamp might be in different fields
+                    ts_value = record.get("ts") or record.get("ip_trend_time")
+                    if ts_value is None:
+                        logger.warning(f"Record missing timestamp: {record}")
+                        continue
+
+                    timestamp = pd.to_datetime(ts_value)
+
+                    # Value column might have prefix
+                    value = record.get(value_column) or record.get(f"ip_{value_column}")
+                    if value is None:
+                        logger.warning(
+                            f"Record missing value column '{value_column}': {list(record.keys())}"
+                        )
+                        continue
+
+                    row = {"time": timestamp, tag_name: value}
+                    rows.append(row)
+
+                if rows:
+                    df = pd.DataFrame(rows)
+                    df = df.set_index("time")
+                    if max_rows > 0:
+                        df = df.iloc[:max_rows]
+                    frames.append(df)
+                    logger.info(f"Parsed {len(df)} aggregate records for tag {tag_name}")
+                else:
+                    logger.warning(f"No valid rows extracted for tag {tag_name}")
+
+            logger.info(f"Successfully parsed {len(frames)} DataFrames from aggregates response")
+            return frames, tag_descriptions
+
+        except Exception as e:
+            logger.error(f"Error parsing SQL aggregates response: {type(e).__name__}: {e}")
+            logger.exception("Full traceback:")
+            logger.debug(f"Response was: {response}")
+            return [], {}
