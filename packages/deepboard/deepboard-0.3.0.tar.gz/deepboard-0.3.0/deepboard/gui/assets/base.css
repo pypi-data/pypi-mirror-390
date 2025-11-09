@@ -1,0 +1,428 @@
+@import url('theme.css');
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background-color:var(--background-color);
+  color: var(--text_color);
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+.container {
+  display: flex;
+}
+
+
+/*Menu when you right click*/
+#custom-menu {
+  position: absolute;
+  background-color: var(--menu-bg);
+  border: var(--menu-bg);
+  border-radius: 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  box-shadow: var(--menu-shadow);
+  visibility: hidden;
+}
+
+.dropdown-menu {
+    background-color: var(--menu-bg);
+    color: var(--text_color);
+    padding: 0;
+    width: 200px;
+    font-family: sans-serif;
+    margin: 0;
+    list-style: none;
+  }
+
+  .menu-item {
+    padding: 0.5rem;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .menu-item:hover {
+    background-color: var(--menu-bg-hover);
+  }
+
+  .has-submenu-wrapper {
+    position: relative;
+  }
+.has-submenu {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+  .submenu {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 100%;
+    background-color: var(--menu-bg);
+    border-radius: 6px;
+    padding: 0;
+    list-style: none;
+    min-width: 150px;
+    z-index: 1001;
+    margin-left: 0;
+    max-height: 40vh;
+    overflow-y: scroll;
+  }
+
+  .has-submenu-wrapper:hover .submenu {
+    display: block;
+  }
+
+  .submenu .menu-item:hover {
+    background-color: var(--menu-bg-hover);
+  }
+
+
+.copy-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.copy-icon-container {
+  position: relative;
+  width: 1em; /* match icon size */
+  height: 1em;
+  display: inline-block;
+}
+
+/* Overlap icons inside wrapper */
+.copy-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+  pointer-events: none; /* so they don't block clicks */
+}
+
+.copy-container:hover .default-icon {
+  visibility: visible;
+  opacity: 1;
+}
+
+.copy-container.copied .default-icon {
+  display: none;
+}
+
+.copy-container.copied .check-icon {
+  visibility: visible;
+  opacity: 1;
+}
+
+.align-right {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 100%; /
+}
+
+
+/*Compare Button*/
+.compare-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end; /* aligns content to the right horizontally */
+}
+
+.compare-button {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text_color);
+  background-color: var(--primary-color); /* Material purple */
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px var(--button-shadow-color);
+  cursor: pointer;
+}
+.compare-button:hover {
+  background-color: var(--primary-color-hover); /* darker on hover */
+  box-shadow: 0 2px 10px var(--button-shadow-color);
+}
+
+.compare-button:active {
+  box-shadow: 0 2px 5px var(--button-shadow-color);
+}
+
+.center-center{
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center; /* Horizontal centering */
+  align-items: center;     /* Vertical centering */
+}
+
+.expand {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+img {
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+    /* Scale without interpolation */
+  image-rendering: pixelated;          /* Modern browsers */
+  image-rendering: -moz-crisp-edges;   /* Firefox fallback */
+  image-rendering: crisp-edges;        /* Webkit fallback */
+}
+
+.modal-overlay{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 999; /* Ensure it covers other content */
+}
+.modal-overlay.hidden{
+  display: none;
+}
+.modal{
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Center content vertically */
+  align-items: center;
+}
+
+
+/* Dark overlay covering entire screen */
+.windowed-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+
+  /* Center the modal content */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal content box */
+.windowed-modal-content {
+  width: 30vw;
+  min-width: 300px;
+  height: 60vh;
+  min-height: 600px;
+  background-color: var(--background-color);
+  border: 1px solid var(--dg-border-color);
+  border-radius: var(--dg-border-radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  padding: 1em 2em;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+.windowed-modal.hidden{
+  display: none;
+}
+
+
+.windowed-modal-header{
+  display: flex;
+  flex-direction: row;
+  border-bottom: white 1px solid;
+  min-height: 3em;
+  align-items: start;
+}
+
+.windowed-modal-header h2 {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  padding-top: 0.15em;
+  text-align: center;
+}
+
+.windowed-modal-header-close-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--secondary-text-color);
+  font-size: 2em;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  height: auto;
+}
+
+.windowed-modal-header-close-button:hover {
+  color: var(--text_color);
+}
+
+/*Tables*/
+/* Jupyter-style table */
+table {
+  border-collapse: collapse;
+  color: var(--text_color);
+  background-color: var(--background-color);
+  border-radius: var(--dg-border-radius);
+  overflow: hidden;
+  box-shadow: var(--sp-table-shadow);
+}
+
+/* Table header */
+thead {
+  background-color: var(--dg-header-bg);
+}
+
+th {
+  padding: 0.6em 1em;
+}
+
+/* Table body */
+tr:nth-child(even) {
+  background-color: var(--dg-even-row-bg);
+}
+
+tr:hover {
+  background-color: var(--dg-row-hover);
+}
+
+td {
+  padding: 0.6em 1em;
+  color: var(--text_color);
+}
+
+/* Numeric values - right align */
+td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* Autocomplete component*/
+.autocomplete{
+    position: relative;
+}
+.autocomplete-input{
+  background-color: var(--sp-bg-color);
+  padding: 0.4em;
+  border-radius: 0.25em;
+  font-size: 1.1rem;
+  color: var(--text_color);
+  white-space: pre-wrap;
+  border: none;
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+  text-align: right;
+
+}
+.autocomplete-input:focus{
+  background-color: var(--menu-bg);
+}
+.autocomplete-suggestions{
+  position: absolute;
+  width: 100%;
+  max-height: 6em;
+  overflow-y: auto;
+  z-index: 10;
+}
+.autocomplete-suggestion-item{
+  padding: 0.5em;
+  background-color: var(--menu-bg);
+  border-bottom: 1px solid var(--dg-border-color);
+  cursor: pointer;
+}
+
+/*Color picker*/
+.color-picker-container{
+  position: relative;
+  height: 100%;
+  width: 50%;
+}
+
+.color-picker{
+  position: absolute;
+  top: 1.5em;
+  right: -1em;
+  padding: 1em;
+  display: flex;
+  background-color: var(--menu-bg);
+  border-radius: var(--sp-radius);
+  border: 1px solid var(--dg-border-color);
+  z-index: 10;
+  gap: 1em;
+  width: max-content;
+  max-width: 9em;
+  flex-wrap: wrap;
+}
+
+.color-display{
+  width: 1em;
+  height: 1em;
+  margin: 0;
+  padding: 0;
+  border-radius: 10em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1em;
+
+  cursor: pointer;
+}
+.color-input {
+  width: 1.3em;
+  height: 1.3em;
+  border: none;
+  cursor: pointer;
+  appearance: none;
+  background: none;
+  padding: 0;
+}
+
+/* Remove webkit wrapper padding */
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+  margin: 0;
+}
+
+.color-input::-webkit-color-swatch {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Remove Firefox inner spacing */
+.color-input::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.hidden {
+    display: none;
+}
+
+.block {
+    display: block;
+}
