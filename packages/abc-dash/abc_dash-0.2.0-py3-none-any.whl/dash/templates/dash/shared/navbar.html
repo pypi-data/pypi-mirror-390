@@ -1,0 +1,38 @@
+<ul class="{{ outer_class|default:"nav" }}">
+  {% for item in menu %}
+    {% if item.visible %}
+      <li class="nav-item"{% if item.slug %} id="navItem-{{ item.slug }}"{% endif %}>
+        <a {% if item.url %}href="{{ item.url }}"{% endif %} class="nav-link{% if item.selected and not item.children %} active{% endif %} {% if item.icon %}has-icon{% endif %}">
+          {% if item.icon %}
+            <span class="menu__icon">
+              <i class="fa-solid fa-{{ item.icon }}"></i>
+            </span>
+          {% endif %}
+          <span class="menu__text">
+            {{ item.title }}
+          </span>
+        </a>
+        {% if item.children %}
+          <ul class="nav flex-column nav--children">
+          {% for child in item.children %}
+            {% if child.visible %}
+              <li class="nav-item"{% if child.slug %} id="navItem-{{ child.slug }}"{% endif %}>
+                <a {% if child.url %}href="{{ child.url }}"{% endif %} class="nav-link{% if child.selected %} active{% endif %} {% if child.icon %}has-icon{% endif %}">
+                  {% if child.icon %}
+                    <span class="menu__icon">
+                      <i class="fa-solid fa-{{ child.icon }}"></i>
+                    </span>
+                  {% endif %}
+                  <span class="menu__text">
+                    {{ child.title }}
+                  </span>
+                </a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          </ul>
+        {% endif %}
+      </li>
+    {% endif %}
+  {% endfor %}
+</ul>
