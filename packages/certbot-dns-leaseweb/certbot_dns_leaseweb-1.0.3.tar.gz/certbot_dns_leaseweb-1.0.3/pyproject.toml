@@ -1,0 +1,77 @@
+[project]
+name = "certbot-dns-leaseweb"
+authors = [
+	{ name="iwaseatenbyagrue", email="iwaseatenbyagrue@gmail.com" },
+]
+readme = "README.md"
+license = {text = "Apache License 2.0"}
+description = "Automate dns-01 challenge completion using Leaseweb Domains API."
+requires-python = ">=3.8"
+keywords = [
+	"certbot",
+	"leaseweb",
+	"dns-01",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+ 	"certbot>=2.7.1",
+ 	"requests",
+	"urllib3>=2.0.7",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://gitlab.com/iwaseatenbyagrue/certbot-dns-leaseweb"
+Repository = "https://gitlab.com/iwaseatenbyagrue/certbot-dns-leaseweb"
+
+[build-system]
+requires = [
+	"setuptools",
+	"wheel",
+	"setuptools_scm",
+]
+
+[project.optional-dependencies]
+dev = [
+	"black",
+	"pylint",
+]
+test = [
+	"bandit",
+	"coverage",
+	"requests-mock",
+]
+
+[project.entry-points."certbot.plugins"]
+dns-leaseweb = "certbot_dns_leaseweb.plugin:LeasewebAuthenticator"
+
+[tool.bandit]
+exclude_dirs = [
+	"tests",
+	"venv",
+]
+[tool.setuptools_scm]
+[tool.coverage.run]
+branch = true
+command_line = "-m unittest discover tests/"
+omit = [
+	"venv",
+]
+source = [
+	"src",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pylint]
+recursive = true
+
+[tool.setuptools]
+license-files = [
+	"LICENSE",
+]
+
+

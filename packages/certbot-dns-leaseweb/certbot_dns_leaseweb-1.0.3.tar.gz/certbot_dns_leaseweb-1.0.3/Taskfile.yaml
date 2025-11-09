@@ -1,0 +1,109 @@
+---
+
+version: '3'
+
+env:
+  IMAGE_NAME: certbot-dns-leaseweb
+  IMAGE_TAG: latest
+
+tasks:
+  setup:
+    sources:
+      - pyproject.toml
+    cmds:
+      - virtualenv venv/
+      - venv/bin/pip install . .[dev] .[test]
+
+  lint:
+    cmds:
+      - task: lint-container
+      - task: lint-python
+
+  build:
+    cmds:
+      - task: build-package
+      - task: build-container
+
+  lint-python:
+    summary: |
+      Run a linting enforcer then lint for further issues.
+    deps:
+      - setup
+    sources:
+      - "**/*.py"
+      - "*.py"
+    cmds:
+      - venv/bin/black .
+      - venv/bin/pylint src tests
+
+  lint-container:
+    summary: |
+      Lint project Dockerfile(s).
+    sources:
+      - Dockerfile
+    cmds:
+      - cmd: cat "{{.ITEM }}" |  docker run --rm --privileged=false --interactive ghcr.io/hadolint/hadolint hadolint  -
+        for: sources
+  test:
+    cmds:
+      - task: test-unit
+      - task: test-sast
+      - task: test-container
+
+  test-sast:
+    summary: |
+      Run static code analysis on project.
+    deps:
+      - setup
+    sources:
+      - "**/*.py"
+      - pyproject.toml
+    cmds:
+      - venv/bin/bandit -c pyproject.toml -r .
+
+  test-unit:
+    summary: |
+      Run unittests and report coverage.
+    deps:
+      - setup
+    sources:
+      - "**/*.py"
+      - pyproject.toml
+    cmds:
+      - venv/bin/pip install -e .
+      - venv/bin/coverage run
+      - venv/bin/coverage report
+
+
+  test-container:
+    summary: |
+      Build but do not push images.
+    sources:
+      - Dockerfile
+    cmds:
+      - for: sources
+        cmd: docker run --privileged=false --rm -v "{{.USER_WORKING_DIR}}/{{.ITEM | dir }}":/workspace:ro gcr.io/kaniko-project/executor:latest --dockerfile /workspace/Dockerfile --no-push --context dir:///workspace
+
+  build-container:
+    summary: |
+      Build a container image.
+    sources:
+      - Dockerfile
+      - "**/*.py"
+      - pyproject.toml
+    cmds:
+      - docker build
+          --rm
+          --tag {{ .IMAGE_NAME }}:{{ .IMAGE_TAG }}
+          --pull
+          .
+
+  build-package:
+    summary: |
+      Build a python package.
+    source:
+      - pyproject.toml
+      - src/**/*.py
+    cmds:
+      - venv/bin/pip install build
+      - venv/bin/python -m build

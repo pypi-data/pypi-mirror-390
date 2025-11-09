@@ -1,0 +1,155 @@
+---
+
+stages:
+  - lint
+  - test
+  - deploy
+
+default:
+  image: docker.io/library/python:3.14
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  OCI_CONTEXT: "${CI_PROJECT_DIR}"
+  OCI_IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+  OCI_IMAGE_TAGS: "${CI_COMMIT_TAG}"
+
+.python:
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  image:
+    name: docker.io/library/python:3.14
+  before_script:
+    - python -V
+    - pip install --upgrade "pip" "virtualenv"
+    - virtualenv venv --clear
+    - source venv/bin/activate
+    - pip install . .[dev] .[test]
+  cache:
+    paths:
+    - ".cache/pip"
+    - venv/
+
+# Lint a dockerfile
+.lint-dockerfile:
+  stage: lint
+  image:
+    # /!\ Debian variant is needed to provide a shell.
+    name: ghcr.io/hadolint/hadolint:v2.14.0-debian
+  variables:
+    HADOLINT_ARGS: ""
+  script:
+    - hadolint ${HADOLINT_ARGS} "${DOCKERFILE:-"${OCI_CONTEXT}/Dockerfile"}"
+
+# Lint python code using a combination of `black` and `pylint`.
+.lint-python:
+  stage: lint
+  extends:
+    - .python
+  script:
+    - venv/bin/black --check --diff .
+    - venv/bin/pylint src tests
+
+# Perform static analysis on python code using `bandit`.
+.sast-python:
+  stage: test
+  extends:
+    - .python
+  script:
+    - mkdir -p reports/
+    - venv/bin/bandit --configfile pyproject.toml --recursive --format json --output reports/bandit.json .
+  artifacts:
+    paths:
+      - reports/bandit.json
+
+# Run a build and deploy the results.
+.deploy-container:
+  stage: deploy
+  image:
+    name: gcr.io/kaniko-project/executor:v1.24.0-debug
+    entrypoint: [""]
+  variables:
+    KANIKO_ARGS: ""
+  script:
+    - |
+      KANIKO_CMD="/kaniko/executor"
+      KANIKO_CMD="${KANIKO_CMD} --context ${OCI_CONTEXT}"
+      KANIKO_CMD="${KANIKO_CMD} --dockerfile ${DOCKERFILE:-"${OCI_CONTEXT}/Dockerfile"}"
+      for tag in "$OCI_IMAGE_TAGS"; do KANIKO_CMD="${KANIKO_CMD} --destination ${OCI_IMAGE_NAME}:$tag"; done
+      exec ${KANIKO_CMD} ${KANIKO_ARGS}
+
+###
+
+lint-code:
+  extends: .lint-python
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "pyproject.toml"
+        - "tests/**/*.py"
+        - "src/**/*.py"
+
+lint-container:
+  extends: .lint-dockerfile
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "Dockerfile"
+
+sast:
+  stage: test
+  extends:
+    - .sast-python
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+test:
+  stage: test
+  extends:
+    - .python
+  parallel:
+    matrix:
+      - PYTHON_VERSION:
+        - "3.14"
+        - "3.13"
+        - "3.12"
+        - "3.11"
+  image: docker.io/library/python:${PYTHON_VERSION}
+  script:
+    - mkdir -p reports
+    - venv/bin/pip install -e .
+    - venv/bin/coverage run
+    - venv/bin/coverage report
+    - venv/bin/coverage xml -o "reports/coverage-${PYTHON_VERSION}.xml"
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: "reports/coverage-${PYTHON_VERSION}.xml"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+
+
+deploy-package-gitlab:
+  stage: deploy
+  extends:
+    - .python
+  script:
+  - venv/bin/pip install twine build
+  - venv/bin/python -m build
+  - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token venv/bin/python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
+  rules:
+    - if: $CI_COMMIT_TAG
+  artifacts:
+    paths:
+      - dist/
+
+deploy-container-gitlab:
+  stage: deploy
+  extends:
+    - .deploy-container
+  rules:
+    - if: $CI_COMMIT_TAG
+
