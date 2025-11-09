@@ -1,0 +1,59 @@
+## Overview
+
+This repository now exposes a custom [yt-dlp](https://github.com/yt-dlp/yt-dlp) extractor plugin that understands `https://51cg1.com/archives/...` pages. The plugin drives Playwright to load the page in a headless Chromium instance, captures the HLS playlist used by the embedded player, and forwards it to yt-dlp together with the article title, cleaned description body, and every preview image found in the post content.
+
+Because the extractor lives under the `yt_dlp_plugins` namespace package, simply running yt-dlp from this directory (or with this directory added to `PYTHONPATH`) automatically enables the plugin—no patching of yt-dlp itself is required.
+
+## Requirements
+
+1. [uv](https://github.com/astral-sh/uv) for dependency management.
+2. Playwright browsers (Chromium is required).
+
+Install everything with:
+
+```bash
+uv sync
+uv run playwright install chromium
+```
+
+## Usage
+
+### Quick start via the helper script
+
+```bash
+uv run python main.py https://51cg1.com/archives/234404/ \
+  --write-description \
+  --write-thumbnail \
+  --write-all-thumbnails
+```
+
+The wrapper simply ensures `yt_dlp_plugins` is on `sys.path`, points yt-dlp at the provided URLs, and forwards options to save the cleaned article text (`--write-description`) and preview images (`--write-thumbnail`). Pass `--write-all-thumbnails` to persist every image that appeared in the article; otherwise yt-dlp’s default behavior is to keep only the highest-priority thumbnail. Outputs land under `downloads/<title>/`.
+
+### Direct yt-dlp invocation
+
+If you prefer stock yt-dlp flags, just keep the repository root on `PYTHONPATH`:
+
+```bash
+PYTHONPATH=$(pwd) uv run yt-dlp \
+  https://51cg1.com/archives/234404/ \
+  --write-info-json \
+  --write-description \
+  --write-thumbnail --write-all-thumbnails \
+  -o "%(title)s/%(id)s.%(ext)s"
+```
+
+The plugin exposes:
+
+- `title`: taken from the `<h1 class="post-title">`.
+- `description`: the article body with download widgets, tables, and other noise stripped, trademark boilerplate removed, and the original source URL appended.
+- `thumbnails`: every `<img>` inside the article that resolves to a `data:` URI. Those payloads are decoded/rewritten on-the-fly so a normal `--write-thumbnail` automatically saves them next to the video.
+- `http_headers`: correct `Origin`, `Referer`, and `User-Agent` so the captured `.m3u8` URL can be fetched by yt-dlp.
+
+Any additional yt-dlp switches (e.g., `--embed-metadata`, `--ppa "AtomicParsley::SetCoverArt"`) work as usual.
+
+### Inline thumbnail handling
+
+Many posts embed preview images as `data:` URIs instead of pointing at real files. The extractor decodes those payloads, and a small runtime patch extends yt-dlp’s native thumbnail writer so `--write-thumbnail` (or `--write-all-thumbnails`) emits the decoded bytes as normal `.jpg/.png/.webp` assets. Nothing special is required beyond passing the usual yt-dlp flags; the behavior works in both the helper script and direct `yt-dlp` invocations as long as this plugin is on `PYTHONPATH`.
+
+During extraction Playwright scrolls the page and waits (≈8 s overall) for the site’s JavaScript to inline every image before it snapshots the DOM, so even lazily loaded placeholders get converted into actual data URLs before yt-dlp sees them.
+Non-inline `<img>` tags are ignored because the site serves empty placeholders for those; only the final inlined variants are surfaced to yt-dlp.
