@@ -1,0 +1,53 @@
+name: Code Coverage
+on:
+  workflow_call:
+  workflow_dispatch:  # to trigger manually
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.13'
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install --all-deps
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Run unit tests
+        run: |
+          inv unit-test --cov
+
+      - name: Upload coverage to Codecov
+        if: github.repository == 'durandtibo/ghflowgen' && (github.event_name == 'push' || github.event_name == 'pull_request')
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          # Ignore codecov failures as the codecov server is not
+          # very reliable but we don't want to report a failure
+          # in the github UI just because the coverage report failed to
+          # be published.
+          fail_ci_if_error: false

@@ -1,0 +1,190 @@
+name: Nightly Package Tests
+on:
+  schedule:
+    - cron: '0 10 * * *' # run at 10 AM UTC
+  workflow_dispatch:  # to trigger manually
+
+permissions:
+  contents: read
+
+jobs:
+  get-versions:
+    uses: ./.github/workflows/get-versions.yaml
+
+  cyclic-imports:
+    uses: ./.github/workflows/cyclic-imports.yaml
+
+
+  stable-all:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+          ubuntu-24.04,
+          ubuntu-22.04,
+          ubuntu-24.04-arm,
+          ubuntu-22.04-arm,
+          macos-latest,
+          macos-26,
+          macos-15,
+          macos-14,
+          macos-15-intel,
+        ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install package
+        run: |
+          uv pip install "ghflowgen[all]"
+
+      - name: Run some checks
+        run: |
+          python tests/package_checks.py
+
+
+  stable-min:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+          ubuntu-24.04,
+          ubuntu-22.04,
+          ubuntu-24.04-arm,
+          ubuntu-22.04-arm,
+          macos-latest,
+          macos-26,
+          macos-15,
+          macos-14,
+          macos-15-intel,
+        ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install package
+        run: |
+          uv pip install ghflowgen
+
+      - name: Run some checks
+        run: |
+          python tests/package_checks.py
+
+
+  latest-all:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+          ubuntu-24.04,
+          ubuntu-22.04,
+          ubuntu-24.04-arm,
+          ubuntu-22.04-arm,
+          macos-latest,
+          macos-26,
+          macos-15,
+          macos-14,
+          macos-15-intel,
+        ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install package
+        run: |
+          uv pip install --pre "ghflowgen[all]"
+
+      - name: Run some checks
+        run: |
+          python tests/package_checks.py
+
+
+  latest-min:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+          ubuntu-24.04,
+          ubuntu-22.04,
+          ubuntu-24.04-arm,
+          ubuntu-22.04-arm,
+          macos-latest,
+          macos-26,
+          macos-15,
+          macos-14,
+          macos-15-intel,
+        ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install package
+        run: |
+          uv pip install --pre ghflowgen
+
+      - name: Run some checks
+        run: |
+          python tests/package_checks.py
+
+
+  packaging:
+    needs: get-versions
+    uses: ./.github/workflows/test-package-dep.yaml
+    with:
+      package-name: packaging
+      package-versions: ${{ toJson(fromJson(needs.get-versions.outputs.package_versions).packaging) }}
+
+  requests:
+    needs: get-versions
+    uses: ./.github/workflows/test-package-dep.yaml
+    with:
+      package-name: requests
+      package-versions: ${{ toJson(fromJson(needs.get-versions.outputs.package_versions).requests) }}

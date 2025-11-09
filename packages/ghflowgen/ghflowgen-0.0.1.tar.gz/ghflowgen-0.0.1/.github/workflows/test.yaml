@@ -1,0 +1,119 @@
+name: Tests
+on:
+  workflow_call:
+  workflow_dispatch:  # to trigger manually
+
+permissions:
+  contents: read
+
+jobs:
+  all:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+          ubuntu-24.04,
+          ubuntu-22.04,
+          ubuntu-24.04-arm,
+          ubuntu-22.04-arm,
+          macos-latest,
+          macos-26,
+          macos-15,
+          macos-14,
+          macos-15-intel,
+        ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install --all-deps
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Run unit tests
+        run: |
+          inv unit-test --cov
+
+      - name: Run integration tests
+        run: |
+          inv integration-test --cov
+
+
+  min:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+          ubuntu-24.04,
+          ubuntu-22.04,
+          ubuntu-24.04-arm,
+          ubuntu-22.04-arm,
+          macos-latest,
+          macos-26,
+          macos-15,
+          macos-14,
+          macos-15-intel,
+        ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Run unit tests
+        run: |
+          inv unit-test --cov
+
+      - name: Run integration tests
+        run: |
+          inv integration-test --cov
