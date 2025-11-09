@@ -1,0 +1,37 @@
+[project]
+name = "copernicus-downloader"
+version = "1.2.1"
+description = "An incremental downloader for Copernicus CDS / ADS datasets"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "boto3>=1.40.21",
+    "cdsapi>=0.7.6",
+    "python-dotenv>=1.1.1",
+    "pyyaml>=6.0.2",
+]
+
+[project.scripts]
+copernicus-downloader = "copernicus_downloader.main:main"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["copernicus_downloader*"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+update_pyproject_toml = true 
+commit_parser = "conventional"
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf", "chore"]
+parse_squash_commits = true
+ignore_merge_commits = true
+
+[dependency-groups]
+dev = [
+    "python-semantic-release>=10.4.1",
+]
+
