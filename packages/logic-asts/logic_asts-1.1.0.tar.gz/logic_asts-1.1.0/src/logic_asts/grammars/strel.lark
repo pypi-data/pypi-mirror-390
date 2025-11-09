@@ -1,0 +1,32 @@
+%import .ltl (expr, product, unary, ex_binary)
+
+?start: expr
+
+// Add temporal operators with higher precedence than & and |
+%override ?product: ex_binary
+                 | product ("&"|"&&")  ex_binary   -> mul
+
+// Extend extended binary operations with Reach
+%extend ?ex_binary: ex_binary "reach" ["^" dist_fn] dist_interval unary -> reach
+
+// Extend unary operations with escape, somehwhere and everywhere
+%extend ?unary: "escape" ["^" dist_fn] dist_interval unary             -> escape
+              | "somewhere" ["^" dist_fn] dist_interval unary          -> somewhere
+              | "everywhere" ["^" dist_fn] dist_interval unary         -> everywhere
+
+// NOTE
+// ----
+// ltl__base__IDENTIFIER is implicit when we import .ltl as IDENTIFIER is defined in
+// .base and .ltl imports .base
+//
+// REMEMBER YOUR *LINEAR* INHERITANCE HIERARCHIES
+dist_fn: IDENTIFIER
+dist_interval: "[" [NUMBER] "," [NUMBER] "]"
+
+IDENTIFIER: CNAME | ESCAPED_STRING
+ESCAPED_STRING:  /(".*?(?<!\\)(\\\\)*?"|'.*?(?<!\\)(\\\\)*?')/i
+
+%import common.CNAME
+%import common.NUMBER
+%import common.WS
+%ignore WS
