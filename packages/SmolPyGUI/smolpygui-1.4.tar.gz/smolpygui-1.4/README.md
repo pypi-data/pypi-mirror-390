@@ -1,0 +1,25 @@
+SmolPyGUI is a little personal project that I decided I would upload to PyPI. 
+Below are some examples of usage.
+
+A Simple Hello World
+```python
+from SmolPyGUI import initialize, Button, MainLoop
+
+initialize((500,500)) #makes a 500x500 window
+
+Button(300,300,100,100,"#ff0000",lambda: print("Hello World!")) #makes a 100x100 red button at 300,300 that prints "hey"
+
+MainLoop() #starts the program
+```
+
+Let's Print Something More Fun
+```python
+from SmolPyGUI import initialize, TextBox, MainLoop
+
+initialize((500,500))
+
+#a quick reminder that for TextBox and TextDisplay objects the width argument is in characters, not pixels. (ie. width 5 means it can fit 5 characters of it's size in it's width)
+TextBox(0,0,500,32,onEnter=lambda x: print(x)) #TextBox().onEnter and TextBox().onInput are both given the current TextBox text value when called, so this will print the value in the TextBox when the return key is pressed
+
+MainLoop()
+```
