@@ -1,0 +1,73 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v0.1.0, v1.2.3, etc.
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for trusted publishing
+      contents: write  # Required for creating releases
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+    
+    - name: Get version from pyproject.toml
+      id: get_version
+      run: |
+        VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Package version: $VERSION"
+    
+    - name: Verify tag matches version
+      run: |
+        TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+        PYPROJECT_VERSION="${{ steps.get_version.outputs.version }}"
+        if [ "$TAG_VERSION" != "$PYPROJECT_VERSION" ]; then
+          echo "Error: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PYPROJECT_VERSION)"
+          exit 1
+        fi
+        echo "Version check passed: $TAG_VERSION"
+    
+    - name: Install build dependencies
+      run: uv pip install --system build twine
+    
+    - name: Build package
+      run: python -m build
+    
+    - name: Check package
+      run: twine check dist/*
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Release v${{ steps.get_version.outputs.version }}
+        body: |
+          Release version ${{ steps.get_version.outputs.version }}
+          
+          See [CHANGELOG](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md) for details.
+        files: |
+          dist/*.whl
+          dist/*.tar.gz
+        draft: false
+        prerelease: false
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        # Or use trusted publishing (recommended):
+        # Remove the password line above and configure trusted publishing
+        # in your PyPI account settings
