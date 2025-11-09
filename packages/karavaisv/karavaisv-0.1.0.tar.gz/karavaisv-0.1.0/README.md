@@ -1,0 +1,442 @@
+# KaravaiSV
+
+## What is this?
+
+KaravaiSV is an advanced templating tool for SystemVerilog. \
+It gives a developer much more abilities to parametrize design compared to classic SystemVerilog `generate` and `define` constructions. \
+Last but not least it gives ability to write lint errors free code with ease.
+
+### Why do you want to use it?
+
+1. Write once - use everywhere. Simple module with couple of parameters gives ability to use it everywhere only slightly changing config file.
+2. Flexible architecture. Let your module serve single purpose but many ways choosen design-time.
+3. Speed up development. Putting same modules with different configs rather than zoo of them does not spend your time.
+4. No repeated verification. Verify module once - use million of times.
+5. Debug with ease. Developing a new feature and found a bug? Turn off your WIP feature with parameter and see does this bug existed before.
+6. No fear to edit. Changing generation config rather than code itself leads to less _manual edits_ and followed mistakes as well.
+7. Generation automatization. Automatization of project generation will become easy as pie.
+
+## Installation and building project
+
+The main goal of KaravaiSV is to make everything as easy as ABC and so installation and building follows the same rule.
+
+**A**: Install KaravaiSV
+
+```bash
+pip install karavaisv
+```
+
+**B**: Modify generation config for your needs
+
+```bash
+vim config/default.yaml
+```
+
+**C**: Run generate script
+
+```bash
+python generate.py
+```
+
+Ta-da! \
+Now you generated project. All generated files are located somewhere here. By default all rendered conted appears in `build` folder.
+
+> The **A** step should only be performed once per system or virtual enviroment.
+
+## Usage
+
+There are mainly two ways of usage KSV - CLI and generation scripts. \
+Generation scripts are always preferred as they provides ability to make parameters correction checks, calculation derived parameters, etc. \
+However, CLI interface still can be used for debugging and temporarily purposes.
+
+All of the below described examples of KSV are a best practices to write a unified generating scripts. It serves purpose to make all ksv-templated project compliant with each other. \
+For the compliant reasons there are strong recomendations for single modules as they are likely to be used in big projects and should be integrated with ease. \
+It is highly recommended, but not a mandatory to follow this rules.
+
+### Recommended usage for single module
+
+For a repository that contains single ksv-templated module the following generate script pattern is preferred.
+
+```python
+import karavaisv as ksv
+# other imports if needed
+
+# function that performs validity check on given parameters
+def ksv_check_parameters(parameters):
+    <...>
+    assert parameters['data_width'] > 0, "data_width must be positive integer"
+    <...>
+    assert len(parameters['input_ports']) > 0, "module must have at least one input port"
+    <...>
+
+
+# function that calculates derived parameters
+def ksv_calculate_derived_parameters(parameters):
+    <...>
+    # example parameter fifo_width equals max width of all input ports
+    data_widths = [port['data_width'] for port in parameters['input_ports']]
+    parameters['fifo_width'] = max(data_widths)
+    <...>
+    return parameters
+
+
+# function that render code when runnung separately
+def main():
+    FILEPATH_DST = "build/output.sv"
+    FILEPATH_PARAMS = "config/default.yaml"
+    FILEPATH_SRC = "rtl/module.ksv"
+
+    parameters = ksv.read_params_from_yaml(FILEPATH_PARAMS)
+    source_code = ksv.read_source_from_file(FILEPATH_SRC)
+
+    ksv_check_parameters(parameters)
+    parameters = ksv_calculate_derived_parameters(parameters)
+
+    rendered_code = ksv.render(source_code, parameters, filepath=FILEPATH)
+    ksv.write_rendered_to_file(rendered_code, FILEPATH)
+
+# python syntax construction to run main() function only when script is called explicitly
+if __name__ == "__main__":
+    main()
+```
+
+> Feel free to take this script into all of you project as it is good enough to deal with all the job. The only thing to be changed to accumulate your needs is a `ksv_check_parameters` and `ksv_calculate_derived_parameters` function bodies and `FILEPATH_DST`, `FILEPATH_PARAMS` and `FILEPATH_SRC` constants in `main` function (their assignment can also be moved somewhere else).
+
+Why should you use such a big script with dividing into functions? Why not single multi-line script? \
+The answer is simplicity to integrate. In case of your module is about to be used as an IP block in bigger projects, main generate script at whole project will perform a call to `ksv_check_parameters` and `ksv_calculate_derived_parameters` functions in every IP block to verify and calculate their parameters. \
+Learn more and see example at the folowing paragraph.
+
+> Described above integration ability is the reason why `main` function are separated and `if __name__ == "__main__"` are present. Other way the main function could've been executed when generate script imported.
+
+### Recommended usage for big project
+
+For a repository that contains massive project including submodules or simple KSV files the following generate script pattern is preferred.
+
+```python
+import karavaisv as ksv
+# other imports if needed
+
+# function that performs validity check on given parameters
+def ksv_check_parameters(parameters):
+    <...>
+    # one more example of parameter checking
+    assert parameters['arbiter'] in {'RR', 'FE', 'RND'}, "arbiter type must be one of: RR (RoundRobin), FE (FirstEntry), RND (Random)"
+    <...>
+
+
+# function that calculates derived parameters
+# this function is also can calculate parameters for submodules
+def ksv_calculate_derived_parameters(parameters):
+    <...>
+    return parameters
+
+
+# function that render code when runnung separately
+def main():
+    FILEPATH_PARAMS = "config/default.yaml"
+
+    parameters = ksv.read_params_from_yaml(FILEPATH_PARAMS)
+
+    ksv_check_parameters(parameters)
+    parameters = ksv_calculate_derived_parameters(parameters)
+
+    # the below section of code should be repeated for every source file of that project itself (excluding submodules)
+
+    filepath_src = "rtl/example/path/to/module.ksv"
+    filepath_dst = "build/rtl/example/path/to/module.sv"
+
+    source_code = ksv.read_source_from_file(filepath_src)
+
+    rendered_code = ksv.render(source_code, parameters, filepath=filepath_src)
+    ksv.write_rendered_to_file(rendered_code, filepath_src)
+
+    # the below section of code should be repeated for every submodule file of that project (means that cloned as external repo)
+
+    filepath_src = "rtl/example/path/to/module.ksv"
+    filepath_dst = "build/rtl/example/path/to/module.sv"
+
+    source_code = ksv.read_source_from_file(filepath_src)
+    submodule_name_parameters = {
+        <...>,
+        "width": parameters['submodule_name_width'],
+        <...>
+    }
+
+    rendered_code = ksv.render(source_code, submodule_name_parameters, filepath=filepath_src)
+    ksv.write_rendered_to_file(rendered_code, filepath_src)
+
+
+# python syntax construction to run main() function only when script is called explicitly
+if __name__ == "__main__":
+    main()
+```
+
+For submodules there are creates separated dict with parameters. This is performed as external submodules could have parameter names collision with main project files and this is one of the possible ways to solve this issue.
+
+> It is a common scenario when within a big project there are ksv-templated and simple sv files. There are two ways to solve this issue. \
+First, you can make main part of project non-templated and requre to run KaravaiSV once to generate necceserly ksv-templated files. \
+Second, preferred way, make project must always be generated via KaravaiSV and simply copy sv files to destination folder with rendered content or process them via KaravaiSV the same way it done with ksv-templated files. If sv files have no KSV syntax then they are not being affected.
+
+### CLI interface
+
+KaravaiSV also provides simple CLI interface for the easiest debug purposes. \
+After instllation via `pip` it can be called directly from terminal via `karavaisv` or `ksv` commands.
+
+Table with supported options for CLI program are shown below.
+
+| argument   | type   | required | desription                      |
+|------------|--------|----------|---------------------------------|
+| input      | string | Y        | path to an input file           |
+| output     | string | Y        | path to an output file          |
+| parameters | string | N        | path to an parameters yaml file |
+| logging    |        | N        | turns logging into terminal on  |
+
+You can also get information about all supported parameters typing `ksv --help` in terminal.
+
+Though, CLI interface is presented it does not allow to calculate any derived parameters or perform any other advanced manipulations, so it is strictly recommended to use it only for debug porposes.
+
+### Passing parameters to KSV engine
+
+Honorable mention on KaravaiSV parameters passing logic.
+
+When passing to render functions dictionary, the key-word values of that dictionary will became variables and their values at rendering process. This was made to avoid repeating of `parameters['key']` code.
+
+Feel free to see the example any time you struggling with something.
+
+## What it can do with code?
+
+KaravaiSV gives you ability to template basicaly everything in your code. \
+Only your imagination can limit you.
+
+### Supported syntax
+
+As for right now, KaravaiSV support two types of templating - inline and sectional.
+
+#### Inline templating
+
+Inline templating means that everywhere in code can be used special construction that replaces templated part with needed text.
+
+KaravaiSV provides folowing syntax for inline templates: `</ template_code />`.
+
+All the code before `</` and after `/>` is not going to be affected. All the code inside is being interprented as Python code and it will be executed. As this is inline template it is going to be replaved with the result of executed content converted to string. Inline border symbols `</` and `/>` is about to be removed.
+
+> Do not use inline templates to perform any calculations! They are only used to put templated strings in code.
+
+Let's take a look at simple example.
+
+Let's pretend we have a following code and int parameter `data_width_max` equals to 32:
+
+```systemverilog
+logic [</ data_width_max /> - 1:0] data_reg;
+```
+
+After KSV rendering the following code will appear:
+
+```systemverilog
+logic [32 - 1:0] data_reg;
+```
+
+> No explicit cast from python `int` to `str` is needed as this done automatically inside KSV rendering engine.
+
+Let's take a look at another more complex example.
+
+It's a common practice to render single module multiple times with different configurations based on where they should be used. The usage place defined by module name prefix - parent module name. \
+Here's the example how to make this work with KaravaiSV.
+
+Source code:
+
+```systemverilog
+module </ parent_module_name + '_' if parent_module_name else '' />reducing_fifo (
+```
+
+Rendered code (`parent_module_name = ''`):
+
+```systemverilog
+module reducing_fifo (
+```
+
+Rendered code (`parent_module_name = 'input_buffer'`):
+
+```systemverilog
+module input_buffer_reducing_fifo (
+```
+
+This examples is a tiny bit of what inline templating gives opportunity to do.
+
+More interesting example at **Usage example** chapter.
+
+#### Sectional templating
+
+Sectional templating means that are some section in code that can be rendered conditionally (if/elif/else) or multiple times (for/while).
+
+KaravaiSV provides folowing syntax for sectional templates: `<$ template_code $>`.
+
+The sectional template string must took all the line and should never be mixed with any other code within the single line! This resctriction is done because sectional templated string are not rendered itself rather then gives render engine an instruction of what to do with code around.
+
+Currently, KaravaiSV supports following keywords for sectional templtating: `if`, `elif`, `else`, `for`, `while`, `with`, `match`, `case`, `end`.
+
+Special keyword `end` was added as an equavalent of python reduce level of intentation.
+
+Let's take a look at an example. \
+This example combines both inline and sectional templates.
+
+Source code:
+
+```systemverilog
+<$ for port in input_ports: $>  // data & valid inputs for each port
+
+  input  logic [</ port['data_width'] /> - 1:0] </ port['name'] />_data_i,
+  input  logic                                  </ port['name'] />_valid_i,
+<$ end                      $>
+```
+
+Parameters:
+
+```yaml
+input_ports:
+  - name: "n1"
+    data_width : 8
+  - name: "n2"
+    data_width : 16
+  - name: "n3"
+    data_width : 32
+```
+
+Rendered code:
+
+```systemverilog
+  input  logic [8 - 1:0] n1_data_i,
+  input  logic                                  n1_valid_i,
+
+  input  logic [16 - 1:0] n2_data_i,
+  input  logic                                  n2_valid_i,
+
+  input  logic [32 - 1:0] n3_data_i,
+  input  logic                                  n3_valid_i,
+```
+
+One more example.
+
+Source code:
+
+```systemverilog
+<$ if assertions: $>
+// assertions
+
+<$   for port in input_ports: $>
+assert property (@(posedge clk) disable iff ~rstn !$is_unknown(</ port['name'] />_valid_i) ) else $error("</ port['name'] />_valid_i should be always known!");
+<$   end                      $>
+<$ end            $>
+```
+
+Parameters:
+
+```yaml
+assertions: true
+input_ports:
+  - name: "n1"
+    data_width : 8
+  - name: "n2"
+    data_width : 16
+  - name: "n3"
+    data_width : 32
+```
+
+Rendered code:
+
+```systemverilog
+// assertions
+
+assert property (@(posedge clk) disable iff ~rstn !$is_unknown(n1_valid_i) ) else $error("n1_valid_i should be always known!");
+assert property (@(posedge clk) disable iff ~rstn !$is_unknown(n2_valid_i) ) else $error("n2_valid_i should be always known!");
+assert property (@(posedge clk) disable iff ~rstn !$is_unknown(n3_valid_i) ) else $error("n3_valid_i should be always known!");
+```
+
+### Usage with non-sv files
+
+Even though KaravaiSV is called this way it can render not only SystemVerilog.
+
+Simplest example is to render filelist file depending on modules usage.
+
+Example:
+
+```bash
+<...>
+build/rtl/rv_extensions/compr_instructions_parser.sv
+<$ if (atomic_support): $>
+build/rtl/rv_extensions/amo_microinstructions_ctrl.sv
+<$ end                  $>
+build/rtl/rv_extensions/mdu_unit.sv
+<...>
+```
+
+Turn your creativity on and use KaravaiSV as a templating tool for the whole project!
+
+### Little additions
+
+#### Comments
+
+Though, it is possible in both types of templates it is strictly recommended not to use python comments as they makes code more dirty.
+
+Preferred way to make comment is to make SystemVerilog style comments on sectional templating lines. This comments are not being rendered. This fact is shown in one of the above examples, comment `// data & valid inputs for each port` is never been rendered.
+
+#### File formats
+
+It is strongly recommended to give an ksv-templated SystemVerilog files a `.ksv` extensions to explicitly mark them as KaravaiSV files and make navigation in repo easier. \
+Same recomendation works for Verilog files which are recommended to mark with `.kv` extension.
+
+However such decision likely would break code highlighning. \
+KaravaiSV templating engine can process files of any extensions, so you are free to choose any variant you want.
+
+#### Code style
+
+KaravaiSV suggest to use following codestyle to ensure that code is easily readable.
+
+**Firstly.** Sectional templating borders allign
+
+Allign sectional templating borders to make easily visible where every section of code begins and ends.
+
+Example:
+
+```systemverilog
+<...>
+<$ if (atomics_support): $>
+<...>
+<$ end                   $>
+<...>
+```
+
+**Secondly.** Nested sectional templating borders indent
+
+Add extra identation for the righ border of nested templating borders, even if it leads to extra spaces. \
+This would be much more easy to find nested constructions.
+
+Example:
+
+```systemverilog
+<...>
+<$ if (len(afb_ports) > 0 and !external_afb): $>
+<$   for (port in afb_ports):                     $>
+<...>
+<$     if (port['output_async_fifo']):              $>
+<...>
+<$     end                                          $>
+<$   end                                          $>
+<$ end                                        $>
+<...>
+```
+
+There's no strict rule on how much spaces needed for each identation block, but KaravaiSV recommends using 2 or 4 spaces.
+
+## Addition information
+
+This is a small project made by single humanoid. It can contain mistakes, bugs, errors, bloops and many more. \
+This project was made for personal purposes for pet-projects but it seems so useful that I decided to give it a way into a bigger world. \
+Feel free to give your suggestions and ideas on any improvments that will make this project better.
+
+It also would be great if your projects will use KaravaiSV for advanced templating. \
+I personally think that using such tool could give small project much more using scenarios thanks to new level parametrization.
+
+### Issues
+
+If you fould any issues related to this project, please [create an issue on GitHub](https://github.com/BIG-Denis/karavaisv/issues).
