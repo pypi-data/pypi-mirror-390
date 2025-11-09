@@ -1,0 +1,16 @@
+{% macro render(nav_item, depth, id) %}
+  <li class="fr-nav__item {% if depth>2 %} fr-ml-{{ depth }}w {% endif %}">
+    {% if nav_item.children %}
+      <button class="fr-nav__btn" aria-expanded="false" aria-controls="menu-{{ id }}"{% if nav_item.active %} aria-current="true"{% endif %}>{{ nav_item.title }}</button>
+      <div class="fr-collapse {%- if depth==1 %} fr-menu {%- endif %}" id="menu-{{ id }}">
+        <ul class="fr-menu__list">
+          {% for nav_item_children in nav_item.children %}
+            {{ render(nav_item_children, depth+1, id ~ loop.index) }}
+          {% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      <li class="fr-nav__item {% if depth>2 %} fr-ml-{{ depth }}w {% endif %}"> <a class="fr-nav__link" href="{{ nav_item.url|url }}" target="_self"{% if nav_item.active %} aria-current="page"{% endif %}>{{ nav_item.title }}</a> </li>
+    {% endif %}
+  </li>
+{% endmacro %}
