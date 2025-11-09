@@ -1,0 +1,23 @@
+{% load static %}
+{% if widget.config.toc.enable %}
+<div class="eddytor-container-{{ widget.name }}" id="eddytor-container-{{ widget.name }}">
+    <div class="toc-block" style="height: 100%;">
+        <div style="display: none;">
+            {% for item in widget.config.toc.toc_items %}
+                <a class="toc-item" href="{{ item.url }}" target="_self">{{ item.text }}</a>
+            {% endfor %}
+        </div>
+       
+        <div id="eddytor-{{ widget.name }}" class="{{ widget.attrs.class }}">
+            {{ widget.value|default_if_none:"" }}
+        </div>
+      
+    </div>
+</div>
+{% else %}
+<div id="eddytor-{{ widget.name }}" class="{{ widget.attrs.class }}">
+    {{ widget.value|default_if_none:"" }}
+</div>
+{% endif %}
+
+<script src="{% static 'eddytor/eddytor.umd.js' %}"></script>
