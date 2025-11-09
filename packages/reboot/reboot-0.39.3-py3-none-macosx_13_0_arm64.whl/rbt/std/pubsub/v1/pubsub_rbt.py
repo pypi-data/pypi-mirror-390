@@ -1,0 +1,7714 @@
+# yapf: disable
+# isort: skip_file
+# ruff: noqa
+
+
+
+# To not generate code where imported names might get shadowed when a user
+# specifies some name in their proto file to be the same as one of our imported
+# names, (for example: a request field named `uuid`) we bind all imports to
+# names that are forbidden in 'proto' and therefore can never collide.
+
+# Standard imports.
+from __future__ import annotations as IMPORT_future_annotations
+
+# The following MUST appear before the rest of the imports, since those imports
+# may be invalid (broken) if the generated code is mismatched with the installed
+# libraries.
+import rebootdev.versioning as IMPORT_reboot_versioning
+IMPORT_reboot_versioning.check_generated_code_compatible("0.39.3")
+
+# ATTENTION: no types in this file should be imported with their unqualified
+#            name (e.g. `from typing import Any`). That would cause clashes
+#            with user-defined methods that have the same name. Use
+#            fully-qualified names (e.g. `IMPORT_typing.Any`) instead.
+import asyncio as IMPORT_asyncio
+import builtins as IMPORT_builtins
+import contextvars as IMPORT_contextvars
+import dataclasses as IMPORT_dataclasses
+import google.protobuf.descriptor as IMPORT_google_protobuf_descriptor
+import google.protobuf.json_format as IMPORT_google_protobuf_json_format
+import google.protobuf.message as IMPORT_google_protobuf_message
+import grpc as IMPORT_grpc
+import grpc_status._async as IMPORT_rpc_status_async
+from grpc_status import rpc_status as IMPORT_rpc_status_sync
+import json as IMPORT_json
+import os as IMPORT_os
+import traceback as IMPORT_traceback
+import uuid as IMPORT_uuid
+import pickle as IMPORT_pickle
+import rebootdev as IMPORT_rebootdev
+import log.log as IMPORT_log_log   # type: ignore[import]
+import typing as IMPORT_typing
+import rebootdev.aio.backoff as IMPORT_reboot_aio_backoff
+import functools as IMPORT_functools
+from abc import abstractmethod as IMPORT_abc_abstractmethod
+from datetime import datetime as IMPORT_datetime_datetime
+from datetime import timedelta as IMPORT_datetime_timedelta
+from datetime import timezone as IMPORT_datetime_timezone
+from google.protobuf import timestamp_pb2 as IMPORT_google_protobuf_timestamp_pb2
+from google.protobuf import wrappers_pb2 as IMPORT_google_protobuf_wrappers_pb2
+import rebootdev.aio.tracing as IMPORT_reboot_aio_tracing
+from google.rpc import status_pb2 as IMPORT_google_rpc_status_pb2
+from tzlocal import get_localzone as IMPORT_tzlocal_get_localzone
+import rebootdev.aio.call as IMPORT_reboot_aio_call
+import rebootdev.aio.contexts as IMPORT_reboot_aio_contexts
+import rebootdev.aio.headers as IMPORT_reboot_aio_headers
+import rebootdev.aio.idempotency as IMPORT_reboot_aio_idempotency
+import rebootdev.aio.internals.channel_manager as IMPORT_reboot_aio_internals_channel_manager
+import rebootdev.aio.internals.middleware as IMPORT_reboot_aio_internals_middleware
+import rebootdev.aio.internals.tasks_cache as IMPORT_reboot_aio_internals_tasks_cache
+import rebootdev.aio.internals.tasks_dispatcher as IMPORT_reboot_aio_internals_tasks_dispatcher
+import rebootdev.aio.placement as IMPORT_reboot_aio_placement
+import rebootdev.aio.servicers as IMPORT_reboot_aio_servicers
+import rebootdev.aio.state_managers as IMPORT_reboot_aio_state_managers
+import rebootdev.aio.stubs as IMPORT_reboot_aio_stubs
+import rebootdev.aio.tasks as IMPORT_reboot_aio_tasks
+import rebootdev.aio.types as IMPORT_reboot_aio_types
+import rebootdev.aio.external as IMPORT_reboot_aio_external
+import rebootdev.aio.workflows as IMPORT_reboot_aio_workflows
+import rebootdev.settings as IMPORT_reboot_settings
+import rebootdev.nodejs.python as IMPORT_reboot_nodejs_python
+from rebootdev.time import DateTimeWithTimeZone as IMPORT_reboot_time_DateTimeWithTimeZone
+import rbt.v1alpha1 as IMPORT_rbt_v1alpha1
+import rbt.v1alpha1.nodejs_pb2 as IMPORT_rbt_v1alpha1_nodejs_pb2
+import google.protobuf.any_pb2 as IMPORT_google_protobuf_any_pb2
+import sys as IMPORT_sys
+
+# Additionally re-export all messages and enums from the pb2 module.
+from rbt.std.pubsub.v1.pubsub_pb2 import (
+    BrokerRequest,
+    BrokerResponse,
+    PublishRequest,
+    PublishResponse,
+    SubscribeRequest,
+    SubscribeResponse,
+)
+
+# User defined or referenced imports.
+import google.protobuf.any_pb2
+import google.protobuf.descriptor_pb2
+import google.protobuf.struct_pb2
+import rbt.std.item.v1.item_pb2
+import rbt.std.pubsub.v1.pubsub_pb2
+import rbt.std.pubsub.v1.pubsub_pb2_grpc
+import rbt.v1alpha1.options_pb2
+
+logger = IMPORT_log_log.get_logger(__name__)
+
+# We won't validate Pydantic state models while they are under construction.
+states_being_constructed: set[str] = set()
+
+
+
+def TopicToProto(state: Topic.State, protobuf_state: rbt.std.pubsub.v1.pubsub_pb2.Topic):
+    pass
+
+def TopicFromProto(
+    state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+    validate: bool = True,
+) -> Topic.State:
+    return state
+def TopicPublishResponseToProto(
+    response: Topic.PublishResponse
+) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+    return response
+
+def TopicPublishResponseFromProto(
+    response: rbt.std.pubsub.v1.pubsub_pb2.PublishResponse
+) -> Topic.PublishResponse:
+    return response
+
+def TopicPublishRequestToProto(
+    request: Topic.PublishRequest
+) -> rbt.std.pubsub.v1.pubsub_pb2.PublishRequest:
+    return request
+
+def TopicPublishRequestFromProto(
+    request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest
+) -> Topic.PublishRequest:
+    return request
+
+def TopicSubscribeResponseToProto(
+    response: Topic.SubscribeResponse
+) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+    return response
+
+def TopicSubscribeResponseFromProto(
+    response: rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse
+) -> Topic.SubscribeResponse:
+    return response
+
+def TopicSubscribeRequestToProto(
+    request: Topic.SubscribeRequest
+) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest:
+    return request
+
+def TopicSubscribeRequestFromProto(
+    request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest
+) -> Topic.SubscribeRequest:
+    return request
+
+def TopicBrokerResponseToProto(
+    response: Topic.BrokerResponse
+) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+    return response
+
+def TopicBrokerResponseFromProto(
+    response: rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse
+) -> Topic.BrokerResponse:
+    return response
+
+def TopicBrokerRequestToProto(
+    request: Topic.BrokerRequest
+) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest:
+    return request
+
+def TopicBrokerRequestFromProto(
+    request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest
+) -> Topic.BrokerRequest:
+    return request
+
+
+############################ Legacy gRPC Servicers ############################
+# This section is relevant (only) for servicers that implement a legacy gRPC
+# service in a Reboot context. It is irrelevant to clients.
+
+def MakeLegacyGrpcServiceable(
+    # A legacy gRPC servicer type can't be more specific than `type`,
+    # because legacy gRPC servicers (as generated by the gRPC `protoc`
+    # plugin) do not share any common base class other than `object`.
+    servicer_type: type
+) -> IMPORT_reboot_aio_servicers.Serviceable:
+    raise ValueError(f"Unknown legacy gRPC servicer type '{servicer_type}'")
+
+
+
+############################ Reboot Servicer Middlewares ############################
+# This section is relevant (only) for servicers implementing a Reboot servicer. It
+# is irrelevant to clients, except for the fact that some clients are _also_ such
+# servicers.
+
+# For internal calls, we can use a magic token to bypass token verification and
+# authorization checks. The token provides no auth information (e.g.,
+# `context.auth is None`).
+__internal_magic_token__: str = f'internal-{IMPORT_uuid.uuid4()}'
+
+class TopicServicerMiddleware(IMPORT_reboot_aio_internals_middleware.Middleware):
+
+    def __init__(
+        self,
+        *,
+        servicer: TopicBaseServicer,
+        application_id: IMPORT_reboot_aio_types.ApplicationId,
+        server_id: IMPORT_reboot_aio_types.ServerId,
+        state_manager: IMPORT_reboot_aio_state_managers.StateManager,
+        placement_client: IMPORT_reboot_aio_placement.PlacementClient,
+        channel_manager: IMPORT_reboot_aio_internals_channel_manager._ChannelManager,
+        tasks_cache: IMPORT_reboot_aio_internals_tasks_cache.TasksCache,
+        token_verifier: IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.token_verifiers.TokenVerifier],
+        effect_validation: IMPORT_reboot_aio_contexts.EffectValidation,
+        app_internal_api_key_secret: str,
+        ready: IMPORT_asyncio.Event,
+    ):
+        super().__init__(
+            application_id=application_id,
+            server_id=server_id,
+            state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            service_names = [
+                IMPORT_reboot_aio_types.ServiceName("rbt.std.pubsub.v1.TopicMethods"),
+            ],
+            placement_client=placement_client,
+            channel_manager=channel_manager,
+            effect_validation=effect_validation,
+            app_internal_api_key_secret=app_internal_api_key_secret,
+        )
+
+        self._servicer = servicer
+        self._state_manager = state_manager
+        self.tasks_dispatcher = IMPORT_reboot_aio_internals_tasks_dispatcher.TasksDispatcher(
+            application_id=application_id,
+            dispatch=self.dispatch,
+            tasks_cache=tasks_cache,
+            ready=ready,
+            complete_task=self._state_manager.complete_task,
+        )
+
+        # Store the type of each method's request so that stored requests can be
+        # deserialized into the correct type.
+        self.request_type_by_method_name: dict[str, type[IMPORT_google_protobuf_message.Message]] = {
+            'Publish': rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+            'Subscribe': rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+            'Broker': rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+        }
+
+        # Get authorizer, if any, converting from a rule if necessary.
+        def convert_authorizer_rule_if_necessary(
+            authorizer_or_rule: IMPORT_typing.Optional[
+                IMPORT_rebootdev.aio.auth.authorizers.Authorizer | IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule
+            ]
+        ) -> IMPORT_rebootdev.aio.auth.authorizers.Authorizer:
+
+            # If no authorizer or rule is provided, return the default
+            # authorizer which allows if app internal or allows if in
+            # dev mode (and logs some warnings to help the user
+            # realize where they are missing authorization).
+            if authorizer_or_rule is None:
+                return IMPORT_rebootdev.aio.auth.authorizers.DefaultAuthorizer(
+                    'Topic'
+                )
+
+            if isinstance(authorizer_or_rule, IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule):
+                return TopicAuthorizer(
+                    _default=authorizer_or_rule
+                )
+
+            return authorizer_or_rule
+
+        self._authorizer = convert_authorizer_rule_if_necessary(
+            servicer.authorizer()
+        )
+
+        # Create token verifier.
+        self._token_verifier: IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.token_verifiers.TokenVerifier] = (
+            servicer.token_verifier() or token_verifier
+        )
+
+        # Since users specify errors as proto messages they can't raise them
+        # directly - to do so they have to use the `Aborted` wrapper, which will
+        # hold the original proto message. On errors we'll need to check whether
+        # such wrappers hold a proto message for a specified error, so we can
+        # avoid retrying tasks that complete with a specified error.
+        self._specified_errors_by_service_method_name: dict[str, list[str]] = {
+        }
+
+
+    def add_to_server(self, server: IMPORT_grpc.aio.Server) -> None:
+        rbt.std.pubsub.v1.pubsub_pb2_grpc.add_TopicMethodsServicer_to_server(
+            self, server
+        )
+
+    async def inspect(self, state_ref: IMPORT_reboot_aio_types.StateRef) -> IMPORT_typing.AsyncIterator[IMPORT_google_protobuf_message.Message]:
+        """Implementation of `Middleware.inspect()`."""
+        context = self.create_context(
+            headers=IMPORT_reboot_aio_headers.Headers(
+                application_id=self.application_id,
+                state_ref=state_ref,
+            ),
+            state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            method="inspect",
+            context_type=IMPORT_reboot_aio_contexts.ReaderContext,
+        )
+
+        async with self._state_manager.streaming_reader_idempotency_key(
+            context,
+            self._servicer.__state_type__,
+            authorize=None,
+        ) as states:
+            async for (state, idempotency_key) in states:
+                yield state
+
+    async def react_query(
+        self,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        method: str,
+        request_bytes: bytes,
+    ) -> IMPORT_typing.AsyncIterator[tuple[IMPORT_typing.Optional[IMPORT_google_protobuf_message.Message], list[IMPORT_uuid.UUID]]]:
+        """Returns the response of calling 'method' given a message
+        deserialized from the provided 'request_bytes' for each state
+        update that creates a different response.
+
+        # The caller (react.py) should have already ensured that this server
+        # is authoritative for this traffic.
+        assert self.placement_client.server_for_actor(
+            headers.application_id,
+            headers.state_ref,
+        ) == self._server_id
+
+        NOTE: only unary reader methods are supported."""
+        # Need to define these up here since we can only do that once.
+        last_response: IMPORT_typing.Optional[IMPORT_google_protobuf_message.Message] = None
+        aggregated_idempotency_keys: list[IMPORT_uuid.UUID] = []
+        if method == 'Publish':
+            # Invariant here is that users should not have called this
+            # directly but only through code generated React
+            # components which should not have been generated except
+            # for valid method candidates.
+            logger.warning(
+                "Got a React query request with an invalid method name: "
+                f"Method '{method}' is invalid for servicer Topic."
+                "\n"
+                "Do you have a browser tab open for an older version "
+                "of this application, or for a different application all together?"
+            )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.InvalidMethod(),
+                message=
+                    f"Method '{method}' is invalid"
+            )
+            yield  # Necessary for type checking.
+        elif method == 'Subscribe':
+            # Invariant here is that users should not have called this
+            # directly but only through code generated React
+            # components which should not have been generated except
+            # for valid method candidates.
+            logger.warning(
+                "Got a React query request with an invalid method name: "
+                f"Method '{method}' is invalid for servicer Topic."
+                "\n"
+                "Do you have a browser tab open for an older version "
+                "of this application, or for a different application all together?"
+            )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.InvalidMethod(),
+                message=
+                    f"Method '{method}' is invalid"
+            )
+            yield  # Necessary for type checking.
+        elif method == 'Broker':
+            # Invariant here is that users should not have called this
+            # directly but only through code generated React
+            # components which should not have been generated except
+            # for valid method candidates.
+            logger.warning(
+                "Got a React query request with an invalid method name: "
+                f"Method '{method}' is invalid for servicer Topic."
+                "\n"
+                "Do you have a browser tab open for an older version "
+                "of this application, or for a different application all together?"
+            )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.InvalidMethod(),
+                message=
+                    f"Method '{method}' is invalid"
+            )
+            yield  # Necessary for type checking.
+        else:
+            logger.warning(
+                "Got a React query request with an invalid method name: "
+                f"Method '{method}' is invalid for servicer Topic."
+                "\n"
+                "Do you have a browser tab open for an older version "
+                "of this application, or for a different application all together?"
+            )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.InvalidMethod(),
+                message=
+                    f"Method '{method}' not found"
+            )
+            yield  # Unreachable but necessary for mypy.
+
+    async def react_mutate(
+        self,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        method: str,
+        request_bytes: bytes,
+    ) -> IMPORT_google_protobuf_message.Message:
+        """Returns the response of calling 'method' given a message
+        deserialized from the provided 'request_bytes'."""
+        if method == 'Publish':
+            request = rbt.std.pubsub.v1.pubsub_pb2.PublishRequest()
+            request.ParseFromString(request_bytes)
+
+            # NOTE: we automatically retry mutations that come through
+            # React when we get a `IMPORT_grpc.StatusCode.UNAVAILABLE` to
+            # match the retry logic we do in the React code generated
+            # to handle lack/loss of connectivity.
+            #
+            # TODO(benh): revisit this decision if we ever see reason
+            # to call `react_mutate()` from any place other than where
+            # we're executing React (e.g., browser, next.js server
+            # component, etc).
+            call_backoff = IMPORT_reboot_aio_backoff.Backoff()
+            while True:
+                # We make a full-fledged gRPC call, so that if this traffic
+                # was misrouted (i.e. this server is not authoritative
+                # for the state), it will now go to the right place. The
+                # receiving middleware will handle things like effect
+                # validation and so forth.
+                assert headers.application_id is not None  # Guaranteed by `Headers`.
+                stub = rbt.std.pubsub.v1.pubsub_pb2_grpc.TopicMethodsStub(
+                    self.channel_manager.get_channel_to(
+                        self.placement_client.address_for_actor(
+                            headers.application_id,
+                            headers.state_ref,
+                        )
+                    )
+                )
+                call = stub.Publish(
+                    request=request,
+                    metadata=headers.to_grpc_metadata(),
+                )
+                try:
+                    return await call
+                except IMPORT_grpc.aio.AioRpcError as error:
+                    if error.code() == IMPORT_grpc.StatusCode.UNAVAILABLE:
+                        await call_backoff()
+                        continue
+
+                    # Reconstitute the error that the server threw, if it was a declared error.
+                    status = await IMPORT_rpc_status_async.from_call(call)
+                    if status is not None:
+                        raise Topic.PublishAborted.from_status(
+                            status
+                        ) from None
+                    raise Topic.PublishAborted.from_grpc_aio_rpc_error(
+                        error
+                     ) from None
+
+        elif method == 'Subscribe':
+            request = rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest()
+            request.ParseFromString(request_bytes)
+
+            # NOTE: we automatically retry mutations that come through
+            # React when we get a `IMPORT_grpc.StatusCode.UNAVAILABLE` to
+            # match the retry logic we do in the React code generated
+            # to handle lack/loss of connectivity.
+            #
+            # TODO(benh): revisit this decision if we ever see reason
+            # to call `react_mutate()` from any place other than where
+            # we're executing React (e.g., browser, next.js server
+            # component, etc).
+            call_backoff = IMPORT_reboot_aio_backoff.Backoff()
+            while True:
+                # We make a full-fledged gRPC call, so that if this traffic
+                # was misrouted (i.e. this server is not authoritative
+                # for the state), it will now go to the right place. The
+                # receiving middleware will handle things like effect
+                # validation and so forth.
+                assert headers.application_id is not None  # Guaranteed by `Headers`.
+                stub = rbt.std.pubsub.v1.pubsub_pb2_grpc.TopicMethodsStub(
+                    self.channel_manager.get_channel_to(
+                        self.placement_client.address_for_actor(
+                            headers.application_id,
+                            headers.state_ref,
+                        )
+                    )
+                )
+                call = stub.Subscribe(
+                    request=request,
+                    metadata=headers.to_grpc_metadata(),
+                )
+                try:
+                    return await call
+                except IMPORT_grpc.aio.AioRpcError as error:
+                    if error.code() == IMPORT_grpc.StatusCode.UNAVAILABLE:
+                        await call_backoff()
+                        continue
+
+                    # Reconstitute the error that the server threw, if it was a declared error.
+                    status = await IMPORT_rpc_status_async.from_call(call)
+                    if status is not None:
+                        raise Topic.SubscribeAborted.from_status(
+                            status
+                        ) from None
+                    raise Topic.SubscribeAborted.from_grpc_aio_rpc_error(
+                        error
+                     ) from None
+
+        elif method == 'Broker':
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.InvalidMethod(),
+                message=
+                f"Method 'Broker' can not be called via React (for now)"
+            )
+        else:
+            logger.warning(
+                "Got a react mutate request with an invalid method name: "
+                f"Method '{method}' is invalid for servicer Topic."
+                "\n"
+                "Do you have an old browser tab still open for an older version "
+                "of this application, or a different application all together?"
+            )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.InvalidMethod(),
+                message=
+                    f"Method '{method}' not found"
+            )
+
+    async def dispatch(
+        self,
+        task: IMPORT_reboot_aio_tasks.TaskEffect,
+        *,
+        only_validate: bool = False,
+        on_loop_iteration: IMPORT_reboot_aio_internals_tasks_dispatcher.OnLoopIterationCallable = (lambda iteration, next_iteration_schedule: None),
+    ) -> IMPORT_reboot_aio_internals_tasks_dispatcher.TaskResponseOrError:
+        """Dispatches the tasks to execute unless 'only_validate' is set to
+        true, in which case just ensures that the task actually exists.
+        Note that this function will be called *by* tasks_dispatcher; it will
+        not itself call into tasks_dispatcher."""
+
+        if 'Publish' == task.method_name:
+            if only_validate:
+                # TODO(benh): validate 'task.request' is correct type.
+                return rbt.std.pubsub.v1.pubsub_pb2.PublishResponse()
+
+            # Use an inline method to create a new scope, so that we can use
+            # variable names like `context` and `effects` in multiple branches
+            # in this code (notably when there are multiple task types) without
+            # hitting a mypy error that the variable's type is not consistent.
+            async def run_Publish(
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                *,
+                validating_effects: bool = False,
+            ):
+                async with self._state_manager.task_workflow(
+                    context,
+                    task,
+                    on_loop_iteration=on_loop_iteration,
+                    validating_effects=validating_effects,
+                ) as complete:
+                    try:
+                        response = await (TopicWorkflowStub(
+                            context=context,
+                            state_ref=context._state_ref,
+                        ).Publish(
+                            TopicPublishRequestFromProto(IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.PublishRequest, task.request)),
+                            bearer_token=__internal_magic_token__,
+                            idempotency=IMPORT_reboot_aio_idempotency.Idempotency(
+                                alias=f'Task {IMPORT_uuid.UUID(bytes=task.task_id.task_uuid)}',
+                            ),
+                        ))
+                        await complete(task, (response, None))
+                        return (response, None)
+                    except IMPORT_asyncio.CancelledError:
+                        # Check if the task was cancelled by a TasksServicer.
+                        if self.tasks_dispatcher.is_task_cancelled(task.task_id.task_uuid):
+                            # The running task was cancelled by a TasksServicer.
+                            await complete(task, (None, IMPORT_rbt_v1alpha1.tasks_pb2.TaskCancelledError()))
+                            return (None, IMPORT_rbt_v1alpha1.tasks_pb2.TaskCancelledError())
+                        else:
+                            raise
+                    except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+                        error_type = f'{aborted.error.__class__.__module__}.{aborted.error.__class__.__qualname__}'
+                        # Do not retry a task if the error was specified in the
+                        # proto file.
+                        if error_type in self._specified_errors_by_service_method_name.get('rbt.std.pubsub.v1.TopicMethods.Publish', []):
+                            await complete(task, (None, aborted.error))
+                            return (None, aborted.error)
+                        raise
+
+
+            return await run_Publish(
+                self.create_context(
+                    headers=IMPORT_reboot_aio_headers.Headers(
+                        application_id=self.application_id,
+                        state_ref=IMPORT_reboot_aio_types.StateRef(task.task_id.state_ref),
+                    ),
+                    state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                    method='Publish',
+                    context_type=IMPORT_reboot_aio_contexts.WorkflowContext,
+                    task=task,
+                )
+            )
+        elif 'Subscribe' == task.method_name:
+            if only_validate:
+                # TODO(benh): validate 'task.request' is correct type.
+                return rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse()
+
+            # Use an inline method to create a new scope, so that we can use
+            # variable names like `context` and `effects` in multiple branches
+            # in this code (notably when there are multiple task types) without
+            # hitting a mypy error that the variable's type is not consistent.
+            async def run_Subscribe(
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                *,
+                validating_effects: bool = False,
+            ):
+                async with self._state_manager.task_workflow(
+                    context,
+                    task,
+                    on_loop_iteration=on_loop_iteration,
+                    validating_effects=validating_effects,
+                ) as complete:
+                    try:
+                        response = await (TopicWorkflowStub(
+                            context=context,
+                            state_ref=context._state_ref,
+                        ).Subscribe(
+                            TopicSubscribeRequestFromProto(IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest, task.request)),
+                            bearer_token=__internal_magic_token__,
+                            idempotency=IMPORT_reboot_aio_idempotency.Idempotency(
+                                alias=f'Task {IMPORT_uuid.UUID(bytes=task.task_id.task_uuid)}',
+                            ),
+                        ))
+                        await complete(task, (response, None))
+                        return (response, None)
+                    except IMPORT_asyncio.CancelledError:
+                        # Check if the task was cancelled by a TasksServicer.
+                        if self.tasks_dispatcher.is_task_cancelled(task.task_id.task_uuid):
+                            # The running task was cancelled by a TasksServicer.
+                            await complete(task, (None, IMPORT_rbt_v1alpha1.tasks_pb2.TaskCancelledError()))
+                            return (None, IMPORT_rbt_v1alpha1.tasks_pb2.TaskCancelledError())
+                        else:
+                            raise
+                    except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+                        error_type = f'{aborted.error.__class__.__module__}.{aborted.error.__class__.__qualname__}'
+                        # Do not retry a task if the error was specified in the
+                        # proto file.
+                        if error_type in self._specified_errors_by_service_method_name.get('rbt.std.pubsub.v1.TopicMethods.Subscribe', []):
+                            await complete(task, (None, aborted.error))
+                            return (None, aborted.error)
+                        raise
+
+
+            return await run_Subscribe(
+                self.create_context(
+                    headers=IMPORT_reboot_aio_headers.Headers(
+                        application_id=self.application_id,
+                        state_ref=IMPORT_reboot_aio_types.StateRef(task.task_id.state_ref),
+                    ),
+                    state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                    method='Subscribe',
+                    context_type=IMPORT_reboot_aio_contexts.WorkflowContext,
+                    task=task,
+                )
+            )
+        elif 'Broker' == task.method_name:
+            if only_validate:
+                # TODO(benh): validate 'task.request' is correct type.
+                return rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse()
+
+            # Use an inline method to create a new scope, so that we can use
+            # variable names like `context` and `effects` in multiple branches
+            # in this code (notably when there are multiple task types) without
+            # hitting a mypy error that the variable's type is not consistent.
+            async def run_Broker(
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                *,
+                validating_effects: bool = False,
+            ):
+                async with self._state_manager.task_workflow(
+                    context,
+                    task,
+                    on_loop_iteration=on_loop_iteration,
+                    validating_effects=validating_effects,
+                ) as complete:
+                    try:
+                        response = await self.__Broker(
+                            context,
+                            TopicBrokerRequestFromProto(IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest, task.request)),
+                            validating_effects=validating_effects,
+                        )
+                        await complete(task, (response, None))
+                        return (response, None)
+                    except IMPORT_asyncio.CancelledError:
+                        # Check if the task was cancelled by a TasksServicer.
+                        if self.tasks_dispatcher.is_task_cancelled(task.task_id.task_uuid):
+                            # The running task was cancelled by a TasksServicer.
+                            await complete(task, (None, IMPORT_rbt_v1alpha1.tasks_pb2.TaskCancelledError()))
+                            return (None, IMPORT_rbt_v1alpha1.tasks_pb2.TaskCancelledError())
+                        else:
+                            raise
+                    except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+                        error_type = f'{aborted.error.__class__.__module__}.{aborted.error.__class__.__qualname__}'
+                        # Do not retry a task if the error was specified in the
+                        # proto file.
+                        if error_type in self._specified_errors_by_service_method_name.get('rbt.std.pubsub.v1.TopicMethods.Broker', []):
+                            await complete(task, (None, aborted.error))
+                            return (None, aborted.error)
+                        raise
+
+            @IMPORT_reboot_aio_internals_middleware.maybe_run_function_twice_to_validate_effects
+            async def run_Broker_reactively(
+                validating_effects: bool,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            ):
+                async with self._state_manager.reactively(
+                    context,
+                    self._servicer.__state_type__,
+                    # Already authorized when we created the task.
+                    authorize=None,
+                ):
+                    try:
+                        # When we're validating effects we
+                        # periodically timeout so that we can log
+                        # that a workflow might be hung, i.e., the
+                        # user has a bug.
+                        task = IMPORT_asyncio.create_task(
+                            run_Broker(
+                                context,
+                                validating_effects=validating_effects,
+                            )
+                        )
+                        timeout = None if not validating_effects else 5  # seconds
+                        while True:
+                            done, pending = await IMPORT_asyncio.wait(
+                                [task],
+                                timeout=timeout,
+                            )
+                            # Check if we've timed out, which
+                            # should only occur if we're
+                            # validating effects.
+                            if len(done) == 0:
+                                assert validating_effects and timeout is not None
+                                logger.warning(
+                                    f'Still waiting for method Topic.Broker '
+                                    'to complete after re-running to validate effects.'
+                                )
+                                timeout += 5  # seconds
+                                continue
+                            return task.result()
+                    finally:
+                        if not task.done():
+                            task.cancel()
+                            # Need to actually await the task so if
+                            # there is an exception we don't get a
+                            # warning logged that the exception was
+                            # never retrieved, but we don't care about
+                            # the exception because we're done with
+                            # the task.
+                            try:
+                                await task
+                            except:
+                                pass
+
+            return await run_Broker_reactively(
+                self.create_context(
+                    headers=IMPORT_reboot_aio_headers.Headers(
+                        application_id=self.application_id,
+                        state_ref=IMPORT_reboot_aio_types.StateRef(task.task_id.state_ref),
+                        workflow_id=IMPORT_uuid.UUID(bytes=task.task_id.task_uuid),
+                    ),
+                    state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                    method='Broker',
+                    context_type=IMPORT_reboot_aio_contexts.WorkflowContext,
+                    task=task,
+                )
+            )
+
+        # There are no tasks for this service.
+        start_or_validate = "start" if not only_validate else "validate"
+        raise RuntimeError(
+            f"Attempted to {start_or_validate} task '{task.method_name}' "
+            f"on 'Topic' which does not exist"
+        )
+
+    # Topic specific methods:
+    async def __Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+        *,
+        validating_effects: bool,
+    ) -> Topic.PublishEffects:
+        try:
+            typed_state: Topic.State = TopicFromProto(state, validate=(context.state_id not in states_being_constructed))
+            response = (
+                await self._servicer._Publish(
+                    context=context,
+                    state=typed_state,
+                    request=request
+                )
+            )
+
+            TopicToProto(typed_state, state)
+
+            IMPORT_reboot_aio_types.assert_type(
+                response,
+                [rbt.std.pubsub.v1.pubsub_pb2.PublishResponse],
+            )
+            self.maybe_raise_effect_validation_retry(
+                logger=logger,
+                idempotency_manager=context,
+                method_name='Topic.Publish',
+                validating_effects=validating_effects,
+                context=context,
+            )
+            return Topic.PublishEffects(
+                state=state,
+                response=response,
+                tasks=context._tasks,
+                _colocated_upserts=context._colocated_upserts,
+            )
+        except IMPORT_reboot_aio_contexts.RetryReactively:
+            # Retrying reactively, just let this propagate.
+            raise
+        except IMPORT_reboot_aio_contexts.EffectValidationRetry:
+            # Doing effect validation, just let this propagate.
+            raise
+        except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+            # If the caller aborted due to a retryable error, just
+            # propagate the aborted instead of propagating `Unknown`
+            # so that a client can transparently retry.
+            if IMPORT_rebootdev.aio.aborted.is_retryable(aborted):
+                raise aborted
+            # Log any _unhandled_ abort stack traces to make it
+            # easier for debugging.
+            #
+            # NOTE: we don't log if we're a task as it will be logged
+            # in `public/rebootdev/aio/internals/tasks_dispatcher.py` instead.
+            aborted_type: IMPORT_typing.Optional[type] = None
+            aborted_type = Topic.PublishAborted
+            if isinstance(aborted, IMPORT_rebootdev.aio.aborted.SystemAborted):
+                # Not logging when within `node` as we already log there.
+                if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                    logger.warning(
+                        f"Unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') {aborted}; propagating as 'Unknown'\n" +
+                        ''.join(IMPORT_traceback.format_exception(aborted))
+                    )
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                    # TODO(benh): consider whether or not we want to
+                    # include the 'package.service.method' which may
+                    # get concatenated together forming a kind of
+                    # "stack trace"; while it's super helpful for
+                    # debugging, it does expose implementation
+                    # information.
+                    message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') {aborted}"
+                )
+            else:
+                if (
+                    aborted_type is not None and
+                    not isinstance(aborted, aborted_type) and
+                    aborted_type.is_declared_error(aborted.error)
+                ):
+                    # We propagate declared errors that might have
+                    # come from another call, i.e., we might have an
+                    # `Aborted` but not for this method but the
+                    # `Aborted` that we have has an error that this
+                    # method declared. This allows a developer to
+                    # simply add the declared error to their `.proto`
+                    # file rather than having to catch and re-raise
+                    # the error with their own aborted type.
+                    if context.task is None:
+                        logger.warning(
+                            f"Propagating unhandled but declared error (in 'rbt.std.pubsub.v1.Topic.Publish') {aborted}"
+                        )
+                elif (
+                    aborted_type is None or
+                    not isinstance(aborted, aborted_type)
+                ):
+                    # Not logging when within `node` as we already log there.
+                    if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                        logger.warning(
+                            f"Unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') {aborted}; propagating as 'Unknown'\n" +
+                            ''.join(IMPORT_traceback.format_exception(aborted))
+                        )
+                    # If this wasn't a declared error than we
+                    # propagate it as `Unknown`.
+                    raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                        IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                        # TODO(benh): consider whether or not we want to
+                        # include the 'package.service.method' which may
+                        # get concatenated together forming a kind of
+                        # "stack trace"; while it's super helpful for
+                        # debugging, it does expose implementation
+                        # information.
+                        message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') {aborted}"
+                    )
+
+            raise
+        except IMPORT_asyncio.CancelledError:
+            # It's pretty normal for an RPC to be cancelled; it's not useful to
+            # print a stack trace.
+            raise
+        except IMPORT_google_protobuf_message.DecodeError as decode_error:
+            # We usually see this error when we are trying to construct a proto
+            # message which is too deeply nested: protobuf has a limit of 100
+            # nested messages. See the limits here:
+            #   https://protobuf.dev/programming-guides/proto-limits/
+
+            if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                logger.warning(
+                    "Unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') "
+                    f"{type(decode_error).__name__}{': ' + str(decode_error) if len(str(decode_error)) > 0 else ''}; "
+                    "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                    "See the limits here: https://protobuf.dev/programming-guides/proto-limits/" +
+                    ''.join(IMPORT_traceback.format_exception(decode_error))
+                )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') {decode_error}; "
+                        "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                        "See the limits here: https://protobuf.dev/programming-guides/proto-limits/"
+            )
+        except BaseException as exception:
+            # Not logging when within `node` as we already log there.
+            if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                logger.warning(
+                    "Unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') "
+                    f"{type(exception).__name__}{': ' + str(exception) if len(str(exception)) > 0 else ''}; "
+                    "propagating as 'Unknown'\n" +
+                    ''.join(IMPORT_traceback.format_exception(exception))
+                )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                # TODO(benh): consider whether or not we want to
+                # include the 'package.service.method' which may
+                # get concatenated together forming a kind of
+                # "stack trace"; while it's super helpful for
+                # debugging, it does expose implementation
+                # information.
+                message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Publish') {type(exception).__name__}: {exception}"
+            )
+        finally:
+            pass
+
+    @IMPORT_reboot_aio_tracing.function_span(
+        # We expect an `EffectValidationRetry` exception; that's not an error.
+        set_status_on_exception=False
+    )
+    async def _Publish(
+        self,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        *,
+        validating_effects: bool,
+        grpc_context: IMPORT_typing.Optional[IMPORT_grpc.aio.ServicerContext] = None,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        # Try to verify the token if a token verifier exists.
+        context.auth = await self._maybe_verify_token(
+            headers=context._headers, method='Publish'
+        )
+
+        # Check if we already have performed this mutation!
+        #
+        # We do this _before_ calling 'transactionally()' because
+        # if this call is for a transaction method _and_ we've
+        # already performed the transaction then we don't want to
+        # become a transaction participant (again) we just want to
+        # return the transaction's response.
+        idempotent_mutation = self._state_manager.check_for_idempotent_mutation(
+            context
+        )
+
+        if idempotent_mutation is not None:
+            response = rbt.std.pubsub.v1.pubsub_pb2.PublishResponse()
+            response.ParseFromString(idempotent_mutation.response)
+            return response
+
+        async with self._state_manager.transactionally(
+            context,
+            self.tasks_dispatcher,
+            aborted_type=Topic.PublishAborted,
+        ) as transaction:
+            if transaction is not None:
+                context.participants.add(
+                    self._servicer.__state_type_name__, context._state_ref
+                )
+            async with self._state_manager.writer(
+                context,
+                self._servicer.__state_type__,
+                self.tasks_dispatcher,
+                authorize=self._maybe_authorize(
+                    method_name='rbt.std.pubsub.v1.TopicMethods.Publish',
+                    headers=context._headers,
+                    auth=context.auth,
+                    request=request,
+                ),
+                transaction=transaction,
+                from_constructor=False,
+                requires_constructor=False,
+            ) as (state, writer):
+
+                effects = await self.__Publish(
+                    context,
+                    state,
+                    request,
+                    validating_effects=validating_effects,
+                )
+
+                await writer.complete(effects)
+
+                # TODO: We need a single `Effects` superclass for all methods, so we
+                # would need to make it "partially" generic (with per-method subclasses
+                # filling out the rest of the generic parameters) in order to fix this.
+                return effects.response  # type: ignore[return-value]
+
+    async def _schedule_Publish(
+        self,
+        *,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        grpc_context: IMPORT_grpc.aio.ServicerContext,
+    ) -> tuple[IMPORT_reboot_aio_contexts.WriterContext, rbt.std.pubsub.v1.pubsub_pb2.PublishResponse]:
+        context: IMPORT_reboot_aio_contexts.WriterContext = self.create_context(
+            headers=headers,
+            state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            method='Publish',
+            context_type=IMPORT_reboot_aio_contexts.WriterContext,
+        )
+        response = rbt.std.pubsub.v1.pubsub_pb2.PublishResponse()
+
+        # Check if we already have performed this mutation!
+        #
+        # We do this _before_ calling 'transactionally()' because
+        # if this call is for a transaction method _and_ we've
+        # already performed the transaction then we don't want to
+        # become a transaction participant (again) we just want to
+        # return the transaction's response.
+        idempotent_mutation = self._state_manager.check_for_idempotent_mutation(
+            context
+        )
+
+        if idempotent_mutation is not None:
+            response.ParseFromString(idempotent_mutation.response)
+
+            # We should have only scheduled a single task!
+            assert len(idempotent_mutation.task_ids) == 1
+            assert grpc_context is not None
+            grpc_context.set_trailing_metadata(
+                grpc_context.trailing_metadata() +
+                (
+                    (
+                        IMPORT_reboot_aio_headers.TASK_ID_UUID,
+                        str(IMPORT_uuid.UUID(bytes=idempotent_mutation.task_ids[0].task_uuid))
+                    ),
+                )
+            )
+
+            return context, response
+
+        async with self._state_manager.transactionally(
+            context,
+            self.tasks_dispatcher,
+            aborted_type=Topic.PublishAborted,
+        ) as transaction:
+            if transaction is not None:
+                context.participants.add(
+                    self._servicer.__state_type_name__, context._state_ref
+                )
+
+            # Try to verify the token if a token verifier exists.
+            context.auth = await self._maybe_verify_token(
+                headers=headers, method='Publish'
+            )
+
+            async with self._state_manager.writer(
+                context,
+                self._servicer.__state_type__,
+                self.tasks_dispatcher,
+                transaction=transaction,
+                authorize=self._maybe_authorize(
+                    method_name='rbt.std.pubsub.v1.TopicMethods.Publish',
+                    headers=context._headers,
+                    auth=context.auth,
+                    request=request,
+                ),
+                from_constructor=False,
+                requires_constructor=False
+            ) as (state, writer):
+
+                task = await TopicServicerTasks(
+                    context=context,
+                    state_ref=context._state_ref,
+                ).Publish(
+                    TopicPublishRequestFromProto(request),
+                    schedule=context._headers.task_schedule,
+                )
+
+                effects = IMPORT_reboot_aio_state_managers.Effects(
+                    response=response,
+                    state=state,
+                    tasks=[task],
+                )
+
+                assert effects.tasks is not None
+
+                await writer.complete(effects)
+
+                assert grpc_context is not None
+
+                grpc_context.set_trailing_metadata(
+                    grpc_context.trailing_metadata() +
+                    (
+                        (
+                            IMPORT_reboot_aio_headers.TASK_ID_UUID,
+                            str(IMPORT_uuid.UUID(bytes=task.task_id.task_uuid))
+                        ),
+                    )
+                )
+
+                return context, response
+
+        return context, response
+
+
+    # Entrypoint for non-reactive network calls (i.e. typical gRPC calls).
+    async def Publish(
+        self,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+        grpc_context: IMPORT_grpc.aio.ServicerContext,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        headers = IMPORT_reboot_aio_headers.Headers.from_grpc_context(grpc_context)
+        assert headers.application_id is not None  # Guaranteed by `Headers`.
+
+        # Confirm whether this is the right server to be serving this
+        # request.
+        authoritative_server = self.placement_client.server_for_actor(
+            headers.application_id,
+            headers.state_ref,
+        )
+        if authoritative_server != self.server_id:
+            # This is NOT the correct server. Fail.
+            await grpc_context.abort(
+                IMPORT_grpc.StatusCode.UNAVAILABLE,
+                f"Server '{self.server_id}' is not authoritative for this "
+                f"request; server '{authoritative_server}' is.",
+            )
+            raise  # Unreachable but necessary for mypy.
+
+        @IMPORT_reboot_aio_internals_middleware.maybe_run_function_twice_to_validate_effects
+        async def _run(
+            validating_effects: bool,
+        ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+            context: IMPORT_typing.Optional[IMPORT_reboot_aio_contexts.Context] = None
+            try:
+                if headers.task_schedule is not None:
+                    context, response = await self._schedule_Publish(
+                        headers=headers,
+                        request=request,
+                        grpc_context=grpc_context,
+                    )
+                    return response
+
+                context = self.create_context(
+                    headers=headers,
+                    state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                    method='Publish',
+                    context_type=IMPORT_reboot_aio_contexts.WriterContext,
+                )
+                assert context is not None
+
+                return await self._Publish(
+                    request,
+                    context,
+                    validating_effects=validating_effects,
+                    grpc_context=grpc_context,
+                )
+            except IMPORT_reboot_aio_contexts.EffectValidationRetry:
+                # Doing effect validation, just let this propagate.
+                raise
+            except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+                status = IMPORT_rpc_status_sync.to_status(aborted.to_status())
+                # Need to add transaction participants here because
+                # calling `grpc_context.abort_with_status()` will
+                # ignore any other trailing metadata.
+                if context is not None and context.transaction_id is not None:
+                    status = status._replace(
+                        trailing_metadata=status.trailing_metadata + context.participants.to_grpc_metadata()
+                    )
+                await grpc_context.abort_with_status(status)
+                raise  # Unreachable but necessary for mypy.
+            except IMPORT_asyncio.CancelledError:
+                # It's pretty normal for an RPC to be cancelled; it's not useful to
+                # print a stack trace.
+                raise
+            except BaseException as exception:
+                # Print the exception stack trace for easier debugging. Note
+                # that we don't include the stack trace in an error message
+                # for the same reason that gRPC doesn't do so by default,
+                # see https://github.com/grpc/grpc/issues/14897, but since this
+                # should only get logged on the server side it is safe.
+                logger.warning(
+                    'Unhandled exception\n' +
+                    ''.join(IMPORT_traceback.format_exc() if IMPORT_reboot_nodejs_python.should_print_stacktrace() else [f"{type(exception).__name__}: {exception}"])
+                )
+
+                # Re-raise the exception for gRPC to handle!
+                #
+                # TODO: gRPC will print a stack trace from this
+                # exception which we don't want if we're executing via
+                # Node.js.
+                raise
+            finally:
+                if context is not None and context.transaction_id is not None:
+                    # Propagate transaction participants.
+                    grpc_context.set_trailing_metadata(
+                        grpc_context.trailing_metadata() +
+                        context.participants.to_grpc_metadata()
+                    )
+
+        with IMPORT_reboot_aio_tracing.context_from_headers(headers):
+            return await _run()
+
+    async def __Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+        *,
+        validating_effects: bool,
+    ) -> Topic.SubscribeEffects:
+        try:
+            typed_state: Topic.State = TopicFromProto(state, validate=(context.state_id not in states_being_constructed))
+            response = (
+                await self._servicer._Subscribe(
+                    context=context,
+                    state=typed_state,
+                    request=request
+                )
+            )
+
+            TopicToProto(typed_state, state)
+
+            IMPORT_reboot_aio_types.assert_type(
+                response,
+                [rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse],
+            )
+            self.maybe_raise_effect_validation_retry(
+                logger=logger,
+                idempotency_manager=context,
+                method_name='Topic.Subscribe',
+                validating_effects=validating_effects,
+                context=context,
+            )
+            return Topic.SubscribeEffects(
+                state=state,
+                response=response,
+                tasks=context._tasks,
+                _colocated_upserts=context._colocated_upserts,
+            )
+        except IMPORT_reboot_aio_contexts.RetryReactively:
+            # Retrying reactively, just let this propagate.
+            raise
+        except IMPORT_reboot_aio_contexts.EffectValidationRetry:
+            # Doing effect validation, just let this propagate.
+            raise
+        except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+            # If the caller aborted due to a retryable error, just
+            # propagate the aborted instead of propagating `Unknown`
+            # so that a client can transparently retry.
+            if IMPORT_rebootdev.aio.aborted.is_retryable(aborted):
+                raise aborted
+            # Log any _unhandled_ abort stack traces to make it
+            # easier for debugging.
+            #
+            # NOTE: we don't log if we're a task as it will be logged
+            # in `public/rebootdev/aio/internals/tasks_dispatcher.py` instead.
+            aborted_type: IMPORT_typing.Optional[type] = None
+            aborted_type = Topic.SubscribeAborted
+            if isinstance(aborted, IMPORT_rebootdev.aio.aborted.SystemAborted):
+                # Not logging when within `node` as we already log there.
+                if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                    logger.warning(
+                        f"Unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') {aborted}; propagating as 'Unknown'\n" +
+                        ''.join(IMPORT_traceback.format_exception(aborted))
+                    )
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                    # TODO(benh): consider whether or not we want to
+                    # include the 'package.service.method' which may
+                    # get concatenated together forming a kind of
+                    # "stack trace"; while it's super helpful for
+                    # debugging, it does expose implementation
+                    # information.
+                    message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') {aborted}"
+                )
+            else:
+                if (
+                    aborted_type is not None and
+                    not isinstance(aborted, aborted_type) and
+                    aborted_type.is_declared_error(aborted.error)
+                ):
+                    # We propagate declared errors that might have
+                    # come from another call, i.e., we might have an
+                    # `Aborted` but not for this method but the
+                    # `Aborted` that we have has an error that this
+                    # method declared. This allows a developer to
+                    # simply add the declared error to their `.proto`
+                    # file rather than having to catch and re-raise
+                    # the error with their own aborted type.
+                    if context.task is None:
+                        logger.warning(
+                            f"Propagating unhandled but declared error (in 'rbt.std.pubsub.v1.Topic.Subscribe') {aborted}"
+                        )
+                elif (
+                    aborted_type is None or
+                    not isinstance(aborted, aborted_type)
+                ):
+                    # Not logging when within `node` as we already log there.
+                    if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                        logger.warning(
+                            f"Unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') {aborted}; propagating as 'Unknown'\n" +
+                            ''.join(IMPORT_traceback.format_exception(aborted))
+                        )
+                    # If this wasn't a declared error than we
+                    # propagate it as `Unknown`.
+                    raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                        IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                        # TODO(benh): consider whether or not we want to
+                        # include the 'package.service.method' which may
+                        # get concatenated together forming a kind of
+                        # "stack trace"; while it's super helpful for
+                        # debugging, it does expose implementation
+                        # information.
+                        message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') {aborted}"
+                    )
+
+            raise
+        except IMPORT_asyncio.CancelledError:
+            # It's pretty normal for an RPC to be cancelled; it's not useful to
+            # print a stack trace.
+            raise
+        except IMPORT_google_protobuf_message.DecodeError as decode_error:
+            # We usually see this error when we are trying to construct a proto
+            # message which is too deeply nested: protobuf has a limit of 100
+            # nested messages. See the limits here:
+            #   https://protobuf.dev/programming-guides/proto-limits/
+
+            if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                logger.warning(
+                    "Unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') "
+                    f"{type(decode_error).__name__}{': ' + str(decode_error) if len(str(decode_error)) > 0 else ''}; "
+                    "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                    "See the limits here: https://protobuf.dev/programming-guides/proto-limits/" +
+                    ''.join(IMPORT_traceback.format_exception(decode_error))
+                )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') {decode_error}; "
+                        "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                        "See the limits here: https://protobuf.dev/programming-guides/proto-limits/"
+            )
+        except BaseException as exception:
+            # Not logging when within `node` as we already log there.
+            if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                logger.warning(
+                    "Unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') "
+                    f"{type(exception).__name__}{': ' + str(exception) if len(str(exception)) > 0 else ''}; "
+                    "propagating as 'Unknown'\n" +
+                    ''.join(IMPORT_traceback.format_exception(exception))
+                )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                # TODO(benh): consider whether or not we want to
+                # include the 'package.service.method' which may
+                # get concatenated together forming a kind of
+                # "stack trace"; while it's super helpful for
+                # debugging, it does expose implementation
+                # information.
+                message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Subscribe') {type(exception).__name__}: {exception}"
+            )
+        finally:
+            pass
+
+    @IMPORT_reboot_aio_tracing.function_span(
+        # We expect an `EffectValidationRetry` exception; that's not an error.
+        set_status_on_exception=False
+    )
+    async def _Subscribe(
+        self,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        *,
+        validating_effects: bool,
+        grpc_context: IMPORT_typing.Optional[IMPORT_grpc.aio.ServicerContext] = None,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        # Try to verify the token if a token verifier exists.
+        context.auth = await self._maybe_verify_token(
+            headers=context._headers, method='Subscribe'
+        )
+
+        # Check if we already have performed this mutation!
+        #
+        # We do this _before_ calling 'transactionally()' because
+        # if this call is for a transaction method _and_ we've
+        # already performed the transaction then we don't want to
+        # become a transaction participant (again) we just want to
+        # return the transaction's response.
+        idempotent_mutation = self._state_manager.check_for_idempotent_mutation(
+            context
+        )
+
+        if idempotent_mutation is not None:
+            response = rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse()
+            response.ParseFromString(idempotent_mutation.response)
+            return response
+
+        async with self._state_manager.transactionally(
+            context,
+            self.tasks_dispatcher,
+            aborted_type=Topic.SubscribeAborted,
+        ) as transaction:
+            if transaction is not None:
+                context.participants.add(
+                    self._servicer.__state_type_name__, context._state_ref
+                )
+            async with self._state_manager.writer(
+                context,
+                self._servicer.__state_type__,
+                self.tasks_dispatcher,
+                authorize=self._maybe_authorize(
+                    method_name='rbt.std.pubsub.v1.TopicMethods.Subscribe',
+                    headers=context._headers,
+                    auth=context.auth,
+                    request=request,
+                ),
+                transaction=transaction,
+                from_constructor=False,
+                requires_constructor=False,
+            ) as (state, writer):
+
+                effects = await self.__Subscribe(
+                    context,
+                    state,
+                    request,
+                    validating_effects=validating_effects,
+                )
+
+                await writer.complete(effects)
+
+                # TODO: We need a single `Effects` superclass for all methods, so we
+                # would need to make it "partially" generic (with per-method subclasses
+                # filling out the rest of the generic parameters) in order to fix this.
+                return effects.response  # type: ignore[return-value]
+
+    async def _schedule_Subscribe(
+        self,
+        *,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        grpc_context: IMPORT_grpc.aio.ServicerContext,
+    ) -> tuple[IMPORT_reboot_aio_contexts.WriterContext, rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse]:
+        context: IMPORT_reboot_aio_contexts.WriterContext = self.create_context(
+            headers=headers,
+            state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            method='Subscribe',
+            context_type=IMPORT_reboot_aio_contexts.WriterContext,
+        )
+        response = rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse()
+
+        # Check if we already have performed this mutation!
+        #
+        # We do this _before_ calling 'transactionally()' because
+        # if this call is for a transaction method _and_ we've
+        # already performed the transaction then we don't want to
+        # become a transaction participant (again) we just want to
+        # return the transaction's response.
+        idempotent_mutation = self._state_manager.check_for_idempotent_mutation(
+            context
+        )
+
+        if idempotent_mutation is not None:
+            response.ParseFromString(idempotent_mutation.response)
+
+            # We should have only scheduled a single task!
+            assert len(idempotent_mutation.task_ids) == 1
+            assert grpc_context is not None
+            grpc_context.set_trailing_metadata(
+                grpc_context.trailing_metadata() +
+                (
+                    (
+                        IMPORT_reboot_aio_headers.TASK_ID_UUID,
+                        str(IMPORT_uuid.UUID(bytes=idempotent_mutation.task_ids[0].task_uuid))
+                    ),
+                )
+            )
+
+            return context, response
+
+        async with self._state_manager.transactionally(
+            context,
+            self.tasks_dispatcher,
+            aborted_type=Topic.SubscribeAborted,
+        ) as transaction:
+            if transaction is not None:
+                context.participants.add(
+                    self._servicer.__state_type_name__, context._state_ref
+                )
+
+            # Try to verify the token if a token verifier exists.
+            context.auth = await self._maybe_verify_token(
+                headers=headers, method='Subscribe'
+            )
+
+            async with self._state_manager.writer(
+                context,
+                self._servicer.__state_type__,
+                self.tasks_dispatcher,
+                transaction=transaction,
+                authorize=self._maybe_authorize(
+                    method_name='rbt.std.pubsub.v1.TopicMethods.Subscribe',
+                    headers=context._headers,
+                    auth=context.auth,
+                    request=request,
+                ),
+                from_constructor=False,
+                requires_constructor=False
+            ) as (state, writer):
+
+                task = await TopicServicerTasks(
+                    context=context,
+                    state_ref=context._state_ref,
+                ).Subscribe(
+                    TopicSubscribeRequestFromProto(request),
+                    schedule=context._headers.task_schedule,
+                )
+
+                effects = IMPORT_reboot_aio_state_managers.Effects(
+                    response=response,
+                    state=state,
+                    tasks=[task],
+                )
+
+                assert effects.tasks is not None
+
+                await writer.complete(effects)
+
+                assert grpc_context is not None
+
+                grpc_context.set_trailing_metadata(
+                    grpc_context.trailing_metadata() +
+                    (
+                        (
+                            IMPORT_reboot_aio_headers.TASK_ID_UUID,
+                            str(IMPORT_uuid.UUID(bytes=task.task_id.task_uuid))
+                        ),
+                    )
+                )
+
+                return context, response
+
+        return context, response
+
+
+    # Entrypoint for non-reactive network calls (i.e. typical gRPC calls).
+    async def Subscribe(
+        self,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+        grpc_context: IMPORT_grpc.aio.ServicerContext,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        headers = IMPORT_reboot_aio_headers.Headers.from_grpc_context(grpc_context)
+        assert headers.application_id is not None  # Guaranteed by `Headers`.
+
+        # Confirm whether this is the right server to be serving this
+        # request.
+        authoritative_server = self.placement_client.server_for_actor(
+            headers.application_id,
+            headers.state_ref,
+        )
+        if authoritative_server != self.server_id:
+            # This is NOT the correct server. Fail.
+            await grpc_context.abort(
+                IMPORT_grpc.StatusCode.UNAVAILABLE,
+                f"Server '{self.server_id}' is not authoritative for this "
+                f"request; server '{authoritative_server}' is.",
+            )
+            raise  # Unreachable but necessary for mypy.
+
+        @IMPORT_reboot_aio_internals_middleware.maybe_run_function_twice_to_validate_effects
+        async def _run(
+            validating_effects: bool,
+        ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+            context: IMPORT_typing.Optional[IMPORT_reboot_aio_contexts.Context] = None
+            try:
+                if headers.task_schedule is not None:
+                    context, response = await self._schedule_Subscribe(
+                        headers=headers,
+                        request=request,
+                        grpc_context=grpc_context,
+                    )
+                    return response
+
+                context = self.create_context(
+                    headers=headers,
+                    state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                    method='Subscribe',
+                    context_type=IMPORT_reboot_aio_contexts.WriterContext,
+                )
+                assert context is not None
+
+                return await self._Subscribe(
+                    request,
+                    context,
+                    validating_effects=validating_effects,
+                    grpc_context=grpc_context,
+                )
+            except IMPORT_reboot_aio_contexts.EffectValidationRetry:
+                # Doing effect validation, just let this propagate.
+                raise
+            except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+                status = IMPORT_rpc_status_sync.to_status(aborted.to_status())
+                # Need to add transaction participants here because
+                # calling `grpc_context.abort_with_status()` will
+                # ignore any other trailing metadata.
+                if context is not None and context.transaction_id is not None:
+                    status = status._replace(
+                        trailing_metadata=status.trailing_metadata + context.participants.to_grpc_metadata()
+                    )
+                await grpc_context.abort_with_status(status)
+                raise  # Unreachable but necessary for mypy.
+            except IMPORT_asyncio.CancelledError:
+                # It's pretty normal for an RPC to be cancelled; it's not useful to
+                # print a stack trace.
+                raise
+            except BaseException as exception:
+                # Print the exception stack trace for easier debugging. Note
+                # that we don't include the stack trace in an error message
+                # for the same reason that gRPC doesn't do so by default,
+                # see https://github.com/grpc/grpc/issues/14897, but since this
+                # should only get logged on the server side it is safe.
+                logger.warning(
+                    'Unhandled exception\n' +
+                    ''.join(IMPORT_traceback.format_exc() if IMPORT_reboot_nodejs_python.should_print_stacktrace() else [f"{type(exception).__name__}: {exception}"])
+                )
+
+                # Re-raise the exception for gRPC to handle!
+                #
+                # TODO: gRPC will print a stack trace from this
+                # exception which we don't want if we're executing via
+                # Node.js.
+                raise
+            finally:
+                if context is not None and context.transaction_id is not None:
+                    # Propagate transaction participants.
+                    grpc_context.set_trailing_metadata(
+                        grpc_context.trailing_metadata() +
+                        context.participants.to_grpc_metadata()
+                    )
+
+        with IMPORT_reboot_aio_tracing.context_from_headers(headers):
+            return await _run()
+
+    async def __Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+        *,
+        validating_effects: bool,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        try:
+            response = (
+                await self._servicer._Broker(
+                    context=context,
+                    request=request
+                )
+            )
+
+
+            IMPORT_reboot_aio_types.assert_type(
+                response,
+                [rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse],
+            )
+            self.maybe_raise_effect_validation_retry(
+                logger=logger,
+                idempotency_manager=context,
+                method_name='Topic.Broker',
+                validating_effects=validating_effects,
+                context=context,
+            )
+            return response
+        except IMPORT_reboot_aio_contexts.RetryReactively:
+            # Retrying reactively, just let this propagate.
+            raise
+        except IMPORT_reboot_aio_contexts.EffectValidationRetry:
+            # Doing effect validation, just let this propagate.
+            raise
+        except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+            # If the caller aborted due to a retryable error, just
+            # propagate the aborted instead of propagating `Unknown`
+            # so that a client can transparently retry.
+            if IMPORT_rebootdev.aio.aborted.is_retryable(aborted):
+                raise aborted
+            # Log any _unhandled_ abort stack traces to make it
+            # easier for debugging.
+            #
+            # NOTE: we don't log if we're a task as it will be logged
+            # in `public/rebootdev/aio/internals/tasks_dispatcher.py` instead.
+            aborted_type: IMPORT_typing.Optional[type] = None
+            aborted_type = Topic.BrokerAborted
+            if isinstance(aborted, IMPORT_rebootdev.aio.aborted.SystemAborted):
+                # Not logging when within `node` as we already log there.
+                if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                    logger.warning(
+                        f"Unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') {aborted}; propagating as 'Unknown'\n" +
+                        ''.join(IMPORT_traceback.format_exception(aborted))
+                    )
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                    # TODO(benh): consider whether or not we want to
+                    # include the 'package.service.method' which may
+                    # get concatenated together forming a kind of
+                    # "stack trace"; while it's super helpful for
+                    # debugging, it does expose implementation
+                    # information.
+                    message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') {aborted}"
+                )
+            else:
+                if (
+                    aborted_type is not None and
+                    not isinstance(aborted, aborted_type) and
+                    aborted_type.is_declared_error(aborted.error)
+                ):
+                    # We propagate declared errors that might have
+                    # come from another call, i.e., we might have an
+                    # `Aborted` but not for this method but the
+                    # `Aborted` that we have has an error that this
+                    # method declared. This allows a developer to
+                    # simply add the declared error to their `.proto`
+                    # file rather than having to catch and re-raise
+                    # the error with their own aborted type.
+                    if context.task is None:
+                        logger.warning(
+                            f"Propagating unhandled but declared error (in 'rbt.std.pubsub.v1.Topic.Broker') {aborted}"
+                        )
+                elif (
+                    aborted_type is None or
+                    not isinstance(aborted, aborted_type)
+                ):
+                    # Not logging when within `node` as we already log there.
+                    if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                        logger.warning(
+                            f"Unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') {aborted}; propagating as 'Unknown'\n" +
+                            ''.join(IMPORT_traceback.format_exception(aborted))
+                        )
+                    # If this wasn't a declared error than we
+                    # propagate it as `Unknown`.
+                    raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                        IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                        # TODO(benh): consider whether or not we want to
+                        # include the 'package.service.method' which may
+                        # get concatenated together forming a kind of
+                        # "stack trace"; while it's super helpful for
+                        # debugging, it does expose implementation
+                        # information.
+                        message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') {aborted}"
+                    )
+
+            raise
+        except IMPORT_asyncio.CancelledError:
+            # It's pretty normal for an RPC to be cancelled; it's not useful to
+            # print a stack trace.
+            raise
+        except IMPORT_google_protobuf_message.DecodeError as decode_error:
+            # We usually see this error when we are trying to construct a proto
+            # message which is too deeply nested: protobuf has a limit of 100
+            # nested messages. See the limits here:
+            #   https://protobuf.dev/programming-guides/proto-limits/
+
+            if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                logger.warning(
+                    "Unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') "
+                    f"{type(decode_error).__name__}{': ' + str(decode_error) if len(str(decode_error)) > 0 else ''}; "
+                    "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                    "See the limits here: https://protobuf.dev/programming-guides/proto-limits/" +
+                    ''.join(IMPORT_traceback.format_exception(decode_error))
+                )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') {decode_error}; "
+                        "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                        "See the limits here: https://protobuf.dev/programming-guides/proto-limits/"
+            )
+        except BaseException as exception:
+            # Not logging when within `node` as we already log there.
+            if IMPORT_reboot_nodejs_python.should_print_stacktrace():
+                logger.warning(
+                    "Unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') "
+                    f"{type(exception).__name__}{': ' + str(exception) if len(str(exception)) > 0 else ''}; "
+                    "propagating as 'Unknown'\n" +
+                    ''.join(IMPORT_traceback.format_exception(exception))
+                )
+            raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                # TODO(benh): consider whether or not we want to
+                # include the 'package.service.method' which may
+                # get concatenated together forming a kind of
+                # "stack trace"; while it's super helpful for
+                # debugging, it does expose implementation
+                # information.
+                message=f"unhandled (in 'rbt.std.pubsub.v1.Topic.Broker') {type(exception).__name__}: {exception}"
+            )
+        finally:
+            pass
+
+
+    async def _schedule_Broker(
+        self,
+        *,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        grpc_context: IMPORT_grpc.aio.ServicerContext,
+    ) -> tuple[IMPORT_reboot_aio_contexts.WriterContext, rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse]:
+        context: IMPORT_reboot_aio_contexts.WriterContext = self.create_context(
+            headers=headers,
+            state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            method='Broker',
+            context_type=IMPORT_reboot_aio_contexts.WriterContext,
+        )
+        response = rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse()
+
+        # Check if we already have performed this mutation!
+        #
+        # We do this _before_ calling 'transactionally()' because
+        # if this call is for a transaction method _and_ we've
+        # already performed the transaction then we don't want to
+        # become a transaction participant (again) we just want to
+        # return the transaction's response.
+        idempotent_mutation = self._state_manager.check_for_idempotent_mutation(
+            context
+        )
+
+        if idempotent_mutation is not None:
+            response.ParseFromString(idempotent_mutation.response)
+
+            # We should have only scheduled a single task!
+            assert len(idempotent_mutation.task_ids) == 1
+            assert grpc_context is not None
+            grpc_context.set_trailing_metadata(
+                grpc_context.trailing_metadata() +
+                (
+                    (
+                        IMPORT_reboot_aio_headers.TASK_ID_UUID,
+                        str(IMPORT_uuid.UUID(bytes=idempotent_mutation.task_ids[0].task_uuid))
+                    ),
+                )
+            )
+
+            return context, response
+
+        async with self._state_manager.transactionally(
+            context,
+            self.tasks_dispatcher,
+            aborted_type=Topic.BrokerAborted,
+        ) as transaction:
+            if transaction is not None:
+                context.participants.add(
+                    self._servicer.__state_type_name__, context._state_ref
+                )
+
+            # Try to verify the token if a token verifier exists.
+            context.auth = await self._maybe_verify_token(
+                headers=headers, method='Broker'
+            )
+
+            async with self._state_manager.writer(
+                context,
+                self._servicer.__state_type__,
+                self.tasks_dispatcher,
+                transaction=transaction,
+                authorize=self._maybe_authorize(
+                    method_name='rbt.std.pubsub.v1.TopicMethods.Broker',
+                    headers=context._headers,
+                    auth=context.auth,
+                    request=request,
+                ),
+                from_constructor=False,
+                requires_constructor=False
+            ) as (state, writer):
+
+                task = await TopicServicerTasks(
+                    context=context,
+                    state_ref=context._state_ref,
+                ).Broker(
+                    TopicBrokerRequestFromProto(request),
+                    schedule=context._headers.task_schedule,
+                )
+
+                effects = IMPORT_reboot_aio_state_managers.Effects(
+                    response=response,
+                    state=state,
+                    tasks=[task],
+                )
+
+                assert effects.tasks is not None
+
+                await writer.complete(effects)
+
+                assert grpc_context is not None
+
+                grpc_context.set_trailing_metadata(
+                    grpc_context.trailing_metadata() +
+                    (
+                        (
+                            IMPORT_reboot_aio_headers.TASK_ID_UUID,
+                            str(IMPORT_uuid.UUID(bytes=task.task_id.task_uuid))
+                        ),
+                    )
+                )
+
+                return context, response
+
+        return context, response
+
+
+    # Entrypoint for non-reactive network calls (i.e. typical gRPC calls).
+    async def Broker(
+        self,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+        grpc_context: IMPORT_grpc.aio.ServicerContext,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        headers = IMPORT_reboot_aio_headers.Headers.from_grpc_context(grpc_context)
+        assert headers.application_id is not None  # Guaranteed by `Headers`.
+
+        # Confirm whether this is the right server to be serving this
+        # request.
+        authoritative_server = self.placement_client.server_for_actor(
+            headers.application_id,
+            headers.state_ref,
+        )
+        if authoritative_server != self.server_id:
+            # This is NOT the correct server. Fail.
+            await grpc_context.abort(
+                IMPORT_grpc.StatusCode.UNAVAILABLE,
+                f"Server '{self.server_id}' is not authoritative for this "
+                f"request; server '{authoritative_server}' is.",
+            )
+            raise  # Unreachable but necessary for mypy.
+
+        @IMPORT_reboot_aio_internals_middleware.maybe_run_function_twice_to_validate_effects
+        async def _run(
+            validating_effects: bool,
+        ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+            context: IMPORT_typing.Optional[IMPORT_reboot_aio_contexts.Context] = None
+            try:
+                # rebootdev.aio.contexts.WorkflowContext must be scheduled!
+                assert headers.task_schedule is not None
+                context, response = await self._schedule_Broker(
+                    headers=headers,
+                    request=request,
+                    grpc_context=grpc_context,
+                )
+                return response
+
+            except IMPORT_reboot_aio_contexts.EffectValidationRetry:
+                # Doing effect validation, just let this propagate.
+                raise
+            except IMPORT_rebootdev.aio.aborted.Aborted as aborted:
+                status = IMPORT_rpc_status_sync.to_status(aborted.to_status())
+                # Need to add transaction participants here because
+                # calling `grpc_context.abort_with_status()` will
+                # ignore any other trailing metadata.
+                if context is not None and context.transaction_id is not None:
+                    status = status._replace(
+                        trailing_metadata=status.trailing_metadata + context.participants.to_grpc_metadata()
+                    )
+                await grpc_context.abort_with_status(status)
+                raise  # Unreachable but necessary for mypy.
+            except IMPORT_asyncio.CancelledError:
+                # It's pretty normal for an RPC to be cancelled; it's not useful to
+                # print a stack trace.
+                raise
+            except BaseException as exception:
+                # Print the exception stack trace for easier debugging. Note
+                # that we don't include the stack trace in an error message
+                # for the same reason that gRPC doesn't do so by default,
+                # see https://github.com/grpc/grpc/issues/14897, but since this
+                # should only get logged on the server side it is safe.
+                logger.warning(
+                    'Unhandled exception\n' +
+                    ''.join(IMPORT_traceback.format_exc() if IMPORT_reboot_nodejs_python.should_print_stacktrace() else [f"{type(exception).__name__}: {exception}"])
+                )
+
+                # Re-raise the exception for gRPC to handle!
+                #
+                # TODO: gRPC will print a stack trace from this
+                # exception which we don't want if we're executing via
+                # Node.js.
+                raise
+            finally:
+                if context is not None and context.transaction_id is not None:
+                    # Propagate transaction participants.
+                    grpc_context.set_trailing_metadata(
+                        grpc_context.trailing_metadata() +
+                        context.participants.to_grpc_metadata()
+                    )
+
+        with IMPORT_reboot_aio_tracing.context_from_headers(headers):
+            return await _run()
+
+    def _maybe_authorize(
+        self,
+        *,
+        method_name: str,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        auth: IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.Auth],
+        request: IMPORT_typing.Optional[TopicRequestTypes] = None,
+    ) -> IMPORT_typing.Optional[IMPORT_typing.Callable[[IMPORT_typing.Optional[TopicStateType]], IMPORT_typing.Awaitable[None]]]:
+        """Returns a function to check authorization for the given method.
+
+        Raises `PermissionDenied` in case Authorizer is present but the request
+        is not authorized.
+        """
+        # To authorize internal calls, we use an internal magic token.
+        if headers.bearer_token == __internal_magic_token__:
+            return None
+
+        assert self._authorizer is not None
+
+        async def authorize(state: IMPORT_typing.Optional[TopicStateType]) -> None:
+            # Create context for the authorizer. This is a `ReaderContext`
+            # independently of the calling context.
+            with self.use_context(
+                headers=(
+                    # Get headers suitable for doing authorization.
+                    headers.copy_for_token_verification_and_authorization()
+                ),
+                state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                method=method_name,
+                context_type=IMPORT_reboot_aio_contexts.ReaderContext,
+            ) as context:
+                context.auth = auth
+
+                # Get the authorizer decision.
+                authorization_decision = await self._authorizer.authorize(
+                    method_name=method_name,
+                    context=context,
+                    state=state,
+                    request=request,
+                )
+
+            # Enforce correct authorizer decision type.
+            try:
+                IMPORT_reboot_aio_types.assert_type(
+                    authorization_decision,
+                    [
+                        IMPORT_rbt_v1alpha1.errors_pb2.Ok,
+                        IMPORT_rbt_v1alpha1.errors_pb2.Unauthenticated,
+                        IMPORT_rbt_v1alpha1.errors_pb2.PermissionDenied,
+                    ]
+                )
+            except TypeError as e:
+                # Retyping.cast the exception to provide more context.
+                authorizer_type = f"{type(self._authorizer).__module__}.{type(self._authorizer).__name__}"
+                raise TypeError(
+                    f"Authorizer '{authorizer_type}' "
+                    f"returned unexpected type '{type(authorization_decision).__name__}' "
+                    f"for method '{method_name}' on "
+                    f"`rbt.std.pubsub.v1.Topic('{headers.state_ref.id}')`"
+                ) from e
+
+            # If the decision is not `True`, raise a `SystemAborted` with either a
+            # `PermissionDenied` error (in case of `False`) or an `Unauthenticated`
+            # error.
+            if not isinstance(authorization_decision, IMPORT_rbt_v1alpha1.errors_pb2.Ok):
+                if isinstance(authorization_decision, IMPORT_rbt_v1alpha1.errors_pb2.Unauthenticated):
+                    logger.warning(
+                        f"Unauthenticated call to '{method_name}' on "
+                        f"`rbt.std.pubsub.v1.Topic('{headers.state_ref.id}')`"
+                    )
+
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    authorization_decision,
+                    message=
+                    f"You are not authorized to call '{method_name}' on "
+                    f"`rbt.std.pubsub.v1.Topic('{headers.state_ref.id}')`"
+                )
+
+        return authorize
+
+    async def _maybe_verify_token(
+        self,
+        *,
+        headers: IMPORT_reboot_aio_headers.Headers,
+        method: str,
+    ) -> IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.Auth]:
+        """Verify the bearer token and if a token verifier is present.
+
+        Returns the (optional) `rebootdev.aio.auth.Auth` object
+        produced by the token verifier if the token can be verified.
+        """
+        if self._token_verifier is not None:
+            if headers.bearer_token == __internal_magic_token__:
+                return None
+
+            with self.use_context(
+                headers=(
+                    # Get headers suitable for doing token verification.
+                    headers.copy_for_token_verification_and_authorization()
+                ),
+                state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                method=method,
+                context_type=IMPORT_reboot_aio_contexts.ReaderContext,
+            ) as context:
+                return await self._token_verifier.verify_token(
+                    context=context,
+                    token=headers.bearer_token,
+                )
+
+        return None
+
+
+############################ Client Stubs ############################
+# This section is relevant for clients accessing a Reboot service. Since
+# servicers are themselves often clients also, this code is generated for
+# them also.
+
+
+class _TopicStub(IMPORT_reboot_aio_stubs.Stub):
+
+    __state_type_name__ = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic')
+
+    def __init__(
+        self,
+        *,
+        context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+        state_ref: IMPORT_reboot_aio_types.StateRef,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ):
+        # Within a Reboot context we do not pass on the caller's bearer token, as that might
+        # have security implications - we cannot simply trust any service we are calling with
+        # the user's credentials. Instead, the developer can rely on the default app-internal
+        # auth, or override that and set an explicit bearer token.
+        #
+        # In the case of `ExternalContext`, however, its `bearer_token` was set specifically
+        # by the developer for the purpose of making these calls.
+        app_internal_authorization: IMPORT_typing.Optional[str] = None
+        if isinstance(context, IMPORT_reboot_aio_external.ExternalContext):
+            # Note that only `ExternalContext` even has a `bearer_token` field.
+            bearer_token = context.bearer_token
+            app_internal_authorization = context.app_internal_authorization
+
+        super().__init__(
+            channel_manager=context.channel_manager,
+            idempotency_manager=context,
+            state_ref=state_ref,
+            context=context if isinstance(context, IMPORT_reboot_aio_contexts.Context) else None,
+            bearer_token=bearer_token,
+            app_internal_authorization=app_internal_authorization,
+        )
+
+        # All the channels for all services of this state will go to the same
+        # place, so we can just get a single channel and share it across all
+        # stubs.
+        channel = self._channel_manager.get_channel_to_state(
+            self.__state_type_name__, state_ref
+        )
+        self._rbt_std_pubsub_v1_topicmethods_stub = rbt.std.pubsub.v1.pubsub_pb2_grpc.TopicMethodsStub(channel)
+
+
+class TopicReaderStub(_TopicStub):
+
+    def __init__(
+        self,
+        context: IMPORT_reboot_aio_contexts.ReaderContext | IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        *,
+        state_ref: IMPORT_reboot_aio_types.StateRef,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ):
+        IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.ReaderContext, IMPORT_reboot_aio_contexts.WriterContext, IMPORT_reboot_aio_contexts.TransactionContext, IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+        super().__init__(
+            context=context,
+            state_ref=state_ref,
+            bearer_token=bearer_token,
+        )
+
+    # Topic specific methods:
+
+
+
+
+
+class TopicWriterStub(_TopicStub):
+
+    def __init__(
+        self,
+        context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        *,
+        state_ref: IMPORT_reboot_aio_types.StateRef,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ):
+        IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.TransactionContext, IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+        super().__init__(
+            context=context,
+            state_ref=state_ref,
+            bearer_token=bearer_token,
+        )
+
+    # Topic specific methods:
+    async def Publish(
+        self,
+        request: Topic.PublishRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        proto_request = TopicPublishRequestToProto(request)
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Publish',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.PublishAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Publish',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Publish,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.PublishResponse,
+                aborted_type=Topic.PublishAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                return await call
+
+    async def Subscribe(
+        self,
+        request: Topic.SubscribeRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        proto_request = TopicSubscribeRequestToProto(request)
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Subscribe',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.SubscribeAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Subscribe',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Subscribe,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse,
+                aborted_type=Topic.SubscribeAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                return await call
+
+
+
+class TopicWorkflowStub(_TopicStub):
+
+    def __init__(
+        self,
+        *,
+        context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        state_ref: IMPORT_reboot_aio_types.StateRef,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ):
+        IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.TransactionContext, IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+        super().__init__(
+            context=context,
+            state_ref=state_ref,
+            bearer_token=bearer_token,
+        )
+
+    # Topic specific methods:
+    async def Publish(
+        self,
+        request: Topic.PublishRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        idempotency_key: IMPORT_typing.Optional[IMPORT_uuid.UUID]
+        proto_request = TopicPublishRequestToProto(request)
+
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Publish',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.PublishAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Publish',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Publish,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.PublishResponse,
+                aborted_type=Topic.PublishAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                return await call
+
+    async def Subscribe(
+        self,
+        request: Topic.SubscribeRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        idempotency_key: IMPORT_typing.Optional[IMPORT_uuid.UUID]
+        proto_request = TopicSubscribeRequestToProto(request)
+
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Subscribe',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.SubscribeAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Subscribe',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Subscribe,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse,
+                aborted_type=Topic.SubscribeAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                return await call
+
+
+
+
+class TopicTasksStub(_TopicStub):
+
+    def __init__(
+        self,
+        context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        *,
+        state_ref: IMPORT_reboot_aio_types.StateRef,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ):
+        IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.TransactionContext, IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+        super().__init__(
+            context=context,
+            state_ref=state_ref,
+            bearer_token=bearer_token,
+        )
+
+    # Topic specific methods:
+    async def Publish(
+        self,
+        request: Topic.PublishRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+        idempotency_key: IMPORT_typing.Optional[IMPORT_uuid.UUID]
+        proto_request = TopicPublishRequestToProto(request)
+
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Publish',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.PublishAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Publish',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Publish,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.PublishResponse,
+                aborted_type=Topic.PublishAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                await call
+                for (key, value) in await call.trailing_metadata():  # type: ignore[misc, attr-defined]
+                    if key == IMPORT_reboot_aio_headers.TASK_ID_UUID:
+                        return IMPORT_rbt_v1alpha1.tasks_pb2.TaskId(
+                            state_type=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                            state_ref=self._headers.state_ref.to_str(),
+                            task_uuid=IMPORT_uuid.UUID(value).bytes,
+                        )
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    IMPORT_rbt_v1alpha1.errors_pb2.Internal(),
+                    message='Trailing metadata missing for task schedule',
+                )
+    async def Subscribe(
+        self,
+        request: Topic.SubscribeRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+        idempotency_key: IMPORT_typing.Optional[IMPORT_uuid.UUID]
+        proto_request = TopicSubscribeRequestToProto(request)
+
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Subscribe',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.SubscribeAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Subscribe',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Subscribe,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse,
+                aborted_type=Topic.SubscribeAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                await call
+                for (key, value) in await call.trailing_metadata():  # type: ignore[misc, attr-defined]
+                    if key == IMPORT_reboot_aio_headers.TASK_ID_UUID:
+                        return IMPORT_rbt_v1alpha1.tasks_pb2.TaskId(
+                            state_type=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                            state_ref=self._headers.state_ref.to_str(),
+                            task_uuid=IMPORT_uuid.UUID(value).bytes,
+                        )
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    IMPORT_rbt_v1alpha1.errors_pb2.Internal(),
+                    message='Trailing metadata missing for task schedule',
+                )
+    async def Broker(
+        self,
+        request: Topic.BrokerRequest,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+        *,
+        metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+        idempotency_key: IMPORT_typing.Optional[IMPORT_uuid.UUID]
+        proto_request = TopicBrokerRequestToProto(request)
+
+        with self._idempotency_manager.idempotently(
+            state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._headers.state_ref,
+            service_name=IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+            method='Broker',
+            mutation=True,
+            request=proto_request,
+            metadata=metadata,
+            idempotency=idempotency,
+            aborted_type=Topic.BrokerAborted,
+        ) as idempotency_key:
+            async with self._call(
+                IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+                'Broker',
+                self._rbt_std_pubsub_v1_topicmethods_stub.Broker,
+                proto_request,
+                unary=True,
+                reader=False,
+                response_type=rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse,
+                aborted_type=Topic.BrokerAborted,
+                metadata=metadata,
+                idempotency_key=idempotency_key,
+                bearer_token=bearer_token,
+            ) as call:
+                assert isinstance(call, IMPORT_typing.Awaitable), type(call)
+                await call
+                for (key, value) in await call.trailing_metadata():  # type: ignore[misc, attr-defined]
+                    if key == IMPORT_reboot_aio_headers.TASK_ID_UUID:
+                        return IMPORT_rbt_v1alpha1.tasks_pb2.TaskId(
+                            state_type=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                            state_ref=self._headers.state_ref.to_str(),
+                            task_uuid=IMPORT_uuid.UUID(value).bytes,
+                        )
+                raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                    IMPORT_rbt_v1alpha1.errors_pb2.Internal(),
+                    message='Trailing metadata missing for task schedule',
+                )
+
+
+class TopicServicerTasks:
+
+    _context: IMPORT_reboot_aio_contexts.WriterContext
+
+    def __init__(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        *,
+        state_ref: IMPORT_reboot_aio_types.StateRef,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ):
+        IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.WriterContext])
+        self._context = context
+        self._state_ref = state_ref
+
+    # Topic specific methods:
+    async def Publish(
+        self,
+        request: Topic.PublishRequest,
+        *,
+        schedule: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+    ) -> IMPORT_reboot_aio_tasks.TaskEffect:
+        schedule = ensure_has_timezone(when=schedule)
+        task = IMPORT_reboot_aio_tasks.TaskEffect(
+            state_type=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._state_ref,
+            method_name='Publish',
+            request=TopicPublishRequestToProto(request),
+            schedule=(IMPORT_reboot_time_DateTimeWithTimeZone.now() + schedule) if isinstance(
+                schedule, IMPORT_datetime_timedelta
+            ) else schedule,
+        )
+
+        self._context._tasks.append(task)
+
+        return task
+
+    async def Subscribe(
+        self,
+        request: Topic.SubscribeRequest,
+        *,
+        schedule: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+    ) -> IMPORT_reboot_aio_tasks.TaskEffect:
+        schedule = ensure_has_timezone(when=schedule)
+        task = IMPORT_reboot_aio_tasks.TaskEffect(
+            state_type=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._state_ref,
+            method_name='Subscribe',
+            request=TopicSubscribeRequestToProto(request),
+            schedule=(IMPORT_reboot_time_DateTimeWithTimeZone.now() + schedule) if isinstance(
+                schedule, IMPORT_datetime_timedelta
+            ) else schedule,
+        )
+
+        self._context._tasks.append(task)
+
+        return task
+
+    async def Broker(
+        self,
+        request: Topic.BrokerRequest,
+        *,
+        schedule: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+    ) -> IMPORT_reboot_aio_tasks.TaskEffect:
+        schedule = ensure_has_timezone(when=schedule)
+        task = IMPORT_reboot_aio_tasks.TaskEffect(
+            state_type=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+            state_ref=self._state_ref,
+            method_name='Broker',
+            request=TopicBrokerRequestToProto(request),
+            schedule=(IMPORT_reboot_time_DateTimeWithTimeZone.now() + schedule) if isinstance(
+                schedule, IMPORT_datetime_timedelta
+            ) else schedule,
+        )
+
+        self._context._tasks.append(task)
+
+        return task
+
+
+
+############################ Authorizers ############################
+# Relevant to servicers; irrelevant to clients.
+
+TopicStateType: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.Topic
+TopicRequestTypes: IMPORT_typing.TypeAlias = \
+        rbt.std.pubsub.v1.pubsub_pb2.PublishRequest \
+        | rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest \
+        | rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest
+
+class TopicAuthorizer(
+    IMPORT_rebootdev.aio.auth.authorizers.Authorizer[TopicStateType, TopicRequestTypes],
+):
+    StateType: IMPORT_typing.TypeAlias = TopicStateType
+    RequestTypes: IMPORT_typing.TypeAlias = TopicRequestTypes
+    Decision: IMPORT_typing.TypeAlias = IMPORT_rebootdev.aio.auth.authorizers.Authorizer.Decision
+
+    def __init__(
+        self,
+        *,
+        Publish: IMPORT_typing.Optional[
+            IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+              rbt.std.pubsub.v1.pubsub_pb2.Topic,
+              rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+            ]
+        ] = None,
+        publish: IMPORT_typing.Optional[
+            IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+              rbt.std.pubsub.v1.pubsub_pb2.Topic,
+              rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+            ]
+        ] = None,
+        Subscribe: IMPORT_typing.Optional[
+            IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+              rbt.std.pubsub.v1.pubsub_pb2.Topic,
+              rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+            ]
+        ] = None,
+        subscribe: IMPORT_typing.Optional[
+            IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+              rbt.std.pubsub.v1.pubsub_pb2.Topic,
+              rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+            ]
+        ] = None,
+        Broker: IMPORT_typing.Optional[
+            IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+              rbt.std.pubsub.v1.pubsub_pb2.Topic,
+              rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+            ]
+        ] = None,
+        broker: IMPORT_typing.Optional[
+            IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+              rbt.std.pubsub.v1.pubsub_pb2.Topic,
+              rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+            ]
+        ] = None,
+        # NOTE: using `_` prefix for `_default` so as not to collide
+        # with any method names since a prefixed `_` is forbidden by
+        # our protoc plugins.
+        _default: IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule[
+            rbt.std.pubsub.v1.pubsub_pb2.Topic,
+            IMPORT_google_protobuf_message.Message,
+        ] = IMPORT_rebootdev.aio.auth.authorizers.allow_if(
+            all=[IMPORT_rebootdev.aio.auth.authorizers.is_app_internal],
+        ),
+    ):
+        if publish is not None and Publish is not None:
+            raise ValueError(
+                f"Cannot specify both 'Publish' and 'publish' authorizer rules"
+            )
+        self._publish = publish or Publish
+        if subscribe is not None and Subscribe is not None:
+            raise ValueError(
+                f"Cannot specify both 'Subscribe' and 'subscribe' authorizer rules"
+            )
+        self._subscribe = subscribe or Subscribe
+        if broker is not None and Broker is not None:
+            raise ValueError(
+                f"Cannot specify both 'Broker' and 'broker' authorizer rules"
+            )
+        self._broker = broker or Broker
+        self.__default = _default
+
+    async def authorize(
+        self,
+        *,
+        method_name: str,
+        context: IMPORT_reboot_aio_contexts.ReaderContext,
+        state: IMPORT_typing.Optional[TopicStateType],
+        request: IMPORT_typing.Optional[TopicRequestTypes],
+        **kwargs,
+    ) -> IMPORT_rebootdev.aio.auth.authorizers.Authorizer.Decision:
+        if method_name == 'rbt.std.pubsub.v1.TopicMethods.Publish':
+            return await self.Publish(
+                context=context,
+                state=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.Topic, state),
+                request=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.PublishRequest, request),
+            )
+        elif method_name == 'rbt.std.pubsub.v1.TopicMethods.Subscribe':
+            return await self.Subscribe(
+                context=context,
+                state=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.Topic, state),
+                request=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest, request),
+            )
+        elif method_name == 'rbt.std.pubsub.v1.TopicMethods.Broker':
+            return await self.Broker(
+                context=context,
+                state=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.Topic, state),
+                request=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest, request),
+            )
+        else:
+            return IMPORT_rbt_v1alpha1.errors_pb2.PermissionDenied()
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    async def Publish(
+        self,
+        *,
+        context: IMPORT_reboot_aio_contexts.ReaderContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> IMPORT_rebootdev.aio.auth.authorizers.Authorizer.Decision:
+        return await (self._publish or self.__default).execute(
+            context=context,
+            state=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.Topic, state),
+            request=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.PublishRequest, request),
+        )
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    async def Subscribe(
+        self,
+        *,
+        context: IMPORT_reboot_aio_contexts.ReaderContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> IMPORT_rebootdev.aio.auth.authorizers.Authorizer.Decision:
+        return await (self._subscribe or self.__default).execute(
+            context=context,
+            state=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.Topic, state),
+            request=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest, request),
+        )
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Broker'.
+    async def Broker(
+        self,
+        *,
+        context: IMPORT_reboot_aio_contexts.ReaderContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> IMPORT_rebootdev.aio.auth.authorizers.Authorizer.Decision:
+        return await (self._broker or self.__default).execute(
+            context=context,
+            state=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.Topic, state),
+            request=IMPORT_typing.cast(rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest, request),
+        )
+
+
+
+############################ Reboot Servicers ############################
+# Base classes for server-side implementations of Reboot servicers.
+# Irrelevant to clients.
+
+class TopicBaseServicer(IMPORT_reboot_aio_servicers.Servicer):
+    Authorizer: IMPORT_typing.TypeAlias = TopicAuthorizer
+
+    __service_names__ = [
+        IMPORT_reboot_aio_types.ServiceName('rbt.std.pubsub.v1.TopicMethods'),
+    ]
+    __state_type_name__ = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic')
+    __state_type__ = rbt.std.pubsub.v1.pubsub_pb2.Topic
+    __file_descriptor__ = rbt.std.pubsub.v1.pubsub_pb2.DESCRIPTOR
+
+    def __init__(self):
+        super().__init__()
+        # NOTE: need to hold on to the middleware so we can do inline
+        # writes (see 'self.write(...)').
+        #
+        # Because '_middleware' is not really private this does mean
+        # users may do possibly dangerous things, but this is no more
+        # likely given they could have already overridden
+        # 'create_middleware()'.
+        self._middleware: IMPORT_typing.Optional[TopicServicerMiddleware] = None
+
+    def create_middleware(
+        self,
+        *,
+        application_id: IMPORT_reboot_aio_types.ApplicationId,
+        server_id: IMPORT_reboot_aio_types.ServerId,
+        state_manager: IMPORT_reboot_aio_state_managers.StateManager,
+        placement_client: IMPORT_reboot_aio_placement.PlacementClient,
+        channel_manager: IMPORT_reboot_aio_internals_channel_manager._ChannelManager,
+        tasks_cache: IMPORT_reboot_aio_internals_tasks_cache.TasksCache,
+        token_verifier: IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.token_verifiers.TokenVerifier],
+        effect_validation: IMPORT_reboot_aio_contexts.EffectValidation,
+        app_internal_api_key_secret: str,
+        ready: IMPORT_asyncio.Event,
+    ) -> TopicServicerMiddleware:
+        self._middleware = TopicServicerMiddleware(
+            servicer=self,
+            application_id=application_id,
+            server_id=server_id,
+            state_manager=state_manager,
+            placement_client=placement_client,
+            channel_manager=channel_manager,
+            tasks_cache=tasks_cache,
+            token_verifier=token_verifier,
+            effect_validation=effect_validation,
+            app_internal_api_key_secret=app_internal_api_key_secret,
+            ready=ready,
+        )
+        return self._middleware
+
+    def authorizer(self) -> IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.authorizers.Authorizer | IMPORT_rebootdev.aio.auth.authorizers.AuthorizerRule]:
+        return None
+
+    def token_verifier(self) -> IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.token_verifiers.TokenVerifier]:
+        return None
+
+    def ref(
+        self,
+        *,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> Topic.WeakReference[Topic.WeakReference._WriterSchedule]:
+        context = IMPORT_reboot_aio_contexts.Context.get()
+
+        if context is None:
+            raise RuntimeError(
+                'Missing asyncio context variable `context`; '
+                'are you using this class without Reboot?'
+            )
+
+        return Topic.WeakReference(
+            # TODO(https://github.com/reboot-dev/mono/issues/3226): add support for calling other applications.
+            # For now this always stays within the application that creates the context.
+            application_id=None,
+            state_id=context._state_ref.id,
+            schedule_type=Topic.WeakReference._WriterSchedule,
+            # If the user didn't specify a bearer token we may still end up using the app-internal bearer token,
+            # but that's decided at the time of the call.
+            bearer_token=bearer_token,
+            servicer=self,
+        )
+
+    class Effects(IMPORT_reboot_aio_state_managers.Effects):
+        def __init__(
+            self,
+            *,
+            state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+            response: IMPORT_typing.Optional[IMPORT_google_protobuf_message.Message] = None,
+            tasks: IMPORT_typing.Optional[list[IMPORT_reboot_aio_tasks.TaskEffect]] = None,
+            _colocated_upserts: IMPORT_typing.Optional[list[tuple[str, IMPORT_typing.Optional[bytes]]]] = None,
+        ):
+            IMPORT_reboot_aio_types.assert_type(state, [rbt.std.pubsub.v1.pubsub_pb2.Topic])
+
+            super().__init__(state=state, response=response, tasks=tasks, _colocated_upserts=_colocated_upserts)
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    class PublishEffects(Effects):
+        def __init__(
+            self,
+            *,
+            state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+            response: rbt.std.pubsub.v1.pubsub_pb2.PublishResponse,
+            tasks: IMPORT_typing.Optional[list[IMPORT_reboot_aio_tasks.TaskEffect]] = None,
+            _colocated_upserts: IMPORT_typing.Optional[list[tuple[str, IMPORT_typing.Optional[bytes]]]] = None,
+        ):
+            IMPORT_reboot_aio_types.assert_type(state, [rbt.std.pubsub.v1.pubsub_pb2.Topic])
+            IMPORT_reboot_aio_types.assert_type(response, [rbt.std.pubsub.v1.pubsub_pb2.PublishResponse])
+
+            super().__init__(state=state, response=response, tasks=tasks, _colocated_upserts=_colocated_upserts)
+
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    class SubscribeEffects(Effects):
+        def __init__(
+            self,
+            *,
+            state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+            response: rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse,
+            tasks: IMPORT_typing.Optional[list[IMPORT_reboot_aio_tasks.TaskEffect]] = None,
+            _colocated_upserts: IMPORT_typing.Optional[list[tuple[str, IMPORT_typing.Optional[bytes]]]] = None,
+        ):
+            IMPORT_reboot_aio_types.assert_type(state, [rbt.std.pubsub.v1.pubsub_pb2.Topic])
+            IMPORT_reboot_aio_types.assert_type(response, [rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse])
+
+            super().__init__(state=state, response=response, tasks=tasks, _colocated_upserts=_colocated_upserts)
+
+
+
+
+    InlineWriterCallableResult = IMPORT_typing.TypeVar('InlineWriterCallableResult', covariant=True)
+
+    class InlineWriterCallable(IMPORT_typing.Protocol[InlineWriterCallableResult]):
+        async def __call__(
+            self,
+            state: rbt.std.pubsub.v1.pubsub_pb2.Topic
+        ) -> TopicBaseServicer.InlineWriterCallableResult:
+            ...
+
+    class WorkflowState:
+
+        def __init__(
+            self,
+            servicer,
+        ):
+            self._servicer = servicer
+
+        async def read(
+            self, context: IMPORT_reboot_aio_contexts.WorkflowContext
+        ) -> rbt.std.pubsub.v1.pubsub_pb2.Topic:
+            """Read the current state within a workflow."""
+            return await (
+                self.always() if context.within_until()
+                else (
+                    self.per_iteration() if context.within_loop()
+                    else self.per_workflow()
+                )
+            ).read(context)
+
+        @IMPORT_typing.overload
+        async def write(
+            self,
+            idempotency_alias: str,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            writer: TopicBaseServicer.InlineWriterCallable[None],
+            __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+            *,
+            type: type = type(None),
+        ) -> None:
+            ...
+
+        @IMPORT_typing.overload
+        async def write(
+            self,
+            idempotency_alias: str,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+            __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+            *,
+            type: type[TopicBaseServicer.InlineWriterCallableResult],
+        ) -> TopicBaseServicer.InlineWriterCallableResult:
+            ...
+
+        async def write(
+            self,
+            idempotency_alias: str,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+            __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+            *,
+            type: type = type(None),
+        ) -> TopicBaseServicer.InlineWriterCallableResult:
+            """Perform an "inline write" within a workflow."""
+            return await (
+                self.per_iteration(idempotency_alias) if context.within_loop()
+                else self.per_workflow(idempotency_alias)
+            ).write(
+                context, writer, __options__, type=type
+            )
+
+        class _Idempotently:
+
+            def __init__(
+                self,
+                *,
+                servicer: TopicBaseServicer,
+                alias: IMPORT_typing.Optional[str],
+                how: IMPORT_reboot_aio_workflows.How,
+            ):
+                self._servicer = servicer
+                self._alias = alias
+                self._how = how
+
+            async def read(
+                self, context: IMPORT_reboot_aio_contexts.WorkflowContext
+            ) -> rbt.std.pubsub.v1.pubsub_pb2.Topic:
+                """Read the current state within a workflow."""
+                return await self._read(
+                    self._servicer,
+                    context.idempotency(
+                        key=IMPORT_uuid.uuid4(),
+                        generated=True,
+                    ) if self._how == IMPORT_reboot_aio_workflows.ALWAYS else context.idempotency(
+                        alias=self._alias,
+                        each_iteration=self._how == IMPORT_reboot_aio_workflows.PER_ITERATION
+                    ),
+                    context,
+                )
+
+            @staticmethod
+            async def _read(
+                servicer: TopicBaseServicer,
+                idempotency: IMPORT_reboot_aio_idempotency.Idempotency,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            ) -> rbt.std.pubsub.v1.pubsub_pb2.Topic:
+                """Read the current state within a workflow."""
+                IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.WorkflowContext])
+
+                if servicer._middleware is None:
+                    raise RuntimeError(
+                        'Reboot middleware was not created; '
+                        'are you using this class without Reboot?'
+                    )
+
+                async def read():
+                    assert servicer._middleware is not None
+                    return await servicer._middleware._state_manager.read(
+                        context, servicer.__state_type__
+                    )
+
+                if idempotency.always:
+                    return await read()
+
+                state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic')
+
+                # Use the idempotency manager to make sure that this
+                # reader is being called following the rules.
+                with context.idempotently(
+                    state_type_name=state_type_name,
+                    state_ref=context._state_ref,
+                    # Not calling a method so `service_name`,
+                    # `method`, `request`, etc are irrelevant.
+                    service_name=None,
+                    method=None,
+                    mutation=False,
+                    request=None,
+                    metadata=None,
+                    idempotency=idempotency,
+                    # Only need to pass `aborted_type` for mutations.
+                    aborted_type=None,
+                ) as idempotency_key:
+                    assert idempotency_key is not None
+                    return await IMPORT_reboot_aio_workflows.at_least_once(
+                        (
+                            # TODO: for easier debugging include the
+                            # original alias (or generated alias in
+                            # the case of `.per_iteration()` w/o an
+                            # alias) instead of just
+                            # `idempotency_key`.
+                            f"inline reader of '{ state_type_name }' ({str(idempotency_key)})",
+                            # NOTE: we want this to be `PER_WORKFLOW`
+                            # because any per iteration concerns
+                            # should have already been taken care of
+                            # by caller using `.per_iteration()`.
+                            IMPORT_reboot_aio_workflows.PER_WORKFLOW
+                        ),
+                        context,
+                        read,
+                        type=rbt.std.pubsub.v1.pubsub_pb2.Topic,
+                    )
+
+            @IMPORT_typing.overload
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[None],
+                __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+                *,
+                type: type = type(None),
+                check_type: bool = True,
+            ) -> None:
+                ...
+
+            @IMPORT_typing.overload
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+                *,
+                type: type[TopicBaseServicer.InlineWriterCallableResult],
+                check_type: bool = True,
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                ...
+
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+                *,
+                type: type = type(None),
+                check_type: bool = True,
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                return await self._write(
+                    context,
+                    writer,
+                    __options__,
+                    type_result=type,
+                    check_type=check_type,
+                )
+
+            async def _write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+                *,
+                type_result: type,
+                check_type: bool,
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                unidempotently = self._how == IMPORT_reboot_aio_workflows.ALWAYS
+                idempotency = (
+                    context.idempotency(
+                        key=IMPORT_uuid.uuid4(),
+                        generated=True,
+                    ) if unidempotently else context.idempotency(
+                        alias=self._alias,
+                        each_iteration=self._how == IMPORT_reboot_aio_workflows.PER_ITERATION
+                    )
+                )
+
+                return await self._write_validating_effects(
+                    self._servicer,
+                    idempotency,
+                    context,
+                    writer,
+                    __options__,
+                    type_result=type_result,
+                    check_type=check_type,
+                    unidempotently=unidempotently,
+                    checkpoint=context.checkpoint(),
+                )
+
+            @staticmethod
+            @IMPORT_reboot_aio_internals_middleware.maybe_run_function_twice_to_validate_effects
+            async def _write_validating_effects(
+                validating_effects: bool,
+                servicer: TopicBaseServicer,
+                idempotency: IMPORT_reboot_aio_idempotency.Idempotency,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+                *,
+                type_result: type,
+                check_type: bool,
+                unidempotently: bool,
+                checkpoint: IMPORT_reboot_aio_idempotency.Checkpoint,
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                if __options__.idempotency is not None:
+                    raise RuntimeError(
+                        'Found redundant idempotency in `Options`'
+                    )
+
+                IMPORT_reboot_aio_types.assert_type(context, [IMPORT_reboot_aio_contexts.WorkflowContext])
+
+                if servicer._middleware is None:
+                    raise RuntimeError(
+                        'Reboot middleware was not created; '
+                        'are you using this class without Reboot?'
+                    )
+
+                metadata: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+
+                if __options__ is not None:
+                    if __options__.metadata is not None:
+                        metadata = __options__.metadata
+
+                if metadata is None:
+                    metadata = ()
+
+                headers = IMPORT_reboot_aio_headers.Headers(
+                    application_id=context.application_id,
+                    state_ref=context._state_ref,
+                )
+
+                metadata += headers.to_grpc_metadata()
+
+                idempotency_key: IMPORT_typing.Optional[IMPORT_uuid.UUID]
+                with context.idempotently(
+                    state_type_name=IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                    state_ref=context._state_ref,
+                    service_name=None,  # Indicates an inline writer.
+                    method=None,  # Indicates an inline writer.
+                    mutation=True,
+                    request=None,  # Indicates an inline writer.
+                    metadata=metadata,
+                    idempotency=idempotency,
+                    aborted_type=None,  # Indicates an inline writer.
+                ) as idempotency_key:
+
+                    if any(t[0] == IMPORT_reboot_aio_headers.IDEMPOTENCY_KEY_HEADER for t in metadata):
+                        raise ValueError(
+                            f"Do not set '{IMPORT_reboot_aio_headers.IDEMPOTENCY_KEY_HEADER}' metadata yourself"
+                        )
+
+                    if idempotency_key is not None:
+                        metadata += (
+                            (IMPORT_reboot_aio_headers.IDEMPOTENCY_KEY_HEADER, str(idempotency_key)),
+                        )
+
+                    with servicer._middleware.use_context(
+                        headers=IMPORT_reboot_aio_headers.Headers.from_grpc_metadata(metadata),
+                        state_type_name = IMPORT_reboot_aio_types.StateTypeName('rbt.std.pubsub.v1.Topic'),
+                        method='inline writer',
+                        context_type=IMPORT_reboot_aio_contexts.WriterContext,
+                    ) as writer_context:
+                        # Check if we already have performed this mutation!
+                        #
+                        # We do this _before_ calling 'transactionally()' because
+                        # if this call is for a transaction method _and_ we've
+                        # already performed the transaction then we don't want to
+                        # become a transaction participant (again) we just want to
+                        # return the transaction's response.
+                        idempotent_mutation = (
+                            servicer._middleware._state_manager.check_for_idempotent_mutation(
+                                writer_context
+                            )
+                        )
+
+                        if idempotent_mutation is not None:
+                            assert len(idempotent_mutation.response) != 0
+                            response = IMPORT_google_protobuf_wrappers_pb2.BytesValue()
+                            response.ParseFromString(idempotent_mutation.response)
+                            result: TopicBaseServicer.InlineWriterCallableResult = IMPORT_pickle.loads(response.value)
+
+                            if check_type and type(result) is not type_result:
+                                raise TypeError(
+                                    f"Stored result of type '{type(result).__name__}' from 'writer' "
+                                    f"is not of expected type '{type_result.__name__}'; have you changed "
+                                    "the 'type' that you expect after having stored a result?"
+                                )
+
+                            return result
+
+                        async with servicer._middleware._state_manager.transactionally(
+                            writer_context,
+                            servicer._middleware.tasks_dispatcher,
+                            aborted_type=None,
+                        ) as transaction:
+                            async with servicer._middleware._state_manager.writer(
+                                writer_context,
+                                servicer.__state_type__,
+                                servicer._middleware.tasks_dispatcher,
+                                # TODO: Decide if we want to do any kind of authorization for inline
+                                # writers otherwise passing `None` here is fine.
+                                authorize=None,
+                                transaction=transaction,
+                            ) as (state, state_manager_writer):
+                                # Serialize the state so we can see if it changed.
+                                serialized_state = state.SerializeToString(
+                                    deterministic=True,
+                                )
+
+                                result = await writer(state=state)
+
+                                if check_type and type(result) is not type_result:
+                                    raise TypeError(
+                                        f"Result of type '{type(result).__name__}' from 'writer' is "
+                                        f"not of expected type '{type_result.__name__}'; "
+                                        "did you specify an incorrect 'type'?"
+                                    )
+
+                                task: IMPORT_typing.Optional[IMPORT_reboot_aio_tasks.TaskEffect] = context.task
+
+                                assert task is not None, (
+                                    "Should always have a task when running a `workflow`"
+                                )
+
+                                method_name = f"Topic.{task.method_name} inline writer"
+
+                                if idempotency.alias is not None:
+                                    method_name += " with idempotency alias '" + idempotency.alias + "'"
+                                elif idempotency.key is not None:
+                                    method_name += " with idempotency key=" + str(idempotency.key)
+
+                                servicer._middleware.maybe_raise_effect_validation_retry(
+                                    logger=logger,
+                                    idempotency_manager=context,
+                                    method_name=method_name,
+                                    validating_effects=validating_effects,
+                                    context=context,
+                                    checkpoint=checkpoint,
+                                )
+
+                                # We don't pass the context to the
+                                # writer, so we don't expect there to
+                                # be any scheduled tasks!
+                                assert len(context._tasks) == 0
+
+                                effects = IMPORT_reboot_aio_state_managers.Effects(
+                                    state=(
+                                        # Pass `None` if the state hasn't changed!
+                                        state if serialized_state != state.SerializeToString(
+                                            deterministic=True,
+                                        )
+                                        else None
+                                    ),
+                                    response=IMPORT_google_protobuf_wrappers_pb2.BytesValue(
+                                        value=IMPORT_pickle.dumps(result)
+                                    ),
+                                )
+
+                                await state_manager_writer.complete(effects)
+
+                                return result
+
+        def per_workflow(self, alias: IMPORT_typing.Optional[str] = None):
+            return TopicBaseServicer.WorkflowState._Idempotently(
+                servicer=self._servicer,
+                alias=alias,
+                how=IMPORT_reboot_aio_workflows.PER_WORKFLOW,
+            )
+
+        def per_iteration(self, alias: IMPORT_typing.Optional[str] = None):
+            return TopicBaseServicer.WorkflowState._Idempotently(
+                servicer=self._servicer,
+                alias=alias,
+                how=IMPORT_reboot_aio_workflows.PER_ITERATION,
+            )
+
+        class _Always:
+            """Helper class for providing better types for `write` that don't
+            require passing `type` or `check_type`."""
+
+            def __init__(
+                self,
+                *,
+                servicer: TopicBaseServicer,
+            ):
+                self._servicer = servicer
+
+            async def read(
+                self, context: IMPORT_reboot_aio_contexts.WorkflowContext
+            ) -> rbt.std.pubsub.v1.pubsub_pb2.Topic:
+                return await TopicBaseServicer.WorkflowState._Idempotently(
+                    servicer=self._servicer,
+                    alias=None,
+                    how=IMPORT_reboot_aio_workflows.ALWAYS,
+                ).read(context)
+
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                __options__: IMPORT_reboot_aio_call.Options = IMPORT_reboot_aio_call.Options(),
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                return await TopicBaseServicer.WorkflowState._Idempotently(
+                    servicer=self._servicer,
+                    alias=None,
+                    how=IMPORT_reboot_aio_workflows.ALWAYS,
+                )._write(
+                    context,
+                    writer,
+                    __options__,
+                    type_result=type(None),
+                    check_type=False,
+                )
+
+        def always(self):
+            return TopicBaseServicer.WorkflowState._Always(
+                servicer=self._servicer,
+            )
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    @IMPORT_abc_abstractmethod
+    async def _Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        raise NotImplementedError
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    @IMPORT_abc_abstractmethod
+    async def _Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        raise NotImplementedError
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Broker'.
+    @IMPORT_abc_abstractmethod
+    async def _Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        raise NotImplementedError
+
+
+
+class TopicSingletonServicer(TopicBaseServicer):
+
+    @property
+    def state(self):
+        return TopicBaseServicer.WorkflowState(
+            servicer=self
+        )
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that new code that
+    # doesn't implement it continues to work.
+    # TODO: make it abstractmethod when renaming is done.
+    async def Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        # During the migration from 'PascalCase' to 'snake_case' method
+        # naming in Python servicers, we call the 'snake_case' version
+        # by default, so new names will do the correct thing making the
+        # code to be backwards compatible for some time and if a servicer
+        # overrides the 'PascalCase' version - it will override that
+        # method and will just work.
+        return await self.publish(
+            context,
+            state,
+            request,
+        )
+
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that existing code that
+    # doesn't implement it continues to work.
+    async def publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        raise NotImplementedError
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that new code that
+    # doesn't implement it continues to work.
+    # TODO: make it abstractmethod when renaming is done.
+    async def Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        # During the migration from 'PascalCase' to 'snake_case' method
+        # naming in Python servicers, we call the 'snake_case' version
+        # by default, so new names will do the correct thing making the
+        # code to be backwards compatible for some time and if a servicer
+        # overrides the 'PascalCase' version - it will override that
+        # method and will just work.
+        return await self.subscribe(
+            context,
+            state,
+            request,
+        )
+
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that existing code that
+    # doesn't implement it continues to work.
+    async def subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        raise NotImplementedError
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Broker'.
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that new code that
+    # doesn't implement it continues to work.
+    # TODO: make it abstractmethod when renaming is done.
+    async def Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        # During the migration from 'PascalCase' to 'snake_case' method
+        # naming in Python servicers, we call the 'snake_case' version
+        # by default, so new names will do the correct thing making the
+        # code to be backwards compatible for some time and if a servicer
+        # overrides the 'PascalCase' version - it will override that
+        # method and will just work.
+        return await self.broker(
+            context,
+            request,
+        )
+
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that existing code that
+    # doesn't implement it continues to work.
+    async def broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        raise NotImplementedError
+
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    async def _Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        # Wrap the call to the developer's method in a `span` so that it
+        # is traced using its fully-qualified Python name.
+        with IMPORT_reboot_aio_tracing.span(
+                state_name=f"rbt.std.pubsub.v1.Topic('{context.state_id}')",
+                span_name=f"{IMPORT_reboot_aio_tracing.qualified_type_name(self)}.Publish()",
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                python_specific=True,
+        ):
+            typed_request = TopicPublishRequestFromProto(request)
+            return TopicPublishResponseToProto(await self.Publish(context, state, typed_request))
+
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    async def _Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        # Wrap the call to the developer's method in a `span` so that it
+        # is traced using its fully-qualified Python name.
+        with IMPORT_reboot_aio_tracing.span(
+                state_name=f"rbt.std.pubsub.v1.Topic('{context.state_id}')",
+                span_name=f"{IMPORT_reboot_aio_tracing.qualified_type_name(self)}.Subscribe()",
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                python_specific=True,
+        ):
+            typed_request = TopicSubscribeRequestFromProto(request)
+            return TopicSubscribeResponseToProto(await self.Subscribe(context, state, typed_request))
+
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Broker'.
+    async def _Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        # Wrap the call to the developer's method in a `span` so that it
+        # is traced using its fully-qualified Python name.
+        with IMPORT_reboot_aio_tracing.span(
+                state_name=f"rbt.std.pubsub.v1.Topic('{context.state_id}')",
+                span_name=f"{IMPORT_reboot_aio_tracing.qualified_type_name(self)}.Broker()",
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                python_specific=True,
+        ):
+            typed_request = TopicBrokerRequestFromProto(request)
+            return TopicBrokerResponseToProto(await self.Broker(context, typed_request))
+
+
+
+
+class TopicServicer(TopicBaseServicer):
+
+    _state: IMPORT_contextvars.ContextVar[
+        IMPORT_typing.Optional[Topic.State]
+    ] = IMPORT_contextvars.ContextVar(
+        'Provides access to state for each call, i.e., there may be '
+        'multiple readers executing concurrently but each might have '
+        'a different `state`',
+        default=None,
+    )
+
+    _workflow: IMPORT_contextvars.ContextVar[bool] = IMPORT_contextvars.ContextVar(
+        'Whether or not current context is executing a workflow',
+        default=False,
+    )
+
+    # An instance of the derived class for each state.
+    _instances: dict[str, TopicServicer] = {}
+
+    def _instance(self, state_id: str):
+        instances = TopicServicer._instances
+        instance = instances.get(state_id)
+        if instance is None:
+            instance = self.__class__()
+            instance._middleware = self._middleware
+        instances[state_id] = instance
+        return instance
+
+    @property
+    def state(self) -> Topic.State:
+        state = TopicServicer._state.get()
+        if state is None:
+            raise RuntimeError(
+                "`state` property is only relevant within a `Servicer` method"
+            )
+        workflow = TopicServicer._workflow.get()
+        if workflow:
+            raise RuntimeError(
+                "`self.state` is not valid within a `workflow` because a "
+                "`workflow ` is not _atomic_; use "
+                "`await self.ref().read(context)` instead"
+            )
+        return state
+
+    @state.setter
+    def state(self, new_state: Topic.State):
+        state = TopicServicer._state.get()
+        if state is None:
+            raise RuntimeError(
+                "`state` property is only relevant within a `Servicer` method"
+            )
+        workflow = TopicServicer._workflow.get()
+        if workflow:
+            raise RuntimeError(
+                "`self.state` is not valid within a `workflow` because a "
+                "`workflow ` is not _atomic_; use "
+                "`await self.ref().write(...)` instead"
+            )
+        state.CopyFrom(new_state)
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that new code that
+    # doesn't implement it continues to work.
+    # TODO: make it abstractmethod when renaming is done.
+    async def Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        request: Topic.PublishRequest,
+    ) -> Topic.PublishResponse:
+        # During the migration from 'PascalCase' to 'snake_case' method
+        # naming in Python servicers, we call the 'snake_case' version
+        # by default, so new names will do the correct thing making the
+        # code to be backwards compatible for some time and if a servicer
+        # overrides the 'PascalCase' version - it will override that
+        # method and will just work.
+        return await self.publish(
+            context,
+            request,
+        )
+
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that existing code that
+    # doesn't implement it continues to work.
+    async def publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        request: Topic.PublishRequest,
+    ) -> Topic.PublishResponse:
+        raise NotImplementedError
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that new code that
+    # doesn't implement it continues to work.
+    # TODO: make it abstractmethod when renaming is done.
+    async def Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        request: Topic.SubscribeRequest,
+    ) -> Topic.SubscribeResponse:
+        # During the migration from 'PascalCase' to 'snake_case' method
+        # naming in Python servicers, we call the 'snake_case' version
+        # by default, so new names will do the correct thing making the
+        # code to be backwards compatible for some time and if a servicer
+        # overrides the 'PascalCase' version - it will override that
+        # method and will just work.
+        return await self.subscribe(
+            context,
+            request,
+        )
+
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that existing code that
+    # doesn't implement it continues to work.
+    async def subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        request: Topic.SubscribeRequest,
+    ) -> Topic.SubscribeResponse:
+        raise NotImplementedError
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Broker'.
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that new code that
+    # doesn't implement it continues to work.
+    # TODO: make it abstractmethod when renaming is done.
+    async def Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: Topic.BrokerRequest,
+    ) -> Topic.BrokerResponse:
+        # During the migration from 'PascalCase' to 'snake_case' method
+        # naming in Python servicers, we call the 'snake_case' version
+        # by default, so new names will do the correct thing making the
+        # code to be backwards compatible for some time and if a servicer
+        # overrides the 'PascalCase' version - it will override that
+        # method and will just work.
+        return await self.broker(
+            context,
+            request,
+        )
+
+    # To be backwards compatible during the renaming don't make this
+    # method to be 'abstractmethod', so that existing code that
+    # doesn't implement it continues to work.
+    async def broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: Topic.BrokerRequest,
+    ) -> Topic.BrokerResponse:
+        raise NotImplementedError
+
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Publish'.
+    async def _Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        # We should have an asyncio task and thus context per request,
+        # let's confirm this assumption by making sure that
+        # `_state is None`.
+        assert TopicServicer._state.get() is None
+        TopicServicer._state.set(state)
+        try:
+            # Wrap the call to the developer's method in a `span` so that it
+            # is traced using its fully-qualified Python name.
+            instance = self._instance(context.state_id)
+            with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"rbt.std.pubsub.v1.Topic('{context.state_id}')",
+                    span_name=f"{IMPORT_reboot_aio_tracing.qualified_type_name(instance)}.Publish()",
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                    python_specific=True,
+            ):
+                typed_request = TopicPublishRequestFromProto(request)
+                return TopicPublishResponseToProto(await instance.Publish(context, typed_request))
+        finally:
+            TopicServicer._state.set(None)
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Subscribe'.
+    async def _Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: Topic.State,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        # We should have an asyncio task and thus context per request,
+        # let's confirm this assumption by making sure that
+        # `_state is None`.
+        assert TopicServicer._state.get() is None
+        TopicServicer._state.set(state)
+        try:
+            # Wrap the call to the developer's method in a `span` so that it
+            # is traced using its fully-qualified Python name.
+            instance = self._instance(context.state_id)
+            with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"rbt.std.pubsub.v1.Topic('{context.state_id}')",
+                    span_name=f"{IMPORT_reboot_aio_tracing.qualified_type_name(instance)}.Subscribe()",
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                    python_specific=True,
+            ):
+                typed_request = TopicSubscribeRequestFromProto(request)
+                return TopicSubscribeResponseToProto(await instance.Subscribe(context, typed_request))
+        finally:
+            TopicServicer._state.set(None)
+
+    # For 'rbt.std.pubsub.v1.TopicMethods.Broker'.
+    async def _Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        TopicServicer._workflow.set(True)
+        try:
+            # Wrap the call to the developer's method in a `span` so that it
+            # is traced using its fully-qualified Python name.
+            instance = self._instance(context.state_id)
+            with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"rbt.std.pubsub.v1.Topic('{context.state_id}')",
+                    span_name=f"{IMPORT_reboot_aio_tracing.qualified_type_name(instance)}.Broker()",
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                    python_specific=True,
+            ):
+                typed_request = TopicBrokerRequestFromProto(request)
+                return TopicBrokerResponseToProto(await instance.Broker(context, typed_request))
+        finally:
+            TopicServicer._workflow.set(False)
+
+
+
+############################ Clients ############################
+# The main developer-facing entrypoints for any Reboot type. Relevant to both
+# clients and servicers (who use it to find the right servicer base types, as well
+# as often being clients themselves).
+
+# Attach an explicit time time zone to "naive" `datetime` objects. A "naive" `datetime` doesn't have a
+# time zone. Such objects are typically interpreted as representing local time, but could be confused
+# for objects representing UTC. This helper function disambiguates by explicitly attaching the local
+# time zone to `datetime` objects that don't already have an explicit time zone. If the `datetime` object
+# is already timezone-aware, we still convert it to our custom `DateTimeWithTimeZone` type.
+def ensure_has_timezone(
+    *,
+    when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+) -> IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone | IMPORT_datetime_timedelta]:
+    if isinstance(when, IMPORT_datetime_datetime):
+        return IMPORT_reboot_time_DateTimeWithTimeZone.from_datetime(when)
+    return when
+
+Topic_ScheduleTypeVar = IMPORT_typing.TypeVar('Topic_ScheduleTypeVar', 'Topic.WeakReference._Schedule', 'Topic.WeakReference._WriterSchedule')
+Topic_IdempotentlyScheduleTypeVar = IMPORT_typing.TypeVar('Topic_IdempotentlyScheduleTypeVar', 'Topic.WeakReference._Schedule', 'Topic.WeakReference._WriterSchedule')
+
+Topic_UntilCallableType = IMPORT_typing.TypeVar('Topic_UntilCallableType')
+
+class TopicSingleton:
+    Servicer: IMPORT_typing.TypeAlias = TopicSingletonServicer
+
+
+class Topic:
+
+
+    Servicer: IMPORT_typing.TypeAlias = TopicServicer
+
+    singleton: IMPORT_typing.TypeAlias = TopicSingleton
+
+    Effects: IMPORT_typing.TypeAlias = TopicBaseServicer.Effects
+
+    Authorizer: IMPORT_typing.TypeAlias = TopicAuthorizer
+
+    State: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.Topic
+
+    PublishRequest: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.PublishRequest
+    PublishResponse: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.PublishResponse
+
+    SubscribeRequest: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest
+    SubscribeResponse: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse
+
+    BrokerRequest: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest
+    BrokerResponse: IMPORT_typing.TypeAlias = rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse
+
+    __state_type_name__ = IMPORT_reboot_aio_types.StateTypeName("rbt.std.pubsub.v1.Topic")
+
+    class PublishTask:
+        """Represents a scheduled task running for the
+        state. Note that this is not a coroutine because we are trying
+        to convey the semantics that the task is already running (or
+        will soon be).
+        """
+
+        @classmethod
+        def retrieve(
+            cls,
+            context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+            *,
+            task_id: IMPORT_rbt_v1alpha1.tasks_pb2.TaskId,
+        ):
+            return cls(context, task_id=task_id)
+
+        def __init__(
+            self,
+            context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+            *,
+            task_id: IMPORT_rbt_v1alpha1.tasks_pb2.TaskId,
+        ) -> None:
+            # Depending on the context type (inside or outside a Reboot application)
+            # we may or may not know the application ID. If we don't know it, then
+            # the `ExternalContext.gateway` will determine it.
+            #
+            # TODO: in the future we expect to support cross-application calls, in
+            #       which case the developer may explicitly pass in an application ID
+            #       here.
+            self._application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId] = None
+            if isinstance(context, IMPORT_reboot_aio_contexts.Context):
+                self._application_id = context.application_id
+            self._channel_manager = context.channel_manager
+            self._task_id = task_id
+
+        @property
+        def task_id(self) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+            return self._task_id
+
+        def __await__(self) -> IMPORT_typing.Generator[None, None, Topic.PublishResponse]:
+            """Awaits for task to finish and returns its response."""
+            async def wait_for_task() -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+                channel = self._channel_manager.get_channel_to_state(
+                    IMPORT_reboot_aio_types.StateTypeName(self._task_id.state_type),
+                    IMPORT_reboot_aio_types.StateRef(self._task_id.state_ref),
+                )
+
+                stub = IMPORT_rbt_v1alpha1.tasks_pb2_grpc.TasksStub(channel)
+
+                try:
+                    call = IMPORT_reboot_aio_stubs.UnaryRetriedCall(
+                        call=None,  # `RetriedCall` can create the call itself.
+                        stub_method=stub.Wait,
+                        method_name="Wait",
+                        request=IMPORT_rbt_v1alpha1.tasks_pb2.WaitRequest(task_id=self._task_id),
+                        metadata=IMPORT_reboot_aio_headers.Headers(
+                            state_ref=IMPORT_reboot_aio_types.StateRef(self._task_id.state_ref),
+                            application_id=self._application_id,
+                        ).to_grpc_metadata(),
+                        aborted_type=IMPORT_rebootdev.aio.aborted.SystemAborted,
+                    )
+
+                    wait_for_task_response = await call
+                except IMPORT_rebootdev.aio.aborted.SystemAborted as error:
+                    if error.code == IMPORT_grpc.StatusCode.NOT_FOUND:
+                        raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                            IMPORT_rbt_v1alpha1.errors_pb2.UnknownTask()
+                        ) from None
+
+                    raise
+                else:
+                    response_or_error: IMPORT_typing.Optional[IMPORT_google_protobuf_any_pb2.Any] = None
+                    is_error = False
+
+                    if wait_for_task_response.response_or_error.WhichOneof("response_or_error") == "response":
+                        response_or_error = wait_for_task_response.response_or_error.response
+                    else:
+                        is_error = True
+                        response_or_error = wait_for_task_response.response_or_error.error
+
+                    assert response_or_error is not None
+                    assert response_or_error.TypeName() != ""
+
+                    response = rbt.std.pubsub.v1.pubsub_pb2.PublishResponse()
+
+                    if (
+                        not is_error and response_or_error.TypeName() != response.DESCRIPTOR.full_name
+                    ):
+                        raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                            IMPORT_rbt_v1alpha1.errors_pb2.InvalidArgument(),
+                            message=
+                            f"task with UUID {IMPORT_uuid.UUID(bytes=self._task_id.task_uuid)} "
+                            f"has a response of type '{response_or_error.TypeName()}' "
+                            "but expecting type 'rbt.std.pubsub.v1.pubsub_pb2.PublishResponse'; "
+                            "are you waiting on a task of the correct method?",
+                        ) from None
+
+                    if is_error:
+                        # Currently only cancelled error is supported.
+                        raise IMPORT_asyncio.CancelledError("Task was cancelled by a TasksServicer")
+                    else:
+                        response_or_error.Unpack(response)
+                        return TopicPublishResponseFromProto(response)
+
+            return wait_for_task().__await__()
+
+    PublishEffects: IMPORT_typing.TypeAlias = TopicBaseServicer.PublishEffects
+
+    class PublishAborted(IMPORT_rebootdev.aio.aborted.Aborted):
+
+
+        Error = IMPORT_typing.Union[
+            IMPORT_rebootdev.aio.aborted.GrpcError,
+            IMPORT_rebootdev.aio.aborted.RebootError,
+        ]
+
+        METHOD_ERROR_TYPES: list[type[IMPORT_google_protobuf_message.Message]] = [
+        ]
+
+        ERROR_TYPES: list[type[IMPORT_google_protobuf_message.Message]] = (
+            METHOD_ERROR_TYPES +
+            IMPORT_rebootdev.aio.aborted.GRPC_ERROR_TYPES +
+            IMPORT_rebootdev.aio.aborted.REBOOT_ERROR_TYPES
+        )
+
+        _error: Error
+        _code: IMPORT_grpc.StatusCode
+        _message: IMPORT_typing.Optional[str]
+
+        def __init__(
+            self,
+            error:  IMPORT_rebootdev.aio.aborted.GrpcError,
+            *,
+            message: IMPORT_typing.Optional[str] = None,
+            # Do not set this value when constructing in order to
+            # raise. This is only used internally when constructing
+            # from aborted calls.
+            error_types: IMPORT_typing.Sequence[type[Error]] = (
+                METHOD_ERROR_TYPES + IMPORT_rebootdev.aio.aborted.GRPC_ERROR_TYPES
+            ),
+        ):
+            super().__init__()
+
+            IMPORT_reboot_aio_types.assert_type(error, error_types)
+
+            self._error = error
+
+            code = self.grpc_status_code_from_error(self._error)
+
+            if code is None:
+                # Must be a Reboot specific or declared method error.
+                code = IMPORT_grpc.StatusCode.ABORTED
+
+            self._code = code
+
+            self._message = message
+
+        @property
+        def error(self) -> Error:
+            return self._error
+
+        @property
+        def code(self) -> IMPORT_grpc.StatusCode:
+            return self._code
+
+        @property
+        def message(self) -> IMPORT_typing.Optional[str]:
+            return self._message
+
+        @classmethod
+        def from_status(cls, status: IMPORT_google_rpc_status_pb2.Status):
+            error = cls.error_from_google_rpc_status_details(
+                status,
+                cls.ERROR_TYPES,
+            )
+
+            message = status.message if len(status.message) > 0 else None
+
+            if error is not None:
+                return cls(error, message=message, error_types=cls.ERROR_TYPES)
+
+            error = cls.error_from_google_rpc_status_code(status)
+
+            assert error is not None
+
+            # TODO(benh): also consider getting the type names from
+            # `status.details` and including that in `message` to make
+            # debugging easier.
+
+            return cls(error, message=message)
+
+        @classmethod
+        def from_grpc_aio_rpc_error(cls, aio_rpc_error: IMPORT_grpc.aio.AioRpcError):
+            return cls(
+                cls.error_from_grpc_aio_rpc_error(aio_rpc_error),
+                message=aio_rpc_error.details(),
+            )
+
+        @classmethod
+        def is_declared_error(cls, message: IMPORT_google_protobuf_message.Message) -> bool:
+            return False
+
+    class SubscribeTask:
+        """Represents a scheduled task running for the
+        state. Note that this is not a coroutine because we are trying
+        to convey the semantics that the task is already running (or
+        will soon be).
+        """
+
+        @classmethod
+        def retrieve(
+            cls,
+            context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+            *,
+            task_id: IMPORT_rbt_v1alpha1.tasks_pb2.TaskId,
+        ):
+            return cls(context, task_id=task_id)
+
+        def __init__(
+            self,
+            context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+            *,
+            task_id: IMPORT_rbt_v1alpha1.tasks_pb2.TaskId,
+        ) -> None:
+            # Depending on the context type (inside or outside a Reboot application)
+            # we may or may not know the application ID. If we don't know it, then
+            # the `ExternalContext.gateway` will determine it.
+            #
+            # TODO: in the future we expect to support cross-application calls, in
+            #       which case the developer may explicitly pass in an application ID
+            #       here.
+            self._application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId] = None
+            if isinstance(context, IMPORT_reboot_aio_contexts.Context):
+                self._application_id = context.application_id
+            self._channel_manager = context.channel_manager
+            self._task_id = task_id
+
+        @property
+        def task_id(self) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+            return self._task_id
+
+        def __await__(self) -> IMPORT_typing.Generator[None, None, Topic.SubscribeResponse]:
+            """Awaits for task to finish and returns its response."""
+            async def wait_for_task() -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+                channel = self._channel_manager.get_channel_to_state(
+                    IMPORT_reboot_aio_types.StateTypeName(self._task_id.state_type),
+                    IMPORT_reboot_aio_types.StateRef(self._task_id.state_ref),
+                )
+
+                stub = IMPORT_rbt_v1alpha1.tasks_pb2_grpc.TasksStub(channel)
+
+                try:
+                    call = IMPORT_reboot_aio_stubs.UnaryRetriedCall(
+                        call=None,  # `RetriedCall` can create the call itself.
+                        stub_method=stub.Wait,
+                        method_name="Wait",
+                        request=IMPORT_rbt_v1alpha1.tasks_pb2.WaitRequest(task_id=self._task_id),
+                        metadata=IMPORT_reboot_aio_headers.Headers(
+                            state_ref=IMPORT_reboot_aio_types.StateRef(self._task_id.state_ref),
+                            application_id=self._application_id,
+                        ).to_grpc_metadata(),
+                        aborted_type=IMPORT_rebootdev.aio.aborted.SystemAborted,
+                    )
+
+                    wait_for_task_response = await call
+                except IMPORT_rebootdev.aio.aborted.SystemAborted as error:
+                    if error.code == IMPORT_grpc.StatusCode.NOT_FOUND:
+                        raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                            IMPORT_rbt_v1alpha1.errors_pb2.UnknownTask()
+                        ) from None
+
+                    raise
+                else:
+                    response_or_error: IMPORT_typing.Optional[IMPORT_google_protobuf_any_pb2.Any] = None
+                    is_error = False
+
+                    if wait_for_task_response.response_or_error.WhichOneof("response_or_error") == "response":
+                        response_or_error = wait_for_task_response.response_or_error.response
+                    else:
+                        is_error = True
+                        response_or_error = wait_for_task_response.response_or_error.error
+
+                    assert response_or_error is not None
+                    assert response_or_error.TypeName() != ""
+
+                    response = rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse()
+
+                    if (
+                        not is_error and response_or_error.TypeName() != response.DESCRIPTOR.full_name
+                    ):
+                        raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                            IMPORT_rbt_v1alpha1.errors_pb2.InvalidArgument(),
+                            message=
+                            f"task with UUID {IMPORT_uuid.UUID(bytes=self._task_id.task_uuid)} "
+                            f"has a response of type '{response_or_error.TypeName()}' "
+                            "but expecting type 'rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse'; "
+                            "are you waiting on a task of the correct method?",
+                        ) from None
+
+                    if is_error:
+                        # Currently only cancelled error is supported.
+                        raise IMPORT_asyncio.CancelledError("Task was cancelled by a TasksServicer")
+                    else:
+                        response_or_error.Unpack(response)
+                        return TopicSubscribeResponseFromProto(response)
+
+            return wait_for_task().__await__()
+
+    SubscribeEffects: IMPORT_typing.TypeAlias = TopicBaseServicer.SubscribeEffects
+
+    class SubscribeAborted(IMPORT_rebootdev.aio.aborted.Aborted):
+
+
+        Error = IMPORT_typing.Union[
+            IMPORT_rebootdev.aio.aborted.GrpcError,
+            IMPORT_rebootdev.aio.aborted.RebootError,
+        ]
+
+        METHOD_ERROR_TYPES: list[type[IMPORT_google_protobuf_message.Message]] = [
+        ]
+
+        ERROR_TYPES: list[type[IMPORT_google_protobuf_message.Message]] = (
+            METHOD_ERROR_TYPES +
+            IMPORT_rebootdev.aio.aborted.GRPC_ERROR_TYPES +
+            IMPORT_rebootdev.aio.aborted.REBOOT_ERROR_TYPES
+        )
+
+        _error: Error
+        _code: IMPORT_grpc.StatusCode
+        _message: IMPORT_typing.Optional[str]
+
+        def __init__(
+            self,
+            error:  IMPORT_rebootdev.aio.aborted.GrpcError,
+            *,
+            message: IMPORT_typing.Optional[str] = None,
+            # Do not set this value when constructing in order to
+            # raise. This is only used internally when constructing
+            # from aborted calls.
+            error_types: IMPORT_typing.Sequence[type[Error]] = (
+                METHOD_ERROR_TYPES + IMPORT_rebootdev.aio.aborted.GRPC_ERROR_TYPES
+            ),
+        ):
+            super().__init__()
+
+            IMPORT_reboot_aio_types.assert_type(error, error_types)
+
+            self._error = error
+
+            code = self.grpc_status_code_from_error(self._error)
+
+            if code is None:
+                # Must be a Reboot specific or declared method error.
+                code = IMPORT_grpc.StatusCode.ABORTED
+
+            self._code = code
+
+            self._message = message
+
+        @property
+        def error(self) -> Error:
+            return self._error
+
+        @property
+        def code(self) -> IMPORT_grpc.StatusCode:
+            return self._code
+
+        @property
+        def message(self) -> IMPORT_typing.Optional[str]:
+            return self._message
+
+        @classmethod
+        def from_status(cls, status: IMPORT_google_rpc_status_pb2.Status):
+            error = cls.error_from_google_rpc_status_details(
+                status,
+                cls.ERROR_TYPES,
+            )
+
+            message = status.message if len(status.message) > 0 else None
+
+            if error is not None:
+                return cls(error, message=message, error_types=cls.ERROR_TYPES)
+
+            error = cls.error_from_google_rpc_status_code(status)
+
+            assert error is not None
+
+            # TODO(benh): also consider getting the type names from
+            # `status.details` and including that in `message` to make
+            # debugging easier.
+
+            return cls(error, message=message)
+
+        @classmethod
+        def from_grpc_aio_rpc_error(cls, aio_rpc_error: IMPORT_grpc.aio.AioRpcError):
+            return cls(
+                cls.error_from_grpc_aio_rpc_error(aio_rpc_error),
+                message=aio_rpc_error.details(),
+            )
+
+        @classmethod
+        def is_declared_error(cls, message: IMPORT_google_protobuf_message.Message) -> bool:
+            return False
+
+    class BrokerTask:
+        """Represents a scheduled task running for the
+        state. Note that this is not a coroutine because we are trying
+        to convey the semantics that the task is already running (or
+        will soon be).
+        """
+
+        @classmethod
+        def retrieve(
+            cls,
+            context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+            *,
+            task_id: IMPORT_rbt_v1alpha1.tasks_pb2.TaskId,
+        ):
+            return cls(context, task_id=task_id)
+
+        def __init__(
+            self,
+            context: IMPORT_reboot_aio_contexts.Context | IMPORT_reboot_aio_external.ExternalContext,
+            *,
+            task_id: IMPORT_rbt_v1alpha1.tasks_pb2.TaskId,
+        ) -> None:
+            # Depending on the context type (inside or outside a Reboot application)
+            # we may or may not know the application ID. If we don't know it, then
+            # the `ExternalContext.gateway` will determine it.
+            #
+            # TODO: in the future we expect to support cross-application calls, in
+            #       which case the developer may explicitly pass in an application ID
+            #       here.
+            self._application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId] = None
+            if isinstance(context, IMPORT_reboot_aio_contexts.Context):
+                self._application_id = context.application_id
+            self._channel_manager = context.channel_manager
+            self._task_id = task_id
+
+        @property
+        def task_id(self) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+            return self._task_id
+
+        def __await__(self) -> IMPORT_typing.Generator[None, None, Topic.BrokerResponse]:
+            """Awaits for task to finish and returns its response."""
+            async def wait_for_task() -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+                channel = self._channel_manager.get_channel_to_state(
+                    IMPORT_reboot_aio_types.StateTypeName(self._task_id.state_type),
+                    IMPORT_reboot_aio_types.StateRef(self._task_id.state_ref),
+                )
+
+                stub = IMPORT_rbt_v1alpha1.tasks_pb2_grpc.TasksStub(channel)
+
+                try:
+                    call = IMPORT_reboot_aio_stubs.UnaryRetriedCall(
+                        call=None,  # `RetriedCall` can create the call itself.
+                        stub_method=stub.Wait,
+                        method_name="Wait",
+                        request=IMPORT_rbt_v1alpha1.tasks_pb2.WaitRequest(task_id=self._task_id),
+                        metadata=IMPORT_reboot_aio_headers.Headers(
+                            state_ref=IMPORT_reboot_aio_types.StateRef(self._task_id.state_ref),
+                            application_id=self._application_id,
+                        ).to_grpc_metadata(),
+                        aborted_type=IMPORT_rebootdev.aio.aborted.SystemAborted,
+                    )
+
+                    wait_for_task_response = await call
+                except IMPORT_rebootdev.aio.aborted.SystemAborted as error:
+                    if error.code == IMPORT_grpc.StatusCode.NOT_FOUND:
+                        raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                            IMPORT_rbt_v1alpha1.errors_pb2.UnknownTask()
+                        ) from None
+
+                    raise
+                else:
+                    response_or_error: IMPORT_typing.Optional[IMPORT_google_protobuf_any_pb2.Any] = None
+                    is_error = False
+
+                    if wait_for_task_response.response_or_error.WhichOneof("response_or_error") == "response":
+                        response_or_error = wait_for_task_response.response_or_error.response
+                    else:
+                        is_error = True
+                        response_or_error = wait_for_task_response.response_or_error.error
+
+                    assert response_or_error is not None
+                    assert response_or_error.TypeName() != ""
+
+                    response = rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse()
+
+                    if (
+                        not is_error and response_or_error.TypeName() != response.DESCRIPTOR.full_name
+                    ):
+                        raise IMPORT_rebootdev.aio.aborted.SystemAborted(
+                            IMPORT_rbt_v1alpha1.errors_pb2.InvalidArgument(),
+                            message=
+                            f"task with UUID {IMPORT_uuid.UUID(bytes=self._task_id.task_uuid)} "
+                            f"has a response of type '{response_or_error.TypeName()}' "
+                            "but expecting type 'rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse'; "
+                            "are you waiting on a task of the correct method?",
+                        ) from None
+
+                    if is_error:
+                        # Currently only cancelled error is supported.
+                        raise IMPORT_asyncio.CancelledError("Task was cancelled by a TasksServicer")
+                    else:
+                        response_or_error.Unpack(response)
+                        return TopicBrokerResponseFromProto(response)
+
+            return wait_for_task().__await__()
+
+
+    class BrokerAborted(IMPORT_rebootdev.aio.aborted.Aborted):
+
+
+        Error = IMPORT_typing.Union[
+            IMPORT_rebootdev.aio.aborted.GrpcError,
+            IMPORT_rebootdev.aio.aborted.RebootError,
+        ]
+
+        METHOD_ERROR_TYPES: list[type[IMPORT_google_protobuf_message.Message]] = [
+        ]
+
+        ERROR_TYPES: list[type[IMPORT_google_protobuf_message.Message]] = (
+            METHOD_ERROR_TYPES +
+            IMPORT_rebootdev.aio.aborted.GRPC_ERROR_TYPES +
+            IMPORT_rebootdev.aio.aborted.REBOOT_ERROR_TYPES
+        )
+
+        _error: Error
+        _code: IMPORT_grpc.StatusCode
+        _message: IMPORT_typing.Optional[str]
+
+        def __init__(
+            self,
+            error:  IMPORT_rebootdev.aio.aborted.GrpcError,
+            *,
+            message: IMPORT_typing.Optional[str] = None,
+            # Do not set this value when constructing in order to
+            # raise. This is only used internally when constructing
+            # from aborted calls.
+            error_types: IMPORT_typing.Sequence[type[Error]] = (
+                METHOD_ERROR_TYPES + IMPORT_rebootdev.aio.aborted.GRPC_ERROR_TYPES
+            ),
+        ):
+            super().__init__()
+
+            IMPORT_reboot_aio_types.assert_type(error, error_types)
+
+            self._error = error
+
+            code = self.grpc_status_code_from_error(self._error)
+
+            if code is None:
+                # Must be a Reboot specific or declared method error.
+                code = IMPORT_grpc.StatusCode.ABORTED
+
+            self._code = code
+
+            self._message = message
+
+        @property
+        def error(self) -> Error:
+            return self._error
+
+        @property
+        def code(self) -> IMPORT_grpc.StatusCode:
+            return self._code
+
+        @property
+        def message(self) -> IMPORT_typing.Optional[str]:
+            return self._message
+
+        @classmethod
+        def from_status(cls, status: IMPORT_google_rpc_status_pb2.Status):
+            error = cls.error_from_google_rpc_status_details(
+                status,
+                cls.ERROR_TYPES,
+            )
+
+            message = status.message if len(status.message) > 0 else None
+
+            if error is not None:
+                return cls(error, message=message, error_types=cls.ERROR_TYPES)
+
+            error = cls.error_from_google_rpc_status_code(status)
+
+            assert error is not None
+
+            # TODO(benh): also consider getting the type names from
+            # `status.details` and including that in `message` to make
+            # debugging easier.
+
+            return cls(error, message=message)
+
+        @classmethod
+        def from_grpc_aio_rpc_error(cls, aio_rpc_error: IMPORT_grpc.aio.AioRpcError):
+            return cls(
+                cls.error_from_grpc_aio_rpc_error(aio_rpc_error),
+                message=aio_rpc_error.details(),
+            )
+
+        @classmethod
+        def is_declared_error(cls, message: IMPORT_google_protobuf_message.Message) -> bool:
+            return False
+
+
+    class WeakReference(IMPORT_typing.Generic[Topic_ScheduleTypeVar]):
+
+        _schedule_type: type[Topic_ScheduleTypeVar]
+
+        def __init__(
+            self,
+            # When application ID is None, refers to a state within the application given by the context.
+            application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId],
+            state_id: IMPORT_reboot_aio_types.StateId,
+            *,
+            schedule_type: type[Topic_ScheduleTypeVar],
+            bearer_token: IMPORT_typing.Optional[str] = None,
+            servicer: IMPORT_typing.Optional[TopicBaseServicer] = None,
+        ):
+            self._application_id = application_id
+            self._state_ref = IMPORT_reboot_aio_types.StateRef.from_id(
+              Topic.__state_type_name__,
+              state_id,
+            )
+            self._schedule_type = schedule_type
+            self._idempotency_manager: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.IdempotencyManager] = None
+            self._reader_stub: IMPORT_typing.Optional[TopicReaderStub] = None
+            self._writer_stub: IMPORT_typing.Optional[TopicWriterStub] = None
+            self._workflow_stub: IMPORT_typing.Optional[TopicWorkflowStub] = None
+            self._tasks_stub: IMPORT_typing.Optional[TopicTasksStub] = None
+            self._bearer_token = bearer_token
+            self._servicer = servicer
+
+        @property
+        def state_id(self) -> IMPORT_reboot_aio_types.StateId:
+            return self._state_ref.id
+
+        def _reader(
+            self,
+            context: IMPORT_reboot_aio_contexts.ReaderContext | IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        ) -> TopicReaderStub:
+            if self._reader_stub is None:
+                self._reader_stub = TopicReaderStub(
+                    context=context,
+                    state_ref=self._state_ref,
+                    bearer_token=self._bearer_token,
+                )
+            assert self._reader_stub is not None
+            if self._idempotency_manager is None:
+                self._idempotency_manager = context
+            elif self._idempotency_manager != context:
+                raise IMPORT_reboot_aio_call.MixedContextsError(
+                    "This `WeakReference` for `Topic` with ID "
+                    f"'{self.state_id}' has previously been used by a "
+                    "different `Context`. That is not allowed. "
+                    "Instead create a new `WeakReference` for every `Context` by calling "
+                    f"`Topic.ref('{self.state_id}')`."
+                )
+            return self._reader_stub
+
+        def _writer(
+            self,
+            context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        ) -> TopicWriterStub:
+            if self._writer_stub is None:
+                self._writer_stub = TopicWriterStub(
+                    context=context,
+                    state_ref=self._state_ref,
+                    bearer_token=self._bearer_token,
+                )
+            assert self._writer_stub is not None
+            if self._idempotency_manager is None:
+                self._idempotency_manager = context
+            elif self._idempotency_manager != context:
+                raise IMPORT_reboot_aio_call.MixedContextsError(
+                    "This `WeakReference` for `Topic` with ID "
+                    f"'{self.state_id}' has previously been used by a "
+                    "different `Context`. That is not allowed. "
+                    "Instead create a new `WeakReference` for every `Context` by calling "
+                    f"`Topic.ref('{self.state_id}')`."
+                )
+            return self._writer_stub
+
+        def _workflow(
+            self,
+            context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        ) -> TopicWorkflowStub:
+            if self._workflow_stub is None:
+                self._workflow_stub = TopicWorkflowStub(
+                    context=context,
+                    state_ref=self._state_ref,
+                    bearer_token=self._bearer_token,
+                )
+            assert self._workflow_stub is not None
+            if self._idempotency_manager is None:
+                self._idempotency_manager = context
+            elif self._idempotency_manager != context:
+                raise IMPORT_reboot_aio_call.MixedContextsError(
+                    "This `WeakReference` for `Topic` with ID "
+                    f"'{self.state_id}' has previously been used by a "
+                    "different `Context`. That is not allowed. "
+                    "Instead create a new `WeakReference` for every `Context` by calling "
+                    f"`Topic.ref('{self.state_id}')`."
+                )
+            return self._workflow_stub
+
+        def _tasks(
+            self,
+            context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        ) -> TopicTasksStub:
+            if self._tasks_stub is None:
+                self._tasks_stub = TopicTasksStub(
+                    context=context,
+                    state_ref=self._state_ref,
+                    bearer_token=self._bearer_token,
+                )
+            assert self._tasks_stub is not None
+            if self._idempotency_manager is None:
+                self._idempotency_manager = context
+            elif self._idempotency_manager != context:
+                raise IMPORT_reboot_aio_call.MixedContextsError(
+                    "This `WeakReference` for `Topic` with ID "
+                    f"'{self.state_id}' has previously been used by a "
+                    "different `Context`. That is not allowed. "
+                    "Instead create a new `WeakReference` for every `Context` by calling "
+                    f"`Topic.ref('{self.state_id}')`."
+                )
+            return self._tasks_stub
+
+        class _Reactively:
+
+            def __init__(
+                self,
+                *,
+                application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId],
+                state_ref: IMPORT_reboot_aio_types.StateRef,
+                bearer_token: IMPORT_typing.Optional[str] = None,
+            ):
+                self._application_id = application_id
+                self._state_ref = state_ref
+                self._bearer_token = bearer_token
+
+
+        def reactively(self):
+            return Topic.WeakReference._Reactively(
+                application_id=self._application_id,
+                state_ref=self._state_ref,
+                bearer_token=self._bearer_token,
+            )
+
+        class _Idempotently(IMPORT_typing.Generic[Topic_IdempotentlyScheduleTypeVar]):
+
+            _weak_reference: Topic.WeakReference[Topic_IdempotentlyScheduleTypeVar]
+
+            def __init__(
+                self,
+                *,
+                weak_reference: Topic.WeakReference[Topic_IdempotentlyScheduleTypeVar],
+                idempotency: IMPORT_reboot_aio_idempotency.Idempotency,
+            ):
+                self._weak_reference = weak_reference
+                self._idempotency = idempotency
+
+            def schedule(
+                self,
+                *,
+                when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+            ) -> Topic_IdempotentlyScheduleTypeVar:
+                return self._weak_reference._schedule_type(
+                    self._weak_reference._application_id,
+                    self._weak_reference._tasks,
+                    when=when,
+                    idempotency=self._idempotency,
+                )
+
+            def spawn(
+                self,
+                *,
+                when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+            ) -> Topic.WeakReference._Spawn:
+                return Topic.WeakReference._Spawn(
+                    self._weak_reference._application_id,
+                    self._weak_reference._tasks,
+                    when=when,
+                    idempotency=self._idempotency,
+                )
+
+            async def read(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            ) -> Topic.State:
+                if self._weak_reference._servicer is None:
+                    raise RuntimeError(
+                        "`read()` is currently only supported within workflows; "
+                        "Please reach out and let us know your use case if this "
+                        "is important for you!"
+                    )
+
+                return await TopicBaseServicer.WorkflowState._Idempotently._read(
+                    self._weak_reference._servicer,
+                    self._idempotency,
+                    context,
+                )
+
+            @IMPORT_typing.overload
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[None],
+                *,
+                type: type = type(None),
+            ) -> None:
+                ...
+
+            @IMPORT_typing.overload
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                *,
+                type: type[TopicBaseServicer.InlineWriterCallableResult],
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                ...
+
+            async def write(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+                *,
+                type: type = type(None),
+            ) -> TopicBaseServicer.InlineWriterCallableResult:
+                if self._weak_reference._servicer is None:
+                    raise RuntimeError(
+                        "`write()` is currently only supported within workflows; "
+                        "Please reach out and let us know your use case if this "
+                        "is important for you!"
+                    )
+
+                return await TopicBaseServicer.WorkflowState._Idempotently._write_validating_effects(
+                    self._weak_reference._servicer,
+                    self._idempotency,
+                    context,
+                    writer,
+                    type_result=type,
+                    check_type=not self._idempotency.always,
+                    unidempotently=self._idempotency.always,
+                    checkpoint=context.checkpoint(),
+                )
+
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: Topic.PublishRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.PublishResponse:
+                ...
+
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> Topic.PublishResponse:
+                ...
+
+            async def Publish( # type: ignore[misc]
+                # In methods which are dealing with user input, (i.e.,
+                # proto message field names), we should use '__double_underscored__'
+                # variables to avoid any potential name conflicts with the method's
+                # parameters.
+                # The '__self__' parameter is a convention in Python to
+                # indicate that this method is a bound method, so we use
+                # '__this__' instead.
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.PublishRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> Topic.PublishResponse:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.PublishRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.PublishRequest)
+
+                __request__: IMPORT_typing.Optional[Topic.PublishRequest] = None
+                if isinstance(__request_or_options__, Topic.PublishRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __options__ or IMPORT_reboot_aio_call.Options()
+
+                    assert value is None
+                    assert bytes is None
+                    assert any is None
+                    assert items is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__ or IMPORT_reboot_aio_call.Options()
+
+                    if value is not None and not isinstance(
+                        value,
+                        google.protobuf.struct_pb2.Value,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'value' is not "
+                            f"of required type 'google.protobuf.struct_pb2.Value'"
+                        )
+                    if bytes is not None and not isinstance(
+                        bytes,
+                        IMPORT_builtins.bytes
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'bytes' is not "
+                            f"of required type 'bytes'"
+                        )
+                    if any is not None and not isinstance(
+                        any,
+                        google.protobuf.any_pb2.Any,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'any' is not "
+                            f"of required type 'google.protobuf.any_pb2.Any'"
+                        )
+                    if items is not None and not isinstance(
+                        items,
+                        IMPORT_typing.Iterable,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'items' is not "
+                            f"of required type 'typing.Iterable[rbt.std.item.v1.item_pb2.Item]'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.PublishRequest(
+                        value=value, # type: ignore[arg-type]
+                        bytes=bytes, # type: ignore[arg-type]
+                        any=any, # type: ignore[arg-type]
+                        items=items, # type: ignore[arg-type]
+                    )
+
+                IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                if __options__.idempotency is not None:
+                    raise RuntimeError(
+                        'Found redundant idempotency in `Options`'
+                    )
+
+                __options__ = IMPORT_dataclasses.replace(
+                    __options__,
+                    idempotency_key=__this__._idempotency.key,
+                    idempotency_alias=__this__._idempotency.alias,
+                    generate_idempotency=__this__._idempotency.generate,
+                    generated_idempotency=__this__._idempotency.generated,
+                )
+
+                return await __this__._weak_reference.Publish(
+                    __context__,
+                    __request__,
+                    __options__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            publish = Publish
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: Topic.SubscribeRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.SubscribeResponse:
+                ...
+
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> Topic.SubscribeResponse:
+                ...
+
+            async def Subscribe( # type: ignore[misc]
+                # In methods which are dealing with user input, (i.e.,
+                # proto message field names), we should use '__double_underscored__'
+                # variables to avoid any potential name conflicts with the method's
+                # parameters.
+                # The '__self__' parameter is a convention in Python to
+                # indicate that this method is a bound method, so we use
+                # '__this__' instead.
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.SubscribeRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> Topic.SubscribeResponse:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.SubscribeRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.SubscribeRequest)
+
+                __request__: IMPORT_typing.Optional[Topic.SubscribeRequest] = None
+                if isinstance(__request_or_options__, Topic.SubscribeRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __options__ or IMPORT_reboot_aio_call.Options()
+
+                    assert queue_id is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__ or IMPORT_reboot_aio_call.Options()
+
+                    if queue_id is not None and not isinstance(
+                        queue_id,
+                        str,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest': field 'queue_id' is not "
+                            f"of required type 'str'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.SubscribeRequest(
+                        queue_id=queue_id, # type: ignore[arg-type]
+                    )
+
+                IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                if __options__.idempotency is not None:
+                    raise RuntimeError(
+                        'Found redundant idempotency in `Options`'
+                    )
+
+                __options__ = IMPORT_dataclasses.replace(
+                    __options__,
+                    idempotency_key=__this__._idempotency.key,
+                    idempotency_alias=__this__._idempotency.alias,
+                    generate_idempotency=__this__._idempotency.generate,
+                    generated_idempotency=__this__._idempotency.generated,
+                )
+
+                return await __this__._weak_reference.Subscribe(
+                    __context__,
+                    __request__,
+                    __options__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            subscribe = Subscribe
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: Topic.BrokerRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.BrokerResponse:
+                ...
+
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.BrokerResponse:
+                ...
+
+            async def Broker( # type: ignore[misc]
+                # In methods which are dealing with user input, (i.e.,
+                # proto message field names), we should use '__double_underscored__'
+                # variables to avoid any potential name conflicts with the method's
+                # parameters.
+                # The '__self__' parameter is a convention in Python to
+                # indicate that this method is a bound method, so we use
+                # '__this__' instead.
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.BrokerRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.BrokerResponse:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.BrokerRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.BrokerRequest)
+
+                def error_message_supplement():
+                    if any([isinstance(__context__, t) for t in [IMPORT_reboot_aio_contexts.WriterContext, IMPORT_reboot_aio_contexts.TransactionContext]]):
+                        return f"'Broker' is a workflow and must be scheduled from a '{type(__context__).__name__}' via `await [...].schedule([...]).Broker(context, [...])`"
+                    else:
+                        return f"'Broker' is a workflow and can not be called from '{type(__context__).__name__}'"
+
+                IMPORT_reboot_aio_types.assert_type(
+                    __context__,
+                    [
+                        IMPORT_reboot_aio_contexts.WorkflowContext,
+                        IMPORT_reboot_aio_external.ExternalContext,
+                    ],
+                    error_message_supplement=error_message_supplement(),
+                )
+
+                if isinstance(__request_or_options__, Topic.BrokerRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __options__ or IMPORT_reboot_aio_call.Options()
+
+
+                    return await (
+                        await __this__.spawn().Broker(
+                            __context__,
+                            __request_or_options__,
+                            __options__,
+                        )
+                    )
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__ or IMPORT_reboot_aio_call.Options()
+
+
+                    return await (
+                        await __this__.spawn().Broker(
+                            __context__,
+                            __options__,
+                        )
+                    )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            broker = Broker
+
+        @IMPORT_typing.overload
+        def idempotently(self, alias: IMPORT_typing.Optional[str] = None, *, each_iteration: bool = False) -> Topic.WeakReference._Idempotently[Topic_ScheduleTypeVar]:
+            ...
+
+        @IMPORT_typing.overload
+        def idempotently(self, *, key: IMPORT_uuid.UUID, generated: bool = False) -> Topic.WeakReference._Idempotently[Topic_ScheduleTypeVar]:
+            ...
+
+        def idempotently(
+            self,
+            alias: IMPORT_typing.Optional[str] = None,
+            *,
+            key: IMPORT_typing.Optional[IMPORT_uuid.UUID] = None,
+            each_iteration: IMPORT_typing.Optional[bool] = None,
+            generated: bool = False,
+        ) -> Topic.WeakReference._Idempotently[Topic_ScheduleTypeVar]:
+            return Topic.WeakReference._Idempotently(
+                weak_reference=self,
+                idempotency=IMPORT_reboot_aio_contexts.Context.idempotency(
+                    alias=alias,
+                    key=key,
+                    each_iteration=each_iteration,
+                    generated=generated,
+                )
+            )
+
+        def per_workflow(self, alias: IMPORT_typing.Optional[str] = None):
+            return self.idempotently(alias)
+
+        def per_iteration(self, alias: IMPORT_typing.Optional[str] = None):
+            return self.idempotently(alias, each_iteration=True)
+
+        def always(self):
+            return self.idempotently(key=IMPORT_uuid.uuid4(), generated=True)
+
+        class _UntilChangesSatisfies(IMPORT_typing.Generic[Topic_UntilCallableType]):
+
+            _idempotency_alias: str
+            _context: IMPORT_reboot_aio_contexts.WorkflowContext
+            _callable: IMPORT_typing.Callable[[], IMPORT_typing.Awaitable[Topic_UntilCallableType]]
+            _type: type[Topic_UntilCallableType]
+
+            def __init__(
+                self,
+                *,
+                idempotency_alias: str,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+                callable: IMPORT_typing.Callable[[], IMPORT_typing.Awaitable[Topic_UntilCallableType]],
+                type: type[Topic_UntilCallableType],
+            ):
+                self._idempotency_alias = idempotency_alias
+                self._context = context
+                self._callable = callable
+                self._type = type
+
+            async def changes(self):
+                return await IMPORT_reboot_aio_workflows.until_changes(
+                    self._idempotency_alias,
+                    self._context,
+                    self._callable,
+                    type=self._type,
+                )
+
+            async def satisfies(
+                self,
+                condition: IMPORT_typing.Callable[[Topic_UntilCallableType], bool],
+            ):
+
+                async def converge():
+                    response = await self._callable()
+                    if condition(response):
+                        return response
+                    return False
+
+                return await IMPORT_reboot_aio_workflows.until(
+                    self._idempotency_alias,
+                    self._context,
+                    converge,
+                    type=self._type,
+                )
+
+        class _Until:
+
+            _weak_reference: Topic.WeakReference
+            _idempotency_alias: str
+
+            def __init__(
+                self,
+                *,
+                weak_reference: Topic.WeakReference,
+                idempotency_alias: str,
+            ):
+                self._weak_reference = weak_reference
+                self._idempotency_alias = idempotency_alias
+
+            def read(
+                self,
+                context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            ) -> Topic.WeakReference._UntilChangesSatisfies[Topic.State]:
+                IMPORT_reboot_aio_types.assert_type(
+                    context,
+                    [IMPORT_reboot_aio_contexts.WorkflowContext],
+                )
+
+                async def callable():
+                    return await self._weak_reference.read(context)
+
+                return Topic.WeakReference._UntilChangesSatisfies(
+                    idempotency_alias=self._idempotency_alias,
+                    context=context,
+                    callable=callable,
+                    type=Topic.State,
+                )
+
+
+        def until(self, alias: str):
+            return Topic.WeakReference._Until(
+                weak_reference=self,
+                idempotency_alias=alias,
+            )
+
+        def schedule(
+            self,
+            *,
+            when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+        ) -> Topic_ScheduleTypeVar:
+            return self._schedule_type(self._application_id, self._tasks, when=when)
+
+        class _Schedule:
+
+            def __init__(
+                self,
+                application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId],
+                tasks: IMPORT_typing.Callable[[IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext], TopicTasksStub],
+                *,
+                when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+                idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+            ) -> None:
+                self._application_id = application_id
+                self._tasks = tasks
+                self._when = ensure_has_timezone(when=when)
+                self._idempotency = idempotency
+
+            # Topic callable tasks:
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: Topic.PublishRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            async def Publish( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.PublishRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.PublishRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.PublishRequest)
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.TransactionContext])
+
+                __request__: IMPORT_typing.Optional[Topic.PublishRequest] = None
+                if isinstance(__request_or_options__, Topic.PublishRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                    assert value is None
+                    assert bytes is None
+                    assert any is None
+                    assert items is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+                    if value is not None and not isinstance(
+                        value,
+                        google.protobuf.struct_pb2.Value,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'value' is not "
+                            f"of required type 'google.protobuf.struct_pb2.Value'"
+                        )
+                    if bytes is not None and not isinstance(
+                        bytes,
+                        IMPORT_builtins.bytes
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'bytes' is not "
+                            f"of required type 'bytes'"
+                        )
+                    if any is not None and not isinstance(
+                        any,
+                        google.protobuf.any_pb2.Any,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'any' is not "
+                            f"of required type 'google.protobuf.any_pb2.Any'"
+                        )
+                    if items is not None and not isinstance(
+                        items,
+                        IMPORT_typing.Iterable,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'items' is not "
+                            f"of required type 'typing.Iterable[rbt.std.item.v1.item_pb2.Item]'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.PublishRequest(
+                        value=value, # type: ignore[arg-type]
+                        bytes=bytes, # type: ignore[arg-type]
+                        any=any, # type: ignore[arg-type]
+                        items=items, # type: ignore[arg-type]
+                    )
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                __task_id__ = await __this__._tasks(
+                    __context__
+                ).Publish(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+                return __task_id__
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            publish = Publish
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: Topic.SubscribeRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            async def Subscribe( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.SubscribeRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.SubscribeRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.SubscribeRequest)
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.TransactionContext])
+
+                __request__: IMPORT_typing.Optional[Topic.SubscribeRequest] = None
+                if isinstance(__request_or_options__, Topic.SubscribeRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                    assert queue_id is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+                    if queue_id is not None and not isinstance(
+                        queue_id,
+                        str,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest': field 'queue_id' is not "
+                            f"of required type 'str'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.SubscribeRequest(
+                        queue_id=queue_id, # type: ignore[arg-type]
+                    )
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                __task_id__ = await __this__._tasks(
+                    __context__
+                ).Subscribe(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+                return __task_id__
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            subscribe = Subscribe
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: Topic.BrokerRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            async def Broker( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.BrokerRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.BrokerRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.BrokerRequest)
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.TransactionContext])
+
+                __request__: IMPORT_typing.Optional[Topic.BrokerRequest] = None
+                if isinstance(__request_or_options__, Topic.BrokerRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.BrokerRequest(
+                    )
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                __task_id__ = await __this__._tasks(
+                    __context__
+                ).Broker(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+                return __task_id__
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            broker = Broker
+
+        # A `WriterContext` can not call any methods in `_Schedule` to
+        # prevent a writer from doing a `Foo.ref()` and trying to
+        # schedule. However, we want to allow a writer to schedule
+        # when we are constructing a `WeakReference` from
+        # `self.ref()` so instead we return a `_WriterSchedule` to
+        # provide type safety that allows a `WriterContext` to
+        # schedule (for itself).
+        class _WriterSchedule:
+
+            def __init__(
+                self,
+                application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId],
+                tasks: IMPORT_typing.Callable[[IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext], TopicTasksStub],
+                *,
+                when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+                idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+            ) -> None:
+                self._tasks = tasks
+                self._when = ensure_has_timezone(when=when)
+                self._idempotency = idempotency
+
+            # Topic callable tasks:
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: Topic.PublishRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            async def Publish( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.PublishRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                # Only `writer`s and `transaction`s should ``schedule()`, a
+                # `workflow` should `spawn()`.
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.WriterContext, IMPORT_reboot_aio_contexts.TransactionContext])
+
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.PublishRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.PublishRequest)
+
+                __request__: IMPORT_typing.Optional[Topic.PublishRequest] = None
+                if isinstance(__request_or_options__, Topic.PublishRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                    assert value is None
+                    assert bytes is None
+                    assert any is None
+                    assert items is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+                    if value is not None and not isinstance(
+                        value,
+                        google.protobuf.struct_pb2.Value,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'value' is not "
+                            f"of required type 'google.protobuf.struct_pb2.Value'"
+                        )
+                    if bytes is not None and not isinstance(
+                        bytes,
+                        IMPORT_builtins.bytes
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'bytes' is not "
+                            f"of required type 'bytes'"
+                        )
+                    if any is not None and not isinstance(
+                        any,
+                        google.protobuf.any_pb2.Any,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'any' is not "
+                            f"of required type 'google.protobuf.any_pb2.Any'"
+                        )
+                    if items is not None and not isinstance(
+                        items,
+                        IMPORT_typing.Iterable,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'items' is not "
+                            f"of required type 'typing.Iterable[rbt.std.item.v1.item_pb2.Item]'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.PublishRequest(
+                        value=value, # type: ignore[arg-type]
+                        bytes=bytes, # type: ignore[arg-type]
+                        any=any, # type: ignore[arg-type]
+                        items=items, # type: ignore[arg-type]
+                    )
+
+                if isinstance(__context__, IMPORT_reboot_aio_contexts.WriterContext):
+                    return (await TopicServicerTasks(
+                        context=__context__,
+                        state_ref=__context__._state_ref,
+                    ).Publish(
+                        __request__,
+                        schedule=__this__._when,
+                    )).task_id
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency is not None:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                return await __this__._tasks(
+                    __context__
+                ).Publish(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            publish = Publish
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: Topic.SubscribeRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            async def Subscribe( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.SubscribeRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                # Only `writer`s and `transaction`s should ``schedule()`, a
+                # `workflow` should `spawn()`.
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.WriterContext, IMPORT_reboot_aio_contexts.TransactionContext])
+
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.SubscribeRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.SubscribeRequest)
+
+                __request__: IMPORT_typing.Optional[Topic.SubscribeRequest] = None
+                if isinstance(__request_or_options__, Topic.SubscribeRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                    assert queue_id is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+                    if queue_id is not None and not isinstance(
+                        queue_id,
+                        str,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest': field 'queue_id' is not "
+                            f"of required type 'str'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.SubscribeRequest(
+                        queue_id=queue_id, # type: ignore[arg-type]
+                    )
+
+                if isinstance(__context__, IMPORT_reboot_aio_contexts.WriterContext):
+                    return (await TopicServicerTasks(
+                        context=__context__,
+                        state_ref=__context__._state_ref,
+                    ).Subscribe(
+                        __request__,
+                        schedule=__this__._when,
+                    )).task_id
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency is not None:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                return await __this__._tasks(
+                    __context__
+                ).Subscribe(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            subscribe = Subscribe
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: Topic.BrokerRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                ...
+
+            async def Broker( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.BrokerRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> IMPORT_rbt_v1alpha1.tasks_pb2.TaskId:
+                # Only `writer`s and `transaction`s should ``schedule()`, a
+                # `workflow` should `spawn()`.
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.WriterContext, IMPORT_reboot_aio_contexts.TransactionContext])
+
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.BrokerRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.BrokerRequest)
+
+                __request__: IMPORT_typing.Optional[Topic.BrokerRequest] = None
+                if isinstance(__request_or_options__, Topic.BrokerRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.BrokerRequest(
+                    )
+
+                if isinstance(__context__, IMPORT_reboot_aio_contexts.WriterContext):
+                    return (await TopicServicerTasks(
+                        context=__context__,
+                        state_ref=__context__._state_ref,
+                    ).Broker(
+                        __request__,
+                        schedule=__this__._when,
+                    )).task_id
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency is not None:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                return await __this__._tasks(
+                    __context__
+                ).Broker(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            broker = Broker
+
+        def spawn(
+            self,
+            *,
+            when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+        ) -> Topic.WeakReference._Spawn:
+            # Within a `workflow`, all "bare" `spawn()` calls are
+            # syntactic sugar for `per_workflow()`, unless we're
+            # within a control loop, in which case they are syntactic
+            # sugar for `per_iteration()`.
+            context = IMPORT_reboot_aio_contexts.Context.get()
+            if context is not None:
+                if isinstance(context, IMPORT_reboot_aio_contexts.WorkflowContext):
+                    return (
+                        self.per_iteration() if context.within_loop()
+                        else self.per_workflow()
+                    ).spawn(when=when)
+                elif isinstance(context, IMPORT_reboot_aio_external.InitializeContext):
+                    return self.idempotently().spawn(when=when)
+
+            return Topic.WeakReference._Spawn(
+                self._application_id, self._tasks, when=when
+            )
+
+        class _Spawn:
+
+            def __init__(
+                self,
+                application_id: IMPORT_typing.Optional[IMPORT_reboot_aio_types.ApplicationId],
+                tasks: IMPORT_typing.Callable[[IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext], TopicTasksStub],
+                *,
+                when: IMPORT_typing.Optional[IMPORT_datetime_datetime | IMPORT_datetime_timedelta] = None,
+                idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None,
+            ) -> None:
+                self._application_id = application_id
+                self._tasks = tasks
+                self._when = ensure_has_timezone(when=when)
+                self._idempotency = idempotency
+
+            # Topic callable tasks:
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: Topic.PublishRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.PublishTask:
+                ...
+
+            @IMPORT_typing.overload
+            async def Publish(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> Topic.PublishTask:
+                ...
+
+            async def Publish( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.PublishRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+                bytes: IMPORT_typing.Optional[bytes] = None,
+                any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+                items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+            ) -> Topic.PublishTask:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.PublishRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.PublishRequest)
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+
+                __request__: IMPORT_typing.Optional[Topic.PublishRequest] = None
+                if isinstance(__request_or_options__, Topic.PublishRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                    assert value is None
+                    assert bytes is None
+                    assert any is None
+                    assert items is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+                    if value is not None and not isinstance(
+                        value,
+                        google.protobuf.struct_pb2.Value,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'value' is not "
+                            f"of required type 'google.protobuf.struct_pb2.Value'"
+                        )
+                    if bytes is not None and not isinstance(
+                        bytes,
+                        IMPORT_builtins.bytes
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'bytes' is not "
+                            f"of required type 'bytes'"
+                        )
+                    if any is not None and not isinstance(
+                        any,
+                        google.protobuf.any_pb2.Any,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'any' is not "
+                            f"of required type 'google.protobuf.any_pb2.Any'"
+                        )
+                    if items is not None and not isinstance(
+                        items,
+                        IMPORT_typing.Iterable,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'items' is not "
+                            f"of required type 'typing.Iterable[rbt.std.item.v1.item_pb2.Item]'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.PublishRequest(
+                        value=value, # type: ignore[arg-type]
+                        bytes=bytes, # type: ignore[arg-type]
+                        any=any, # type: ignore[arg-type]
+                        items=items, # type: ignore[arg-type]
+                    )
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                __task_id__ = await __this__._tasks(
+                    __context__
+                ).Publish(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+                return Topic.PublishTask(
+                    __context__,
+                    task_id=__task_id__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            publish = Publish
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: Topic.SubscribeRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.SubscribeTask:
+                ...
+
+            @IMPORT_typing.overload
+            async def Subscribe(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> Topic.SubscribeTask:
+                ...
+
+            async def Subscribe( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.SubscribeRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+                *,
+                queue_id: IMPORT_typing.Optional[str] = None,
+            ) -> Topic.SubscribeTask:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.SubscribeRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.SubscribeRequest)
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+
+                __request__: IMPORT_typing.Optional[Topic.SubscribeRequest] = None
+                if isinstance(__request_or_options__, Topic.SubscribeRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                    assert queue_id is None
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+                    if queue_id is not None and not isinstance(
+                        queue_id,
+                        str,
+                    ):
+                        raise TypeError(
+                            f"Can not construct protobuf message of type "
+                            f"'rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest': field 'queue_id' is not "
+                            f"of required type 'str'"
+                        )
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.SubscribeRequest(
+                        queue_id=queue_id, # type: ignore[arg-type]
+                    )
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                __task_id__ = await __this__._tasks(
+                    __context__
+                ).Subscribe(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+                return Topic.SubscribeTask(
+                    __context__,
+                    task_id=__task_id__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            subscribe = Subscribe
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: Topic.BrokerRequest,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.BrokerTask:
+                ...
+
+            @IMPORT_typing.overload
+            async def Broker(
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.BrokerTask:
+                ...
+
+            async def Broker( # type: ignore[misc]
+                __this__,
+                __context__: IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+                __request_or_options__: IMPORT_typing.Optional[Topic.BrokerRequest | IMPORT_reboot_aio_call.Options] = None,
+                __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            ) -> Topic.BrokerTask:
+                # UX improvement: check that neither positional argument was accidentally
+                # given a gRPC request type.
+                IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.BrokerRequest)
+                IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.BrokerRequest)
+                IMPORT_reboot_aio_types.assert_type(__context__, [IMPORT_reboot_aio_contexts.WorkflowContext, IMPORT_reboot_aio_external.ExternalContext])
+
+                __request__: IMPORT_typing.Optional[Topic.BrokerRequest] = None
+                if isinstance(__request_or_options__, Topic.BrokerRequest):
+                    assert __request_or_options__ is not None
+                    assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+
+                    __request__ = __request_or_options__
+                else:
+                    assert __options__ is None
+                    assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                    __options__ = __request_or_options__
+
+
+                    # TODO: mypy-protobuf declares that
+                    # `IMPORT_google_protobuf_message.Message` constructor arguments are
+                    # always non-None, when in reality they are optional.
+                    __request__ = Topic.BrokerRequest(
+                    )
+
+                __schedule__: IMPORT_typing.Optional[IMPORT_reboot_time_DateTimeWithTimeZone] = (IMPORT_reboot_time_DateTimeWithTimeZone.now() + __this__._when) if isinstance(
+                    __this__._when, IMPORT_datetime_timedelta
+                ) else __this__._when
+
+                __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+                __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = __this__._idempotency
+                __bearer_token__: IMPORT_typing.Optional[str] = None
+
+                if __options__ is not None:
+                    IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                    if __options__.idempotency:
+                        if __idempotency__ is not None:
+                            raise RuntimeError(
+                                'Found redundant idempotency in `Options`'
+                            )
+                        __idempotency__ = __options__.idempotency
+                    if __options__.metadata is not None:
+                        __metadata__ = __options__.metadata
+                    if __options__.bearer_token is not None:
+                        __bearer_token__ = __options__.bearer_token
+
+                # Add scheduling information to the metadata.
+                __metadata__ = (
+                    (IMPORT_reboot_aio_headers.TASK_SCHEDULE,
+                    __schedule__.isoformat() if __schedule__ else ''),
+                ) + (__metadata__ or tuple())
+
+                __task_id__ = await __this__._tasks(
+                    __context__
+                ).Broker(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+
+                return Topic.BrokerTask(
+                    __context__,
+                    task_id=__task_id__,
+                )
+
+            # Keep the original functions on the client, so old code will
+            # continue to work, but use the new 'snake_case' method in
+            # the new code.
+            broker = Broker
+
+        async def read(
+            self,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        ) -> Topic.State:
+            return await (
+                self.always() if context.within_until()
+                else (
+                    self.per_iteration() if context.within_loop()
+                    else self.per_workflow()
+                )
+            ).read(context)
+
+        @IMPORT_typing.overload
+        async def write(
+            self,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            writer: TopicBaseServicer.InlineWriterCallable[None],
+            *,
+            type: type = type(None),
+        ) -> None:
+            ...
+
+        @IMPORT_typing.overload
+        async def write(
+            self,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+            *,
+            type: type[TopicBaseServicer.InlineWriterCallableResult],
+        ) -> TopicBaseServicer.InlineWriterCallableResult:
+            ...
+
+        async def write(
+            self,
+            context: IMPORT_reboot_aio_contexts.WorkflowContext,
+            writer: TopicBaseServicer.InlineWriterCallable[TopicBaseServicer.InlineWriterCallableResult],
+            *,
+            type: type = type(None),
+        ) -> TopicBaseServicer.InlineWriterCallableResult:
+            """Perform an "inline write" within a workflow."""
+            return await (
+                self.always() if context.within_until()
+                else (
+                    self.per_iteration() if context.within_loop()
+                    else self.per_workflow()
+                )
+            ).write(
+                context, writer, type=type
+            )
+
+        # Topic specific methods:
+        @IMPORT_typing.overload
+        async def Publish(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: Topic.PublishRequest,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> Topic.PublishResponse:
+            ...
+
+        @IMPORT_typing.overload
+        async def Publish(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+            bytes: IMPORT_typing.Optional[bytes] = None,
+            any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+            items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+        ) -> Topic.PublishResponse:
+            ...
+
+        async def Publish( # type: ignore[misc]
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[Topic.PublishRequest | IMPORT_reboot_aio_call.Options] = None,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+            bytes: IMPORT_typing.Optional[bytes] = None,
+            any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+            items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+        ) -> Topic.PublishResponse:
+            # UX improvement: check that neither positional argument was accidentally
+            # given a gRPC request type.
+            IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.PublishRequest)
+            IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.PublishRequest)
+
+            __request__: IMPORT_typing.Optional[Topic.PublishRequest] = None
+            if isinstance(__request_or_options__, Topic.PublishRequest):
+                assert __request_or_options__ is not None
+                assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                assert value is None
+                assert bytes is None
+                assert any is None
+                assert items is None
+
+                __request__ = __request_or_options__
+            else:
+                assert __options__ is None
+                assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __request_or_options__
+
+                if value is not None and not isinstance(
+                    value,
+                    google.protobuf.struct_pb2.Value,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'value' is not "
+                        f"of required type 'google.protobuf.struct_pb2.Value'"
+                    )
+                if bytes is not None and not isinstance(
+                    bytes,
+                    IMPORT_builtins.bytes
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'bytes' is not "
+                        f"of required type 'bytes'"
+                    )
+                if any is not None and not isinstance(
+                    any,
+                    google.protobuf.any_pb2.Any,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'any' is not "
+                        f"of required type 'google.protobuf.any_pb2.Any'"
+                    )
+                if items is not None and not isinstance(
+                    items,
+                    IMPORT_typing.Iterable,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'items' is not "
+                        f"of required type 'typing.Iterable[rbt.std.item.v1.item_pb2.Item]'"
+                    )
+
+                # TODO: mypy-protobuf declares that
+                # `google.protobuf.message.Message` constructor arguments are
+                # always non-None, when in reality they are optional.
+                __request__ = Topic.PublishRequest(
+                    value=value, # type: ignore[arg-type]
+                    bytes=bytes, # type: ignore[arg-type]
+                    any=any, # type: ignore[arg-type]
+                    items=items, # type: ignore[arg-type]
+                )
+
+            # Within a `workflow`, all "bare" calls are
+            # `per_workflow()` calls, unless we're within a control
+            # loop, in which case they are syntactic sugar for
+            # `per_iteration()`.
+            if __options__ is None or __options__.idempotency is None:
+                if isinstance(__context__, IMPORT_reboot_aio_contexts.WorkflowContext):
+                    return await (
+                        __this__.per_iteration() if __context__.within_loop()
+                        else __this__.per_workflow()
+                    ).Publish(
+                        __context__,
+                        __request__,
+                        __options__ or IMPORT_reboot_aio_call.Options(),
+                    )
+                elif isinstance(__context__, IMPORT_reboot_aio_external.InitializeContext):
+                    return await __this__.idempotently().Publish(
+                        __context__,
+                        __request__,
+                        __options__ or IMPORT_reboot_aio_call.Options(),
+                    )
+
+            __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None
+            __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+            __bearer_token__: IMPORT_typing.Optional[str] = None
+            if __options__ is not None:
+                IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                if __options__.idempotency is not None:
+                    __idempotency__ = __options__.idempotency
+                if __options__.metadata is not None:
+                    __metadata__ = __options__.metadata
+                if __options__.bearer_token is not None:
+                    __bearer_token__ = __options__.bearer_token
+
+            return TopicPublishResponseFromProto(
+                await __this__._writer(__context__).Publish(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+            )
+
+        # Keep the original functions on the client, so old code will
+        # continue to work, but use the new 'snake_case' method in
+        # the new code.
+        publish = Publish
+        @IMPORT_typing.overload
+        async def Subscribe(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: Topic.SubscribeRequest,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> Topic.SubscribeResponse:
+            ...
+
+        @IMPORT_typing.overload
+        async def Subscribe(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            queue_id: IMPORT_typing.Optional[str] = None,
+        ) -> Topic.SubscribeResponse:
+            ...
+
+        async def Subscribe( # type: ignore[misc]
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[Topic.SubscribeRequest | IMPORT_reboot_aio_call.Options] = None,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            queue_id: IMPORT_typing.Optional[str] = None,
+        ) -> Topic.SubscribeResponse:
+            # UX improvement: check that neither positional argument was accidentally
+            # given a gRPC request type.
+            IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.SubscribeRequest)
+            IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.SubscribeRequest)
+
+            __request__: IMPORT_typing.Optional[Topic.SubscribeRequest] = None
+            if isinstance(__request_or_options__, Topic.SubscribeRequest):
+                assert __request_or_options__ is not None
+                assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+
+                assert queue_id is None
+
+                __request__ = __request_or_options__
+            else:
+                assert __options__ is None
+                assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __request_or_options__
+
+                if queue_id is not None and not isinstance(
+                    queue_id,
+                    str,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest': field 'queue_id' is not "
+                        f"of required type 'str'"
+                    )
+
+                # TODO: mypy-protobuf declares that
+                # `google.protobuf.message.Message` constructor arguments are
+                # always non-None, when in reality they are optional.
+                __request__ = Topic.SubscribeRequest(
+                    queue_id=queue_id, # type: ignore[arg-type]
+                )
+
+            # Within a `workflow`, all "bare" calls are
+            # `per_workflow()` calls, unless we're within a control
+            # loop, in which case they are syntactic sugar for
+            # `per_iteration()`.
+            if __options__ is None or __options__.idempotency is None:
+                if isinstance(__context__, IMPORT_reboot_aio_contexts.WorkflowContext):
+                    return await (
+                        __this__.per_iteration() if __context__.within_loop()
+                        else __this__.per_workflow()
+                    ).Subscribe(
+                        __context__,
+                        __request__,
+                        __options__ or IMPORT_reboot_aio_call.Options(),
+                    )
+                elif isinstance(__context__, IMPORT_reboot_aio_external.InitializeContext):
+                    return await __this__.idempotently().Subscribe(
+                        __context__,
+                        __request__,
+                        __options__ or IMPORT_reboot_aio_call.Options(),
+                    )
+
+            __idempotency__: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None
+            __metadata__: IMPORT_typing.Optional[IMPORT_reboot_aio_types.GrpcMetadata] = None
+            __bearer_token__: IMPORT_typing.Optional[str] = None
+            if __options__ is not None:
+                IMPORT_reboot_aio_types.assert_type(__options__, [IMPORT_reboot_aio_call.Options])
+                if __options__.idempotency is not None:
+                    __idempotency__ = __options__.idempotency
+                if __options__.metadata is not None:
+                    __metadata__ = __options__.metadata
+                if __options__.bearer_token is not None:
+                    __bearer_token__ = __options__.bearer_token
+
+            return TopicSubscribeResponseFromProto(
+                await __this__._writer(__context__).Subscribe(
+                    __request__,
+                    idempotency=__idempotency__,
+                    metadata=__metadata__,
+                    bearer_token=__bearer_token__,
+                )
+            )
+
+        # Keep the original functions on the client, so old code will
+        # continue to work, but use the new 'snake_case' method in
+        # the new code.
+        subscribe = Subscribe
+        @IMPORT_typing.overload
+        async def Broker(
+            __this__,
+            __context__: IMPORT_reboot_aio_external.ExternalContext | IMPORT_reboot_aio_contexts.WorkflowContext,
+            __request_or_options__: Topic.BrokerRequest,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> Topic.BrokerResponse:
+            ...
+
+        @IMPORT_typing.overload
+        async def Broker(
+            __this__,
+            __context__: IMPORT_reboot_aio_external.ExternalContext | IMPORT_reboot_aio_contexts.WorkflowContext,
+            __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> Topic.BrokerResponse:
+            ...
+
+        async def Broker( # type: ignore[misc]
+            # In methods which are dealing with user input, (i.e.,
+            # proto message field names), we should use '__double_underscored__'
+            # variables to avoid any potential name conflicts with the method's
+            # parameters.
+            # The '__self__' parameter is a convention in Python to
+            # indicate that this method is a bound method, so we use
+            # '__this__' instead.
+            __this__,
+            __context__: IMPORT_reboot_aio_external.ExternalContext | IMPORT_reboot_aio_contexts.WorkflowContext,
+            __request_or_options__: IMPORT_typing.Optional[Topic.BrokerRequest | IMPORT_reboot_aio_call.Options] = None,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> Topic.BrokerResponse:
+            # UX improvement: check that neither positional argument was accidentally
+            # given a gRPC request type.
+            IMPORT_reboot_aio_types.assert_not_request_type(__context__, request_type=Topic.BrokerRequest)
+            IMPORT_reboot_aio_types.assert_not_request_type(__options__, request_type=Topic.BrokerRequest)
+
+            def error_message_supplement():
+                if any([isinstance(__context__, t) for t in [IMPORT_reboot_aio_contexts.WriterContext, IMPORT_reboot_aio_contexts.TransactionContext]]):
+                    return f"'Broker' is a workflow and must be scheduled from a '{type(__context__).__name__}' via `await [...].schedule([...]).Broker(context, [...])`"
+                else:
+                    return f"'Broker' is a workflow and can not be called from a '{type(__context__).__name__}'"
+
+            IMPORT_reboot_aio_types.assert_type(
+                __context__,
+                [IMPORT_reboot_aio_external.ExternalContext, IMPORT_reboot_aio_contexts.WorkflowContext],
+                error_message_supplement=error_message_supplement(),
+            )
+
+            if isinstance(__request_or_options__, Topic.BrokerRequest):
+                assert __request_or_options__ is not None
+                assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __options__ or IMPORT_reboot_aio_call.Options()
+
+
+                return await (
+                    await __this__.spawn().Broker(
+                        __context__,
+                        __request_or_options__,
+                        __options__,
+                    )
+                )
+            else:
+                assert __options__ is None
+                assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __request_or_options__ or IMPORT_reboot_aio_call.Options()
+
+
+                return await (
+                    await __this__.spawn().Broker(
+                        __context__,
+                        __options__,
+                    )
+                )
+
+        # Keep the original functions on the client, so old code will
+        # continue to work, but use the new 'snake_case' method in
+        # the new code.
+        broker = Broker
+
+    class _Forall:
+
+        _ids: list[str]
+
+        def __init__(self, ids: list[str]):
+            self._ids = ids
+
+        @IMPORT_typing.overload
+        async def Publish(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: Topic.PublishRequest,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> list[Topic.PublishResponse]:
+            ...
+
+        @IMPORT_typing.overload
+        async def Publish(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+            bytes: IMPORT_typing.Optional[bytes] = None,
+            any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+            items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+        ) -> list[Topic.PublishResponse]:
+            ...
+
+        async def Publish( # type: ignore[misc]
+            # In methods which are dealing with user input, (i.e.,
+            # proto message field names), we should use '__double_underscored__'
+            # variables to avoid any potential name conflicts with the method's
+            # parameters.
+            # The '__self__' parameter is a convention in Python to
+            # indicate that this method is a bound method, so we use
+            # '__this__' instead.
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[Topic.PublishRequest | IMPORT_reboot_aio_call.Options] = None,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            value: IMPORT_typing.Optional[google.protobuf.struct_pb2.Value] = None,
+            bytes: IMPORT_typing.Optional[bytes] = None,
+            any: IMPORT_typing.Optional[google.protobuf.any_pb2.Any] = None,
+            items: IMPORT_typing.Optional[IMPORT_typing.Iterable[rbt.std.item.v1.item_pb2.Item]] = None,
+        ) -> list[Topic.PublishResponse]:
+            if isinstance(__request_or_options__, Topic.PublishRequest):
+                assert __request_or_options__ is not None
+                assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __options__ or IMPORT_reboot_aio_call.Options()
+
+                assert value is None
+                assert bytes is None
+                assert any is None
+                assert items is None
+
+                return await IMPORT_asyncio.gather(
+                    *[
+                        Topic.ref(
+                            id
+                        ).Publish(
+                            __context__,
+                            __request_or_options__,
+                            __options__,
+                        ) for id in __this__._ids
+                    ]
+                )
+            else:
+                assert __options__ is None
+                assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __request_or_options__ or IMPORT_reboot_aio_call.Options()
+
+                if value is not None and not isinstance(
+                    value,
+                    google.protobuf.struct_pb2.Value,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'value' is not "
+                        f"of required type 'google.protobuf.struct_pb2.Value'"
+                    )
+                if bytes is not None and not isinstance(
+                    bytes,
+                    IMPORT_builtins.bytes
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'bytes' is not "
+                        f"of required type 'bytes'"
+                    )
+                if any is not None and not isinstance(
+                    any,
+                    google.protobuf.any_pb2.Any,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'any' is not "
+                        f"of required type 'google.protobuf.any_pb2.Any'"
+                    )
+                if items is not None and not isinstance(
+                    items,
+                    IMPORT_typing.Iterable,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.PublishRequest': field 'items' is not "
+                        f"of required type 'typing.Iterable[rbt.std.item.v1.item_pb2.Item]'"
+                    )
+
+                return await IMPORT_asyncio.gather(
+                    *[
+                        Topic.ref(
+                            id
+                        ).Publish(
+                            __context__,
+                            __options__,
+                            value=value,
+                            bytes=bytes,
+                            any=any,
+                            items=items,
+                        ) for id in __this__._ids
+                    ]
+                )
+
+        # Keep the original functions on the client, so old code will
+        # continue to work, but use the new 'snake_case' method in
+        # the new code.
+        publish = Publish
+        @IMPORT_typing.overload
+        async def Subscribe(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: Topic.SubscribeRequest,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+        ) -> list[Topic.SubscribeResponse]:
+            ...
+
+        @IMPORT_typing.overload
+        async def Subscribe(
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            queue_id: IMPORT_typing.Optional[str] = None,
+        ) -> list[Topic.SubscribeResponse]:
+            ...
+
+        async def Subscribe( # type: ignore[misc]
+            # In methods which are dealing with user input, (i.e.,
+            # proto message field names), we should use '__double_underscored__'
+            # variables to avoid any potential name conflicts with the method's
+            # parameters.
+            # The '__self__' parameter is a convention in Python to
+            # indicate that this method is a bound method, so we use
+            # '__this__' instead.
+            __this__,
+            __context__: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+            __request_or_options__: IMPORT_typing.Optional[Topic.SubscribeRequest | IMPORT_reboot_aio_call.Options] = None,
+            __options__: IMPORT_typing.Optional[IMPORT_reboot_aio_call.Options] = None,
+            *,
+            queue_id: IMPORT_typing.Optional[str] = None,
+        ) -> list[Topic.SubscribeResponse]:
+            if isinstance(__request_or_options__, Topic.SubscribeRequest):
+                assert __request_or_options__ is not None
+                assert __options__ is None or isinstance(__options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __options__ or IMPORT_reboot_aio_call.Options()
+
+                assert queue_id is None
+
+                return await IMPORT_asyncio.gather(
+                    *[
+                        Topic.ref(
+                            id
+                        ).Subscribe(
+                            __context__,
+                            __request_or_options__,
+                            __options__,
+                        ) for id in __this__._ids
+                    ]
+                )
+            else:
+                assert __options__ is None
+                assert __request_or_options__ is None or isinstance(__request_or_options__, IMPORT_reboot_aio_call.Options)
+                __options__ = __request_or_options__ or IMPORT_reboot_aio_call.Options()
+
+                if queue_id is not None and not isinstance(
+                    queue_id,
+                    str,
+                ):
+                    raise TypeError(
+                        f"Can not construct protobuf message of type "
+                        f"'rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest': field 'queue_id' is not "
+                        f"of required type 'str'"
+                    )
+
+                return await IMPORT_asyncio.gather(
+                    *[
+                        Topic.ref(
+                            id
+                        ).Subscribe(
+                            __context__,
+                            __options__,
+                            queue_id=queue_id,
+                        ) for id in __this__._ids
+                    ]
+                )
+
+        # Keep the original functions on the client, so old code will
+        # continue to work, but use the new 'snake_case' method in
+        # the new code.
+        subscribe = Subscribe
+
+    @classmethod
+    def forall(cls, ids: list[str]) -> Topic._Forall:
+        return Topic._Forall(ids)
+
+    @classmethod
+    def ref(
+        cls,
+        state_id: IMPORT_reboot_aio_types.StateId,
+        *,
+        bearer_token: IMPORT_typing.Optional[str] = None,
+    ) -> Topic.WeakReference[Topic.WeakReference._Schedule]:
+        return Topic.WeakReference(
+            # TODO(https://github.com/reboot-dev/mono/issues/3226): add support for calling other applications.
+            # For now this always stays within the application that creates the context.
+            application_id=None,
+            state_id=state_id,
+            schedule_type=Topic.WeakReference._Schedule,
+            bearer_token=bearer_token,
+        )
+
+
+    @IMPORT_typing.overload
+    @classmethod
+    def idempotently(cls, alias: IMPORT_typing.Optional[str] = None, *, each_iteration: bool = False) -> Topic._ConstructIdempotently:
+        ...
+
+    @IMPORT_typing.overload
+    @classmethod
+    def idempotently(cls, *, key: IMPORT_uuid.UUID, generated: bool = False) -> Topic._ConstructIdempotently:
+        ...
+
+    @classmethod
+    def idempotently(
+        cls,
+        alias: IMPORT_typing.Optional[str] = None,
+        *,
+        key: IMPORT_typing.Optional[IMPORT_uuid.UUID] = None,
+        each_iteration: IMPORT_typing.Optional[bool] = None,
+        generated: bool = False,
+    ) -> Topic._ConstructIdempotently:
+        return Topic._ConstructIdempotently(
+            _idempotency=IMPORT_reboot_aio_contexts.Context.idempotency(
+                alias=alias,
+                key=key,
+                each_iteration=each_iteration,
+                generated=generated,
+            ),
+        )
+
+    @classmethod
+    def per_workflow(
+        cls,
+        alias: IMPORT_typing.Optional[str] = None,
+    ):
+        return cls.idempotently(alias)
+
+    @classmethod
+    def per_iteration(
+        cls,
+        alias: IMPORT_typing.Optional[str] = None,
+    ):
+        return cls.idempotently(alias, each_iteration=True)
+
+    @classmethod
+    def always(cls):
+        return cls.idempotently(key=IMPORT_uuid.uuid4(), generated=True)
+
+    @IMPORT_dataclasses.dataclass(frozen=True)
+    class _ConstructIdempotently:
+
+        _idempotency: IMPORT_reboot_aio_idempotency.Idempotency
+
+
+
+############################ Servicer Node adapters ############################
+# Used by Node.js servicer implementations to access Python code and vice-versa.
+# Relevant to servicers, irrelevant to clients.
+
+class TopicServicerNodeAdaptor(Topic.singleton.Servicer):
+
+    async def _wait_for_cancelled(
+        self,
+        future: IMPORT_asyncio.Future,
+        method: str,
+    ):
+        while True:
+            done, pending = await IMPORT_asyncio.wait(
+                [future],
+                timeout=5,  # seconds
+            )
+            # Check if we've timed out and log a warning that their
+            # call has been cancelled but it is still running.
+            if len(done) == 0:
+                logger.warning(
+                    f"Call to method '{method}' has been cancelled by the caller, "
+                    "BUT WE ARE STILL WAITING for it complete. You can use the promise "
+                    "`context.cancelled` to check if the caller has cancelled so you "
+                    "don't do unnecessary work or wait for something that may never occur."
+                )
+                continue
+            break
+
+        # Now need to actually `await` the future so that we don't
+        # have an unretrieved exception that gets logged.
+        #
+        # NOTE: this will raise an exception if the method raised even
+        # though the call has already been cancelled but it makes it
+        # more clear that the method raised so that is why we're not
+        # catching and swallowing any exception.
+        await future
+
+    def __init__(self):
+        self._js_servicer_reference = self._construct_js_servicer()  # type: ignore[attr-defined]
+
+    def authorizer(self) -> IMPORT_typing.Optional[IMPORT_rebootdev.aio.auth.authorizers.Authorizer]:
+        return self._construct_authorizer(self._js_servicer_reference)  # type: ignore[attr-defined]
+
+    async def _read(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        json_options: str,
+    ) -> str:
+        options = IMPORT_json.loads(json_options)
+
+        alias = options.get('alias')
+
+        assert 'how' in options
+        how = options['how']
+        if how == IMPORT_reboot_aio_workflows.ALWAYS:
+            assert alias is None
+            return IMPORT_google_protobuf_json_format.MessageToJson(
+                await super().state.always().read(context)
+            )
+
+        assert how in [
+            IMPORT_reboot_aio_workflows.PER_WORKFLOW,
+            IMPORT_reboot_aio_workflows.PER_ITERATION,
+        ]
+
+        return IMPORT_google_protobuf_json_format.MessageToJson(
+            await (
+                super().state.per_workflow(alias)
+                if how == IMPORT_reboot_aio_workflows.PER_WORKFLOW
+                else super().state.per_iteration(alias)
+            ).read(context)
+        )
+
+    async def _write(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        writer: IMPORT_typing.Callable[[str], IMPORT_typing.Awaitable[str]],
+        json_options: str,
+    ) -> str:
+
+        async def _writer(state: IMPORT_google_protobuf_message.Message):
+            with IMPORT_reboot_aio_tracing.span(
+                state_name=f"{context.state_type_name}('{context.state_id}')",
+                span_name="_writer on NodeAdaptor",
+                # The naming above matches Python, but not TypeScript.
+                python_specific=True,
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+            ):
+                json_result_state = await writer(
+                    IMPORT_google_protobuf_json_format.MessageToJson(state)
+                )
+
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="_write - State Copy on NodeAdaptor",
+                    # The naming above matches Python, but not TypeScript.
+                    python_specific=True,
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                ):
+                    result_state = IMPORT_json.loads(json_result_state)
+
+                    state.CopyFrom(
+                        IMPORT_google_protobuf_json_format.ParseDict(
+                            result_state['state'],
+                            self.__state_type__(),
+                        )
+                    )
+
+                    assert 'result' in result_state
+                    result = result_state['result']
+                    assert type(result) == str
+                    return result
+
+        options = IMPORT_json.loads(json_options)
+
+        alias = options.get('alias')
+
+        assert 'how' in options
+        how = options['how']
+
+        if how == IMPORT_reboot_aio_workflows.ALWAYS:
+            assert alias is None
+            return await super().state.always().write(
+                context,
+                _writer,
+            )
+
+        assert how in [
+            IMPORT_reboot_aio_workflows.PER_WORKFLOW,
+            IMPORT_reboot_aio_workflows.PER_ITERATION,
+        ]
+
+        return await (
+            super().state.per_workflow(alias)
+            if how == IMPORT_reboot_aio_workflows.PER_WORKFLOW
+            else super().state.per_iteration(alias)
+        ).write(context, _writer, type=str)
+
+    # Topic specific methods:
+    async def Publish(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.PublishRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.PublishResponse:
+        with IMPORT_reboot_aio_tracing.span(
+                state_name=f"{context.state_type_name}('{context.state_id}')",
+                span_name="NodeAdaptor Publish",
+                # The naming above matches Python, but not TypeScript.
+                python_specific=True,
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+        ):
+            with IMPORT_reboot_aio_tracing.span(
+                state_name=f"{context.state_type_name}('{context.state_id}')",
+                span_name="Create and serialize `TrampolineCall`",
+                # The naming above matches Python, but not TypeScript.
+                python_specific=True,
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+            ):
+                bytes_call = IMPORT_rbt_v1alpha1_nodejs_pb2.TrampolineCall(
+                    kind=IMPORT_rbt_v1alpha1_nodejs_pb2.writer,
+                    context=IMPORT_rbt_v1alpha1_nodejs_pb2.Context(
+                        method='Publish',
+                        state_id=context.state_id,
+                        state_type_name=context.state_type_name,
+                        caller_bearer_token=context.caller_bearer_token,
+                        cookie=context.cookie,
+                        app_internal=context.app_internal,
+                        auth=(
+                            None if context.auth is None
+                            else context.auth.to_proto_bytes()
+                        ),
+                    ),
+                    state=state.SerializeToString(),
+                    request=request.SerializeToString(),
+                ).SerializeToString()
+
+            cancelled: IMPORT_asyncio.Future[None] = IMPORT_asyncio.Future()
+
+            bytes_result_future: IMPORT_typing.Optional[IMPORT_asyncio.Future[str]] = None
+
+            try:
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="trampoline",
+                    # The naming above matches Python, but not TypeScript.
+                    python_specific=True,
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                ):
+                    bytes_result_future = self._trampoline(  # type: ignore[attr-defined]
+                        self._js_servicer_reference,
+                        context,
+                        cancelled,
+                        bytes_call,
+                    )
+                    # NOTE: we need to `asyncio.shield` so that we can still
+                    # correctly wait for this future to complete even if we
+                    # are cancelled.
+                    assert bytes_result_future is not None
+                    bytes_result = await IMPORT_asyncio.shield(bytes_result_future)
+            except IMPORT_asyncio.CancelledError:
+                cancelled.set_result(None)
+
+                # NOTE: we MUST wait for `bytes_result_future` because this
+                # is a `writer` or `transaction` and we CAN NOT execute
+                # multiple simultaneously.
+                if bytes_result_future is not None:
+                    await self._wait_for_cancelled(
+                        bytes_result_future,
+                        'Topic.Publish',
+                    )
+
+                raise
+            except:
+                # Make sure we cancel the `cancelled` future either if an
+                # exception is thrown or if the result is reeturned so
+                # that we don't keep around resources related to it that
+                # might cause us to run out of memory or worse, keep Node
+                # from exiting because it is waiting for Python.
+                cancelled.cancel()
+                raise
+            else:
+                cancelled.cancel()
+
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="result ParseFromString",
+                    # The naming above matches Python, but not TypeScript.
+                    python_specific=True,
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                ):
+                    result = IMPORT_rbt_v1alpha1_nodejs_pb2.TrampolineResult.FromString(
+                        bytes_result
+                    )
+
+                if result.HasField('state'):
+                    with IMPORT_reboot_aio_tracing.span(
+                        state_name=f"{context.state_type_name}('{context.state_id}')",
+                        span_name="state ParseFromString",
+                        # The naming above matches Python, but not TypeScript.
+                        python_specific=True,
+                        level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                    ):
+                        state.CopyFrom(
+                            rbt.std.pubsub.v1.pubsub_pb2.Topic.FromString(
+                                result.state
+                            )
+                        )
+
+                if result.HasField('status_json'):
+                    raise (
+                        Topic
+                        .PublishAborted
+                        .from_status(
+                            IMPORT_google_protobuf_json_format.Parse(
+                                result.status_json,
+                                IMPORT_google_rpc_status_pb2.Status(),
+                            )
+                        )
+                    )
+
+                assert result.HasField('response')
+
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="response ParseFromString",
+                ):
+                    return rbt.std.pubsub.v1.pubsub_pb2.PublishResponse.FromString(result.response)
+        raise RuntimeError("Unexpected result from Publish")
+
+    async def Subscribe(
+        self,
+        context: IMPORT_reboot_aio_contexts.WriterContext,
+        state: rbt.std.pubsub.v1.pubsub_pb2.Topic,
+        request: rbt.std.pubsub.v1.pubsub_pb2.SubscribeRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse:
+        with IMPORT_reboot_aio_tracing.span(
+                state_name=f"{context.state_type_name}('{context.state_id}')",
+                span_name="NodeAdaptor Subscribe",
+                # The naming above matches Python, but not TypeScript.
+                python_specific=True,
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+        ):
+            with IMPORT_reboot_aio_tracing.span(
+                state_name=f"{context.state_type_name}('{context.state_id}')",
+                span_name="Create and serialize `TrampolineCall`",
+                # The naming above matches Python, but not TypeScript.
+                python_specific=True,
+                level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+            ):
+                bytes_call = IMPORT_rbt_v1alpha1_nodejs_pb2.TrampolineCall(
+                    kind=IMPORT_rbt_v1alpha1_nodejs_pb2.writer,
+                    context=IMPORT_rbt_v1alpha1_nodejs_pb2.Context(
+                        method='Subscribe',
+                        state_id=context.state_id,
+                        state_type_name=context.state_type_name,
+                        caller_bearer_token=context.caller_bearer_token,
+                        cookie=context.cookie,
+                        app_internal=context.app_internal,
+                        auth=(
+                            None if context.auth is None
+                            else context.auth.to_proto_bytes()
+                        ),
+                    ),
+                    state=state.SerializeToString(),
+                    request=request.SerializeToString(),
+                ).SerializeToString()
+
+            cancelled: IMPORT_asyncio.Future[None] = IMPORT_asyncio.Future()
+
+            bytes_result_future: IMPORT_typing.Optional[IMPORT_asyncio.Future[str]] = None
+
+            try:
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="trampoline",
+                    # The naming above matches Python, but not TypeScript.
+                    python_specific=True,
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                ):
+                    bytes_result_future = self._trampoline(  # type: ignore[attr-defined]
+                        self._js_servicer_reference,
+                        context,
+                        cancelled,
+                        bytes_call,
+                    )
+                    # NOTE: we need to `asyncio.shield` so that we can still
+                    # correctly wait for this future to complete even if we
+                    # are cancelled.
+                    assert bytes_result_future is not None
+                    bytes_result = await IMPORT_asyncio.shield(bytes_result_future)
+            except IMPORT_asyncio.CancelledError:
+                cancelled.set_result(None)
+
+                # NOTE: we MUST wait for `bytes_result_future` because this
+                # is a `writer` or `transaction` and we CAN NOT execute
+                # multiple simultaneously.
+                if bytes_result_future is not None:
+                    await self._wait_for_cancelled(
+                        bytes_result_future,
+                        'Topic.Subscribe',
+                    )
+
+                raise
+            except:
+                # Make sure we cancel the `cancelled` future either if an
+                # exception is thrown or if the result is reeturned so
+                # that we don't keep around resources related to it that
+                # might cause us to run out of memory or worse, keep Node
+                # from exiting because it is waiting for Python.
+                cancelled.cancel()
+                raise
+            else:
+                cancelled.cancel()
+
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="result ParseFromString",
+                    # The naming above matches Python, but not TypeScript.
+                    python_specific=True,
+                    level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                ):
+                    result = IMPORT_rbt_v1alpha1_nodejs_pb2.TrampolineResult.FromString(
+                        bytes_result
+                    )
+
+                if result.HasField('state'):
+                    with IMPORT_reboot_aio_tracing.span(
+                        state_name=f"{context.state_type_name}('{context.state_id}')",
+                        span_name="state ParseFromString",
+                        # The naming above matches Python, but not TypeScript.
+                        python_specific=True,
+                        level=IMPORT_reboot_aio_tracing.TraceLevel.CUSTOMER,
+                    ):
+                        state.CopyFrom(
+                            rbt.std.pubsub.v1.pubsub_pb2.Topic.FromString(
+                                result.state
+                            )
+                        )
+
+                if result.HasField('status_json'):
+                    raise (
+                        Topic
+                        .SubscribeAborted
+                        .from_status(
+                            IMPORT_google_protobuf_json_format.Parse(
+                                result.status_json,
+                                IMPORT_google_rpc_status_pb2.Status(),
+                            )
+                        )
+                    )
+
+                assert result.HasField('response')
+
+                with IMPORT_reboot_aio_tracing.span(
+                    state_name=f"{context.state_type_name}('{context.state_id}')",
+                    span_name="response ParseFromString",
+                ):
+                    return rbt.std.pubsub.v1.pubsub_pb2.SubscribeResponse.FromString(result.response)
+        raise RuntimeError("Unexpected result from Subscribe")
+
+    async def Broker(
+        self,
+        context: IMPORT_reboot_aio_contexts.WorkflowContext,
+        request: rbt.std.pubsub.v1.pubsub_pb2.BrokerRequest,
+    ) -> rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse:
+        bytes_call = IMPORT_rbt_v1alpha1_nodejs_pb2.TrampolineCall(
+            kind=IMPORT_rbt_v1alpha1_nodejs_pb2.workflow,
+            context=IMPORT_rbt_v1alpha1_nodejs_pb2.Context(
+                method='Broker',
+                state_id=context.state_id,
+                state_type_name=context.state_type_name,
+                caller_bearer_token=context.caller_bearer_token,
+                cookie=context.cookie,
+                app_internal=context.app_internal,
+                auth=(
+                    None if context.auth is None
+                    else context.auth.to_proto_bytes()
+                ),
+            ),
+            request=request.SerializeToString(),
+        ).SerializeToString()
+
+        cancelled: IMPORT_asyncio.Future[None] = IMPORT_asyncio.Future()
+
+        # Link up this `cancelled` future with the context so that it
+        # waiting within Python via `context.wait()` will correctly
+        # propagate `CancelledError` back through Node.js.
+        context._cancelled = cancelled
+
+        bytes_result_future: IMPORT_typing.Optional[IMPORT_asyncio.Future[str]] = None
+
+        try:
+            bytes_result_future = self._trampoline(  # type: ignore[attr-defined]
+                self._js_servicer_reference,
+                context,
+                cancelled,
+                bytes_call,
+            )
+            # NOTE: we need to `asyncio.shield` so that we can still
+            # correctly wait for this future to complete even if we
+            # are cancelled.
+            assert bytes_result_future is not None
+            bytes_result = await IMPORT_asyncio.shield(bytes_result_future)
+        except IMPORT_asyncio.CancelledError:
+            cancelled.set_result(None)
+
+            # NOTE: unlike for a `writer` or `transaction`, we DO NOT
+            # _need_ to wait for `bytes_result_future` because this is
+            # a workflow and we can execute multiple workflows
+            # simultaneously. That being said, we still want to give
+            # good feedback that the RPC has been cancelled, and there
+            # is no harm waiting because other writers can still be
+            # called.
+            if bytes_result_future is not None:
+                await self._wait_for_cancelled(
+                    bytes_result_future,
+                    'Topic.Broker',
+                )
+
+            raise
+        except:
+            # Make sure we cancel the `cancelled` future either if an
+            # exception is thrown or if the result is reeturned so
+            # that we don't keep around resources related to it that
+            # might cause us to run out of memory or worse, keep Node
+            # from exiting because it is waiting for Python.
+            cancelled.cancel()
+            raise
+        else:
+            cancelled.cancel()
+
+            result = IMPORT_rbt_v1alpha1_nodejs_pb2.TrampolineResult.FromString(
+                bytes_result
+            )
+
+            if result.HasField('status_json'):
+                raise (
+                    Topic
+                    .BrokerAborted
+                    .from_status(
+                        IMPORT_google_protobuf_json_format.Parse(
+                            result.status_json,
+                            IMPORT_google_rpc_status_pb2.Status(),
+                        )
+                    )
+                )
+
+            assert result.HasField('response')
+            return rbt.std.pubsub.v1.pubsub_pb2.BrokerResponse.FromString(result.response)
+        raise RuntimeError("Unexpected result from Broker")
+
+
+
+############################ Reference Node adapters ############################
+# Used by Node.js WeakReference implementations to access Python code and
+# vice-versa. Relevant to clients.
+
+class TopicWeakReferenceNodeAdaptor(Topic.WeakReference[Topic.WeakReference._Schedule]):
+
+    async def _call(  # type: ignore[override]
+        self,
+        *,
+        callable: IMPORT_typing.Callable[[IMPORT_google_protobuf_message.Message], IMPORT_typing.Awaitable],
+        aborted_type: type[IMPORT_rebootdev.aio.aborted.Aborted],
+        request_type: type[IMPORT_google_protobuf_message.Message],
+        json_request: str,
+    ) -> str:
+        request = request_type()
+
+        try:
+            IMPORT_google_protobuf_json_format.Parse(json_request, request)
+            response = await callable(request)
+        except IMPORT_google_protobuf_json_format.ParseError as parse_error:
+            aborted_error = IMPORT_rebootdev.aio.aborted.SystemAborted(
+                IMPORT_rbt_v1alpha1.errors_pb2.Unknown(),
+                message=f"{parse_error}; "
+                       "This is usually caused by a deeply nested protobuf message, which is not supported by protobuf.\n"
+                        "See the limits here: https://protobuf.dev/programming-guides/proto-limits/"
+                )
+
+            return IMPORT_json.dumps(
+                {
+                    'status': IMPORT_google_protobuf_json_format.MessageToDict(
+                        aborted_error.to_status()
+                    )
+                }
+            )
+        except BaseException as exception:
+            if isinstance(exception, aborted_type):
+                return IMPORT_json.dumps(
+                    {
+                        'status': IMPORT_google_protobuf_json_format.MessageToDict(
+                            exception.to_status()
+                        )
+                    }
+                )
+            raise
+        else:
+            return IMPORT_json.dumps(
+                {
+                    'response': IMPORT_google_protobuf_json_format.MessageToDict(
+                        response
+                    )
+                }
+            )
+
+    async def _schedule(  # type: ignore[override]
+        self,
+        *,
+        method: str,
+        context: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        schedule: IMPORT_reboot_time_DateTimeWithTimeZone,
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency],
+        request_type: type[IMPORT_google_protobuf_message.Message],
+        json_request: str,
+    ) -> str:
+        request = request_type()
+
+        IMPORT_google_protobuf_json_format.Parse(json_request, request)
+
+        if isinstance(context, IMPORT_reboot_aio_contexts.WriterContext):
+            task = await getattr(
+                TopicServicerTasks(
+                    context=context,
+                    state_ref=context._state_ref,
+                ),
+                method,
+            )(request, schedule=schedule)
+
+            return IMPORT_json.dumps(
+                {
+                    'taskId': IMPORT_google_protobuf_json_format.MessageToDict(
+                        task.task_id
+                    )
+                }
+            )
+
+        # Add scheduling information to the metadata.
+        metadata: IMPORT_reboot_aio_types.GrpcMetadata = (
+            (IMPORT_reboot_aio_headers.TASK_SCHEDULE, schedule.isoformat()),
+        )
+
+        task_id = await getattr(super()._tasks(context), method)(
+            request,
+            idempotency=idempotency,
+            metadata=metadata,
+        )
+
+        return IMPORT_json.dumps(
+            {
+                'taskId': IMPORT_google_protobuf_json_format.MessageToDict(task_id)
+            }
+        )
+
+    async def _reader(  # type: ignore[override]
+        self,
+        method: str,
+        context: IMPORT_reboot_aio_contexts.ReaderContext | IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        request_type: type[IMPORT_google_protobuf_message.Message],
+        json_request: str,
+        json_options: str,
+    ) -> str:
+        options = IMPORT_json.loads(json_options)
+
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None
+
+        if 'idempotency' in options:
+            idempotency = IMPORT_reboot_aio_contexts.Context.idempotency(
+                alias=options['idempotency'].get('alias'),
+                key=options['idempotency'].get('key'),
+                each_iteration=options['idempotency'].get('eachIteration'),
+                generated=options['idempotency'].get('generated', False),
+            )
+
+        method_handle = IMPORT_functools.partial(
+            getattr(super()._reader(context), method),
+            bearer_token=options.get("bearerToken"),
+            idempotency=idempotency,
+        )
+        return await self._call(
+            callable=method_handle,
+            aborted_type=getattr(
+                Topic, method + 'Aborted'
+            ),
+            request_type=request_type,
+            json_request=json_request,
+        )
+
+    async def _writer(  # type: ignore[override]
+        self,
+        method: str,
+        context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        request_type: type[IMPORT_google_protobuf_message.Message],
+        json_request: str,
+        json_options: str,
+    ) -> str:
+        options = IMPORT_json.loads(json_options)
+
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None
+
+        if 'idempotency' in options:
+            idempotency = IMPORT_reboot_aio_contexts.Context.idempotency(
+                alias=options['idempotency'].get('alias'),
+                key=options['idempotency'].get('key'),
+                each_iteration=options['idempotency'].get('eachIteration'),
+                generated=options['idempotency'].get('generated', False),
+            )
+
+        if 'schedule' in options:
+            when = IMPORT_google_protobuf_timestamp_pb2.Timestamp()
+            when.FromJsonString(options['schedule']['when'])
+            return await self._schedule(
+                method=method,
+                context=context,
+                schedule=IMPORT_reboot_time_DateTimeWithTimeZone.from_protobuf_timestamp(when),
+                idempotency=idempotency,
+                request_type=request_type,
+                json_request=json_request,
+            )
+
+        method_handle = IMPORT_functools.partial(
+            getattr(super()._writer(context), method),
+            idempotency=idempotency,
+            bearer_token=options.get("bearerToken"),
+        )
+        return await self._call(
+            callable=method_handle,
+            aborted_type=getattr(
+                Topic, method + 'Aborted'
+            ),
+            request_type=request_type,
+            json_request=json_request,
+        )
+
+    async def _transaction(  # type: ignore[override]
+        self,
+        method: str,
+        context: IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        request_type: type[IMPORT_google_protobuf_message.Message],
+        json_request: str,
+        json_options: str,
+    ) -> str:
+        options = IMPORT_json.loads(json_options)
+
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None
+
+        if 'idempotency' in options:
+            idempotency = IMPORT_reboot_aio_contexts.Context.idempotency(
+                alias=options['idempotency'].get('alias'),
+                key=options['idempotency'].get('key'),
+                each_iteration=options['idempotency'].get('eachIteration'),
+                generated=options['idempotency'].get('generated', False),
+            )
+
+        if 'schedule' in options:
+            when = IMPORT_google_protobuf_timestamp_pb2.Timestamp()
+            when.FromJsonString(options['schedule']['when'])
+            return await self._schedule(
+                method=method,
+                context=context,
+                schedule=IMPORT_reboot_time_DateTimeWithTimeZone.from_protobuf_timestamp(when),
+                idempotency=idempotency,
+                request_type=request_type,
+                json_request=json_request,
+            )
+
+        method_handle = IMPORT_functools.partial(
+            getattr(super()._workflow(context), method),
+            idempotency=idempotency,
+            bearer_token=options.get("bearerToken"),
+        )
+        return await self._call(
+            callable=method_handle,
+            aborted_type=getattr(
+                Topic, method + 'Aborted'
+            ),
+            request_type=request_type,
+            json_request=json_request,
+        )
+
+    async def _workflow(  # type: ignore[override]
+        self,
+        method: str,
+        context: IMPORT_reboot_aio_contexts.WriterContext | IMPORT_reboot_aio_contexts.TransactionContext | IMPORT_reboot_aio_contexts.WorkflowContext | IMPORT_reboot_aio_external.ExternalContext,
+        request_type: type[IMPORT_google_protobuf_message.Message],
+        json_request: str,
+        json_options: str,
+    ) -> str:
+        options = IMPORT_json.loads(json_options)
+
+        idempotency: IMPORT_typing.Optional[IMPORT_reboot_aio_idempotency.Idempotency] = None
+
+        if 'idempotency' in options:
+            idempotency = IMPORT_reboot_aio_contexts.Context.idempotency(
+                alias=options['idempotency'].get('alias'),
+                key=options['idempotency'].get('key'),
+                each_iteration=options['idempotency'].get('eachIteration'),
+                generated=options['idempotency'].get('generated', False),
+            )
+
+        assert 'schedule' in options
+
+        when = IMPORT_google_protobuf_timestamp_pb2.Timestamp()
+        when.FromJsonString(options['schedule']['when'])
+
+        return await self._schedule(
+            method=method,
+            context=context,
+            schedule=IMPORT_reboot_time_DateTimeWithTimeZone.from_protobuf_timestamp(when),
+            idempotency=idempotency,
+            request_type=request_type,
+            json_request=json_request,
+        )
+
+# yapf: enable
