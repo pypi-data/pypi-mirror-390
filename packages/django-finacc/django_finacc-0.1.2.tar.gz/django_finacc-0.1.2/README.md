@@ -1,0 +1,94 @@
+# 🧾 django-finacc
+
+**Plug-and-Play Financial Accounting for Django** — a reusable **double-entry bookkeeping** engine with REST APIs, period locking, GST/VAT support, and chart of accounts templates.
+
+> Works with Django 5.x and Python 3.11+.  
+> Built for modular integration into ERP, CRM, or eCommerce projects.
+
+---
+
+## 🚀 Features
+
+- 🧮 **True Double-Entry Accounting** — balanced journal entries enforced at DB level  
+- 🧑‍💼 **Multi-Company** & **Multi-Currency** (with FX rate tables)  
+- 🧾 **Chart of Accounts (CoA)** templates (India GST ready)  
+- 🧷 **Period Locking & Year Close** helpers  
+- 💰 **GST/VAT Tax Models** — inclusive/exclusive with CGST/SGST/IGST splits  
+- ⚙️ **DRF APIViews** — clean JSON endpoints for accounting automation  
+- 📊 **Trial Balance / Ledger Helpers**  
+- 🔐 **Immutable Entries** (reversal-only edits, planned)  
+- 🧱 **Plug-and-Play** — drop into any Django project as an app  
+
+---
+
+## 📦 Installation
+
+```bash
+pip install django-finacc
+
+```
+## setting.py entry
+```setting.py
+INSTALLED_APPS += ["rest_framework", "finacc"]
+```
+## Adding Urls to project settings.py
+```setting.py
+path("api/finacc/", include("finacc.api.urls"))
+python manage.py finacc_bootstrap_coa --company=1 --template=india_basic
+```
+## example 
+```posting
+POST /api/finacc/journal/entries/
+{
+  "company": 1,
+  "date": "2025-11-08",
+  "currency": "INR",
+  "memo": "Opening capital",
+  "lines": [
+    {"account": 1, "debit": "100000.00", "credit": "0.00"},
+    {"account": 2, "debit": "0.00", "credit": "100000.00"}
+  ]
+}
+```
+
+## App Installation In Project Setting
+```installation
+INSTALLED_APPS += ["rest_framework", "finacc"]
+```
+## Project Setting Initialization
+```initialization
+FINACC = {
+    "BASE_CURRENCY": "INR",
+    "AUTO_POST_ON_CREATE": True,
+}
+```
+ 
+## example
+```usage
+from decimal import Decimal
+from finacc.posting.rules import create_simple_entry
+from finacc.posting.engine import post_entry
+
+je = create_simple_entry(company, date, "INR", "Sale", [
+    {"account": ar_acc, "debit": Decimal("1180.00")},
+    {"account": rev_acc, "credit": Decimal("1000.00")},
+    {"account": gst_payable_acc, "credit": Decimal("180.00")},
+])
+post_entry(je)
+
+
+def post_invoice(company, invoice):
+    # map lines -> AR, Revenue, Tax
+    ...
+    return post_entry(je)
+```
+
+## Implementation Notes & Roadmap
+
+- Immutable posted entries: disable updates/deletes; allow reversal entries only (planned: reverse_entry(entry_id)).
+- Reports: Add Ledger, Balance Sheet, and P&L helpers with tree aggregation.
+- Tax: Load taxes_india_gst.json via setup script; provide posting helpers that split CGST/SGST/IGST to mapped accounts.
+- FX: Add revaluation utilities for period end.
+- Permissions: Add IsCompanyMember mixin to filter by company_id.
+- Docs site: MkDocs with Quickstart, API reference, and diagrams.
+- CI: GitHub Actions matrix for Python 3.11/3.12 and Django 5.0/5.1.
