@@ -1,0 +1,450 @@
+Metadata-Version: 2.4
+Name: todozi
+Version: 0.1.6
+Summary: AI/Human task management system with file-based storage
+Home-page: https://github.com/cyber-boost/todozi
+Author: CyberBoost
+License: MIT
+Project-URL: Homepage, https://todozi.com
+Project-URL: Repository, https://github.com/cyber-boost/todozi
+Project-URL: Documentation, https://todozi.com
+Project-URL: Bug Tracker, https://github.com/cyber-boost/todozi/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Shells
+Classifier: Topic :: Utilities
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.111.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Requires-Dist: sqlmodel>=0.0.16
+Requires-Dist: pydantic>=2.6.0
+Requires-Dist: pydantic-settings>=2.3.0
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: torch>=2.0.0
+Requires-Dist: transformers>=4.36.0
+Requires-Dist: sentence-transformers
+Requires-Dist: tokenizers
+Requires-Dist: trl>=0.7.0
+Requires-Dist: datasets>=2.14.0
+Requires-Dist: gradio<5.0.0,>=4.0.0
+Requires-Dist: accelerate>=0.24.0
+Requires-Dist: safetensors>=0.4.0
+Requires-Dist: tqdm
+Requires-Dist: aiohttp
+Requires-Dist: aiofiles
+Requires-Dist: structlog
+Requires-Dist: textual>=0.19.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: ollama>=0.2.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: watchdog
+Dynamic: home-page
+Dynamic: requires-python
+
+# Todozi - AI/Human Task Management System
+
+**Todozi** is a comprehensive, AI-first task and knowledge management system that enables seamless collaboration between humans and AI agents. Built entirely in Python, Todozi combines powerful task management with semantic understanding, memory systems, and intelligent automation.
+
+## 🎯 Core Philosophy
+
+Todozi is designed around a **TAG-FIRST** approach where AI models can naturally embed structured information directly in conversations. This allows models to remember, organize, and manage tasks better than humans - capturing context, dependencies, and relationships automatically.
+
+## 🚀 Key Features
+
+### **1. AI-Powered Task Management**
+- Intelligent task creation with automatic priority inference
+- Semantic search across all content types
+- AI/human/collaborative task assignment
+- Project-based organization with automatic grouping
+- Real-time progress tracking and analytics
+
+### **2. Enhanced Terminal UI (TUI)**
+- Beautiful, feature-rich terminal interface with 8 comprehensive tabs
+- Real-time analytics dashboard with completion tracking
+- Modal dialogs for task editing and management
+- Toast notifications and activity feed
+- Live file watching for automatic updates
+- Server management and API key controls
+
+### **3. Chat Interface for AI Models** 🆕
+The `chat/` directory contains a revolutionary web-based chat interface that demonstrates Todozi's core value proposition:
+
+- **20% Sidebar**: Chat history with scrollable session list
+- **40% Chat Interface**: Real-time messaging with AI assistant
+- **40% Todozi Panel**: Dynamic task management with project filtering
+
+**Why This Matters**: The chat interface shows how AI models can use Todozi tags (`<todozi>`, `<memory>`, `<idea>`, etc.) to naturally structure information during conversations. This allows models to:
+- Remember context better than humans
+- Automatically organize tasks and knowledge
+- Maintain project continuity across sessions
+- Capture insights and ideas in real-time
+
+### **4. Training System** 🆕
+The `train/` directory contains powerful training scripts for fine-tuning AI models on Todozi data:
+
+- **`train-todozi-basic.py`**: Comprehensive BCO (Best-of-N) training script
+- Supports multiple batch strategies (balanced, bootstrap, k-fold, stratified, etc.)
+- Integration with Hugging Face models (Gemma, Llama, etc.)
+- Automatic dataset loading from batch files
+- Configurable training parameters
+
+**Training Features**:
+- Multiple batch file formats and strategies
+- BCO (Best-of-N) training with reference model
+- Support for bf16/fp16 precision
+- Automatic checkpointing and progress tracking
+- Integration with TRL library for RLHF
+
+### **5. Memory & Knowledge System**
+- Structured memory capture with importance levels
+- Short-term and long-term memory retention
+- Emotional memory tracking
+- Secret/human/standard memory types
+- Semantic memory search
+
+### **6. Idea & Innovation Tracking**
+- Capture creative ideas with importance levels
+- Team/public/private sharing options
+- Breakthrough idea identification
+- Tag-based organization
+
+### **7. Advanced Features**
+- Error logging with severity classification
+- Reminder system with overdue detection
+- Training data collection for model improvement
+- Code chunking for large projects
+- Emotional state tracking
+- Content summarization
+
+## 📦 Installation
+
+```bash
+pip install todozi
+```
+
+Or for development installation:
+
+```bash
+git clone https://github.com/cyber-boost/todozi.git
+cd todozi/tdz_py
+pip install -e .
+```
+
+## 🛠️ Quick Start
+
+### Terminal UI (TUI)
+
+Launch the enhanced terminal interface:
+
+```bash
+todozi
+# or
+python -m todozi.tui
+```
+
+**Keyboard Shortcuts**:
+- `1-8`: Direct tab access (Projects, Tasks, Done, Find, More, API, Feed, Bye)
+- `a`: Add new task
+- `e`: Edit task
+- `c`: Complete task
+- `d`: Delete task
+- `Space`: Task actions menu
+- `Enter`: Task details modal
+- `Ctrl+E`: Modal task editing
+- `Ctrl+R`: Full refresh
+- `?`: Help
+
+### Command Line Interface (CLI)
+
+Use the `tdz` command for quick operations:
+
+```bash
+# Launch TUI (default)
+tdz
+
+# CLI commands
+tdz task "Review quarterly budget"
+tdz urgent "Fix critical security issue"
+tdz find "authentication"
+tdz stats
+```
+
+### Python API
+
+```python
+from todozi import Storage, Task, Priority, Status
+
+# Initialize storage
+storage = await Storage.new()
+
+# Create a task
+task = Task.new_full(
+    user_id="user123",
+    action="Implement user authentication",
+    time="4 hours",
+    priority=Priority.HIGH,
+    parent_project="web-app",
+    status=Status.TODO,
+    assignee=Assignee.AI,
+    tags=["backend", "security"],
+    context_notes="Use OAuth2 with JWT tokens"
+)
+
+# Add to project
+await storage.add_task_to_project(task)
+
+# List tasks
+tasks = storage.list_tasks_across_projects(TaskFilters())
+
+# Complete task
+storage.complete_task_in_project(task.id)
+```
+
+## 💬 Chat Interface
+
+The chat interface demonstrates Todozi's tag-based approach for AI models:
+
+```bash
+cd chat
+pip install -r requirements.txt
+python chat.py
+```
+
+Then open `http://localhost:8275` in your browser.
+
+**Example Conversation**:
+```
+User: "I need to build a user authentication system for my web app"
+
+AI: I'll help you organize this! <todozi>Build user authentication system; 4 hours; high; web-app; todo; ai; backend,security; none; Implement OAuth2 with JWT tokens; 0%</todozi>
+
+<memory>standard; OAuth2 flows are complex; Need secure token handling; Important for web security; high; long; security,authentication</memory>
+
+What specific authentication methods do you want to support?
+```
+
+The AI automatically:
+- Creates structured tasks with proper fields
+- Captures important memories
+- Maintains project context
+- Organizes information semantically
+
+## 🎓 Training AI Models
+
+Train models on Todozi data using the training scripts:
+
+```bash
+cd train
+pip install -r requirements.txt
+
+# Basic training
+python pure/train-todozi-basic.py
+
+# Advanced training (if available)
+python pure/train-todozi-advanced.py
+```
+
+**Training Script Features**:
+- Automatic batch file selection
+- BCO (Best-of-N) training configuration
+- Support for multiple model architectures
+- Configurable training parameters
+- Progress tracking and checkpointing
+
+**Available Batch Strategies**:
+- `balanced/`: Balanced sampling across categories
+- `bootstrap/`: Bootstrap resampling
+- `kfold/`: K-fold cross-validation splits
+- `stratified/`: Stratified sampling
+- `progressive/`: Progressive training sets
+- `ml/`: Machine learning optimized splits
+- `custom/`: Custom batch configurations
+
+## 📚 Todozi Tags
+
+Todozi uses XML-like tags that AI models can naturally embed in conversations:
+
+### Task Creation
+```xml
+<todozi>action; time; priority; project; status; assignee; tags; dependencies; context; progress%</todozi>
+```
+
+**Example**:
+```xml
+<todozi>Fix login bug; 2 hours; high; auth-system; in_progress; ai; bug,security; none; JWT validation issue; 25%</todozi>
+```
+
+### Memory Capture
+```xml
+<memory>type; moment; meaning; reason; importance; term; tags</memory>
+```
+
+**Example**:
+```xml
+<memory>standard; Discovered async patterns in Rust; Makes concurrent code cleaner; Will use for API calls; high; long; rust,async,patterns</memory>
+```
+
+### Idea Capture
+```xml
+<idea>idea; share; importance; tags; context</idea>
+```
+
+**Example**:
+```xml
+<idea>Voice-controlled task management; team; breakthrough; innovation,product,ai; Could revolutionize productivity</idea>
+```
+
+### Error Logging
+```xml
+<error>title; description; severity; category; source; context; tags</error>
+```
+
+**Example**:
+```xml
+<error>Database timeout; Connection failed after 30s; critical; database; postgres; Need connection pooling; performance,database</error>
+```
+
+## 🏗️ Project Structure
+
+```
+tdz_py/
+├── todozi/          # Main package
+│   ├── tui.py       # Enhanced Terminal UI
+│   ├── cli.py       # Command-line interface
+│   ├── storage.py   # File-based storage
+│   ├── models.py    # Data models
+│   ├── server.py    # REST API server
+│   └── ...
+├── chat/            # Chat interface for AI models
+│   ├── chat.py      # Flask chat server
+│   ├── system.py    # AI system prompts
+│   ├── tdz.html     # Web interface
+│   └── requirements.txt
+├── train/           # Training scripts
+│   ├── pure/        # Pure training scripts
+│   │   ├── train-todozi-basic.py
+│   │   └── train-todozi-advanced.py
+│   ├── batches/     # Training batch files
+│   └── requirements.txt
+├── tests/           # Test suite
+├── tdz.py           # CLI entry point
+├── pyproject.toml   # Package configuration
+└── py.sh            # Build & publish script
+```
+
+## 🔧 Development
+
+### Building the Package
+
+Use the automated build script:
+
+```bash
+./py.sh              # Build only
+./py.sh --upload     # Build and upload to PyPI
+```
+
+The script automatically:
+- Increments version number (patch version)
+- Cleans old build artifacts
+- Builds source distribution and wheel
+- Optionally uploads to PyPI
+
+### Running Tests
+
+```bash
+pytest
+# or
+python -m pytest
+```
+
+### Development Installation
+
+```bash
+pip install -e ".[dev]"
+```
+
+## 📊 Features Overview
+
+### Terminal UI Tabs
+
+1. **📁 Projects**: Manage and organize projects
+2. **📋 Tasks**: View, filter, and manage tasks with analytics
+3. **✅ Done**: Completed tasks with sorting and filtering
+4. **🔍 Find**: Semantic search across all content
+5. **🔮 More**: Extended data (Ideas, Memories, Feelings, Errors, Training, Queue, Reminders, Analytics)
+6. **🔑 API**: Server management and API key administration
+7. **📰 Feed**: Live activity feed with real-time updates
+8. **👋 Bye**: Exit screen
+
+### API Server
+
+Start the REST API server:
+
+```python
+from todozi.server import start_server
+
+# Start server on default port
+await start_server()
+```
+
+**Key Endpoints**:
+- `GET /tasks` - List all tasks
+- `POST /tasks` - Create new task
+- `GET /tasks/search?q={query}` - Semantic search
+- `GET /agents` - List AI agents
+- `POST /chat/process` - Process chat with Todozi tags
+
+## 🎯 Use Cases
+
+### For Developers
+- Project task management
+- Code review tracking
+- Bug tracking and resolution
+- Documentation tasks
+- Learning and knowledge capture
+
+### For AI Researchers
+- Training data collection
+- Model fine-tuning workflows
+- Experiment tracking
+- Knowledge base building
+- Multi-agent coordination
+
+### For Teams
+- Collaborative task management
+- Shared knowledge base
+- Project planning and tracking
+- Meeting notes and action items
+- Innovation capture
+
+## 🔗 Links
+
+- **Website**: https://todozi.com
+- **GitHub**: https://github.com/cyber-boost/todozi
+- **Documentation**: https://todozi.com
+- **Issues**: https://github.com/cyber-boost/todozi/issues
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🤝 Contributing
+
+Contributions welcome! Please see CONTRIBUTING.md for guidelines.
+
+## 🙏 Acknowledgments
+
+Built with love for the AI and developer communities. Special thanks to all contributors and users who help make Todozi better every day.
+
+---
+
+**Todozi** - Where AI and humans collaborate seamlessly. 🚀
