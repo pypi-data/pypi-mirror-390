@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pfsense-redactor"
+version = "1.0.9"
+description = "Safely removes sensitive information from pfSense config.xml exports"
+readme = "README.md"
+authors = [
+    {name = "pfSense Redactor Contributors"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: System :: Networking :: Firewalls",
+    "Topic :: System :: Systems Administration",
+]
+keywords = ["pfsense", "security", "redaction", "privacy", "firewall", "config", "xml"]
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+]
+
+[project.urls]
+Homepage = "https://github.com/grounzero/pfsense-redactor"
+Repository = "https://github.com/grounzero/pfsense-redactor"
+Issues = "https://github.com/grounzero/pfsense-redactor/issues"
+
+[project.scripts]
+pfsense-redactor = "pfsense_redactor.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pfsense_redactor*"]
+exclude = ["tests*"]
+
+[tool.pylint.main]
+ignore-patterns = ["test_.*\\.py"]
+
+[tool.pylint.messages_control]
+disable = [
+    "W0212",  # protected-access (needed to test private methods)
+    "W0621",  # redefined-outer-name (pytest fixtures pattern)
+    "C0415",  # import-outside-toplevel (lazy imports in tests)
+    "R0801",  # duplicate-code (similar test patterns)
+]
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "_", "ip", "id"]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.design]
+max-args = 7
+max-attributes = 15
+max-branches = 15
+max-locals = 15
+max-statements = 60
+max-returns = 8
