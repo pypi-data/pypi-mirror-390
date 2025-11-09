@@ -1,0 +1,172 @@
+Metadata-Version: 2.4
+Name: freezeee3
+Version: 1.8.7
+Summary: for a competetion
+Home-page: https://github.com/Hello-Mr-Crab/pywechat
+Author: freezeee4
+Author-email: 2062137439@qq.com
+License: Apache-2.0
+Keywords: rpa,windows,wechat,automation
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.26.4
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: summary
+
+import time
+import creabot
+
+
+def init(id, name):
+    bot = creabot.Creabot(id)
+    maplist = bot.list_map()
+    targetmap = next((f for f in maplist if f["name"] == name), None)
+    if targetmap:
+        mapid = targetmap["id"]
+        bot.set_map(mapid)
+        pointlist = bot.list_map_point(mapid)
+        print(pointlist)
+        return bot, mapid, pointlist
+    else:
+        print("目标地图未找到")
+        exit()
+
+def nav_to(bot, pointlist, name):
+    bot, mapid, pointlist = init("192.168.192.11", "0109")
+    dss = next((f for f in pointlist if f["type"] == "anchor_point"), None)
+    if dss:
+        print("正在重定位")
+        bot.tts_sync("开始重定位，请稍候")
+        bot.relocate_sync(dss["x"], dss["y"], dss["theta"])
+        bot.tts_sync("重定位完成")
+    else:
+        print("没有找到定位点")
+        bot.tts_sync("没有找到定位点")
+
+    dst = next((f for f in pointlist if f["name"] == name), None)
+    if dst:
+        print(f"正在导航去{name}点")
+        bot.tts_sync(f"正在导航去{name}点，请稍候")
+        bot.start_navigation_sync(dst["x"], dst["y"], dst["theta"], 0.5)
+        bot.tts_sync(f"已到达{name}点")
+    else:
+        print("点位名称不存在")
+        bot.tts_sync("点位名称不存在，请确认指令")
+
+
+def main():
+    bot, mapid, pointlist = init("192.168.192.11", '0109')
+    print('我将去取货点，再去递货点')
+    nav_to(bot,pointlist,'2')
+
+    bot.tts_sync('请将需要递送的物品放入仓内')
+    bot.door_ctrl(1)
+    bot.light_ctrl(1)
+    while True:
+        result = bot.exist_object()
+        if result:
+            bot.tts_sync('已取得物品')
+            bot.light_ctrl(0)
+            bot.door_ctrl(0)
+            break
+        else:
+            print('没有物体')
+
+
+    nav_to(bot,pointlist,'四')
+    bot.tts_sync('您的物品已送达，请取走')
+    bot.door_ctrl(1)
+    bot.light_ctrl(1)
+    while True:
+        result = bot.exist_object()
+        if result:
+            print('没拿出来')
+            time.sleep(0.5)
+        else:
+            bot.tts_sync('物品已取出')
+            bot.light_ctrl(0)
+            bot.door_ctrl(0)
+            nav_to(bot,pointlist,'起点')
+            break
+
+    arrray = {'零','一','二','三','四','五','六'}
+    while True:
+        m,n=None,None
+        index = 0
+        bot.tts_sync('黑子说话')
+        res = bot.asr_sync(8)
+        print("你说的内容：", res)
+        for char in res:
+            if char in arrray:
+                index += 1
+                if index ==1:
+                    m = char
+                elif index == 2:
+                    n = char
+                    bot.tts_sync(f'我要到{m}号点取货，到{n}号点送货')
+                    break
+        if m and n:
+            break
+        print(res)
+        print('重新说')
+    nav_to(bot,pointlist,f'{m}')
+    bot.tts_sync('请将需要递送的物品放入仓内')
+    bot.door_ctrl(1)
+    bot.light_ctrl(1)
+    wed = bot.exist_object()
+    while True:
+        if wed:
+            bot.tts_sync('已取得物品')
+            bot.light_ctrl(0)
+            bot.door_ctrl(0)
+            break
+        else:
+            bot.tts_sync('没有物品')
+    nav_to(bot,pointlist,f'{n}')
+    bot.tts_sync('您的物品已送达，请取走')
+    bot.door_ctrl(1)
+    bot.light_ctrl(1)
+    while True:
+        result = bot.exist_object()
+        if result:
+            print('没拿出来')
+        else:
+            bot.tts_sync('物品已取出')
+            bot.light_ctrl(0)
+            bot.door_ctrl(0)
+            nav_to(bot,pointlist,'起点')
+
+
+def charge():
+    bot, map, pointlist = init("192.168.192.11", '0109')
+    while True:
+        bot.tts_sync('请给我下达下一步指令')
+        res = bot.asr_sync(3)
+        print('你说的内容', {res})
+        if res:
+            if "充电" in res:
+                bot.tts_sync('好的我要去充电了，请不要拦住我')
+                print('开始上桩')
+                nav_to(bot, pointlist, '六')
+                dst = next((f for f in pointlist if f["type"] == "charge"), None)
+                print(dst['x'], dst['y'], dst['theta'])
+                step = bot.dock_charge_on_sync('0109', dst['x'], dst['y'], dst['theta'])
+                if step:
+                    time.sleep(10)
+                    bot.tts_sync('充电下桩')
+                    bot.dock_charge_off_sync()
+                    break
+                else:
+                    bot.tts_sync(f'我听到你说{res}，再说一遍')
+    
+if __name__ == "__main__":
+    main()  
+    charge()
