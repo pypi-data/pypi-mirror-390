@@ -1,0 +1,130 @@
+# Conversation Extension Pipeline Configuration with Checkpoint/Resume
+# This configuration enables automatic checkpoint/resume functionality
+
+workspace_id: "production_run"
+
+# Checkpoint Configuration (NEW FEATURE)
+checkpoint:
+  enabled: true  # Enable checkpoint/resume
+  checkpoint_file: "workspaces/production_run/checkpoint.json"
+  auto_save_frequency: 10  # Save checkpoint every 10 conversations
+  validate_input_hash: true  # Verify input file hasn't changed on resume
+  resume_mode: "auto"  # Options: auto | manual | fresh
+
+# Provider configurations
+providers:
+  user_followup:
+    name: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    model: "gpt-4o-mini"
+    temperature: 0.7
+    max_tokens: 2048
+    timeout: 60
+    max_retries: 3
+    
+    # Rate Limiting Options (choose ONE approach):
+    
+    # Option 1: Concurrency Limiting (RECOMMENDED - simpler and more intuitive)
+    # Limits the number of concurrent API calls
+    # max_concurrent_calls: 50  # Allow max 50 concurrent requests
+    
+    # Option 2: RPM-based Rate Limiting (traditional approach)
+    # Limits requests per minute using token bucket algorithm
+    # rate_limit_rpm: 500  # Optional: Override default (auto-detected as 500 for gpt-4o-mini)
+    # rate_limit_shared_key: "my_openai_account"  # Optional: Share rate limit with assistant_response
+    
+    # If both max_concurrent_calls and rate_limit_rpm are specified,
+    # max_concurrent_calls takes precedence
+  
+  assistant_response:
+    name: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    model: "gpt-4o-mini"
+    temperature: 0.7
+    max_tokens: 8192
+    timeout: 120
+    max_retries: 3
+    
+    # Rate Limiting Options (choose ONE approach):
+    
+    # Option 1: Concurrency Limiting (RECOMMENDED - simpler and more intuitive)
+    # max_concurrent_calls: 50  # Allow max 50 concurrent requests
+    
+    # Option 2: RPM-based Rate Limiting (traditional approach)
+    # rate_limit_rpm: 500  # Optional: Override default (auto-detected as 500 for gpt-4o-mini)
+    # rate_limit_shared_key: "my_openai_account"  # Optional: Share rate limit with user_followup
+
+# Generation settings
+generation:
+  num_conversations: 1000  # Total conversations to generate
+  turn_range:
+    min: 3
+    max: 8
+  parallel_workers: 10
+  extension_mode: "smart"  # smart | legacy
+  skip_invalid: true
+  turn_calculation: "additional"  # additional | total
+
+# Base data source
+base_data:
+  enabled: true
+  source_type: "file"  # file | huggingface
+  file_path: "input.jsonl"
+  format: "conversations"
+  shuffle: false
+
+# Storage configuration
+storage:
+  type: "jsonl"
+  output_file: "workspaces/production_run/output.jsonl"
+  partial_file: "workspaces/production_run/partial.jsonl"  # No longer used, kept for compatibility
+  failed_file: "workspaces/production_run/failed.jsonl"
+
+# System messages (saved to dataset)
+system_messages:
+  prepend_always:
+    enabled: false
+  add_if_missing:
+    enabled: true
+    content: "You are a helpful AI assistant. Current time: {current_datetime} ({timezone})"
+  append_always:
+    enabled: false
+
+# Generation-only system messages (NEW FEATURE - NOT saved to dataset)
+generation_system_messages:
+  assistant_response:
+    enabled: true
+    content: |
+      You are generating high-quality assistant responses for a training dataset.
+      
+      Quality Standards:
+      - Accuracy: Provide factually correct information
+      - Clarity: Use simple, clear language
+      - Completeness: Address all aspects of the question
+      - Examples: Include concrete examples when helpful
+      
+      Note: This message is used during generation but NOT saved to the dataset.
+
+# DateTime configuration
+datetime_config:
+  enabled: true
+  mode: "random_from_range"
+  range:
+    start: "2024-01-01T00:00:00"
+    end: "2024-12-31T23:59:59"
+  format: "%Y-%m-%d %H:%M:%S"
+  timezone: "UTC"
+
+# Custom prompts
+prompts:
+  followup_question: |
+    Based on the conversation history below, generate a natural follow-up question that:
+    - Continues the topic naturally
+    - Shows genuine curiosity
+    - Seeks clarification or more details
+    - Is contextually relevant
+    
+    Conversation History:
+    {history}
+    
+    Generate ONLY the follow-up question inside <user></user> tags.

@@ -1,0 +1,86 @@
+# Conversation Extension Pipeline Configuration - Streaming Example
+# 
+# This example demonstrates how to enable streaming mode for providers.
+# Streaming mode collects chunks internally but maintains the same API.
+
+# Provider configuration with streaming enabled
+providers:
+  user_followup:
+    name: openai
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4-turbo
+    temperature: 0.8
+    max_tokens: 2048
+    use_streaming: false  # Disable for quick user questions
+    
+  assistant_response:
+    name: anthropic
+    api_key: ${ANTHROPIC_API_KEY}
+    model: claude-3-5-sonnet-20241022
+    temperature: 0.7
+    max_tokens: 8192
+    use_streaming: true   # Enable for longer assistant responses
+
+generation:
+  num_conversations: 10
+  turn_range:
+    min: 3
+    max: 8
+  parallel_workers: 10
+  extension_mode: "smart"
+  skip_invalid: true
+  turn_calculation: "additional"
+
+base_data:
+  enabled: true
+  source_type: file
+  file_path: examples/conversation_extension/sample_data.jsonl
+  format: conversations
+  shuffle: false
+
+storage:
+  type: jsonl
+  output_file: output_streaming.jsonl
+  partial_file: partial_streaming.jsonl
+  failed_file: failed_streaming.jsonl
+
+datetime_config:
+  enabled: true
+  mode: random_from_range
+  timezone: UTC
+  format: "%Y-%m-%d %H:%M:%S"
+  range:
+    start: "2025-01-01 00:00:00"
+    end: "2025-12-31 23:59:59"
+
+system_messages:
+  prepend_always:
+    enabled: true
+    content: "You are a helpful AI assistant. Current time: {current_datetime} ({timezone})."
+  append_always:
+    enabled: false
+    content: ""
+  add_if_missing:
+    enabled: false
+    content: ""
+
+prompts:
+  followup_question: |
+    ## Your Task
+    Generate intelligent follow-up user question based on conversation history.
+    
+    ### CONVERSATION HISTORY:
+    {history}
+    
+    ### INSTRUCTIONS:
+    - Generate a meaningful follow-up question
+    - Be conversational and natural
+    - Vary your phrasing and tone
+    - Build on the assistant's last response
+    
+    Return your follow-up question wrapped in XML tags:
+    <user>Your follow-up question here</user>
+
+debug:
+  log_api_timing: true
+  log_parallel_status: true

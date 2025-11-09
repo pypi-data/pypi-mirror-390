@@ -1,0 +1,229 @@
+# Conversation Extension Pipeline Configuration
+# Simplified with smart defaults from ProviderConfigManager
+
+# Workspace ID for multi-tenant isolation (optional)
+# workspace_id: "user_123_session_456"
+
+# Provider configuration for each role
+# Note: Only specify what differs from defaults!
+# Defaults: ultrasafe (usf-mini, 0.7 temp, 4096 tokens)
+providers:
+  user_followup:
+    name: ultrasafe                           # Provider: ultrasafe, openai, anthropic, openrouter
+    api_key: ${OMNIGEN_USER_FOLLOWUP_API_KEY} # Role-specific API key
+    # model: usf-mini          # ✓ Uses default
+    # temperature: 0.7         # ✓ Uses default
+    # max_tokens: 4096         # ✓ Uses default (overridden below for demo)
+    max_tokens: 2048           # Override only what you need
+    # use_streaming: false     # ✓ NEW: Enable/disable streaming mode (default: false)
+    
+  assistant_response:
+    name: ultrasafe                           # Can be different provider
+    api_key: ${OMNIGEN_ASSISTANT_RESPONSE_API_KEY}
+    max_tokens: 8192          # Override default 4096
+    # use_streaming: false     # ✓ NEW: Enable/disable streaming mode (default: false)
+
+# ============================================================================
+# CUSTOM PARAMETERS EXAMPLES
+# ============================================================================
+# Use 'additional_params' to pass provider-specific parameters that aren't
+# part of the core config (name, api_key, model, temperature, max_tokens).
+# These params are passed directly to the provider API via **kwargs.
+# ============================================================================
+
+# Example 1: OpenAI with custom parameters
+# providers:
+#   user_followup:
+#     name: openai
+#     api_key: ${OPENAI_API_KEY}
+#     model: gpt-4-turbo
+#     temperature: 0.7
+#     max_tokens: 2048
+#     additional_params:
+#       top_p: 0.9                    # Nucleus sampling (0.0-1.0)
+#       frequency_penalty: 0.5        # Reduce repetition (-2.0 to 2.0)
+#       presence_penalty: 0.3         # Encourage topic diversity (-2.0 to 2.0)
+#       stop: ["\n\n", "USER:"]       # Custom stop sequences
+#       seed: 42                      # For reproducible outputs (deterministic)
+#
+#   assistant_response:
+#     name: openai
+#     api_key: ${OPENAI_API_KEY}
+#     model: gpt-4-turbo
+#     temperature: 0.8
+#     max_tokens: 8192
+#     additional_params:
+#       top_p: 0.95
+#       frequency_penalty: 0.3
+#       presence_penalty: 0.2
+#       response_format: {"type": "json_object"}  # Force JSON output
+#       logprobs: true                # Return log probabilities
+#       top_logprobs: 5               # Number of top logprobs (0-20)
+
+# Example 2: Anthropic with custom parameters
+# providers:
+#   user_followup:
+#     name: anthropic
+#     api_key: ${ANTHROPIC_API_KEY}
+#     model: claude-3-5-sonnet-20241022
+#     temperature: 0.7
+#     max_tokens: 2048
+#     additional_params:
+#       top_p: 0.9                        # Nucleus sampling (0.0-1.0)
+#       top_k: 40                         # Top-k sampling (integer)
+#       stop_sequences: ["Human:", "\n\n"] # Custom stop sequences
+#
+#   assistant_response:
+#     name: anthropic
+#     api_key: ${ANTHROPIC_API_KEY}
+#     model: claude-3-5-sonnet-20241022
+#     temperature: 0.8
+#     max_tokens: 8192
+#     additional_params:
+#       top_p: 0.95
+#       top_k: 50
+#       metadata:                         # Request metadata for tracking
+#         user_id: "user_123"
+#         session_id: "session_456"
+
+# Example 3: OpenRouter with provider-specific routing
+# providers:
+#   user_followup:
+#     name: openrouter
+#     api_key: ${OPENROUTER_API_KEY}
+#     model: anthropic/claude-3.5-sonnet
+#     temperature: 0.7
+#     max_tokens: 2048
+#     additional_params:
+#       top_p: 0.9
+#       route: fallback              # OpenRouter routing: fallback, cheapest, etc.
+#       models:                      # Fallback model list
+#         - anthropic/claude-3.5-sonnet
+#         - openai/gpt-4-turbo
+#
+#   assistant_response:
+#     name: openrouter
+#     api_key: ${OPENROUTER_API_KEY}
+#     model: openai/gpt-4-turbo
+#     temperature: 0.8
+#     max_tokens: 8192
+#     additional_params:
+#       top_p: 0.95
+#       frequency_penalty: 0.5
+#       provider:                    # Provider preferences
+#         order: ["OpenAI", "Anthropic"]
+
+# Example 4: Minimal configuration (uses all defaults, no custom params)
+# providers:
+#   user_followup:
+#     name: ultrasafe
+#     api_key: ${OMNIGEN_USER_FOLLOWUP_API_KEY}
+#   assistant_response:
+#     name: ultrasafe
+#     api_key: ${OMNIGEN_ASSISTANT_RESPONSE_API_KEY}
+
+# Example 5: Mixed providers with different custom params
+# providers:
+#   user_followup:
+#     name: openai
+#     api_key: ${OPENAI_API_KEY}
+#     model: gpt-4-turbo
+#     temperature: 0.8
+#     additional_params:
+#       top_p: 0.9
+#       seed: 123                    # Deterministic for user questions
+#
+#   assistant_response:
+#     name: anthropic
+#     api_key: ${ANTHROPIC_API_KEY}
+#     model: claude-3-5-sonnet-20241022
+#     temperature: 0.7
+#     additional_params:
+#       top_p: 0.95
+#       top_k: 40
+#       # Uses defaults for other params
+
+generation:
+  num_conversations: 10  # Number of conversations to generate
+                         # Use 0 or omit this field to process ALL available conversations
+  turn_range:
+    min: 3
+    max: 8
+  parallel_workers: 10
+  
+  # NEW: Extension behavior options
+  extension_mode: "smart"        # "smart" (handle multi-turn) | "legacy" (extract first user only)
+  skip_invalid: true             # Skip invalid conversation patterns (first msg not user, empty, etc.)
+  turn_calculation: "additional" # "additional" (add new turns) | "total" (stay within range including existing)
+
+base_data:
+  enabled: true
+  source_type: file                    # file or huggingface
+  file_path: examples/conversation_extension/sample_data.jsonl
+  format: conversations
+  shuffle: false
+
+storage:
+  type: jsonl                          # jsonl or mongodb
+  output_file: output.jsonl
+  partial_file: partial.jsonl
+  failed_file: failed.jsonl
+  
+  # MongoDB configuration (if type: mongodb)
+  # mongodb:
+  #   connection_string: mongodb://localhost:27017
+  #   database: omnigen
+  #   collection: conversations
+
+datetime_config:
+  enabled: true
+  mode: random_from_range
+  timezone: UTC
+  format: "%Y-%m-%d %H:%M:%S"
+  range:
+    start: "2025-01-01 00:00:00"
+    end: "2025-12-31 23:59:59"
+
+system_messages:
+  prepend_always:
+    enabled: true
+    content: "You are a helpful AI assistant. Current time: {current_datetime} ({timezone})."
+  append_always:
+    enabled: false
+    content: ""
+  add_if_missing:
+    enabled: false
+    content: ""
+
+# NEW: Generation-only system messages (NOT saved to dataset)
+# These guide the LLM during generation without polluting the dataset
+generation_system_messages:
+  assistant_response:
+    enabled: false  # Set to true to enable
+    content: |
+      GENERATION GUIDANCE (not saved to dataset):
+      - Provide accurate, well-researched responses
+      - Use clear, concise language
+      - Include practical examples when helpful
+      - Maintain professional but friendly tone
+
+prompts:
+  followup_question: |
+    ## Your Task
+    Generate intelligent follow-up user question based on conversation history.
+    
+    ### CONVERSATION HISTORY:
+    {history}
+    
+    ### INSTRUCTIONS:
+    - Generate a meaningful follow-up question
+    - Be conversational and natural
+    - Vary your phrasing and tone
+    - Build on the assistant's last response
+    
+    Return your follow-up question wrapped in XML tags:
+    <user>Your follow-up question here</user>
+
+debug:
+  log_api_timing: true
+  log_parallel_status: true
