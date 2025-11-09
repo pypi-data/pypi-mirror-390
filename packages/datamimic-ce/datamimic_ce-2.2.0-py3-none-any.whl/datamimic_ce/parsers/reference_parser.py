@@ -1,0 +1,35 @@
+# DATAMIMIC
+# Copyright (c) 2023-2025 Rapiddweller Asia Co., Ltd.
+# This software is licensed under the MIT License.
+# See LICENSE file for the full text of the license.
+# For questions and support, contact: info@rapiddweller.com
+from xml.etree.ElementTree import Element
+
+from datamimic_ce.constants.element_constants import EL_REFERENCE
+from datamimic_ce.model.reference_model import ReferenceModel
+from datamimic_ce.parsers.statement_parser import StatementParser
+from datamimic_ce.statements.reference_statement import ReferenceStatement
+
+
+class ReferenceParser(StatementParser):
+    """
+    Parse element "reference" into ReferenceStatement
+    """
+
+    def __init__(
+        self,
+        element: Element,
+        properties: dict,
+    ):
+        super().__init__(
+            element,
+            properties,
+            valid_element_tag=EL_REFERENCE,
+        )
+
+    def parse(self) -> ReferenceStatement:
+        """
+        Parse element "reference" into ReferenceStatement
+        :return:
+        """
+        return ReferenceStatement(self.validate_attributes(ReferenceModel))

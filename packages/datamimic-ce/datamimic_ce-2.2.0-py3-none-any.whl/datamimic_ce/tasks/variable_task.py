@@ -1,0 +1,451 @@
+# DATAMIMIC
+# Copyright (c) 2023-2025 Rapiddweller Asia Co., Ltd.
+# This software is licensed under the MIT License.
+# See LICENSE file for the full text of the license.
+# For questions and support, contact: info@rapiddweller.com
+
+from collections.abc import Iterator
+from typing import Any, Final
+
+from datamimic_ce.clients.database_client import DatabaseClient
+from datamimic_ce.constants.attribute_constants import (
+    ATTR_CONSTANT,
+    ATTR_ENTITY,
+    ATTR_GENERATOR,
+    ATTR_SCRIPT,
+    ATTR_SOURCE,
+    ATTR_TYPE,
+    ATTR_VALUES,
+)
+from datamimic_ce.constants.element_constants import EL_VARIABLE
+from datamimic_ce.contexts.context import Context
+from datamimic_ce.contexts.geniter_context import GenIterContext
+from datamimic_ce.contexts.setup_context import SetupContext
+from datamimic_ce.data_sources.data_source_pagination import DataSourcePagination
+from datamimic_ce.data_sources.data_source_registry import DataSourceRegistry
+from datamimic_ce.data_sources.weighted_entity_data_source import WeightedEntityDataSource
+from datamimic_ce.logger import logger
+from datamimic_ce.statements.variable_statement import VariableStatement
+from datamimic_ce.tasks.key_variable_task import KeyVariableTask
+from datamimic_ce.tasks.task import CommonSubTask
+from datamimic_ce.tasks.task_util import TaskUtil
+from datamimic_ce.utils.domain_class_util import DomainClassUtil
+from datamimic_ce.utils.file_util import FileUtil
+from datamimic_ce.utils.string_util import StringUtil
+
+
+class VariableTask(KeyVariableTask, CommonSubTask):
+    _iterator: Iterator[Any] | None
+    _ITERATOR_MODE: Final = "iterator"
+    _ENTITY_MODE: Final = "entity_builder"
+    _WEIGHTED_ENTITY_MODE: Final = "weighted_entity"
+    _ITERATION_SELECTOR_MODE: Final = "iteration_selector"
+    _RANDOM_DISTRIBUTION_MODE: Final = "random_distribution"
+    _LAZY_ITERATOR_MODE: Final = "lazy_iterator"
+
+    def __init__(
+        self,
+        ctx: SetupContext,
+        statement: VariableStatement,
+        pagination: DataSourcePagination | None,
+    ):
+        super().__init__(ctx, statement, pagination)
+        self._source_script = (
+            statement.source_script if statement.source_script is not None else bool(ctx.default_source_scripted)
+        )
+        self._statement: VariableStatement = statement
+        descriptor_dir = ctx.root.descriptor_dir
+        seed: int
+        file_data: list[dict[str, Any]] | None = None
+        self._random_items_iterator = None
+        is_random_distribution = self.statement.distribution in ("random", None)
+        if is_random_distribution:
+            # Use task_id as seed for random distribution
+            seed = ctx.root.get_distribution_seed()
+
+        # Try to init generation mode of VariableTask
+        if statement.source is not None:
+            source_str = statement.source
+            separator = statement.separator or ctx.default_separator
+            # Load data from weighted entity file
+            if source_str.endswith(".wgt.ent.csv"):
+                self._weighted_data_source = WeightedEntityDataSource(
+                    file_path=descriptor_dir / source_str,
+                    separator=separator,
+                    weight_column_name=statement.weight_column,
+                )
+                self._mode = self._WEIGHTED_ENTITY_MODE
+            # Create datasource if statement has property "selector" or "iterationSelector"
+            # (working with datasource database)
+            elif statement.selector is not None or statement.iteration_selector is not None:
+                # set selector and prefix, suffix
+                self._selector = statement.selector or statement.iteration_selector
+                self._prefix = statement.variable_prefix or ctx.default_variable_prefix
+                self._suffix = statement.variable_suffix or ctx.default_variable_suffix
+
+                # Get client (Database)
+                client = ctx.get_client_by_id(source_str)
+                if not isinstance(client, DatabaseClient):
+                    raise ValueError(
+                        f"<variable> '{self._statement.name}': 'selector' only works with 'source' database (MongoDB, "
+                        f"SQL)"
+                    )
+                # Handle iteration selector
+                if statement.iteration_selector is not None:
+                    self._client = client
+                    self._mode = self._ITERATION_SELECTOR_MODE
+                # Handle static selector
+                else:
+                    # Evaluate script selector
+                    if self._selector is None:
+                        raise ValueError("No selector value in statement: {self._statement.name}")
+                    selector = TaskUtil.evaluate_variable_concat_prefix_suffix(
+                        context=ctx,
+                        expr=self._selector,
+                        prefix=self._prefix,
+                        suffix=self._suffix,
+                    )
+                    # Select data from database and shuffle
+                    if is_random_distribution:
+                        self._mode = self._RANDOM_DISTRIBUTION_MODE
+                        selected_data = client.get_by_page_with_query(selector)
+                        self._random_items_iterator = iter(
+                            DataSourceRegistry.get_shuffled_data_with_cyclic(
+                                selected_data, pagination, statement.cyclic, seed
+                            )
+                        )
+                    else:
+                        # global variable (setup variable, out of generate_stmt scope) don't need pagination and cyclic
+                        if self._statement.is_global_variable:
+                            file_data = client.get_by_page_with_query(selector)
+                        # Get data source with pagination
+                        else:
+                            len_data = ctx.data_source_len.get(statement.full_name)
+                            if len_data is None:
+                                len_data = client.count_query_length(selector)
+                            file_data = client.get_cyclic_data(
+                                selector,
+                                statement.cyclic or False,
+                                len_data,
+                                pagination,
+                            )
+                        self._iterator = iter(file_data) if file_data is not None else None
+                        self._mode = self._ITERATOR_MODE
+            else:
+                # Load data from csv or json file
+                if source_str.endswith("csv") or source_str.endswith("json"):
+                    file_data = (
+                        FileUtil.read_csv_to_dict_list(file_path=descriptor_dir / source_str, separator=separator)
+                        if source_str.endswith("csv")
+                        else FileUtil.read_json_to_list(descriptor_dir / source_str)
+                    )
+                    if is_random_distribution:
+                        self._random_items_iterator = iter(
+                            DataSourceRegistry.get_shuffled_data_with_cyclic(
+                                file_data, pagination, statement.cyclic, seed
+                            )
+                        )
+                        self._mode = self._RANDOM_DISTRIBUTION_MODE
+                    else:
+                        self._iterator = DataSourceRegistry.get_cyclic_data_iterator(
+                            data=file_data,
+                            cyclic=statement.cyclic,
+                            pagination=pagination,
+                        )
+                        self._mode = self._ITERATOR_MODE
+                # Load data from source without selector
+                else:
+                    is_lazy_source = False
+                    # Get data from database
+                    if ctx.get_client_by_id(source_str):
+                        client = ctx.get_client_by_id(source_str)
+                        if not isinstance(client, DatabaseClient):
+                            raise ValueError(
+                                f"Cannot get data from source '{source_str}' of <variable> '{statement.name}'"
+                            ) from None
+
+                        # in case of dbms product_type reflects the table name
+                        product_type = statement.type or statement.name
+                        # TODO: check if pagination is needed
+                        file_data = client.get_by_page_with_type(product_type) if product_type is not None else None
+                    # Get data from memstore
+                    elif ctx.memstore_manager.contain(source_str):
+                        product_type = statement.type or statement.name
+                        memstore = ctx.memstore_manager.get_memstore(source_str)
+                        file_data = (
+                            memstore.get_all_data_by_type(product_type)
+                            if is_random_distribution
+                            else memstore.get_data_by_type(product_type, pagination, statement.cyclic)
+                        )
+                    # Get data from script in lazy mode
+                    else:
+                        is_lazy_source = True
+
+                    if is_lazy_source:
+                        self._iterator = None
+                        self._mode = self._LAZY_ITERATOR_MODE
+                    else:
+                        if is_random_distribution:
+                            self._random_items_iterator = (
+                                iter(
+                                    DataSourceRegistry.get_shuffled_data_with_cyclic(
+                                        file_data, pagination, statement.cyclic, seed
+                                    )
+                                )
+                                if file_data is not None
+                                else None
+                            )
+                            self._mode = self._RANDOM_DISTRIBUTION_MODE
+                        else:
+                            self._iterator = iter(file_data) if file_data is not None else None
+                            self._mode = self._ITERATOR_MODE
+        elif statement.entity is not None:
+            # Create entity builder
+            locale = statement.locale or ctx.default_locale
+            dataset = statement.dataset or ctx.default_dataset
+            try:
+                self._entity_generator = self._get_entity_generator(
+                    ctx,
+                    entity_name=statement.entity,
+                    locale=locale,
+                    dataset=dataset,
+                    count=1 if pagination is None else pagination.limit,
+                    statement=statement,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to execute <variable> '{self._statement.name}': "
+                    f"Can't create entity '{statement.entity}': {e}"
+                )
+                #  Avoid printing tracebacks directly; structured logs handle context.
+                raise ValueError(
+                    f"Failed to execute <variable> '{self._statement.name}': "
+                    f"Can't create entity '{statement.entity}': {e}"
+                ) from e
+
+            self._mode = self._ENTITY_MODE
+        else:
+            self._determine_generation_mode(ctx)
+
+        if self._mode is None:
+            raise ValueError(
+                f"Must specify at least one attribute for element <{EL_VARIABLE}> '{self._statement.name}',"
+                f" such as '{ATTR_SCRIPT}', '{ATTR_CONSTANT}', '{ATTR_VALUES}', "
+                f"'{ATTR_GENERATOR}', '{ATTR_SOURCE}, '{ATTR_ENTITY}' or '{ATTR_TYPE}'"
+            )
+
+    @property
+    def statement(self) -> VariableStatement:
+        return self._statement
+
+    @staticmethod
+    def _get_entity_generator(
+        ctx: Context, entity_name: str, locale: str, dataset: str, count: int, statement: VariableStatement
+    ):
+        from random import Random
+
+        from datamimic_ce.domains.common.models.demographic_config import DemographicConfig
+
+        entity_class_name, kwargs = StringUtil.parse_constructor_string(entity_name)
+        # Inject dataset if not explicitly provided in constructor
+        kwargs.setdefault("dataset", dataset)
+        demographic_context = getattr(ctx.root, "demographic_context", None)
+        # Build demographic config + rng from statement attributes when present
+        demo_cfg = None
+        if any(
+            v is not None
+            for v in (statement.age_min, statement.age_max, statement.conditions_include, statement.conditions_exclude)
+        ):
+            includes = (
+                frozenset(x.strip() for x in (statement.conditions_include or "").split(",") if x.strip())
+                if statement.conditions_include is not None
+                else None
+            )
+            excludes = (
+                frozenset(x.strip() for x in (statement.conditions_exclude or "").split(",") if x.strip())
+                if statement.conditions_exclude is not None
+                else None
+            )
+            demo_cfg = DemographicConfig(
+                age_min=statement.age_min,
+                age_max=statement.age_max,
+                conditions_include=includes,
+                conditions_exclude=excludes,
+            )
+        rng_obj = Random(statement.rng_seed) if statement.rng_seed is not None else None
+        if demo_cfg is None and demographic_context is not None and demographic_context.overrides is not None:
+            # Share profile-level defaults when no per-variable overrides are provided.
+            demo_cfg = demographic_context.overrides
+        if rng_obj is None and demographic_context is not None:
+            # Derive entity-level RNGs from the demographics root seed to keep sampling reproducible.
+            rng_obj = Random(demographic_context.rng.randrange(2**63))
+        demographic_sampler = demographic_context.sampler if demographic_context is not None else None
+        # Build from the last parsed VariableTask (self is not accessible in staticmethod); use closure via locals()
+
+        # Check if entity_class_name contains dots indicating a domain path
+        if "." in entity_class_name:
+            # For domain paths like "common.models.Company"
+            # Create instance directly using the class factory util
+            return DomainClassUtil.create_instance(f"datamimic_ce.domains.{entity_class_name}", **kwargs)
+        else:
+            # For simple names like "Company", use the entity mapping
+            # Complete mapping of all entities across domain_test
+            entity_mappings = {
+                # Common domain entities
+                "Company": "common.services.CompanyService",
+                "Person": "common.services.PersonService",
+                "Address": "common.services.AddressService",
+                "City": "common.services.CityService",
+                "Country": "common.services.CountryService",
+                # Finance domain entities
+                "CreditCard": "finance.services.CreditCardService",
+                "Bank": "finance.services.BankService",
+                "BankAccount": "finance.services.BankAccountService",
+                "Transaction": "finance.services.TransactionService",
+                # Ecommerce domain entities
+                "Product": "ecommerce.services.ProductService",
+                "Order": "ecommerce.services.OrderService",
+                # Healthcare domain entities
+                "Patient": "healthcare.services.PatientService",
+                "Doctor": "healthcare.services.DoctorService",
+                "Hospital": "healthcare.services.HospitalService",
+                "MedicalDevice": "healthcare.services.MedicalDeviceService",
+                "MedicalProcedure": "healthcare.services.MedicalProcedureService",
+                # Insurance domain entities (new domain)
+                "InsuranceCompany": "insurance.services.InsuranceCompanyService",
+                "InsurancePolicy": "insurance.services.InsurancePolicyService",
+                "InsuranceProduct": "insurance.services.InsuranceProductService",
+                "InsuranceCoverage": "insurance.services.InsuranceCoverageService",
+                # Public Sector domain entities (new domain)
+                "AdministrationOffice": "public_sector.services.AdministrationOfficeService",
+                "EducationalInstitution": "public_sector.services.EducationalInstitutionService",
+                "PoliceOfficer": "public_sector.services.PoliceOfficerService",
+            }
+
+            # Use the mapping to create the entity
+            if entity_class_name in entity_mappings:
+                domain_entity_path = entity_mappings[entity_class_name]
+                # Only attach demographic_config/rng for supported services
+                supported_demographic_entities = {
+                    "Patient",
+                    "Doctor",
+                    "PoliceOfficer",
+                    "Person",
+                }
+                config_enabled_entities = supported_demographic_entities | {
+                    "InsurancePolicy",
+                    "MedicalDevice",
+                    "CreditCard",
+                }
+                if demo_cfg is not None and entity_class_name in config_enabled_entities:
+                    kwargs.setdefault("demographic_config", demo_cfg)
+                if demographic_sampler is not None and entity_class_name in supported_demographic_entities:
+                    # Thread pure sampler through to entities that know how to consume demographics.
+                    kwargs.setdefault("demographic_sampler", demographic_sampler)
+                if rng_obj is not None and entity_class_name in {
+                    "Patient",
+                    "Doctor",
+                    "Hospital",
+                    "MedicalProcedure",
+                    "MedicalDevice",
+                    "PoliceOfficer",
+                    "AdministrationOffice",
+                    "EducationalInstitution",
+                    "InsuranceCompany",
+                    "InsurancePolicy",
+                    "InsuranceProduct",
+                    "InsuranceCoverage",
+                    "Person",
+                    "CreditCard",
+                }:
+                    kwargs["rng"] = rng_obj
+                return DomainClassUtil.create_instance(f"datamimic_ce.domains.{domain_entity_path}", **kwargs)
+            else:
+                # If no mapping exists, entity is not supported
+                raise ValueError(f"Entity '{entity_name}' is not supported in the domain architecture.")
+
+        # No more fallback to legacy entities - fully committed to domain-based architecture
+
+    def execute(self, ctx: Context) -> None:
+        """
+        Generate data for element <variable>
+        """
+
+        if self._mode == self._ITERATOR_MODE:
+            value = next(self._iterator) if self._iterator is not None else None
+        elif self._mode == self._ENTITY_MODE:
+            value = self._entity_generator.generate()
+        elif self._mode == self._WEIGHTED_ENTITY_MODE:
+            value = self._weighted_data_source.generate()
+        elif self._mode == self._ITERATION_SELECTOR_MODE:
+            if self._selector is None:
+                raise ValueError(f"No selector value in statement: {self._statement.name}")
+            selector = TaskUtil.evaluate_variable_concat_prefix_suffix(
+                context=ctx,
+                expr=self._selector,
+                prefix=self._prefix,
+                suffix=self._suffix,
+            )
+            value = self._client.get_by_page_with_query(selector)
+        elif self._mode == self._RANDOM_DISTRIBUTION_MODE:
+            if self._random_items_iterator is None:
+                raise StopIteration(f"No more random items to iterate for statement: {self._statement.name}")
+            value = next(self._random_items_iterator)
+        elif self._mode == self._LAZY_ITERATOR_MODE:
+            if isinstance(self._statement, VariableStatement):
+                is_random_distribution = self._statement.distribution in ("random", None)
+            else:
+                is_random_distribution = False
+            if self._statement.source is None:
+                return None
+            file_data = ctx.evaluate_python_expression(self._statement.source)
+            if is_random_distribution:
+                self._random_items_iterator = iter(
+                    DataSourceRegistry.get_shuffled_data_with_cyclic(
+                        file_data,
+                        self._pagination,
+                        self.statement.cyclic,
+                        ctx.root.get_distribution_seed(),
+                    )
+                )
+                self._mode = self._RANDOM_DISTRIBUTION_MODE
+                if self._random_items_iterator is None:
+                    raise StopIteration("No more random items to iterate for statement: " + self._statement.name)
+                value = next(self._random_items_iterator)
+            else:
+                self._iterator = DataSourceRegistry.get_cyclic_data_iterator(
+                    data=file_data,
+                    cyclic=self.statement.cyclic,
+                    pagination=self._pagination,
+                )
+                self._mode = self._ITERATOR_MODE
+                value = next(self._iterator) if self._iterator is not None else None
+        else:
+            value = self._generate_value(ctx)
+
+        # evaluate data with source script
+        if self._source_script:
+            if self._mode in [
+                VariableTask._ITERATOR_MODE,
+                VariableTask._WEIGHTED_ENTITY_MODE,
+                VariableTask._RANDOM_DISTRIBUTION_MODE,
+            ]:
+                # Default variable prefix and suffix
+                setup_ctx = ctx
+                while isinstance(setup_ctx, GenIterContext):
+                    setup_ctx = setup_ctx.parent
+                if isinstance(setup_ctx, SetupContext):
+                    variable_prefix = self.statement.variable_prefix or setup_ctx.default_variable_prefix
+                    variable_suffix = self.statement.variable_suffix or setup_ctx.default_variable_suffix
+                # Evaluate source script
+                value = TaskUtil.evaluate_file_script_template(ctx, value, variable_prefix, variable_suffix)
+            else:
+                raise ValueError("sourceScripted only support datasource CSV or JSON")
+
+        value = self._convert_generated_value(value)
+
+        # Add variable to context for later retrieving
+        if isinstance(ctx, SetupContext):
+            ctx.global_variables[self._statement.name] = value
+        elif isinstance(ctx, GenIterContext):
+            ctx.current_variables[self._statement.name] = value
