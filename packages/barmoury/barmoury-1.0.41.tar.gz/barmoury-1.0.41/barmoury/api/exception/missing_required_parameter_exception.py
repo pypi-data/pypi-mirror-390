@@ -1,0 +1,4 @@
+
+class MissingRequiredParameterException(Exception):
+    pass
+    

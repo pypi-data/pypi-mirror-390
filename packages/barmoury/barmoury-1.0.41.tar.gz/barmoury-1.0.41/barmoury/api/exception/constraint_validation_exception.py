@@ -1,0 +1,4 @@
+
+class ConstraintValidationException(Exception):
+    pass
+    
