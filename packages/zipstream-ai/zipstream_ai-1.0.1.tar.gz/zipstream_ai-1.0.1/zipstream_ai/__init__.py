@@ -1,0 +1,11 @@
+from .stream_reader import ZipStreamReader
+from .file_parser import FileParser
+from .llm_query_engine import ask# Temporary docstring update for formatting test
+
+__version__ = "1.0.1"
+# Maintenance update 1
+# Maintenance update 2
+# Maintenance update 3
+# Maintenance update 4
+# Maintenance update 5
+# Minor docstring refinement for consistency
