@@ -1,0 +1,55 @@
+---
+name: CodeQL
+
+on:
+  push:
+    branches-ignore:
+      - "dependabot/**"
+  pull_request:
+  schedule:
+    - cron: "0 18 * * 0"
+
+permissions: {}
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Checkout pull request HEAD
+        if: github.event_name == 'pull_request'
+        run: git checkout HEAD^2
+
+      - name: Set up Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: "3.x"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6d653acede28d24f02e3cd41383119e8b1b35921 # master
+        with:
+          toolchain: stable
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, rust
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Build extension
+        run: maturin build --release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
