@@ -1,0 +1,91 @@
+"""TennisAbstract league model."""
+
+import os
+import urllib.parse
+from typing import Iterator
+
+import tqdm
+from bs4 import BeautifulSoup
+from scrapesession.scrapesession import ScrapeSession  # type: ignore
+
+from ..game_model import GameModel
+from ..league import League
+from ..league_model import SHUTDOWN_FLAG, LeagueModel, needs_shutdown
+from .tennisabstract_game_model import create_tennisabstract_game_model
+
+BAD_GAME_URLS = {
+    "https://www.tennisabstract.com/charting/20230325-M-Miami_Masters-R64-Ben_Shelton-Adrian_Mannarino.html",
+    "https://www.tennisabstract.com/charting/20230225-M-Marseille-SF-Alexander_Bublik-Hubert_Hurkacz.html",
+    "https://www.tennisabstract.com/charting/20190729-M-Washington-R64-Hubert_Hurkacz-Donald_Young.html",
+    "https://www.tennisabstract.com/charting/20151008-M-Mons_CH-R16-Jan_Lennard_Struff-Mirza_Basic.html",
+    "https://www.tennisabstract.com/charting/20150610-M-s%C2%A0Hertogenbosch-R16-Vasek_Pospisil-Gilles_Muller.html",
+    "https://www.tennisabstract.com/charting/20150610-M-s Hertogenbosch-R16-Vasek_Pospisil-Gilles_Muller.html",
+    "https://www.tennisabstract.com/charting/20141103-M-Charlottesville_CH-F-Liam_Broady-James_Duckworth.html",
+    "https://www.tennisabstract.com/charting/20140710-M-Bastad-R16-Victor_Hanescu-David_Ferrer.html",
+    "https://www.tennisabstract.com/charting/20131012-M-Shanghai_Masters-SF-Rafael_Nadal-Juan_Martin_Del_Potro",
+}
+
+
+class TennisAbstractLeagueModel(LeagueModel):
+    """TennisAbstract implementation of the league model."""
+
+    def __init__(
+        self,
+        league: League,
+        session: ScrapeSession,
+        position: int | None = None,
+    ) -> None:
+        super().__init__(league, session, position=position)
+
+    @classmethod
+    def name(cls) -> str:
+        """The name of the league model."""
+        return "tennisabstract-league-model"
+
+    @classmethod
+    def position_validator(cls) -> dict[str, str]:
+        """Tennis position validators."""
+        return {}
+
+    @property
+    def games(self) -> Iterator[GameModel]:
+        """Find all the games."""
+        try:
+            with tqdm.tqdm(position=self.position) as pbar:
+                url = "https://www.tennisabstract.com/charting/"
+                response = None
+                with self.session.wayback_disabled():
+                    with self.session.cache_disabled():
+                        # self.session.cache.delete(urls=[url])
+                        response = self.session.get(url)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "lxml")
+                for a in soup.find_all("a", href=True):
+                    if needs_shutdown():
+                        return
+                    match_name = a.get_text().strip()
+                    if self.league == League.ATP:
+                        if not match_name.endswith("(ATP)"):
+                            continue
+                    elif self.league == League.WTA:
+                        if not match_name.endswith("(WTA)"):
+                            continue
+                    match_url = urllib.parse.urljoin(url, a.get("href"))
+                    if match_url in BAD_GAME_URLS:
+                        continue
+                    filename = os.path.basename(match_url)
+                    datestr = filename.split("-")[0]
+                    if len(datestr) == 8 and datestr.isnumeric():
+                        pbar.update(1)
+                        game_model = create_tennisabstract_game_model(
+                            self.session,
+                            match_url,
+                            self.league,
+                        )
+                        if game_model is None:
+                            continue
+                        pbar.set_description(f"TennisAbstract {game_model.dt}")
+                        yield game_model
+        except Exception as exc:
+            SHUTDOWN_FLAG.set()
+            raise exc
