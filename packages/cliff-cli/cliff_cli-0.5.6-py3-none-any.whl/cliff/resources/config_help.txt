@@ -1,0 +1,64 @@
+The Cliff configuration system allows you to manage providers, api
+keys, and more, and is accessed with the --config flag.
+
+USAGE
+    cliff --config [command] [options]
+
+COMMANDS
+add [provider] [api-key]
+    - Adds or updates a specified provider with the given API key.
+    - Available providers: openai, anthropic, google, cohere, groq,
+      replicate, mistral, cerebras.
+    - Usage Example: cliff --config add openai sk-abc123
+
+add ollama [model]
+    - Adds a local model to the configuration.
+    - Currently only compatible with Ollama, so the model must be
+      loaded into Ollama in order to use it.
+    - Usage Example: cliff --config add ollama phi3:3.8b
+
+remove [provider]
+    - Removes the specified provider from the configuration,
+      including its stored API key.
+    - Usage Example: cliff --config remove openai
+
+remove ollama [model]
+    - Removes a local model from the configuration.
+    - Usage Example: cliff --config remove ollama phi3:3.8b
+
+default-model [model]
+    - Sets the default model Cliff will use.
+    - Note: The model must already be available through an added
+      provider. See the full list of supported models below:
+      https://github.com/pkelaita/l2m2/blob/main/docs/supported_models.md
+    - Usage Example: cliff --config default-model gpt-4o
+
+prefer
+    - Manages preferred providers for specific models. This is
+      essential if you have a model that's available from multiple
+      providers, as running the model without specifying this will
+      cause an error due to ambiguity.
+    - Usage:
+        cliff --config prefer [model] [provider]  Add provider preference
+        cliff --config prefer remove [model]      Remove provider preference
+    - Examples:
+        cliff --config prefer llama-3.1-8b groq
+        cliff --config prefer remove llama-3.1-8b
+
+memory-window [window-size]
+    - Sets the size of the conversation memory window.
+    - Tip: if you'd like to disable memory, set the window size to 0.
+    - Usage Example: cliff --config memory-window 15
+
+reset
+    - Resets the entire configuration to default values. This will
+      remove all providers, API keys, and preferences.
+    - Usage: cliff --config reset
+
+show
+    - Prints the entire configuration as JSON.
+    - Usage: cliff --config show
+
+help
+    - Prints this message.
+    - Usage: cliff --config help
