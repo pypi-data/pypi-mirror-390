@@ -1,0 +1,75 @@
+[tool.poetry]
+name = "mlflow_backend"
+version = "1.1.0"
+description = "Provides a tritonserver backend for running MLFlow models"
+authors = ["W.W. Grainger MLOps & Platform Team <mlopsplatformteam@grainger.com>"]
+readme = "README.md"
+packages = [
+    { include = "mlflow_backend", from = "src" },
+    { include = "mlflow_backend_utils", from = "src" }
+]
+
+[tool.poetry.scripts]
+mlflow-backend-utils = "mlflow_backend_utils.cli:cli"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+numpy = "1.*.*"
+click = "^8.1.8"
+boto3 = "^1.39.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+triton_python_backend_mock_utils = {version = "^1.0.0"}
+torch = [
+    {version = "^2.0.0", markers = "sys_platform == 'darwin'", source = "pypi"},
+    {version = "^2.0.0", markers = "sys_platform == 'linux'", source = "pytorch-cpu"}
+]
+torchvision = [
+    {version = "^0.22.0", markers = "sys_platform == 'darwin'", source = "pypi"},
+    {version = "^0.22.0", markers = "sys_platform == 'linux'", source = "pytorch-cpu"}
+]
+sentence-transformers = "^3.4.1"
+transformers = "^4.49.0"
+efficientnet-pytorch = "^0.7.1"
+onnx = "==1.18.0"
+onnxruntime = "==1.22.1"
+nox = "^2025.2.9"
+tritonclient = {extras = ["http"], version = "==2.56.0"}
+mlflow = "2.21.3"
+
+[tool.semantic_release]
+version_variables = [
+    "src/mlflow_backend/__init__.py:__version__",
+    "src/mlflow_backend_utils/__init__.py:__version__",
+]
+version_toml = [
+    "pyproject.toml:tool.poetry.version",
+]
+
+[tool.semantic_release.branches."main"]
+match = "main"
+
+[tool.semantic_release.branches."prerelease"]
+match = ".*"
+prerelease = true
+prerelease_token = "alpha"
+
+[[tool.poetry.source]]
+name = "pypi"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 121
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

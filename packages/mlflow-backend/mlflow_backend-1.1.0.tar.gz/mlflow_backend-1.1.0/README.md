@@ -1,0 +1,139 @@
+# MLflow Backend for Triton Inference Server
+
+`mlflow-backend` brings MLflow-managed models to [NVIDIA Triton Inference Server](https://developer.nvidia.com/nvidia-triton-inference-server) without re-implementing serving code.
+The backend inspects the MLflow model metadata at load time, selects the right execution strategy, and exposes the model behind Triton's Python backend interface.
+This repository also ships helper tooling that automates creation of the artifacts Triton expects (Python backend stub, conda execution environment archive, and model `config.pbtxt`).
+
+## Highlights
+- Auto-detects MLflow model flavors including generic `pyfunc` and Hugging Face `transformers` and `sentence_transformers`, parsing their input/output schemas for use in Triton.
+- Produces Triton-ready configuration files, `conda-pack` execution environments, and Python backend stubs through the `mlflow-backend-utils` CLI.
+- Tested with Triton `25.08` (although the library should support a wide range of Tritonserver versions) and Python `3.12+`, with tests covering unit, integration, and end-to-end packaging flows.
+
+## Local Installation
+```bash
+pip install mlflow_backend
+```
+
+The CLI is exposed as `mlflow-backend-utils` once the package is installed.
+
+## Installing inside Tritonserver Container
+To use the backend inside Tritonserver's Python backend, the backend must be installed into the container image at `/opt/tritonserver/backends/mlflow`.
+This can be done a number of ways:
+- Build a custom Docker image that includes the backend.
+```copy
+FROM nvcr.io/nvidia/tritonserver:25.08-py3
+RUN git clone https://github.com/wwg-internal/mlflow_backend.git && \
+   mv ./mlflow_backend/src/mlflow_backend /opt/tritonserver/backends/mlflow && \
+   rm -rf ./mlflow_backend
+```
+
+- Mount the backend code into the container at runtime (see example below).
+```copy
+mlflow_backend_path=$(python -c "import mlflow_backend; from pathlib import Path; print(Path(mlflow_backend.__file__).parent.absolute())")
+docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 \
+  -v ./model-repo:/models \
+  -v ${mlflow_backend_path}:/opt/tritonserver/backends/mlflow \
+  nvcr.io/nvidia/tritonserver:25.08-py3 \
+  --model-repository=/models
+```
+
+- Install the backend at container startup, for example using git:
+```copy
+git clone https://github.com/wwg-internal/mlflow_backend.git
+mv ./mlflow_backend/src/mlflow_backend /opt/tritonserver/backends/mlflow
+rm -rf ./mlflow_backend
+tritonserver --model-repository=/models
+```
+
+## General Usage: Serve an MLflow model with Triton
+1. **Export your MLflow model** – have a local copy of the MLflow model directory (contains `MLmodel`, artifacts, and optional Python environment files).
+2. **Build the Python backend stub** – required when your model specifies a different Python version than the tritonserver default (3.12).
+   ```bash
+   mlflow-backend-utils build-stub \
+     --python-version 3.13 \
+     --triton-version r25.08 \
+     --output-path triton_python_backend_stub
+   ```
+   This defaults to using Docker (`nvcr.io/nvidia/tritonserver:<version>-py3`). A Kubernetes-based builder is also available for environments where Docker is not an option.
+3. **Create a conda-pack execution environment** (optional but recommended for non-system dependencies).
+   ```bash
+   mlflow-backend-utils build-env \
+     --python-version 3.13 \
+     --requirements path/to/requirements.txt \
+     --output-path conda-pack.tar.gz
+   ```
+   The tool will attempt to build with a Docker container first, falling back to using local conda build when possible.
+4. **Generate the Triton model configuration**.
+   ```bash
+   mlflow-backend-utils build-config \
+     --model-path path/to/mlflow_model \
+     --conda-pack-path conda-pack.tar.gz \
+     --default-max-batch-size 1024 > config.pbtxt
+   ```
+5. **Assemble the Triton model repository** following the layout below:
+   ```text
+   triton-repo/
+     my_model/
+       config.pbtxt
+       triton_python_backend_stub
+       conda-pack.tar.gz
+       1/
+         MLmodel
+         python_env.yaml
+         model artifacts ...
+   ```
+   Multiple versions can be added as folders (`2/`, `3/`, …) as usual for Triton.
+6. **Start Triton pointing at the repository**.
+   ```bash
+   backend_path=$(python -c "import mlflow_backend; from pathlib import Path; print(Path(mlflow_backend.__file__).parent.absolute())")
+   docker run --rm -p8000:8000 -p8001:8001 -p8002:8002 \
+     -v ./triton-repo:/models \
+     -v ${backend_path}:/opt/tritonserver/backends/mlflow \
+     nvcr.io/nvidia/tritonserver:25.08-py3 \
+     tritonserver --model-repository=/models
+   ```
+
+Once Triton loads your model, send requests using the standard Triton HTTP/gRPC clients. The backend converts Triton tensors (strings, numpy arrays, Pandas data frames, Torch tensors) into what your MLflow model expects and returns results in Triton's format.
+
+## CLI Reference (`mlflow-backend-utils`)
+- `build-env`: Creates a `conda-pack.tar.gz` suitable for uploading alongside the model. Supports Linux x86/ARM targets, Docker-based or local builds, and custom package indexes.
+- `build-stub`: Compiles the Triton Python backend stub for the requested Python/Triton version pair. Supports Docker and Kubernetes builders and can publish the artifact to S3 from cluster jobs.
+- `build-config`: Reads the MLflow `MLmodel` metadata, infers signatures, and emits an editable `config.pbtxt`. Special handling is included for transformer models whose schemas are dynamic.
+
+Run `mlflow-backend-utils <command> --help` for full option lists.
+
+## Supported MLflow Flavors
+- Generic `pyfunc` models (numpy arrays, Pandas DataFrames/Series, dictionaries, and lists).
+- Hugging Face `transformers` saved through `mlflow.transformers`, including sequence classification, token classification, QA, text generation, and translation pipelines.
+- `sentence_transformers` models with GPU/CPU auto-detection.
+- PyTorch models logged via MLflow's `pytorch` flavor (loaded through `pyfunc`).
+
+If your flavor is not listed, the backend defaults to the general `pyfunc` adapter and raises clear errors when an unsupported return type is encountered.
+
+## Testing & Development
+
+All tests can be run through nox (install with `pip install nox`):
+```bash
+# List all available nox sessions
+nox -l
+
+# Run unit tests
+nox -s unit_tests
+
+# Run integration tests
+# Requires docker and [kind](https://kind.sigs.k8s.io/) and kubectl installed
+kind create cluster --config ./tests/integration/manifests/kind.yaml
+kubectl apply -f ./tests/integration/manifests/localstack.yaml
+nox -s integration_tests
+
+# Run e2e python tests
+# These tests run the test models inside a python environment with a specified mlflow versions installed
+nox -s "e2e_python_tests(mlflow='2.22.1')"
+
+# Run e2e triton tests
+# These tests run the test models inside a tritonserver container with a specified python version
+nox -s "e2e_triton_tests(python_version='3.13')"
+```
+
+## Contributing
+We are actively growing `mlflow_backend` and would love your help. Please read the [contributing guide](CONTRIBUTING.md) for details on workflows, Conventional Commit requirements, and the expectation that every feature or bug fix ships with tests covering the relevant edge cases. Issues and pull requests that outline Triton or MLflow version constraints are especially helpful while the project is young.
