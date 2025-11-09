@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rweintr_wordgame"
+version = "1.1.1"
+description = "Solve hidden word by guessing letters in it"
+readme = "README.md"
+authors = [{ name = "rweintr", email = "rweintr@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Games/Entertainment :: Puzzle Games",
+]
+keywords = ["word","game"]
+dependencies = [
+    "wonderwords >= 2.2.0",
+    "SQLAlchemy >= 2.0.44",
+]
+
+[project.optional-dependencies]
+dev = ["bumpver", "pip-tools"]
+
+[project.scripts]
+wordgame = "rweintr_wordgame.__main__:main"
+
+[tool.bumpver]
+current_version = "1.1.1"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = false
+tag = false
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"','version = "{version}"'
+]
+"src/rweintr_wordgame/__init__.py" = ["{version}"]
+
+[tool.setuptools.packages.find]
+namespaces = true
+where = ["src"]
