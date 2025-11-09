@@ -1,0 +1,61 @@
+from typing import Dict, Any, Optional, List
+from pathlib import Path
+from moviepy import VideoFileClip, VideoClip
+from ..annotation.base_annotation import BaseAnnotation
+from ..video_settings import VideoSettings
+from .base_scene import BaseScene
+
+
+class VideoScene(BaseScene):
+    def __init__(
+        self,
+        file: str,
+        id: Optional[str] = None,
+        cache: Optional[Dict[str, Any]] = None,
+        annotations: Optional[List[BaseAnnotation]] = None,
+    ):
+        super().__init__("video", id=id, cache=cache, annotations=annotations)
+        self.file = file
+
+    def prepare(self, base_dir: Path) -> List[Path]:
+        expanded_path = Path(self.file).expanduser()
+        absolute_path = (
+            expanded_path
+            if expanded_path.is_absolute()
+            else (base_dir / expanded_path).resolve()
+        )
+        return [absolute_path]
+
+    def render(
+        self, assets: List[Path], settings: VideoSettings
+    ) -> Optional[VideoClip]:
+        if not assets:
+            return None
+        base_clip = VideoFileClip(str(assets[0]))
+        return self._apply_annotations_to_clip(base_clip, settings)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], base_dir: Path) -> "VideoScene":
+        cache_config = None
+        if "cache" in data:
+            cache_value = data["cache"]
+            if cache_value is False:
+                cache_config = None
+            elif cache_value is True:
+                cache_config = {}
+            elif cache_value is None:
+                cache_config = {}
+            elif isinstance(cache_value, dict):
+                cache_config = cache_value
+
+        annotations = [
+            BaseAnnotation.from_dict(ann, base_dir)
+            for ann in data.get("annotations", [])
+        ]
+
+        return cls(
+            file=data["file"],
+            id=data.get("id"),
+            cache=cache_config,
+            annotations=annotations,
+        )
