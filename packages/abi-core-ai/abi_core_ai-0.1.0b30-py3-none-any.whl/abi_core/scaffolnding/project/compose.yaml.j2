@@ -1,0 +1,138 @@
+services:
+{% if is_centralized %}
+  # Centralized Ollama Service (shared by all agents)
+  {{ project_dir }}-ollama:
+    image: ollama/ollama:latest
+    container_name: {{ project_dir }}-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - {{ project_dir }}-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+{% endif %}
+
+  # Main application
+  {{ project_dir }}:
+    build: .
+    container_name: {{ project_dir }}-app
+    ports:
+      - "8000:8000"
+    environment:
+      - ABI_ROLE={{ project_name }}
+      - ABI_NODE=ABI Node
+      - MODEL_NAME={{ model_name | default('llama3.2:3b') }}
+      - OLLAMA_HOST=http://localhost:11434
+      - LOG_LEVEL={{ log_level | default('INFO') }}
+      {% if with_semantic_layer %}
+      - SEMANTIC_LAYER_URL=http://{{ project_dir }}-semantic-layer:10100
+      {% endif %}
+      {% if with_guardian %}
+      - GUARDIAN_URL=http://{{ project_dir }}-guardian:11438
+      - OPA_URL=http://{{ project_dir }}-opa:8181
+      {% endif %}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      {% if with_semantic_layer %}
+      - {{ project_dir }}-semantic-layer
+      {% endif %}
+      {% if with_guardian %}
+      - {{ project_dir }}-guardian
+      - {{ project_dir }}-opa
+      {% endif %}
+    networks:
+      - {{ project_dir }}-network
+
+
+
+  {% if with_semantic_layer %}
+  # Semantic Layer Service
+  {{ project_dir }}-semantic-layer:
+    build: ./services/semantic_layer
+    container_name: {{ project_dir }}-semantic-layer
+    ports:
+      - "10100:10100"
+    environment:
+      - AGENT_CARDS_BASE=/app/layer/mcp_server/agent_cards
+      - ABI_LLM_BASE=http://{{ project_dir }}-guardian:11438
+      - EMBEDDING_MODEL=nomic-embed-text:v1.5
+      - GUARDIAN_URL=http://{{ project_dir }}-guardian:11438
+      - OPA_URL=http://{{ project_dir }}-opa:8181
+      - SEMANTIC_LAYER_HOST=0.0.0.0
+      - SEMANTIC_LAYER_PORT=10100
+    volumes:
+      - ./services/semantic_layer/layer/mcp_server/agent_cards:/app/layer/mcp_server/agent_cards:ro
+      - ./logs:/app/logs
+    networks:
+      - {{ project_dir }}-network
+    depends_on: []
+  {% endif %}
+
+  {% if with_guardian %}
+  # Guardian Security Service
+  {{ project_dir }}-guardian:
+    build: ./services/guardian
+    container_name: {{ project_dir }}-guardian
+    ports:
+      - "11438:11438"
+    environment:
+      - ABI_ROLE=Guardian Security
+      - ABI_NODE=ABI Node
+      - OPA_URL=http://{{ project_dir }}-opa:8181
+      - SEMANTIC_LAYER_URL=http://{{ project_dir }}-semantic-layer:10100
+      - MAX_RISK_THRESHOLD={{ max_risk_threshold | default('0.7') }}
+      - EMERGENCY_LOG_DIR=/app/emergency_logs
+      {% if domain == 'finance' %}
+      - COMPLIANCE_REQUIRED=true
+      - AUDIT_ALL_TRANSACTIONS=true
+      {% elif domain == 'healthcare' %}
+      - HIPAA_COMPLIANCE=true
+      - PHI_PROTECTION=true
+      {% endif %}
+    volumes:
+      - ./logs:/app/logs
+      - ./services/guardian/emergency_logs:/app/emergency_logs
+    depends_on:
+      - {{ project_dir }}-opa
+    networks:
+      - {{ project_dir }}-network
+
+  # Open Policy Agent (OPA)
+  {{ project_dir }}-opa:
+    image: openpolicyagent/opa:latest-envoy
+    container_name: {{ project_dir }}-opa
+    ports:
+      - "8181:8181"
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--set=decision_logs.console=true"
+      - "--set=status.console=true"
+      - "/policies"
+    volumes:
+      - ./services/guardian/opa/policies:/policies
+      - ./logs:/app/logs
+    networks:
+      - {{ project_dir }}-network
+  {% endif %}
+
+volumes:
+{% if is_centralized %}
+  ollama_data:
+    driver: local
+{% endif %}
+
+
+networks:
+  {{ project_dir }}-network:
+    driver: bridge
