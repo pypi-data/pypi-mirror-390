@@ -1,0 +1,145 @@
+Metadata-Version: 2.1
+Name: streamlit-azure-kit
+Version: 0.3.3
+Summary: Configuration-driven database and storage utilities for Azure
+Home-page: https://github.com/streamlit-azure-kit/streamlit-azure-kit
+Author: Streamlit Azure Kit
+Author-email: noreply@example.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: azure-identity>=1.14.0
+Requires-Dist: azure-storage-blob>=12.0.0
+Requires-Dist: pyodbc>=4.0.0
+Requires-Dist: python-dotenv>=1.0.0
+
+# streamlit-azure-kit
+
+**A JSON-based parameter-to-key mapper for database connections.**
+
+## Installation
+
+```bash
+pip install streamlit-azure-kit
+```
+
+## Quick Start
+
+### Database Connections
+
+```python
+from streamlit_azure_kit.config import ConfigLoader
+from streamlit_azure_kit.database import create_engine_from_config
+
+# Load config and create database engine
+config = ConfigLoader("config/endpoint_config.json")
+db_config = config.get_database_config("my_dashboard", "primary_db")
+engine = create_engine_from_config(db_config)
+```
+
+### Blob Storage (Optional)
+
+```python
+from streamlit_azure_kit.config import ConfigLoader
+from streamlit_azure_kit.database import create_blob_client_from_config
+
+# Load config and create blob storage client
+config = ConfigLoader("config/endpoint_config.json")
+storage_config = config.get_storage_config("my_dashboard", "blob_storage")
+blob_client = create_blob_client_from_config(storage_config)
+
+# Use the client
+container = blob_client.get_container_client("mycontainer")
+```
+
+### Authentication (Optional - Streamlit Apps Only)
+
+```python
+from streamlit_azure_kit.auth import AuthHandler
+
+# Optional - only for Streamlit dashboards
+auth = AuthHandler("config/user_roles.json")
+auth.require_auth()
+```
+
+## Configuration
+
+Your application needs an `endpoint_config.json` file.
+
+### Minimal Database Configuration
+
+```json
+{
+  "_database_definitions": {
+    "my_db": {
+      "server": "myserver.database.windows.net",
+      "database": "mydb",
+      "db_engine_type": "always_on",
+      "pool_size": 10,
+      "max_overflow": 20,
+      "pool_timeout": 30,
+      "pool_recycle": 3600,
+      "connection_timeout": 30,
+      "retry_config": {
+        "max_retries": 6,
+        "delay": 2.0
+      }
+    }
+  },
+  "my_app": {
+    "production": {
+      "primary_db": "my_db"
+    }
+  }
+}
+```
+
+### Storage Configuration (Optional)
+
+```json
+{
+  "_storage_definitions": {
+    "my_storage": {
+      "account_name": "mystorageaccount",
+      "connection_timeout": 20
+    }
+  },
+  "my_app": {
+    "production": {
+      "blob_storage": "my_storage"
+    }
+  }
+}
+```
+
+**Note:** Only `account_name` is required for storage. Optional parameters: `connection_timeout`, `max_single_put_size`, `max_block_size`.
+
+## Requirements
+
+- Python >= 3.9
+- SQLAlchemy >= 2.0.0
+- Azure Identity >= 1.14.0
+- PyODBC >= 4.0.0
+- Pandas >= 2.0.0
+- Azure Storage Blob >= 12.0.0
+
+## License
+
+MIT License - See LICENSE file for details
+
+
