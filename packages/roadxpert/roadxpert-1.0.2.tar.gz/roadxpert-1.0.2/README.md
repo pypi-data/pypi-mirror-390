@@ -1,0 +1,80 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/arijitrakshit/roadxpert/main/logo.png" width="160" alt="RoadXpert Logo" />
+</p>
+
+<h1 align="center">RoadXpert</h1>
+
+<p align="center">
+  <b>AI-powered Road Condition and Obstacle Analysis Toolkit</b><br>
+  Built by <b>Arijit Rakshit</b> • Powered by <b>H.A.R.I.S.H. AI</b>
+</p>
+
+---
+
+## 🚀 Installation
+
+```bash
+pip install roadxpert
+
+```
+## 🧠 Usage Example
+
+```bash
+from roadxpert import analyze_road
+
+result = analyze_road(
+    image_input="road.jpg",
+    latitude=23.341468,
+    longitude=86.372060,
+    location_name="Purulia, West Bengal"
+)
+
+print(result["summary"])
+
+```
+## ⚙️ Features
+
+🧠 AI-based road damage prediction
+🕳️ Crack and pothole detection
+🚗 Traffic and congestion awareness
+☁️ Real weather data integration
+🛠️ Automatic repair & safety suggestions
+⚡ Fast 
+
+## 🧑‍💻 Credits
+
+Developed by Arijit Rakshit
+Powered by H.A.R.I.S.H. AI
+
+## 📜 License
+
+RoadXpert License (Restricted Use License)
+
+Copyright (c) 2025 Arijit Rakshit
+
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person or organization
+obtaining a copy of this software and associated documentation files
+(the "Software"), to use the Software solely for personal, educational,
+or research purposes.
+
+The following actions are strictly prohibited without prior written
+permission from the author (Arijit Rakshit):
+
+1. Copying, reproducing, or redistributing the Software or any part of it,
+   whether in source or binary form.
+2. Modifying, decompiling, or creating derivative works based on the Software.
+3. Selling, sublicensing, or using the Software for any commercial purpose.
+4. Removing or altering any copyright or attribution notices.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+For commercial licensing or collaboration inquiries,
+contact: krakshit.1970@gmail.com
