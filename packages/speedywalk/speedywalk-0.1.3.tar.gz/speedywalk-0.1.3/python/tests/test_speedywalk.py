@@ -1,0 +1,299 @@
+from pathlib import Path
+
+import speedywalk
+
+
+def create_file(path, content=""):
+    """Helper to create a file, creating parent directories if needed."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
+def test_walk_basic(tmp_path):
+    """Test that walk returns an iterator of DirEntry objects."""
+    # Create some test files and directories
+    create_file(tmp_path / "file1.txt")
+    create_file(tmp_path / "file2.txt")
+    (tmp_path / "subdir").mkdir()
+    create_file(tmp_path / "subdir" / "file3.txt")
+
+    # Walk the directory
+    entries = list(speedywalk.walk(tmp_path))
+    paths = {entry.path_str for entry in entries}
+
+    # Check that all expected paths are present
+    assert str(tmp_path / "file1.txt") in paths
+    assert str(tmp_path / "file2.txt") in paths
+    assert str(tmp_path / "subdir") in paths
+    assert str(tmp_path / "subdir" / "file3.txt") in paths
+
+    # Check entry properties
+    for entry in entries:
+        if entry.path_str.endswith("file1.txt"):
+            assert entry.is_file
+            assert not entry.is_dir
+            assert not entry.is_symlink
+        elif entry.path_str.endswith("subdir"):
+            assert not entry.is_file
+            assert entry.is_dir
+            assert not entry.is_symlink
+
+
+def test_filter_single_string(tmp_path):
+    """Test filters parameter with a single string (new feature)."""
+    create_file(tmp_path / "file1.py")
+    create_file(tmp_path / "file2.txt")
+    create_file(tmp_path / "file3.py")
+    create_file(tmp_path / "file4.md")
+
+    entries = list(speedywalk.walk(tmp_path, filters="*.py"))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "file1.py") in paths
+    assert str(tmp_path / "file3.py") in paths
+    assert str(tmp_path / "file2.txt") not in paths
+    assert str(tmp_path / "file4.md") not in paths
+
+
+def test_filter_collection(tmp_path):
+    """Test filters parameter with a collection of strings."""
+    create_file(tmp_path / "file1.py")
+    create_file(tmp_path / "file2.txt")
+    create_file(tmp_path / "file3.py")
+    create_file(tmp_path / "file4.md")
+
+    entries = list(speedywalk.walk(tmp_path, filters=["*.py", "*.md"]))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "file1.py") in paths
+    assert str(tmp_path / "file3.py") in paths
+    assert str(tmp_path / "file4.md") in paths
+    assert str(tmp_path / "file2.txt") not in paths
+
+
+def test_filter_nested_directories(tmp_path):
+    """Test that filters work in nested directories."""
+    create_file(tmp_path / "root.py")
+    create_file(tmp_path / "root.txt")
+    create_file(tmp_path / "level1/file1.py")
+    create_file(tmp_path / "level1/file1.txt")
+    create_file(tmp_path / "level1/level2/file2.py")
+    create_file(tmp_path / "level1/level2/file2.txt")
+
+    entries = list(speedywalk.walk(tmp_path, filters="*.py"))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "root.py") in paths
+    assert str(tmp_path / "level1/file1.py") in paths
+    assert str(tmp_path / "level1/level2/file2.py") in paths
+    assert str(tmp_path / "root.txt") not in paths
+    assert str(tmp_path / "level1/file1.txt") not in paths
+
+
+def test_ignore_dirs_single_string(tmp_path):
+    """Test ignore_dirs parameter with a single string (new feature)."""
+    create_file(tmp_path / "include/file1.txt")
+    create_file(tmp_path / "exclude/file2.txt")
+
+    entries = list(speedywalk.walk(tmp_path, ignore_dirs="exclude"))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "include") in paths
+    assert str(tmp_path / "include/file1.txt") in paths
+    assert str(tmp_path / "exclude") not in paths
+    assert str(tmp_path / "exclude/file2.txt") not in paths
+
+
+def test_ignore_dirs_single_path(tmp_path):
+    """Test ignore_dirs parameter with a single Path object (new feature)."""
+    create_file(tmp_path / "include/file1.txt")
+    create_file(tmp_path / "exclude/file2.txt")
+
+    entries = list(speedywalk.walk(tmp_path, ignore_dirs=Path("exclude")))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "include") in paths
+    assert str(tmp_path / "include/file1.txt") in paths
+    assert str(tmp_path / "exclude") not in paths
+    assert str(tmp_path / "exclude/file2.txt") not in paths
+
+
+def test_ignore_dirs_collection(tmp_path):
+    """Test ignore_dirs parameter with a collection."""
+    create_file(tmp_path / "keep/file.txt")
+    create_file(tmp_path / "skip1/file.txt")
+    create_file(tmp_path / "skip2/file.txt")
+
+    entries = list(speedywalk.walk(tmp_path, ignore_dirs=["skip1", "skip2"]))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "keep") in paths
+    assert str(tmp_path / "keep/file.txt") in paths
+    assert str(tmp_path / "skip1") not in paths
+    assert str(tmp_path / "skip2") not in paths
+
+
+def test_max_depth(tmp_path):
+    """Test max_depth parameter."""
+    create_file(tmp_path / "level0.txt")
+    create_file(tmp_path / "level1/level1.txt")
+    create_file(tmp_path / "level1/level2/level2.txt")
+    create_file(tmp_path / "level1/level2/level3/level3.txt")
+
+    entries = list(speedywalk.walk(tmp_path, max_depth=2))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "level0.txt") in paths
+    assert str(tmp_path / "level1") in paths
+    assert str(tmp_path / "level1/level1.txt") in paths
+    assert str(tmp_path / "level1/level2") in paths
+    assert str(tmp_path / "level1/level2/level2.txt") not in paths
+    assert str(tmp_path / "level1/level2/level3") not in paths
+
+
+def test_min_depth(tmp_path):
+    """Test min_depth parameter.
+
+    Depth counting: root=0, items in root=1, one level down=2, etc.
+    """
+    create_file(tmp_path / "level0.txt")
+    create_file(tmp_path / "level1/level1.txt")
+    create_file(tmp_path / "level1/level2/level2.txt")
+
+    entries = list(speedywalk.walk(tmp_path, min_depth=2))
+    paths = {entry.path_str for entry in entries}
+
+    # Depth 1: should not be included
+    assert str(tmp_path / "level0.txt") not in paths
+    assert str(tmp_path / "level1") not in paths
+    # Depth 2: should be included
+    assert str(tmp_path / "level1/level1.txt") in paths
+    assert str(tmp_path / "level1/level2") in paths
+    # Depth 3: should be included
+    assert str(tmp_path / "level1/level2/level2.txt") in paths
+
+
+def test_ignore_hidden(tmp_path):
+    """Test ignore_hidden parameter."""
+    create_file(tmp_path / "visible.txt")
+    create_file(tmp_path / ".hidden.txt")
+    create_file(tmp_path / "subdir/file.txt")
+    create_file(tmp_path / ".hidden_dir/file.txt")
+
+    # With ignore_hidden=True (default)
+    entries = list(speedywalk.walk(tmp_path, ignore_hidden=True))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "visible.txt") in paths
+    assert str(tmp_path / "subdir") in paths
+    assert str(tmp_path / ".hidden.txt") not in paths
+    assert str(tmp_path / ".hidden_dir") not in paths
+
+    # With ignore_hidden=False
+    entries = list(speedywalk.walk(tmp_path, ignore_hidden=False))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "visible.txt") in paths
+    assert str(tmp_path / ".hidden.txt") in paths
+    assert str(tmp_path / ".hidden_dir") in paths
+    assert str(tmp_path / ".hidden_dir/file.txt") in paths
+
+
+def test_gitignore_respected(tmp_path):
+    """Test that .gitignore is respected by default."""
+    create_file(tmp_path / ".gitignore", "ignored.txt\nignored_dir/\n")
+    create_file(tmp_path / "kept.txt")
+    create_file(tmp_path / "ignored.txt")
+    create_file(tmp_path / "ignored_dir/file.txt")
+
+    # With respect_git_ignore=True (default) - note: ignore_hidden=True so .gitignore won't appear
+    entries = list(speedywalk.walk(tmp_path, respect_git_ignore=True))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "kept.txt") in paths
+    assert str(tmp_path / "ignored.txt") not in paths
+    assert str(tmp_path / "ignored_dir") not in paths
+
+    # With respect_git_ignore=False - ignored files should now appear (but not .gitignore as it's hidden)
+    entries = list(speedywalk.walk(tmp_path, respect_git_ignore=False))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "kept.txt") in paths
+    assert str(tmp_path / "ignored.txt") in paths
+    assert str(tmp_path / "ignored_dir") in paths
+
+
+def test_max_filesize(tmp_path):
+    """Test max_filesize parameter."""
+    create_file(tmp_path / "small.txt", "x" * 10)
+    create_file(tmp_path / "medium.txt", "x" * 100)
+    create_file(tmp_path / "large.txt", "x" * 1000)
+
+    entries = list(speedywalk.walk(tmp_path, max_filesize=150))
+    file_paths = {entry.path_str for entry in entries if entry.is_file}
+
+    assert str(tmp_path / "small.txt") in file_paths
+    assert str(tmp_path / "medium.txt") in file_paths
+    assert str(tmp_path / "large.txt") not in file_paths
+
+
+def test_empty_filters(tmp_path):
+    """Test that empty filters returns all files."""
+    create_file(tmp_path / "file1.py")
+    create_file(tmp_path / "file2.txt")
+    create_file(tmp_path / "file3.md")
+
+    entries = list(speedywalk.walk(tmp_path, filters=[]))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "file1.py") in paths
+    assert str(tmp_path / "file2.txt") in paths
+    assert str(tmp_path / "file3.md") in paths
+
+
+def test_empty_ignore_dirs(tmp_path):
+    """Test that empty ignore_dirs doesn't ignore anything."""
+    create_file(tmp_path / "dir1/file.txt")
+    create_file(tmp_path / "dir2/file.txt")
+
+    entries = list(speedywalk.walk(tmp_path, ignore_dirs=[]))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "dir1") in paths
+    assert str(tmp_path / "dir1/file.txt") in paths
+    assert str(tmp_path / "dir2") in paths
+    assert str(tmp_path / "dir2/file.txt") in paths
+
+
+def test_path_and_path_str_properties(tmp_path):
+    """Test that path and path_str properties work correctly."""
+    test_file = tmp_path / "test.txt"
+    create_file(test_file)
+
+    entries = list(speedywalk.walk(tmp_path))
+    for entry in entries:
+        if entry.path_str.endswith("test.txt"):
+            assert isinstance(entry.path, Path)
+            assert entry.path == test_file
+            assert isinstance(entry.path_str, str)
+            assert entry.path_str == str(test_file)
+            break
+    else:
+        assert False, "test.txt not found in walk results"
+
+
+def test_combined_filters_and_ignore_dirs(tmp_path):
+    """Test using filters and ignore_dirs together."""
+    create_file(tmp_path / "include/file.py")
+    create_file(tmp_path / "include/file.txt")
+    create_file(tmp_path / "exclude/file.py")
+    create_file(tmp_path / "exclude/file.txt")
+
+    entries = list(speedywalk.walk(tmp_path, filters="*.py", ignore_dirs="exclude"))
+    paths = {entry.path_str for entry in entries}
+
+    assert str(tmp_path / "include/file.py") in paths
+    assert str(tmp_path / "include/file.txt") not in paths
+    assert str(tmp_path / "exclude/file.py") not in paths
+    assert str(tmp_path / "exclude/file.txt") not in paths
