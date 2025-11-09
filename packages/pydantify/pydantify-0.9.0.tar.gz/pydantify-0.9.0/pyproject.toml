@@ -1,0 +1,68 @@
+[project]
+name = "pydantify"
+version = "0.9.0"
+description = "Makes network automation pydantic."
+readme = "README.md"
+authors = [
+    { name = "Dominic Walther", email = "dominic.walther@ost.ch" },
+    { name = "Dejan Jovicic", email = "dejan.jovicic@ost.ch" },
+    { name = "Urs Baumann", email = "github@m.ubaumann.ch" },
+]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic==2.11.7",
+    "pyang==2.6.1",
+    "psutil>=6.0.0",
+    "datamodel-code-generator==0.32.0",
+    "requests>=2.32.3",
+    "setuptools>=74.0.0",
+]
+
+[project.urls]
+Homepage = "https://pydantify.github.io/pydantify/"
+Documentation = "https://pydantify.github.io/pydantify/"
+Repository = "https://github.com/pydantify/pydantify"
+Issues = "https://github.com/pydantify/pydantify/issues"
+Changelog = "https://github.com/pydantify/pydantify/releases"
+
+[project.scripts]
+pydantify = "pydantify.main:main"
+
+[build-system]
+requires = ["uv_build>=0.8.6,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "autopep8>=2.3.1",
+    "black>=24.8.0",
+    "pylint>=3.3.7",
+    "pytest>=8.3.2",
+    "coverage>=7.6.1",
+    "types-requests>=2.32",
+    "types-psutil>=6.0.0.0",
+    "mypy>=1.11.2",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.33",
+]
+
+[tool.pdm.scripts]
+class_diagram = "pyreverse -o mmd -d docs/resources --project pydantify --colorized pydantify"
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "[%(levelname)8s] (%(filename)s:%(lineno)s): %(message)s "
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+python_version = "3.10"
+ignore_missing_imports = true
+strict_optional = true
