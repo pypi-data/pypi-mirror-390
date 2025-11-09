@@ -1,0 +1,68 @@
+Metadata-Version: 2.4
+Name: env-printer
+Version: 0.1.2
+Summary: Print environment variables and recursively list files on install.
+Home-page: https://pypi.org/project/env-printer/
+Author: 
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-python
+Dynamic: summary
+
+## env-printer
+
+A tiny Python package that prints all environment variables and recursively lists all files starting at a specified root (default: `/`). It attempts to do this automatically right after installation and also provides a CLI to trigger it manually.
+
+### Important notes about post-install behavior
+- Modern Python packaging installs pre-built wheels, which typically do not execute arbitrary code at install time. This package wires a custom `install` command that runs after a legacy `setup.py install`. Depending on how the installer resolves your environment, the post-install may run during the build step rather than the final install step, or it may be skipped entirely when installing a wheel.
+- To force running the legacy installation flow locally, you can install from source with:
+
+```bash
+pip install --no-binary :all: --no-use-pep517 env-printer
+```
+
+Even if the post-install hook does not execute, you can still run the same behavior manually via the CLI (below).
+
+### CLI usage
+After installing, you can run:
+
+```bash
+env-printer-run
+```
+
+Options:
+- `--root <path>`: change the starting directory for file listing (default: `/`).
+
+### What it does
+1. Prints all environment variables as `KEY=VALUE`.
+2. Recursively lists all files under the chosen root (default: `/`), skipping unreadable paths and not following symlinks.
+
+### Install locally from this repository
+
+```bash
+python setup.py sdist bdist_wheel
+pip install dist/env-printer-*.whl
+```
+
+To exercise the legacy flow and run the post-install hook:
+
+```bash
+pip install --no-binary :all: --no-use-pep517 .
+```
+
+### License
+MIT
+
+
