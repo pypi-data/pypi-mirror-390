@@ -1,0 +1,49 @@
+[project]
+name = "url_security_scanner"
+version = "0.3.1"
+description = "Security Header Audit — single-route API + CLI"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Austin Mangum", email = "austin.mangum15@gmail.com" }]
+keywords = ["security", "headers", "fastapi", "cli", "http", "audit"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Security",
+  "Framework :: FastAPI"
+]
+
+# Keep base deps empty; let users choose [cli] or [api]
+dependencies = []
+
+[project.optional-dependencies]
+cli = [
+  "typer>=0.12",
+  "requests>=2.32",
+  "pydantic>=2.12",
+]
+api = [
+  "fastapi>=0.116",
+  "uvicorn[standard]>=0.38",
+  "httpx>=0.28.1",
+  "pydantic>=2.12",
+]
+
+[project.scripts]
+urlscannerctl = "urlscanner.cli:app"
+urlscannerapi = "urlscanner.api:main"
+
+[project.urls]
+Homepage = "https://github.com/austinmangum/urlscanner"
+Issues = "https://github.com/austinmangum/urlscanner/issues"
+
+[build-system]
+requires = ["setuptools>=68", "wheel", "build"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
