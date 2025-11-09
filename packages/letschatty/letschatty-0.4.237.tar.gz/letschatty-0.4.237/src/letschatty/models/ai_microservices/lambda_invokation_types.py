@@ -1,0 +1,29 @@
+from __future__ import annotations
+from enum import StrEnum
+from pydantic import BaseModel
+
+class InvokationType(StrEnum):
+    INCOMING_MESSAGE = "incoming_message"
+    FOLLOW_UP = "follow_up"
+    SINGLE_QUALITY_TEST = "single_quality_test"
+    ALL_QUALITY_TEST = "all_quality_test"
+    SMART_TAGGING = "smart_tagging"
+    SMART_TAGGING_PROMPT = "smart_tagging_prompt"
+    QUALITY_TEST_INTERACTION = "quality_test_interaction"
+    # Callback-specific types
+    INCOMING_MESSAGE_CALLBACK = "incoming_message_callback"
+    SINGLE_QUALITY_TEST_CALLBACK = "single_quality_test_callback"
+    SMART_TAGGING_CALLBACK = "smart_tagging_callback"
+    QUALITY_TESTS_FOR_UPDATED_AI_COMPONENT = "quality_tests_for_updated_ai_component"
+    FIX_BUGGED_AI_AGENTS_CALLS_IN_CHATS = "fix_bugged_ai_agents_calls_in_chats"
+    DOUBLE_CHECKER_FOR_INCOMING_MESSAGES_ANSWER = "double_checker_for_incoming_messages_answer"
+    DOUBLE_CHECKER_FOR_INCOMING_MESSAGES_ANSWER_CALLBACK = "double_checker_for_incoming_messages_answer_callback"
+    # AI Agent context building events (new architecture)
+    GET_CHAT_WITH_PROMPT_INCOMING_MESSAGE = "get_chat_with_prompt_incoming_message"
+    GET_CHAT_WITH_PROMPT_FOLLOW_UP = "get_chat_with_prompt_follow_up"
+    # Manual trigger and cancel events
+    CANCEL_EXECUTION = "cancel_execution"
+    MANUAL_TRIGGER = "manual_trigger"
+class LambdaAiEvent(BaseModel):
+    type: InvokationType
+    data: dict
