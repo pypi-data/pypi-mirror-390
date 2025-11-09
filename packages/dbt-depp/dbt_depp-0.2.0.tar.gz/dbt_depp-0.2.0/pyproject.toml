@@ -1,0 +1,76 @@
+[project]
+name = "dbt-depp"
+dynamic = ["version"]
+description = "DBT Enexis Python Postgres adapter - Run python scripts from any dbt project."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Yassin Chibrani", email = "y.chibrani@gmail.com" }]
+keywords = ["dbt", "pandas", "runtime", "polars", "high-performance", "etl", "analytics", "data-engineering", "elt"]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12"
+]
+
+dependencies = [
+    "dbt-core>=1.10.0",
+    "pandas>=1.5.3",
+    "numpy>=2.0.0",
+    "dbt-postgres>=1.9.1",
+    "polars>=1.33.1",
+    "pyarrow>=21.0.0",
+    "pandas-stubs>=2.3.2.250827",
+    "connectorx>=0.4.4",
+    "asyncpg>=0.30.0,<0.31.0",
+    "adbc-driver-postgresql>=1.8.0",
+    "sqlalchemy>=2.0.43",
+    "geoalchemy2>=0.18.0",
+    "snakeviz>=2.2.2",
+    "geopandas>=1.1.1",
+    "cyclopts>=3.24.0",
+    "mypy>=1.18.2",
+    "types-geopandas>=1.1.1.20250829",
+    "momepy>=0.10.0",
+    "asyncpg-stubs>=0.30.2",
+    "marimo>=0.17.7",
+    "ruff>=0.14.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "matplotlib>=3.5.2",
+    "requests>=2.32.3",
+]
+[project.scripts]
+dbt-depp = "dbt.adapters.depp.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/YassinCh/depp"
+Repository = "https://github.com/YassinCh/depp"
+
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dbt"]
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[tool.mypy]
+strict = true
+
+[tool.uv.sources]
+depp = { workspace = true }
