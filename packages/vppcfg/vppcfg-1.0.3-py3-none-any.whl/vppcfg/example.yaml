@@ -1,0 +1,172 @@
+bondethernets:
+  BondEthernet0:
+    interfaces: [ GigabitEthernet3/0/0, GigabitEthernet3/0/1 ]
+    mac: 02:b0:b0:01:02:03
+    mode: xor
+    load-balance: l2
+
+interfaces:
+  GigabitEthernet3/0/0:
+    device-type: dpdk
+    mtu: 9000
+    description: "LAG #1"
+    sflow: true
+  GigabitEthernet3/0/1:
+    device-type: dpdk
+    mtu: 9000
+    description: "LAG #2"
+    sflow: false
+
+  HundredGigabitEthernet12/0/0:
+    device-type: dpdk
+    lcp: "ice12-0-0"
+    mac: f2:01:00:12:00:00
+    mtu: 9000
+    addresses: [ 192.0.2.17/30, 2001:db8:3::1/64 ]
+    mpls: true
+    sub-interfaces:
+      1234:
+        mtu: 1200
+        lcp: "ice0.1234"
+        encapsulation:
+          dot1q: 1234
+          exact-match: True
+      1235:
+        mtu: 1100
+        lcp: "ice0.1234.1000"
+        encapsulation:
+          dot1q: 1234
+          inner-dot1q: 1000
+          exact-match: True
+
+  HundredGigabitEthernet12/0/1:
+    device-type: dpdk
+    mtu: 2000
+    description: "Bridged"
+
+  BondEthernet0:
+    mtu: 9000
+    lcp: "bond0"
+    sub-interfaces:
+      10:
+        lcp: "bond0.10"
+        mtu: 3000
+      100:
+        mtu: 2500
+        l2xc: BondEthernet0.200
+        encapsulation:
+           dot1q: 100
+           exact-match: False
+      200:
+        mtu: 2500
+        l2xc: BondEthernet0.100
+        encapsulation:
+           dot1q: 200
+           exact-match: False
+      500:
+        mtu: 2000
+        encapsulation:
+           dot1ad: 500
+           exact-match: False
+      501:
+        mtu: 2000
+        encapsulation:
+           dot1ad: 501
+           exact-match: False
+  vxlan_tunnel1:
+    mtu: 2000
+
+  tap101:
+    mtu: 1500
+
+loopbacks:
+  loop0:
+    lcp: "lo0"
+    addresses: [ 10.0.0.1/32, 2001:db8::1/128 ]
+  loop1:
+    lcp: "bvi1"
+    mtu: 2000
+    mac: 02:de:ad:01:be:ef
+    addresses: [ 10.0.1.1/24, 2001:db8:1::1/64 ]
+  loop11:
+    lcp: "bvi11"
+    mtu: 1500
+    mac: 02:de:ad:11:be:ef
+    addresses: [ 10.0.2.1/24, 2001:db8:2::1/64 ]
+    mpls: true
+
+bridgedomains:
+  bd1:
+    mtu: 2000
+    bvi: loop1
+    interfaces: [ BondEthernet0.500, BondEthernet0.501, HundredGigabitEthernet12/0/1, vxlan_tunnel1 ]
+  bd11:
+    mtu: 1500
+    bvi: loop11
+    interfaces: [ tap101 ]
+
+vxlan_tunnels:
+  vxlan_tunnel1:
+    local: 192.0.2.1
+    remote: 192.0.2.2
+    vni: 101
+
+taps:
+  tap100:
+    host:
+      name: vpp-tap100
+      mac: 00:01:02:03:04:05
+      mtu: 9216
+      bridge: br0
+    rx-ring-size: 256
+    tx-ring-size: 256
+  tap101:
+    host:
+      name: vpp-tap101
+      mtu: 1500
+      bridge: br1
+
+prefixlists:
+  trusted:
+    description: "All IPv4 and IPv6 trusted networks"
+    members:
+      - 192.0.2.1
+      - 192.0.2.0/24
+      - 2001:db8::1
+      - 2001:db8::/64
+      - 2001:db8::/48
+  empty:
+    description: "An empty prefixlist"
+    members: []
+
+acls:
+  acl01:
+     description: "Test ACL"
+     terms:
+       - description: "Allow a prefixlist"
+         action: permit
+         source: trusted
+       - description: "Allow a prefixlist for one family only"
+         family: ipv4
+         action: permit
+         source: trusted
+       - description: "Allow a specific IPv6 TCP flow"
+         action: permit
+         source: 2001:db8::/64
+         destination: 2001:db8:1::/64
+         protocol: tcp
+         destination-port: www
+         source-port: "1024-65535"
+       - description: "Allow IPv4 ICMP Destination Unreachable, any code"
+         family: ipv4
+         action: permit
+         protocol: icmp
+         icmp-type: 3
+         icmp-code: any
+       - description: "Deny any IPv4 or IPv6"
+         action: deny
+
+sflow:
+  header-bytes: 128
+  polling-interval: 30
+  sampling-rate: 1000
