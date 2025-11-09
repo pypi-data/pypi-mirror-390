@@ -1,0 +1,404 @@
+Metadata-Version: 2.4
+Name: kapetanios-test
+Version: 1.0.1
+Summary: Unit root test with up to m structural breaks (Kapetanios, 2005)
+Home-page: https://github.com/merwanroudane/kapetanios
+Author: Dr. Merwan Roudane
+Author-email: "Dr. Merwan Roudane" <merwanroudane920@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/merwanroudane/kapetanios
+Project-URL: Documentation, https://github.com/merwanroudane/kapetanios
+Project-URL: Repository, https://github.com/merwanroudane/kapetanios
+Project-URL: Bug Tracker, https://github.com/merwanroudane/kapetanios/issues
+Keywords: econometrics,unit-root,structural-breaks,time-series,kapetanios
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: statsmodels>=0.13.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=3.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Kapetanios Unit Root Test
+
+[![PyPI version](https://badge.fury.io/py/kapetanios-test.svg)](https://badge.fury.io/py/kapetanios-test)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+Python implementation of the Kapetanios (2005) unit root test with up to m structural breaks.
+
+## Overview
+
+This package provides a comprehensive implementation of the unit root test proposed by George Kapetanios (2005), which tests for a unit root against the alternative hypothesis of stationarity with up to m structural breaks. The test is an extension of the Zivot and Andrews (1992) test and uses a sequential procedure to endogenously determine break dates.
+
+### Key Features
+
+- **Multiple Structural Breaks**: Test for up to 5 structural breaks
+- **Flexible Break Types**: 
+  - Model A: Breaks in intercept only
+  - Model B: Breaks in trend only  
+  - Model C: Breaks in both intercept and trend
+- **Sequential Search**: Computationally efficient sequential procedure (Bai & Perron, 1998)
+- **Automatic Lag Selection**: AIC, BIC, or t-statistic methods
+- **Windows Compatible**: Fully tested on Windows, Linux, and macOS
+
+## Installation
+
+### From PyPI (recommended)
+
+```bash
+pip install kapetanios-test
+```
+
+### From source
+
+```bash
+git clone https://github.com/merwanroudane/kapetanios.git
+cd kapetanios
+pip install -e .
+```
+
+## Quick Start
+
+```python
+import numpy as np
+from kapetanios_test import kapetanios_test
+
+# Generate sample data (random walk with structural break)
+np.random.seed(42)
+T = 200
+y = np.cumsum(np.random.randn(T))
+y[100:] += 5  # Add level break at t=100
+
+# Run the test
+result = kapetanios_test(
+    y,
+    max_breaks=3,      # Test for up to 3 breaks
+    model='C',         # Allow breaks in both intercept and trend
+    trimming=0.15,     # Trimming parameter
+    lag_selection='aic'  # Use AIC for lag selection
+)
+
+# Display results
+print(result)
+```
+
+## Usage
+
+### Basic Usage
+
+The simplest way to use the package is through the `kapetanios_test()` function:
+
+```python
+from kapetanios_test import kapetanios_test
+
+result = kapetanios_test(y, max_breaks=2, model='A')
+```
+
+### Advanced Usage
+
+For more control, use the `KapetaniosTest` class:
+
+```python
+from kapetanios_test import KapetaniosTest
+
+# Initialize test
+test = KapetaniosTest(
+    max_breaks=3,
+    model='C',
+    trimming=0.15,
+    max_lags=None,  # Automatically determined
+    lag_selection='aic'
+)
+
+# Run test
+result = test.fit(y)
+
+# Access results
+print(f"Test statistic: {result.statistic}")
+print(f"Break dates: {result.break_dates}")
+print(f"Reject null: {result.reject_null}")
+```
+
+### Model Types
+
+- **Model A**: Breaks in intercept only
+  ```python
+  result = kapetanios_test(y, model='A')
+  ```
+
+- **Model B**: Breaks in trend only
+  ```python
+  result = kapetanios_test(y, model='B')
+  ```
+
+- **Model C**: Breaks in both intercept and trend (recommended)
+  ```python
+  result = kapetanios_test(y, model='C')
+  ```
+
+### Lag Selection Methods
+
+```python
+# Akaike Information Criterion (default)
+result = kapetanios_test(y, lag_selection='aic')
+
+# Bayesian Information Criterion
+result = kapetanios_test(y, lag_selection='bic')
+
+# Sequential t-statistic (Perron's method)
+result = kapetanios_test(y, lag_selection='t-stat')
+```
+
+## Interpretation
+
+### Hypotheses
+
+- **Null Hypothesis (H₀)**: The series contains a unit root with drift (non-stationary)
+- **Alternative Hypothesis (H₁)**: The series is trend-stationary with up to m structural breaks
+
+### Decision Rule
+
+Reject H₀ if the test statistic is less than (more negative than) the critical value at your chosen significance level.
+
+```python
+result = kapetanios_test(y)
+
+if result.reject_null:
+    print("Reject H0: Evidence of stationarity with structural breaks")
+else:
+    print("Fail to reject H0: Evidence consistent with unit root")
+```
+
+### Output
+
+The `KapetaniosResult` object contains:
+
+- `statistic`: The test statistic (minimum t-statistic)
+- `pvalue`: Approximate p-value
+- `critical_values`: Dictionary with 1%, 5%, and 10% critical values
+- `break_dates`: List of estimated break dates (indices)
+- `n_breaks`: Number of breaks detected
+- `model_type`: Type of model ('A', 'B', or 'C')
+- `lags`: Number of lags used
+- `reject_null`: Boolean indicating rejection at 5% level
+
+## Methodology
+
+The test follows the sequential procedure outlined in Kapetanios (2005):
+
+1. **Step 1**: Search for a single break across all possible dates
+2. **Step 2**: Select break with minimum SSR
+3. **Step 3**: Conditional on first break, search for second break
+4. **Step 4**: Repeat until m breaks are found
+5. **Step 5**: Compute minimum t-statistic across all searches
+6. **Step 6**: Compare with critical values
+
+The model estimated is:
+
+```
+Δyₜ = μ₀ + μ₁t + αyₜ₋₁ + Σⱼ cⱼΔyₜ₋ⱼ + Σᵢ φᵢDUᵢ,ₜ + Σᵢ ψᵢDTᵢ,ₜ + εₜ
+```
+
+Where:
+- DUᵢ,ₜ: Intercept break dummies
+- DTᵢ,ₜ: Trend break dummies
+- α: Coefficient of interest (H₀: α = 0)
+
+## Examples
+
+### Example 1: Testing Economic Time Series
+
+```python
+import pandas as pd
+from kapetanios_test import kapetanios_test
+
+# Load GDP data
+df = pd.read_csv('gdp_data.csv')
+gdp = df['real_gdp'].values
+
+# Test for unit root with up to 2 breaks
+result = kapetanios_test(
+    gdp,
+    max_breaks=2,
+    model='C',
+    trimming=0.15
+)
+
+print(result)
+```
+
+### Example 2: Monte Carlo Simulation
+
+```python
+import numpy as np
+from kapetanios_test import kapetanios_test
+
+# Simulate stationary process with break
+np.random.seed(123)
+T = 150
+t = np.arange(T)
+epsilon = np.random.randn(T)
+
+# AR(1) with structural break
+y = np.zeros(T)
+y[0] = epsilon[0]
+for i in range(1, T):
+    if i < 75:
+        y[i] = 0.5 + 0.1 * t[i] + 0.7 * y[i-1] + epsilon[i]
+    else:
+        y[i] = 2.0 + 0.1 * t[i] + 0.7 * y[i-1] + epsilon[i]  # Break at t=75
+
+result = kapetanios_test(y, max_breaks=3, model='C')
+print(f"Detected breaks at: {result.break_dates}")
+```
+
+### Example 3: Comparing Different Models
+
+```python
+from kapetanios_test import kapetanios_test
+
+# Test all three models
+models = ['A', 'B', 'C']
+for model in models:
+    result = kapetanios_test(y, max_breaks=2, model=model)
+    print(f"\nModel {model}:")
+    print(f"  Statistic: {result.statistic:.4f}")
+    print(f"  Reject H0: {result.reject_null}")
+```
+
+## Critical Values
+
+Critical values are from Table I in Kapetanios (2005) and are automatically used based on:
+- Model type (A, B, or C)
+- Maximum number of breaks
+- Significance level (1%, 5%, 10%)
+
+## Limitations
+
+1. **Sample Size**: Requires sufficient observations relative to number of breaks and trimming parameter
+2. **Trimming**: The trimming parameter must ensure adequate observations between breaks
+3. **Power**: Power decreases as the maximum number of breaks increases
+4. **Null Hypothesis**: Breaks are only considered under the alternative hypothesis, not under the null
+
+## Requirements
+
+- Python >= 3.8
+- NumPy >= 1.20.0
+- Pandas >= 1.3.0
+- SciPy >= 1.7.0
+- statsmodels >= 0.13.0
+
+## References
+
+### Primary Reference
+
+Kapetanios, G. (2005). Unit-root testing against the alternative hypothesis of up to m structural breaks. *Journal of Time Series Analysis*, 26(1), 123-133.
+
+### Related Literature
+
+- Bai, J., & Perron, P. (1998). Estimating and testing linear models with multiple structural changes. *Econometrica*, 66(1), 47-78.
+- Zivot, E., & Andrews, D. W. K. (1992). Further evidence on the great crash, the oil-price shock, and the unit-root hypothesis. *Journal of Business & Economic Statistics*, 10(3), 251-270.
+- Perron, P. (1989). The great crash, the oil price shock, and the unit root hypothesis. *Econometrica*, 57(6), 1361-1401.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## Testing
+
+Run the test suite:
+
+```bash
+pytest tests/
+```
+
+With coverage:
+
+```bash
+pytest --cov=kapetanios_test tests/
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Dr. Merwan Roudane**
+- Email: merwanroudane920@gmail.com
+- GitHub: [@merwanroudane](https://github.com/merwanroudane)
+
+## Citation
+
+If you use this package in your research, please cite:
+
+```bibtex
+@article{kapetanios2005,
+  title={Unit-root testing against the alternative hypothesis of up to m structural breaks},
+  author={Kapetanios, George},
+  journal={Journal of Time Series Analysis},
+  volume={26},
+  number={1},
+  pages={123--133},
+  year={2005},
+  publisher={Wiley Online Library}
+}
+
+@software{roudane2024kapetanios,
+  author = {Roudane, Merwan},
+  title = {kapetanios-test: Python implementation of the Kapetanios unit root test},
+  year = {2024},
+  url = {https://github.com/merwanroudane/kapetanios}
+}
+```
+
+## Acknowledgments
+
+- Original methodology by George Kapetanios
+- Sequential procedure based on Bai & Perron (1998)
+- Gretl package by Andrea E. Sánchez Urbina, Ricardo Ramírez & Daniel Ventosa-Santaulària
+
+## Support
+
+For issues, questions, or suggestions:
+- Open an issue on [GitHub](https://github.com/merwanroudane/kapetanios/issues)
+- Email: merwanroudane920@gmail.com
+
+## Changelog
+
+### Version 1.0.0 (2024)
+- Initial release
+- Implementation of Kapetanios (2005) test
+- Support for up to 5 structural breaks
+- Three model types (A, B, C)
+- Multiple lag selection methods
+- Comprehensive documentation and examples
