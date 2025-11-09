@@ -1,0 +1,39 @@
+# Versions
+
+- `simple-http-fileserver.py` is the no GUI version.
+- While `simple-http-fileserver-app.py` is with GUI.
+- Tested in Kali and Windows10/11
+
+# Intro
+This Tool will run python based http GET and Post webserver.
+
+Usage:
+1. The server will list (GET) the content of the current directory where the app located:
+    Browse the IP of the machine with the selected port `http://192.168.8.10:80`
+    Or you can use one of the following in linux: \
+    `wget http://192.168.8.10:80/` \
+    Or:
+    `curl http://192.168.8.10:80/`
+
+1. The server will accept transferred files (POST) 
+    and save them to current directory where the app located.
+    You can use one of the following: \
+    - Using curl \
+    `curl.exe -X POST -H "X-Filename: nmap.exe" --data-binary "@C:\Users\kaled\Downloads\nmap-7.98-setup.exe" http://192.168.8.10:80/` \
+    you will get `nmap.exe` after the upload. \
+    Where: 
+        - `-X` Use the HTTP POST method (send data in the request body).
+        - `-H` "X-Filename: nmap.exe". Add a custom HTTP header named X-Filename with value nmap.exe (your server reads this to pick the filename to save).
+        - `--data-binary "@C:\Users\kaled\Downloads\nmap-7.98-setup.exe"` Send the exact bytes of that local file as the HTTP request body. The @ tells curl to read the file contents.
+        - `http://192.168.8.10:80/` The destination URL (IP and port 80).
+
+    - Using wget \
+    `wget --method=POST --header="X-Filename: test.txt" --header="Content-Type: application/octet-stream" --body-file="C:\Users\kaled\Downloads\somefile.txt" "http://192.168.8.10:80/"` \
+    Where: \
+        - `--method=POST` sets the method to POST.
+        - `--header=...` sends the custom X-Filename header.
+        - `test.txt` the file name after transferring, it can be anything like `key.pem`.
+        - `--body-file=somefile.txt` sends the file as raw binary.
+        - `somefile.txt` the file name before transferring, it should be exact.
+
+Created by Kaled Aljebur for learning purposes in teaching classes.
