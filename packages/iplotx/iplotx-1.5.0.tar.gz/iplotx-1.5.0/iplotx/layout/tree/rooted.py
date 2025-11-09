@@ -1,0 +1,151 @@
+"""
+Rooted tree layout for iplotx library.
+"""
+
+from typing import (
+    Any,
+    Optional,
+)
+from collections.abc import (
+    Hashable,
+    Callable,
+)
+
+import numpy as np
+
+
+def _horizontal_tree_layout_right(
+    root: Any,
+    preorder_fun: Callable,
+    postorder_fun: Callable,
+    children_fun: Callable,
+    branch_length_fun: Callable,
+    **kwargs,
+) -> dict[Hashable, list[float]]:
+    """Build a tree layout horizontally, left to right.
+
+    The strategy is the usual one:
+    1. Compute the y values for the leaves, from 0 upwards.
+    2. Compute the y values for the internal nodes, bubbling up (postorder).
+    3. Set the x value for the root as 0.
+    4. Compute the x value of all nodes, trickling down (BFS/preorder).
+    5. Compute the edges from the end nodes.
+    """
+    layout = {}
+
+    # Set the y values for vertices
+    i = 0
+    for node in postorder_fun():
+        children = children_fun(node)
+        if len(children) == 0:
+            layout[node] = [None, i]
+            i += 1
+        else:
+            layout[node] = [
+                None,
+                np.mean([layout[child][1] for child in children]),
+            ]
+
+    # Set the x values for vertices
+    layout[root][0] = 0
+    for node in preorder_fun():
+        for child in children_fun(node):
+            bl = branch_length_fun(child)
+            if bl is None:
+                bl = 1.0
+            layout[child][0] = layout[node][0] + bl
+
+    return layout
+
+
+def _horizontal_tree_layout(
+    orientation="right",
+    start: tuple[float, float] = (0, 0),
+    span: Optional[float] = None,
+    **kwargs,
+) -> dict[Hashable, list[float]]:
+    """Horizontal tree layout."""
+    if orientation not in ("right", "left"):
+        raise ValueError("Orientation must be 'right' or 'left'.")
+
+    layout = _horizontal_tree_layout_right(**kwargs)
+
+    if orientation == "left":
+        for key in layout:
+            layout[key][0] *= -1
+
+    if span is not None:
+        cur_span = len(layout) - 1
+        for key in layout:
+            layout[key][1] = float(layout[key][1]) * span / cur_span
+
+    if start != (0, 0):
+        for key in layout:
+            layout[key][0] += start[0]
+            layout[key][1] += start[1]
+
+    return layout
+
+
+def _vertical_tree_layout(
+    orientation="descending",
+    start: tuple[float, float] = (0, 0),
+    span: Optional[float] = None,
+    **kwargs,
+) -> dict[Hashable, list[float]]:
+    """Vertical tree layout."""
+    sign = -1 if orientation == "descending" else 1
+    layout = _horizontal_tree_layout(**kwargs)
+    for key, value in layout.items():
+        # Invert x and y
+        layout[key] = value[::-1]
+        # Orient vertically
+        layout[key][1] *= sign
+
+    if span is not None:
+        cur_span = len(layout) - 1
+        for key in layout:
+            layout[key][0] = float(layout[key][0]) * span / cur_span
+
+    if start != (0, 0):
+        for key in layout:
+            layout[key][0] += start[0]
+            layout[key][1] += start[1]
+
+    return layout
+
+
+def _radial_tree_layout(
+    orientation: str = "right",
+    start: float = 180,
+    span: float = 360,
+    **kwargs,
+) -> dict[Hashable, tuple[float, float]]:
+    """Radial tree layout.
+
+    Parameters:
+        orientation: Whether the layout fans out towards the right (clockwise) or left
+            (anticlockwise).
+        start: The starting angle in degrees, default is -180 (left).
+        span: The angular span in degrees, default is 360 (full circle). When this is
+            360, it leaves a small gap at the end to ensure the first and last leaf
+            are not overlapping.
+    Returns:
+        A dictionary with the layout.
+    """
+    # Short form
+    th = start * np.pi / 180
+    th_span = span * np.pi / 180
+    pad = int(span == 360)
+    sign = -1 if orientation in ("right", "clockwise") else 1
+
+    layout = _horizontal_tree_layout_right(**kwargs)
+    ymax = max(point[1] for point in layout.values())
+    for key, (x, y) in layout.items():
+        r = x
+        theta = sign * th_span * y / (ymax + pad) + th
+        # We export r and theta to ensure theta does not
+        # modulo 2pi if we take the tan and then arctan later.
+        layout[key] = (r, theta)
+
+    return layout
