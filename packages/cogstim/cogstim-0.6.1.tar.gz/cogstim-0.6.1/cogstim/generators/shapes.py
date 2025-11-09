@@ -1,0 +1,332 @@
+import os
+import math
+import random
+import numpy as np
+from tqdm import tqdm
+
+from cogstim.helpers.constants import COLOUR_MAP, IMAGE_DEFAULTS, SHAPE_DEFAULTS
+from cogstim.helpers.base_generator import BaseGenerator
+from cogstim.helpers.image_utils import ImageCanvas
+from cogstim.helpers.planner import GenerationPlan
+
+
+class ShapesGenerator(BaseGenerator):
+    """
+    A class for generating images with geometric shapes for machine learning tasks.
+
+    Attributes:
+        shape (str): The shape of the geometric objects.
+        colours (list): The colours of the shapes.
+        task_type (str): The type of task to generate images for.
+    """
+
+    background_colour = COLOUR_MAP["black"]
+    colour_task_base_shape = "circle"
+    boundary_width = 5
+    img_paths = {}
+
+    def __init__(
+        self,
+        shapes,
+        colours,
+        task_type,
+        output_dir,
+        train_num,
+        test_num,
+        jitter,
+        min_surface,
+        max_surface,
+        background_colour,
+        seed,
+        img_format,
+        version_tag,
+        random_rotation,
+        min_rotation=None,
+        max_rotation=None,
+    ):
+
+        # If random_rotation is True, min_rotation and max_rotation must be provided
+        if random_rotation and (min_rotation is None or max_rotation is None):
+            raise ValueError("min_rotation and max_rotation must be provided if random_rotation is True")
+
+        # Set directory based on task if not provided explicitly
+        if output_dir is not None:
+            pass
+        else:
+            shapes_list = shapes if isinstance(shapes, list) else [shapes]
+            if task_type == "two_shapes":
+                output_dir = "images/two_shapes"
+            elif task_type == "two_colors":
+                output_dir = "images/two_colors"
+            else:
+                output_dir = f"images/{'_'.join(shapes_list)}_{'_'.join(colours)}"
+        
+        # Initialize parent with config
+        config = {
+            'output_dir': output_dir,
+            'shapes': shapes,
+            'colours': colours,
+            'task_type': task_type,
+            'train_num': train_num,
+            'test_num': test_num,
+            'jitter': jitter,
+            'min_surface': min_surface,
+            'max_surface': max_surface,
+            'background_colour': background_colour,
+            'seed': seed,
+            'random_rotation': random_rotation,
+            'min_rotation': min_rotation,
+            'max_rotation': max_rotation,
+            'img_format': img_format,
+            'version_tag': version_tag,
+        }
+        super().__init__(config)
+        
+        self.shapes = shapes if isinstance(shapes, list) else [shapes]
+        self.colors = {col: COLOUR_MAP[col] for col in colours}
+        self.task_type = task_type
+        self.background_colour = background_colour
+
+        # Override default generation params
+        self.train_num = train_num
+        self.test_num = test_num
+        self.min_surface = min_surface
+        self.max_surface = max_surface
+        self.jitter = jitter
+        self.random_rotation = random_rotation
+        self.min_rotation = min_rotation
+        self.max_rotation = max_rotation
+        self.img_paths = {}
+
+    def get_subdirectories(self):
+        """Get list of subdirectories for train/test and classes."""
+        subdirs = []
+        
+        for t in ["train", "test"]:
+            if self.task_type == "two_shapes":
+                classes = self.shapes
+            elif self.task_type == "two_colors":
+                classes = self.colors.keys()
+            else:
+                classes = [
+                    f"{shape}_{color}" for shape in self.shapes for color in self.colors
+                ]
+
+            for class_name in classes:
+                subdirs.append((t, class_name))
+                
+        return subdirs
+    
+    def setup_directories(self):
+        """Creates class directories for train and test sets and populate img_paths."""
+        super().setup_directories()
+        
+        for t in ["train", "test"]:
+            if self.task_type == "two_shapes":
+                classes = self.shapes
+            elif self.task_type == "two_colors":
+                classes = self.colors.keys()
+            else:
+                classes = [
+                    f"{shape}_{color}" for shape in self.shapes for color in self.colors
+                ]
+
+            for class_name in classes:
+                path_key = f"{t}_{class_name}"
+                self.img_paths[path_key] = os.path.join(self.output_dir, t, class_name)
+
+    @staticmethod
+    def get_radius_from_surface(shape: str, surface: float) -> float:
+        """
+        Calculate the radius needed to achieve a specific surface area for different shapes.
+        
+        Args:
+            shape (str): The shape type ('circle', 'triangle', 'square', or 'star')
+            surface (float): The desired surface area
+            
+        Returns:
+            float: The radius needed to achieve the specified surface area
+        """
+        if shape == "circle":
+            # A = πr²
+            return math.sqrt(surface / math.pi)
+
+        elif shape == "square":
+            # A = (2r)² = 4r²
+            # where r is half the side length
+            return math.sqrt(surface / 4)
+
+        elif shape == "triangle":
+            # For an equilateral triangle:
+            # A = (√3/4) * (2r)² = √3 * r²
+            # where r is the distance from center to any vertex
+            return math.sqrt(surface / math.sqrt(3))
+
+        elif shape == "star":
+            return np.sqrt(2 / 5 * surface * 1 / np.sqrt((25 - 11 * np.sqrt(5)) / 2))
+
+        else:
+            raise ValueError(f"Shape {shape} not implemented.")
+
+    @staticmethod
+    def create_star_vertices(center, radius):
+        inner_radius = 1 / 1.014 * radius * np.sin(np.pi / 10) / np.sin(7 * np.pi / 10)
+
+        vertices = []
+        for i in range(5):
+            # Outer vertices (points of the star)
+            angle_rad = -np.pi/2 + i * 2 * np.pi / 5  # Start from top (-pi/2) and go clockwise
+            vertices.append(
+                (
+                    center[0] + radius * np.cos(angle_rad),
+                    center[1] + radius * np.sin(angle_rad),
+                )
+            )
+
+            # Inner vertices
+            angle_rad += np.pi / 5  # Rotate by 36 degrees (π/5 radians)
+            vertices.append(
+                (
+                    center[0] + inner_radius * np.cos(angle_rad),
+                    center[1] + inner_radius * np.sin(angle_rad),
+                )
+            )
+
+        return vertices
+    
+    def rotate_vertices(self, vertices, center, angle_deg):
+        """Rotate vertices around a center point by angle_deg degrees."""
+        if angle_deg == 0:
+            return vertices
+        
+        angle_rad = math.radians(angle_deg)
+        cos_angle = math.cos(angle_rad)
+        sin_angle = math.sin(angle_rad)
+        
+        rotated = []
+        for x, y in vertices:
+            # Translate to origin
+            x_translated = x - center[0]
+            y_translated = y - center[1]
+            
+            # Rotate
+            x_rotated = x_translated * cos_angle - y_translated * sin_angle
+            y_rotated = x_translated * sin_angle + y_translated * cos_angle
+            
+            # Translate back
+            rotated.append((x_rotated + center[0], y_rotated + center[1]))
+        
+        return rotated
+
+    def get_vertices(self, shape: str, center: tuple, radius: int, rotation_angle: int = 0) -> list:
+        """Calculate vertices of the shapes based on the given parameters."""
+        if shape == "circle":
+            vertices = [
+                (center[0] - radius, center[1] - radius),
+                (center[0] + radius, center[1] + radius),
+            ]
+        elif shape == "triangle":
+            vertices = [
+                (center[0], center[1] - radius),
+                (center[0] - radius, center[1] + radius),
+                (center[0] + radius, center[1] + radius),
+            ]
+        elif shape == "square":
+            vertices = [
+                (center[0] - radius, center[1] - radius),
+                (center[0] + radius, center[1] - radius),
+                (center[0] + radius, center[1] + radius),
+                (center[0] - radius, center[1] + radius),
+            ]
+        elif shape == "star":
+            vertices = self.create_star_vertices(center, radius)
+        else:
+            raise ValueError(f"Shape {shape} not implemented.")
+        
+        # Apply rotation
+        if rotation_angle != 0 and shape != "circle":
+            vertices = self.rotate_vertices(vertices, center, rotation_angle)
+        
+        return vertices
+
+    def draw_shape(self, shape: str, surface: int, colour: str, jitter: bool = False):
+        """Draws a single shape on an image and saves it to the appropriate directory."""
+        pixels_x = pixels_y = IMAGE_DEFAULTS["init_size"]
+        canvas = ImageCanvas(pixels_x, self.background_colour, mode=IMAGE_DEFAULTS["mode"])
+
+        radius = int(self.get_radius_from_surface(shape, surface))
+
+        # More than that and it's easier to fit a circle than a star
+        max_jitter = 124 if jitter else 0
+
+        dist_x = random.randint(-max_jitter, max_jitter)
+        dist_y = random.randint(-max_jitter, max_jitter)
+        center = (int(pixels_x / 2) + dist_x, int(pixels_y / 2) + dist_y)
+
+        # Calculate jitter metadata for image filename
+        distance = int(np.sqrt(dist_x**2 + dist_y**2))
+        angle = int((np.arctan2(dist_y, dist_x) / np.pi + 1) * 180)
+        
+        # Generate random rotation if enabled
+        rotation = 0
+        if self.random_rotation:
+            rotation = random.randint(self.min_rotation, self.max_rotation)
+
+        vertices = self.get_vertices(shape, center, radius, rotation)
+        if shape == "circle":
+            canvas.draw_ellipse(vertices, fill=colour)
+        else:
+            canvas.draw_polygon(vertices, fill=colour)
+
+        return canvas.img, distance, angle, rotation
+    
+    def save_shape_image(self, image, shape, surface, dist_from_center, angle, it, rotation=0, *subdirs):
+        """Save a shape image with proper filename construction."""
+        filename = f"{shape}_{surface}_{dist_from_center}_{angle}_{rotation}_{it}"
+        self.save_image(image, filename, *subdirs)
+
+    def generate_images(self):
+        """Generate all images for training and testing using unified planner."""
+        self.setup_directories()
+
+        for phase, num_images in self.iter_phases():
+            # Build generation plan
+            plan = GenerationPlan(
+                task_type="shapes",
+                num_repeats=num_images,
+                shapes=self.shapes,
+                colors=list(self.colors.keys()),
+                min_surface=self.min_surface,
+                max_surface=self.max_surface,
+                surface_step=100
+            ).build(task_subtype=self.task_type)
+            
+            self.log_generation_info(
+                f"Generating {len(plan)} images for {phase} in '{self.output_dir}/{phase}'."
+            )
+            
+            # Execute plan
+            for task in tqdm(plan.tasks, desc=f"{phase}"):
+                shape = task.params['shape']
+                color_name = task.params['color']
+                surface = task.params['surface']
+                rep = task.rep
+                
+                # Get color code
+                color_code = self.colors[color_name]
+                
+                # Generate image
+                image, dist, angle, rotation = self.draw_shape(shape, surface, color_code, self.jitter)
+                
+                # Determine save subdirectories based on task type
+                if self.task_type == "two_shapes":
+                    subdirs = (phase, shape)
+                elif self.task_type == "two_colors":
+                    subdirs = (phase, color_name)
+                else:  # custom
+                    class_name = f"{shape}_{color_name}"
+                    subdirs = (phase, class_name)
+                
+                self.save_shape_image(image, shape, surface, dist, angle, rep, rotation, *subdirs)
+
+            self.write_summary_if_enabled(plan, phase)
