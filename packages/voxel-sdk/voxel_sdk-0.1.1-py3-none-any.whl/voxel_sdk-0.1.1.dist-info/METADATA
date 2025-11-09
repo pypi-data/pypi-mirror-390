@@ -1,0 +1,181 @@
+Metadata-Version: 2.4
+Name: voxel-sdk
+Version: 0.1.1
+Summary: SDK for Voxel
+Project-URL: Homepage, https://github.com/physicalinc/voxel-sdk
+Project-URL: Repository, https://github.com/physicalinc/voxel-sdk
+Author-email: "Physical Automation, Inc" <contact@physical.inc>
+License: MIT License
+        
+        Copyright (c) 2025 Physical Automation, Inc.
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+        
+License-File: LICENSE
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Requires-Dist: bleak>=0.22.0
+Requires-Dist: numpy>=1.23.0
+Requires-Dist: opencv-python>=4.8.0
+Requires-Dist: pyserial>=3.5
+Provides-Extra: all
+Requires-Dist: bleak>=0.22.0; extra == 'all'
+Requires-Dist: numpy>=1.23.0; extra == 'all'
+Requires-Dist: opencv-python>=4.8.0; extra == 'all'
+Requires-Dist: pyserial>=3.5; extra == 'all'
+Provides-Extra: ble
+Requires-Dist: bleak>=0.22.0; extra == 'ble'
+Provides-Extra: serial
+Requires-Dist: pyserial>=3.5; extra == 'serial'
+Provides-Extra: viz
+Requires-Dist: numpy>=1.23.0; extra == 'viz'
+Requires-Dist: opencv-python>=4.8.0; extra == 'viz'
+Description-Content-Type: text/markdown
+
+## Voxel SDK
+
+Concise tools to control a Voxel device over wired serial or BLE, capture media, and stream to your computer.
+
+### Install
+
+Default install includes everything (BLE, Serial, and the stream viewer):
+
+```bash
+pip install voxel-sdk
+```
+
+Optional (for video conversion): install `ffmpeg` (e.g., `brew install ffmpeg` on macOS).
+
+
+## Quickstart
+
+### 1) Terminal (interactive CLI)
+
+Run the built-in terminal (no separate entry point needed):
+
+```bash
+python -m voxel_sdk.terminal
+```
+
+- Choose connection:
+  - Wired: select “Wired” or run with flags: `python -m voxel_sdk.terminal --transport serial --port /dev/cu.usbmodem1101`
+  - BLE: select “Bluetooth” or run with flags: `python -m voxel_sdk.terminal --transport ble --ble-name voxel`
+
+Once connected you’ll see a prompt like `voxel>`. A few useful commands:
+
+- List files:
+
+```text
+voxel> ls /
+```
+
+- Capture a photo to the device:
+
+```text
+voxel> camera-capture /photos myphoto 1600x1200
+voxel> ls /photos
+```
+
+- Download the photo to your computer (current directory):
+
+```text
+voxel> download /photos/myphoto.jpg myphoto.jpg
+```
+
+- Stream live video to your computer with a local viewer (press `q` to quit):
+
+```text
+voxel> stream 9000
+```
+
+Notes:
+- Stream viewer requires OpenCV + NumPy (installed by default). If you built a minimal env without them, install `opencv-python` and `numpy`.
+- You can stop a remote stream with `stream-stop`.
+
+
+### 2) Python SDK
+
+Use the high-level controller with Serial or BLE transports.
+
+- Take a photo and save it locally:
+
+```python
+from voxel_sdk.device_controller import DeviceController
+from voxel_sdk.ble import BleVoxelTransport  # or: from voxel_sdk.serial import SerialVoxelTransport
+
+# Connect (BLE)
+transport = BleVoxelTransport(device_name="voxel")
+transport.connect("")  # scans for a device whose name starts with "voxel"
+controller = DeviceController(transport)
+
+# Ask the device to capture a photo to its filesystem
+controller.execute_device_command("camera_capture:/photos|myphoto|640x480")
+
+# Download the photo to your computer
+jpeg_bytes = controller.download_file("/photos/myphoto.jpg")
+with open("myphoto.jpg", "wb") as f:
+    f.write(jpeg_bytes)
+
+transport.disconnect()
+```
+
+- Stream live video with a local viewer:
+
+```python
+from voxel_sdk.device_controller import DeviceController
+from voxel_sdk.ble import BleVoxelTransport  # or SerialVoxelTransport
+
+transport = BleVoxelTransport(device_name="voxel")
+transport.connect("")
+controller = DeviceController(transport)
+
+# Opens an OpenCV window; press 'q' to quit
+controller.stream_with_visualization(port=9000)
+
+transport.disconnect()
+```
+
+Tips:
+- On macOS, serial ports often look like `/dev/cu.usbmodem*` or `/dev/tty.usbserial*`.
+- If you’re unsure of the saved image filename, run `ls /photos` in the terminal first, then use that path in `download`/`download_file`.
+
+
+## Extras
+
+- Default install already includes these. Extras exist only if you want a minimal/custom install:
+  - `ble`: Bluetooth Low Energy (via `bleak`)
+  - `serial`: Wired serial (via `pyserial`)
+  - `viz`: Local viewer for streaming (via `opencv-python`, `numpy`)
+  - `all`: Installs all of the above
+
+
+## Links
+
+- Source: https://github.com/physicalinc/voxel-sdk
+
+
