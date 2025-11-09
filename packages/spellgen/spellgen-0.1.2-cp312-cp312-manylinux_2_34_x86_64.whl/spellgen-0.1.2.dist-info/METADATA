@@ -1,0 +1,170 @@
+Metadata-Version: 2.4
+Name: spellgen
+Version: 0.1.2
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Games/Entertainment
+Classifier: Topic :: Multimedia :: Graphics
+Summary: A library for creating spell card images for the game Wizard101
+Keywords: wizard101,gaming,image-generation,cards
+Author-email: Spiral404 <noreply@spiral404.com>
+License: MIT
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+
+# Notes
+This is the library for creating spell card images for the game Wizard101.
+
+# TODO
+* Add multi spell image support (remember that KI's version for some reason renders above the border...)
+* Figure out issue with over time icon and parenthasees
+
+# API Documentation
+
+## SpellCard Class
+
+The `SpellCard` class represents a spell card with all its properties.
+
+### Constructor Arguments
+
+- `title` (str): The title/name of the spell (default: "")
+- `description` (str): The description text of the spell (default: "")
+- `description_alignment` (TextAlignment): Alignment of the description text (default: TextAlignment.center())
+- `frame` (str|None): Path to the frame image file (default: None)
+- `spell_image` (str|None): Path to the main spell image file (default: None)
+- `additional_spell_images` (list|None): List of paths to additional spell images (default: None)
+- `cost` (SpellCost|None): The cost of casting the spell (default: SpellCost(0, False, 0, 0, 0, 0, 0, 0, 0, 0))
+- `school_icon` (str|None): Path to the school icon image (default: None)
+- `type_icon` (str|None): Path to the type icon image (default: None)
+- `accuracy` (str|None): Accuracy percentage as string (default: '0%')
+- `accuracy_colour` (tuple|None): RGBA color tuple for accuracy text (default: None)
+- `booster_pack` (str|None): Path to the booster pack image (default: None)
+- `cloaked` (bool): Whether the spell is cloaked (default: False)
+- `no_pvp` (bool): Whether the spell cannot be used in PvP (default: False)
+- `no_pve` (bool): Whether the spell cannot be used in PvE (default: False)
+- `pierce` (int): Pierce value of the spell (default: 0)
+- `level_requirement` (int): Level required to use the spell (default: 0)
+- `cannot_discard` (bool): Whether the spell cannot be discarded (default: False)
+- `essence_collection` (bool): Whether the spell has the Animus collection icon (default: False)
+- `single_use` (bool): Whether the spell is single use (default: False)
+
+## SpellCost Class
+
+The `SpellCost` class represents the pip cost of a spell.
+
+### Constructor Arguments
+
+- `base_cost` (int): The base pip cost (default: 0)
+- `variable_cost` (bool): Whether the cost is variable (default: False)
+- `shadow` (int): Shadow pip cost (default: 0)
+- `balance` (int): Balance pip cost (default: 0)
+- `death` (int): Death pip cost (default: 0)
+- `fire` (int): Fire pip cost (default: 0)
+- `ice` (int): Ice pip cost (default: 0)
+- `life` (int): Life pip cost (default: 0)
+- `myth` (int): Myth pip cost (default: 0)
+- `storm` (int): Storm pip cost (default: 0)
+
+## TextAlignment Class
+
+The `TextAlignment` class provides text alignment options.
+
+### Static Methods
+
+- `center()`: Returns a center-aligned TextAlignment object
+- `left()`: Returns a left-aligned TextAlignment object
+
+## CardFactory Class
+
+The `CardFactory` class is used to generate spell card images.
+
+### Constructor
+
+- `CardFactory(settings: CardFactorySettings)`: Creates a new CardFactory with the given settings
+
+## CardFactorySettings Class
+
+The `CardFactorySettings` class contains configuration for the CardFactory.
+
+### Constructor Arguments
+
+- `assets_path` (str): Path to the assets directory (default: "")
+- `glyph_defs_path` (str): Path to the glyph definitions XML file (default: "")
+- `spell_title_font_path` (str): Path to the spell title font XML file (default: "")
+- `spell_description_font_path` (str): Path to the spell description font XML file (default: "")
+- `shadow_school_pip_path` (str): Path to the shadow school pip icon (default: "")
+- `balance_school_pip_path` (str): Path to the balance school pip icon (default: "")
+- `death_school_pip_path` (str): Path to the death school pip icon (default: "")
+- `fire_school_pip_path` (str): Path to the fire school pip icon (default: "")
+- `ice_school_pip_path` (str): Path to the ice school pip icon (default: "")
+- `life_school_pip_path` (str): Path to the life school pip icon (default: "")
+- `myth_school_pip_path` (str): Path to the myth school pip icon (default: "")
+- `storm_school_pip_path` (str): Path to the storm school pip icon (default: "")
+- `rank_number_icons` (list): List of 21 paths to rank number icons (0-20) (default: [])
+- `rank_minus_icon` (str): Path to the rank minus icon (default: "")
+- `rank_plus_icon` (str): Path to the rank plus icon (default: "")
+- `rank_x_icon` (str): Path to the rank X icon (default: "")
+- `cloak_icon` (str): Path to the cloak icon (default: "")
+- `cloak_frame_icon` (str): Path to the cloak frame icon (default: "")
+- `pvp_only_icon` (str): Path to the PvP only icon (default: "")
+- `pve_only_icon` (str): Path to the PvE only icon (default: "")
+- `banned_icon` (str): Path to the banned icon (default: "")
+- `single_use_icon` (str): Path to the single use icon (default: "")
+- `cannot_discard_icon` (str): Path to the cannot discard icon (default: "")
+- `essence_collection_icon` (str): Path to the essence collection icon (default: "")
+- `pierce_icon` (str): Path to the pierce icon (default: "")
+- `pierce_frame_icon` (str): Path to the pierce frame icon (default: "")
+- `level_requirement_icon` (str): Path to the level requirement icon (default: "")
+- `default_icon_size` (tuple): Default size for icons as (width, height) (default: (16, 16))
+- `default_wide_icon_size` (tuple): Default size for wide icons as (width, height) (default: (32, 16))
+- `cache_madlibs` (bool): Whether to cache madlibs (default: True)
+
+## CardImage Class
+
+The `CardImage` class represents a generated spell card image.
+
+### Methods
+
+- `save(path: str)`: Saves the image to the given path. The extension matters for the output format.
+- `to_memory()`: Writes the image to a webp format in memory and returns the buffer.
+
+## Usage Example
+
+```python
+import spellgen
+
+# Create settings for the card factory
+settings = spellgen.CardFactorySettings(
+    assets_path="assets",
+    glyph_defs_path="glyph_defs/SpellDescription.xml",
+    # ... other settings ...
+)
+
+# Create a card factory
+factory = spellgen.CardFactory(settings)
+
+# Create a spell card
+card = spellgen.SpellCard(
+    title="Fire Cat",
+    description="Deals 85-105 Fire damage",
+    cost=spellgen.SpellCost(2, False, 0, 0, 1, 0, 0, 0, 0, 0),
+    school_icon="school_icons/Icon_Fire.png",
+    spell_image="spell_icons/Spell_Fire_FireCat.dds",
+    type_icon="type_icons/Type_Damage.png",
+    accuracy="85%"
+)
+
+# Generate the card image
+img = factory.generate(card)
+
+# Save the image
+img.save("fire_cat.webp")
+```
