@@ -1,0 +1,52 @@
+name: Documentation (unstable)
+on:
+  workflow_call:
+  workflow_dispatch:  # to trigger manually
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.13'
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install --all-deps --docs
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Setup doc deploy
+        env:
+          CI_BOT_EMAIL: ${{secrets.CI_BOT_EMAIL}}
+        run: |
+          git config --global user.name ci-docs-bot
+          git config --global user.email $CI_BOT_EMAIL
+          git fetch origin gh-pages --depth=1 --tags
+
+      - name: Build and deploy documentation
+        run: |
+          inv publish-doc-dev
