@@ -1,0 +1,5 @@
+from ikemurami import check
+
+
+if __name__ == "__main__":
+    print(check())
