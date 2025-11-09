@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.5.0", "jupyter-packaging>=0.10,<2", "hatch-nodejs-version>=0.3.2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jupyterlab-biolm"
+dynamic = ["version"]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "BSD-3-Clause"}
+authors = [
+    {name = "BioLM"}
+]
+keywords = ["Jupyter", "JupyterLab", "JupyterLab Extension"]
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+]
+dependencies = [
+    "jupyterlab>=4.0.0,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyterlab>=4.0.0,<5",
+    "pytest",
+    "pytest-jupyter[server]>=0.5.0",
+]
+
+[tool.jupyter-packaging]
+builder-kwargs = {build_dir = "jupyterlab_biolm/labextension"}
+npm-builder = "jlpm"
+ensured-targets = [
+    "jupyterlab_biolm/labextension/package.json",
+    "jupyterlab_biolm/labextension/static/style.js"
+]
+skip-if-exists = ["jupyterlab_biolm/labextension/static"]
+data-files = [
+    ["share/jupyter/labextensions/jupyterlab-biolm", "jupyterlab_biolm/labextension", "**"],
+    ["share/jupyter/labextensions/jupyterlab-biolm", ".", "install.json"],
+    ["share/jupyter/lab/schemas/jupyterlab-biolm", "schema", "*.json"],
+]
+
+[tool.hatch.version]
+source = "nodejs"
+
+[tool.check-wheel-contents]
+ignore = ["jupyterlab_biolm/labextension", "jupyterlab_biolm/labextension/**"]
+
