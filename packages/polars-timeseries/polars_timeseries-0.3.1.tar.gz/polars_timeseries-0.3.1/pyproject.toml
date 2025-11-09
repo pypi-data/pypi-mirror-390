@@ -1,0 +1,89 @@
+[project]
+name = "polars-timeseries"
+version = "0.3.1"
+description = "Polars Time Series Extension"
+authors = [
+    { name = "Torben Windler" },
+]
+readme = "README.md"
+requires-python = ">=3.12, <3.13"
+dependencies = [
+    "polars>=1.20.0",
+    "iprogress>=0.4",
+    "loguru>=0.7.3",
+    "statsforecast>=2.0.0",
+    "pyarrow>=19.0.0",
+    "maturin>=1.8.1",
+    "polars-ds>=0.7.0",
+    "statsmodels>=0.14.4",
+]
+
+[project.urls]
+Source = "https://github.com/drumtorben/polars-ts.git"
+
+[dependency-groups]
+dev = [
+  "ipykernel>=6.29.5",
+  "pre-commit>=4.0.1",
+  "pytest>=8.3.4",
+  "pytest-cov>=6.0.0",
+  "ipywidgets>=8.1.5",
+  "hvplot>=0.11.2",
+  "matplotlib>=3.10.0",
+]
+docs = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.5.44",
+  "mkdocstrings[python]>=0.27.0",
+  "mkdocs-gen-files>=0.5.0",
+  "mkdocs-literate-nav>=0.6.1",
+  "mkdocs-section-index>=0.3.9",
+  "mkdocs-git-authors-plugin>=0.9.0"
+]
+
+[tool.uv]
+cache-keys = [{ file = "**/*.toml" }, { file = "**/src/*.rs"}]
+default-groups = ["dev", "docs"]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-packages = ["polars_ts"]
+
+[tool.pytest.ini_options]
+addopts = "--cov-config=.coveragerc"
+testpaths = ["tests", "src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "D", "B", "I", "ARG"]
+ignore = [
+  "B019",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
+  "D203",
+  "D213",
+  "D417",
+  "E501",
+]
+
+[tool.ruff.lint.pylint]
+max-positional-args = 1
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
