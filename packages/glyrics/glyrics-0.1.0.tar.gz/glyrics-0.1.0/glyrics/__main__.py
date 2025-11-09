@@ -1,0 +1,18 @@
+from glyrics import app, config
+
+
+DEFAULT_SERVER_PORT = 8900
+
+
+def main():
+    ssl_context = None
+    if (cert_path := config.get('ssl.cert_path')) and (key_path := config.get('ssl.key_path')):
+        ssl_context = (cert_path, key_path)
+    app.run(port=config.get('server.port', DEFAULT_SERVER_PORT),
+            debug=config.get('server.debug', False),
+            ssl_context=ssl_context)
+
+
+if __name__ == '__main__':
+    main()
+
