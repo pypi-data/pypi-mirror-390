@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "milliseconds"
+dynamic = ["version"]
+description = 'Utility class for working with POSIX timestamps in milliseconds.'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = []
+authors = [
+    { name = "Athen Traverne", email = "athen@aetherionresearch.com" },
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+dependencies = []
+
+[project.urls]
+Documentation = "https://github.com/traverne/milliseconds#readme"
+Issues = "https://github.com/traverne/milliseconds/issues"
+Source = "https://github.com/traverne/milliseconds"
+
+[tool.hatch.version]
+path = "src/milliseconds/__about__.py"
+
+[tool.hatch.envs.lint]
+detached = true
+dependencies = [
+    "black",
+    "ruff",
+]
+
+[tool.hatch.envs.lint.scripts]
+check = [
+    "ruff check src tests",
+    "black --check src tests"
+]
+fmt = [
+    "black src tests",
+    "ruff check --fix src tests",
+]
+
+[tool.coverage.run]
+source_pkgs = ["milliseconds", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/milliseconds/__about__.py",
+]
+
+[tool.coverage.paths]
+milliseconds = ["src/milliseconds", "*/milliseconds/src/milliseconds"]
+tests = ["tests", "*/milliseconds/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.hatch.envs.test]
+dependencies = [
+  "pytest>=7.4.0",
+  "pytest-cov>=4.1.0",
+  "pytest-mock>=3.11.1",
+]
+
+[tool.hatch.envs.test.scripts]
+run = "pytest {args:tests}"
+cov = "pytest --cov=milliseconds --cov-report=term-missing --cov-report=html {args:tests}"
+cov-report = "coverage report"
+cov-html = "coverage html && python -m webbrowser htmlcov/index.html"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
