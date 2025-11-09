@@ -1,0 +1,4 @@
+
+class MethodSignatureException(Exception):
+    pass
+    

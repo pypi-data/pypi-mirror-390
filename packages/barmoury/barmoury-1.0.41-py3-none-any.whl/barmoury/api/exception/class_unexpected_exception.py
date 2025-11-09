@@ -1,0 +1,4 @@
+
+class ClassUnexpectedException(Exception):
+    pass
+    
