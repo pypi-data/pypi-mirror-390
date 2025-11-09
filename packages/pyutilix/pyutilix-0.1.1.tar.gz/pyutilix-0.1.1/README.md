@@ -1,0 +1,42 @@
+# PyUtilx
+
+**PyUtilx** — a lightweight Python library with useful utilities and extended variable types.  
+Designed for convenience and less routine in logical operations.
+
+## Features
+
+- **Clamped** — a numeric type with value limits (`min`, `max`) and an optional looping mode (`loop=True`).  
+  Supports all major operators (`+`, `-`, `*`, `/`, `%`, `**`) and safely handles boundary overflows.
+
+- **to_base()** — converts numbers between numeral systems (up to base 36).  
+  Example: `to_base("ZZ", 36, 10)` → `1295`.
+
+- **nearest() / closest() / nrst()** — finds the closest value from a list.
+
+- **clamp()** — clamps a number between two bounds.
+
+- **reverse()** — reverses a string or number (sign preserved).
+
+- **sign()** — returns the sign of a number: `1`, `-1` or `0`.
+
+## Example
+
+```python
+from pyutilx import Clamped, to_base, reverse
+
+x = Clamped(5, 0, 10)
+x += 8
+print(x)  # 10
+
+y = Clamped(9, 0, 10, loop=True)
+y += 3
+print(y)  # 1
+
+print(to_base("ZZ", 36, 10))  # 1295
+print(reverse(-123))  # -321
+```
+
+## Why PyUtilx?
+PyUtilx isn’t just a collection of random utilities — it’s an attempt to expand Python with **missing data types**  
+and simple yet powerful tools that make your code cleaner and more logical.  
+`Clamped` is just the beginning.
