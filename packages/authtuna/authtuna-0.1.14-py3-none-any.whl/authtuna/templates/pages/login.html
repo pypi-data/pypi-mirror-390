@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@simplewebauthn/browser/dist/bundle/index.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {{ get_theme_css()|safe }}
+    <style>
+        /* All theme-related styles are now injected by get_theme_css(). */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            transition: background 0.5s ease-in-out, color 0.5s ease-in-out;
+        }
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+    <script>
+        function setTheme(theme) {
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            localStorage.setItem('theme', theme);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(storedTheme || (prefersDark ? 'dark' : 'light'));
+        });
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            setTheme(isDark ? 'light' : 'dark');
+        }
+    </script>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="card shadow-2xl rounded-3xl p-8 w-full max-w-sm relative">
+        <button onclick="toggleTheme()" class="absolute top-4 right-4 p-2 rounded-full text-muted hover:text-foreground hover:bg-secondary transition-colors duration-200">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 7.625A.75.75 0 018.25 7.5h.75a.75.75 0 01.75.75v.75a.75.75 0 01-.75.75h-.75A.75.75 0 017.5 8.375v-.75zM15 7.5a.75.75 0 01.75.75v.75a.75.75 0 01-1.5 0v-.75a.75.75 0 01.75-.75zM17.65 6.33a.75.75 0 011.06 0l1.06 1.06a.75.75 0 010 1.06l-1.06 1.06a.75.75 0 01-1.06 0L17.65 7.39a.75.75 0 010-1.06zM6.34 17.65a.75.75 0 010-1.06l1.06-1.06a.75.75 0 011.06 0l1.06 1.06a.75.75 0 010 1.06l-1.06 1.06a.75.75 0 01-1.06 0zM12 17.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V18a.75.75 0 01.75-.75zM2.25 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75zM18 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5h-2.25a.75.75 0 01-.75-.75zM12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" /></svg>
+        </button>
+        <div id="card-header" class="text-center mb-8">
+            <div id="card-icon" class="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl font-bold shadow-lg mb-4" style="background: var(--primary); color: var(--primary-foreground);">
+                <span>🔒</span>
+            </div>
+            <h1 id="card-title" class="text-4xl font-semibold leading-tight">Welcome Back</h1>
+            <p id="card-subtitle" class="text-md text-muted mt-1">Sign in to your account</p>
+        </div>
+
+        <div id="message-box" class="mb-4 text-center text-sm font-medium hidden"></div>
+
+        <form id="password-form" class="space-y-6">
+            <div>
+                <label for="username_or_email" class="block text-sm font-medium text-muted mb-2">Username or Email</label>
+                <input id="username_or_email" name="username_or_email" type="text" required class="form-input block w-full px-5 py-3 rounded-xl">
+                 <p id="username-error" class="text-xs text-red-400 mt-1 hidden">
+                    Invalid username or email format.
+                </p>
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-muted mb-2">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required class="form-input block w-full px-5 py-3 rounded-xl">
+                <p id="password-error" class="text-xs text-red-400 mt-1 hidden">
+                    Password must be at least 8 chars with uppercase & lowercase.
+                </p>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+                <a href="/auth/forgot-password" class="font-medium">Forgot password?</a>
+                <a href="/auth/signup" class="font-medium">Create account</a>
+            </div>
+            <button type="submit" class="w-full py-3 px-4 rounded-xl font-semibold btn-primary text-lg shadow-xl">
+                Sign In
+            </button>
+        </form>
+
+        <form id="mfa-form" class="space-y-6 hidden">
+            </form>
+
+        <div id="passkey-login-section" class="hidden">
+            <div class="relative mt-6"><div class="absolute inset-0 flex items-center"></div><div class="relative flex justify-center text-sm"><span class="px-2 bg-card text-muted rounded-full">Or</span></div></div>
+            <button id="passkey-login-btn" type="button" class="mt-6 w-full py-3 px-4 rounded-xl font-semibold btn-primary text-lg">
+                Sign in with a Passkey
+            </button>
+        </div>
+
+        <div id="social-login-section">
+            {% if google_login_enabled or github_login_enabled or passwordless_login_enabled %}
+            <div class="mt-6">
+                <div class="relative"><div class="absolute inset-0 flex items-center"></div><div class="relative flex justify-center text-sm"><span class="px-2 bg-card text-muted rounded-full">Or continue with</span></div></div>
+                <div class="mt-6 grid grid-cols-1 gap-4">
+                    {% if passwordless_login_enabled %}
+                    <a id="passwordless-login-btn" type="button" class="btn-secondary w-full inline-flex justify-center py-3 px-4 shadow-md text-sm font-medium"><svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Sign in with Email</a>
+                    {% endif %}
+                    {% if google_login_enabled %}
+                    <a href="/auth/google/login" class="btn-secondary w-full inline-flex justify-center py-3 px-4 shadow-md text-sm font-medium"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 48 48"><path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>Google</a>
+                    {% endif %}
+                    {% if github_login_enabled %}
+                    <a href="/auth/github/login" class="btn-secondary w-full inline-flex justify-center py-3 px-4 shadow-md text-sm font-medium"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd"/></svg>GitHub</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+    // --- Cookie Helpers ---
+    function setCookie(name, value, minutes) {
+        let expires = "";
+        if (minutes) {
+            const date = new Date();
+            date.setTime(date.getTime() + (minutes * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+    }
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i=0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1,c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length,c.length);
+        }
+        return null;
+    }
+    function deleteCookie(name) {
+        document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    }
+
+    // --- DOM Elements ---
+    const passwordForm = document.getElementById('password-form');
+    const messageBox = document.getElementById('message-box');
+    const usernameInput = document.getElementById('username_or_email');
+    const passwordInput = document.getElementById('password');
+    const usernameError = document.getElementById('username-error');
+    const passwordError = document.getElementById('password-error');
+
+    const passkeyLoginSection = document.getElementById('passkey-login-section');
+    const passkeyLoginBtn = document.getElementById('passkey-login-btn');
+
+    // --- On Page Load ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Show passkey button if supported
+        if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(available => {
+                if (available) {
+                    passkeyLoginSection.classList.remove('hidden');
+                }
+            });
+        }
+        // Store return_url if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const returnUrl = urlParams.get('return_url');
+        if (returnUrl) {
+            setCookie('return_url', returnUrl, 10);
+        }
+    });
+
+    // --- Validation Logic ---
+    function validateUsernameOrEmail(input) {
+        if (input.includes('@')) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
+        return input.length >= 3 && !input.includes(" ");
+    }
+    function validatePassword(password) {
+        return password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password);
+    }
+
+    // --- UI Functions ---
+    function showMessage(text, colorClass) {
+      messageBox.textContent = text;
+      messageBox.className = `mb-4 text-center text-sm font-medium ${colorClass}`;
+      messageBox.classList.remove('hidden');
+    }
+
+    // --- API Handlers ---
+    async function handlePasswordSubmit(event) {
+        event.preventDefault();
+        const button = event.target.querySelector('button[type="submit"]');
+        button.disabled = true;
+        showMessage('', 'hidden');
+
+        if (!validateUsernameOrEmail(usernameInput.value)) {
+            usernameError.classList.remove('hidden');
+            button.disabled = false;
+            return;
+        }
+        if (!validatePassword(passwordInput.value)) {
+            passwordError.classList.remove('hidden');
+            button.disabled = false;
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username_or_email: usernameInput.value, password: passwordInput.value })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                if (data.mfa_required && data.mfa_token) {
+                    window.location.href = `/mfa/challenge?mfa_token=${data.mfa_token}`;
+                } else {
+                    showMessage(data.message, 'text-green-400');
+                    const returnUrl = getCookie('return_url');
+                    deleteCookie('return_url');
+                    setTimeout(() => window.location.href = returnUrl || '/ui/dashboard', 1500);
+                }
+            } else {
+                showMessage(data.detail || 'Invalid credentials.', 'text-red-400');
+            }
+        } catch (error) {
+            showMessage('Network error. Please try again.', 'text-red-400');
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    // --- Event Listeners ---
+    usernameInput.addEventListener('input', () => {
+        usernameError.classList.toggle('hidden', validateUsernameOrEmail(usernameInput.value));
+    });
+    passwordInput.addEventListener('input', () => {
+        passwordError.classList.toggle('hidden', validatePassword(passwordInput.value));
+    });
+    passwordForm.addEventListener('submit', handlePasswordSubmit);
+
+    // Passwordless Login Handler
+    const passwordlessLoginBtn = document.getElementById('passwordless-login-btn');
+    if (passwordlessLoginBtn) {
+        passwordlessLoginBtn.addEventListener('click', async () => {
+            const email = prompt("Please enter your email address to receive a login link:");
+            if (!email || !validateUsernameOrEmail(email)) {
+                showMessage('Invalid email address.', 'text-red-400');
+                return;
+            }
+
+            passwordlessLoginBtn.disabled = true;
+            showMessage('Sending login link...', 'text-blue-400');
+
+            try {
+                const response = await fetch('/auth/passwordless/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(data.message, 'text-green-400');
+                } else {
+                    showMessage(data.detail || 'An error occurred.', 'text-red-400');
+                }
+            } catch (error) {
+                showMessage('Network error. Please try again.', 'text-red-400');
+            } finally {
+                passwordlessLoginBtn.disabled = false;
+            }
+        });
+    }
+
+
+    // Passkey Login Handler
+    passkeyLoginBtn.addEventListener('click', async () => {
+        passkeyLoginBtn.disabled = true;
+        showMessage('', 'hidden');
+
+        try {
+            const optionsResp = await fetch('/passkeys/login-options', { method: 'POST' });
+            const options = await optionsResp.json();
+            if (!optionsResp.ok) throw new Error(options.detail || 'Could not get passkey options.');
+
+            const assertion = await SimpleWebAuthnBrowser.startAuthentication(options);
+
+            const verificationResp = await fetch('/passkeys/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ response: assertion }),
+            });
+
+            const data = await verificationResp.json();
+            if (verificationResp.ok) {
+                showMessage(data.message, 'text-green-400');
+                const returnUrl = getCookie('return_url');
+                deleteCookie('return_url');
+                setTimeout(() => window.location.href = returnUrl || '/ui/dashboard', 1500);
+            } else {
+                throw new Error(data.detail || 'Passkey login failed.');
+            }
+        } catch (error) {
+            showMessage(error.message, 'text-red-400');
+        } finally {
+            passkeyLoginBtn.disabled = false;
+        }
+    });
+    </script>
+</body>
+</html>
