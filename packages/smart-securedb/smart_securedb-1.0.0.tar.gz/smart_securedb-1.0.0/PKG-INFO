@@ -1,0 +1,108 @@
+Metadata-Version: 2.4
+Name: smart-securedb
+Version: 1.0.0
+Summary: A secure, parameterized database access layer to prevent SQL injection and ensure safe multi-database access.
+Author-email: Rejith Kumar <rejithsham296@outlook.com>
+License: MIT License
+        
+        Copyright (c) 2025 [Your Name]
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the “Software”), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+        THE SOFTWARE.
+        
+Project-URL: Homepage, https://bitbucket.org/RejithkumarIT/pypi-packages/src/develop/smart-securedb
+Project-URL: Repository, https://bitbucket.org/RejithkumarIT/pypi-packages/src/develop/smart-securedb
+Project-URL: Issues, https://bitbucket.org/RejithkumarIT/pypi-packages/src/develop/smart-securedb
+Keywords: secure,database,sql,sqlalchemy,security,injection,parameterized,safe,mysql,oracle,postgresql,mssql
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Database
+Classifier: Topic :: Security
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: SQLAlchemy>=2.0.0
+Requires-Dist: cryptography>=42.0.0
+Requires-Dist: smart-encryptor>=1.0.0
+Dynamic: license-file
+
+# smart-securedb 🔐
+
+A secure Python database connector with SQLAlchemy — designed to prevent SQL injection and use **encrypted connection strings** via [`smart-encryptor`](https://bitbucket.org/yourusername/smart-encryptor).
+
+---
+
+## 🚀 Installation
+
+```bash
+pip install smart-securedb smart-encryptor
+```
+
+---
+
+## 🔧 Usage
+
+### 1. Encrypt your connection string first
+```python
+from smart_encryptor import SmartEncryptor, generate_key
+
+# Generate custom key (recommended)
+key = generate_key("dbkey.txt")
+
+encryptor = SmartEncryptor(key)
+encrypted_conn = encryptor.encrypt("mysql+pymysql://root:MyPass@localhost/mydb")
+print("Encrypted:", encrypted_conn)
+```
+
+---
+
+### 2. Use encrypted connection in SecureDB
+
+```python
+from securedb import SecureDB
+
+# Load your key from file or environment variable
+with open("dbkey.txt") as f:
+    key = f.read().strip()
+
+db = SecureDB(encrypted_conn_str="<your-encrypted-string>", encryption_key=key)
+result = db.execute_query("SELECT * FROM users WHERE id=:id", {"id": 1})
+
+print(result)
+db.close()
+```
+
+---
+
+### ✅ Features
+- Secure encryption for credentials.
+- Full protection from SQL Injection (parameterized queries).
+- Works with MySQL, PostgreSQL, Oracle, and MSSQL.
+- Integrates seamlessly with **smart-encryptor**.
+
+---
+
+### ⚙️ Supported drivers
+- `mysql+pymysql`
+- `postgresql+psycopg2`
+- `oracle+cx_oracle`
+- `mssql+pyodbc`
