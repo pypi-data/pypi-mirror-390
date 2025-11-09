@@ -1,0 +1,27 @@
+<div class="mb-4">
+    {% if selected_to_delete %}
+        <div class="mb-2 text-warning">Are you sure your want to delete these item(s)?</div>
+        <input class="btn btn-accent" type="submit" value="Yes">
+        {% if request.GET.next %}
+            <input type=hidden name="next" value="{{ request.GET.next }}">
+            <a class="btn btn-accent" href="{{ request.GET.next }}">Cancel</a>
+        {% else %}
+            <a class="btn btn-accent" href="{% url list_url %}">Cancel</a>
+        {% endif %}
+    {% else %}
+        <input type=hidden name="next" value="{{ request.get_full_path }}">
+        <input class="btn btn-accent"
+               type="submit"
+               value="Delete selected items"
+               name="delete_selected">
+        {% if create_url %}
+            <a class="btn btn-accent" href="{% url create_url %}">Create</a>
+        {% endif %}
+        {% if remove_duplicates %}
+            <input class="btn btn-accent"
+                   type="submit"
+                   value="Remove Duplicates"
+                   name="remove_duplicates">
+        {% endif %}
+    {% endif %}
+</div>
