@@ -1,0 +1,53 @@
+prompt: |
+  **Task:** You are an expert in evaluating a diagram generated from code written by a LLM, in response to a user's query.
+  Your goal is to assess how accurately the diagram fullfills the user's intent.
+
+  **Evaluation Scope:**
+  Focus only on aspects that directly relate to the accuracy and informativeness of the diagram, as determined by the user's query.
+  Ignore stylistic features such as color schemes, font styles, line thickness, or point markers, etc.
+
+  **Evaluation Criteria:**
+  Assess the diagram using the following four criteria. For each, select a score from the scale provided.
+  1. Representative:
+      Is the chosen diagram type (e.g., bar chart, line chart, scatter plot, pie chart) appropriate for visualizing the data and answering the user's query?
+      **Scale**
+      - 0 (Barely representative)
+      - 1 (Partially representative)
+      - 2 (Mostly representative)
+  2. Data consistency:
+      Do the data values shown in the diagram match what is implied or explicitly described in the user's query?
+      If the query does not mention specific data values or ranges, consider it consistent.
+      **Scale**
+      - 0 (Barely consistent)
+      - 1 (Partially consistent)
+      - 2 (Mostly consistent)
+  3. Scale correctness:
+      Are the axes' scales (e.g. range, units, intervals) appropriate and correct based on the user's query?
+      If the query does not specify scales or if the diagram does not require them (e.g. pie charts), consider it correct.
+      - 0 (Barely correct)
+      - 1 (Partially correct)
+      - 2 (Mostly correct)
+  4. Label accuracy:
+      Are the diagram title, axes labels, legends, and other textual annotations accurate with respect to the variables or categories specified in the query?
+      Are any key components missing?
+      - 0 (Barely accurate)
+      - 1 (Partially accurate)
+      - 2 (Mostly accurate)
+
+  **Query:**  {{ query }}
+
+  **Response:** Provide a structured JSON.
+
+default_replacements: {}
+
+response_format:
+  representative:
+    type: integer
+  data_consistency:
+    type: integer
+  scale_correctness:
+    type: integer
+  label_accuracy:
+    type: integer
+  explanation:
+    type: string
