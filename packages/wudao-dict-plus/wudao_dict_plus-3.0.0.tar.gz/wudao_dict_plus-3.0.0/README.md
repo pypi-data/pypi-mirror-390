@@ -1,0 +1,85 @@
+# 无道词典增强版
+
+![py](https://img.shields.io/badge/python-3.4.5-green.svg?style=plastic)![plat](https://img.shields.io/badge/platform-Ubuntu/CentOS/Debian-green.svg?style=plastic)
+
+---
+
+本项目基于[无道词典](https://github.com/ChestnutHeng/Wudao-dict)，对其原有功能进行了修复、优化和增强。
+
+## 有什么变化？
+
+以下是无道词典增强版与原无道词典功能的简要对比。
+
+|       功能       |         无道词典增强版          |            无道词典             |
+| :--------------: | :-----------------------------: | :-----------------------------: |
+|    Python版本    |      3.8+，使用更新的语法       |     理论上支持Python3全版本     |
+|     离线词典     |              支持               |              支持               |
+|   离线词典形式   |          sqlite3数据库          |           自定义词表            |
+|   词典服务进程   |             启动快              |             启动慢              |
+| 词典服务进程实现 |      Python实现，随机端口       |     依赖shell脚本，固定端口     |
+|     安装方法     | 打包上传pypi，<br />支持pip安装 | git克隆仓库，<br />运行安装脚本 |
+|     在线词典     |            暂不支持             |             已失效              |
+|      生词本      |            暂不支持             |              支持               |
+|     自动补全     |            暂不支持             |              支持               |
+|     词条上报     |         已移除相关功能          |             已失效              |
+
+## 截图
+
+英汉：
+
+![En_Zh Demo](./img/wudao_en.png)
+
+汉英:
+
+![Zh_En Demo](./img/wudao_zh.png)
+
+## 功能特性
+
+1. 基础词典，同时支持离线和在线查询(20w英汉查询 + 10w汉英查询 + 网络词库)
+2. 词组查询功能(例如直接输入`wd in order to`)
+5. 交互模式(`wd -i`进入，可以连续查词)
+
+
+## 如何安装？
+
+```bash
+pip install wudao-dict-plus
+```
+
+
+## 使用说明
+
+运行`wd -h`查看使用说明。
+
+
+```
+$ wd -h
+usage: wd [-h] [-k] [-s [BOOLEAN]] [-i] [-v] [word ...]
+
+无道词典 - 一个简洁优雅的有道词典命令行版本
+
+positional arguments:
+  word                  要查询的单词或短语
+
+options:
+  -h, --help            show this help message and exit
+  -k, --kill            退出服务进程
+  -s [BOOLEAN], --short [BOOLEAN]
+                        简明/完整模式 (默认: 开启简明模式)
+  -i, --interactive     进入交互模式
+  -v, --version         显示版本信息
+
+支持英汉互查的功能，包含释义、词组、例句等有助于学习的内容。
+```
+
+查词时可以直接使用`wd 词语`查汉英词典，或`wd word`查英汉词典(可以自动检测)。
+
+
+## 小贴士
+
+1. 如果您不想看到例句, 请使用`wd -s`关闭。可以再次运行该命令打开。
+2. 查询词组直接键入类似`wd take off`即可.
+
+## 致谢
+
+- 感谢原[无道词典](https://github.com/ChestnutHeng/Wudao-dict)项目及其作者对本项目的启发。
