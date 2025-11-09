@@ -1,0 +1,128 @@
+Metadata-Version: 2.4
+Name: maestro-sdk
+Version: 0.1.2
+Summary: Python SDK client for Netflix Maestro workflow orchestrator
+Author-email: Jun He <jun-he@users.noreply.github.com>
+License-Expression: Apache-2.0
+Keywords: maestro,workflow,orchestration,SDK,DSL
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Requires-Dist: types-PyYAML>=6.0; extra == "dev"
+Dynamic: license-file
+
+# maestro-python
+Python sdk client library for [Maestro workflow orchestrator](https://github.com/Netflix/maestro).
+It has a minimal dependency, only requiring pyyaml.
+
+## Features
+ 
+- Maestro yaml DSL
+- Maestro python DSL
+- Maestro client
+- Maestro command line interface
+
+## Installation
+
+```bash
+pip install maestro-sdk
+```
+
+Or install maestro sdk from source code:
+
+```bash
+git clone https://github.com/jun-he/maestro-python.git
+cd maestro-python
+pip install -e .
+```
+
+## Quick Start
+
+### Creating a workflow
+
+```python
+from maestro import Workflow, Job
+
+wf = Workflow(id="test-wf")
+wf.owner("tester").tags("test")
+wf.job(Job(id="job1", type='NoOp'))
+wf_yaml = wf.to_yaml()
+```
+
+### Pushing a workflow to Maestro server
+
+```python
+from maestro import Workflow, Job, MaestroClient
+
+wf = Workflow(id="test-wf")
+wf.owner("tester").tags("test")
+wf.job(Job(id="job1", type='NoOp'))
+wf_yaml = wf.to_yaml()
+
+client = MaestroClient(base_url="http://127.0.0.1:8080", user="tester")
+response = client.push_yaml(wf_yaml)
+print(response)
+```
+
+### Starting a workflow
+
+```python
+from maestro import MaestroClient
+
+client = MaestroClient(base_url="http://127.0.0.1:8080", user="tester")
+response = client.start(workflow_id="test-wf", run_params={"foo": {"value": "bar", "type": "STRING"}})
+print(response)
+```
+
+## Command line interface (CLI)
+
+### Push a workflow
+
+```bash
+maestro --base-url http://127.0.0.1:8080 --user tester push sample-wf.yaml
+# push the yaml using default base-url and user name
+maestro push sample-wf.yaml
+```
+
+### Validate a workflow
+
+```bash
+maestro --base-url http://127.0.0.1:8080 --user tester validate sample-wf.yaml
+# validate the yaml using default base-url and user name
+maestro validate sample-wf.yaml
+```
+
+### Start a workflow definition
+
+```bash
+# start sample-wf with default version and none runtime params
+maestro --base-url http://127.0.0.1:8080 --user tester start sample-wf.yaml
+# start sample-wf with default base-url & user name and runtime params using a specific version 
+maestro start sample-wf --version 1 --params '{"foo": {"value": "bar", "type": "STRING"}}'
+# start sample-wf with default base-url & user name and runtime params using the latest version
+maestro start sample-wf --version latest --params '{"foo": {"value": "bar", "type": "STRING"}}'
+```
+
+### Get a workflow instance or step instance
+```bash
+maestro --base-url http://127.0.0.1:8080 --user tester start sample-wf.yaml
+# get workflow definition for version 1
+maestro get-workflow sample-wf --version 1
+maestro start sample-wf --version 1 --params '{"foo": {"value": "bar", "type": "STRING"}}'
+# get workflow instance for instance id 1
+maestro get-instance sample-wf 1
+# get workflow step instance for instance id = 1 and step id = job1
+maestro get-instance sample-wf 1 --step-id job1
+```
