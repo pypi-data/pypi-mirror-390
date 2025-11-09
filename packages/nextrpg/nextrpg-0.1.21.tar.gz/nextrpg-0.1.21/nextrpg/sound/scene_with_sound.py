@@ -1,0 +1,28 @@
+from dataclasses import dataclass, replace
+from functools import cached_property
+from typing import Self, override
+
+from nextrpg.core.time import Millisecond
+from nextrpg.scene.scene import Scene
+from nextrpg.sound.sound import Sound, play_optional, stop_optional
+
+
+@dataclass(frozen=True)
+class SceneWithSound(Scene):
+    sound: Sound | tuple[Sound, ...] = ()
+
+    @override
+    def tick(self, time_delta: Millisecond) -> Self:
+        if isinstance(self.sound, tuple):
+            sound = tuple(play_optional(s) for s in self.sound)
+        else:
+            sound = play_optional(self.sound)
+        return replace(self, sound=sound)
+
+    @cached_property
+    def stop_sound(self) -> Self:
+        if isinstance(self.sound, tuple):
+            sound = tuple(stop_optional(s) for s in self.sound)
+        else:
+            sound = stop_optional(self.sound)
+        return replace(self, sound=sound)
