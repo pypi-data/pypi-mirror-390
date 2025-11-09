@@ -1,0 +1,120 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf2md-ocr"
+version = "0.0.1"
+description = "PDF to Markdown converter using OCR with Marker AI"
+authors = [{ name = "PDF2MD OCR Team", email = "info@pdf2md-ocr.com" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Office Suites",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Topic :: Utilities",
+]
+keywords = ["pdf", "markdown", "converter", "ocr", "ai", "marker"]
+dependencies = [
+    "marker-pdf==1.10.1",
+    "torch==2.9.0",
+    "torchvision==0.24.0",
+    "transformers==4.57.1",
+    "opencv-python-headless==4.11.0.86",
+    "pillow==10.4.0",
+    "numpy==2.3.4",
+    "click==8.3.0",
+    "rich==14.2.0",
+    "tqdm==4.67.1",
+    "pydantic==2.12.2",
+    "PyPDF2==3.0.1",
+    "pathlib2==2.3.7.post1",
+    "python-magic==0.4.27",
+    "loguru==0.7.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.4.2",
+    "pytest-cov==7.0.0",
+    "pytest-mock==3.15.1",
+    "pytest-asyncio==1.2.0",
+    "ruff==0.14.1",
+    "black==25.9.0",
+    "mypy==1.18.2",
+    "pre-commit==4.3.0",
+]
+test = [
+    "pytest==8.4.2",
+    "pytest-cov==7.0.0",
+    "pytest-mock==3.15.1",
+    "pytest-asyncio==1.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/carloscasalar/pdf2md"
+Repository = "https://github.com/carloscasalar/pdf2md"
+Documentation = "https://github.com/carloscasalar/pdf2md/blob/main/README.md"
+"Bug Tracker" = "https://github.com/carloscasalar/pdf2md/issues"
+
+[project.scripts]
+pdf2md-ocr = "pdf2md.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pdf2md = ["py.typed"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "Q",  # flake8-quotes
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "B904", # raise exceptions with `raise ... from err` - can be addressed in future PR
+    "C901", # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "docker: marks tests that require Docker",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/tests/*", "*/test_*", "*/__main__.py"]
