@@ -1,0 +1,123 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firefly_reports"
+authors = [{name = "Christopher Tyler", email = "ChristopherTyler@engineer.com"}]
+classifiers = ["License :: OSI Approved :: MIT License"]
+dynamic = ["version", "description"]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "click>=8.2.1",
+    "requests>=2.32.3",
+]
+
+[project.urls]
+Documentation = "https://github.com/cetyler/firefly_reports/wiki"
+Source = "https://github.com/cetyler/firefly_reports/wiki"
+
+[project.scripts]
+firefly_reports = "firefly_reports.__main__:main"
+
+[tool.hatch.version]
+path = "firefly_reports/__init__.py"
+
+[tool.uv.sources]
+firefly_reports = { workspace = true}
+
+[dependency-groups]
+dev = [
+    "coverage>=7.8.2",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "pytest-picked>=0.5.1",
+    "pytest-randomly>=3.16.0",
+    "ruff>=0.11.12",
+]
+
+[tool.ruff]
+target-version = "py313"
+# Exclude a variety of commonly ignored directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv",
+]
+# Same as Black.
+line-length = 88
+
+[tool.ruff.lint]
+# Enable pycodestyle (E) and Pyflakes (F) codes by default.
+select = [
+    "B",
+    "C",
+    "E", # pycodestyle
+    "F", # pyflakes
+    "W",
+    "I001", # isort
+]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+ignore = [
+    "B904",
+    "C408",
+    "C901",
+    "E501",
+    "E722",
+    "F401",
+    "F403",
+    "W605",
+]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Balck, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.pytest.ini.options]
+minversion = "6.0"
+addopts = "--tb=no -v --cov=firefly_reports"
+markers = "smoke : smoke tests"
+testpaths = ["tests"]
