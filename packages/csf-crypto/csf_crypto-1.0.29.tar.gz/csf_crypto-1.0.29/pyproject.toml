@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "csf-crypto"
+version = "1.0.29"
+description = "Post-quantum cryptographic framework with fractal encoding and semantic keys - resistant to quantum attacks"
+readme = "README_PYPI.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Jeremy Noverraz (based on an idea by Ivàn Àvalos AND JCZD (engrenage.ch))"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Security :: Cryptography",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "matplotlib>=3.7.0",
+    "msgpack>=1.0.0",
+]
+
+[project.optional-dependencies]
+pqc = [
+    # Note: These PQC packages may not be available on PyPI
+    # CSF includes fallback implementations if these are not installed
+    # Uncomment only if you know these packages are available in your environment
+    # "pykyber>=0.1.0",
+    # "python-pqc>=0.1.0",
+    # "pysphincs>=0.1.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+performance = [
+    "numba>=0.58.0",  # Optional: JIT compilation for 2-5x speedup
+    "cython>=3.0.0",  # Optional: Cython extensions for 2-5x speedup
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Exclude test_complete.py as it's designed to run standalone
+norecursedirs = [".git", "*.egg"]
+# Ignore test_complete.py from pytest collection
+# It's designed to be run directly: python tests/test_complete.py
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
