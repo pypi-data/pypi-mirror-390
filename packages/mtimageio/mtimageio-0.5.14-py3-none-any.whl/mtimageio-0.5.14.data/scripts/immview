@@ -1,0 +1,52 @@
+#!python
+
+import asyncio
+import argparse
+import json
+from mt import iio
+from mt.base import logger
+
+
+async def main(args, context_vars: dict = {}):
+    if args.show_metadata:
+        meta = iio.immeta(args.imm_file)
+        if "xmp" in meta:
+            meta = json.loads(meta["xmp"])
+        print(json.dumps(meta, indent=2))
+        return
+
+    imm = await iio.immread_asyn(args.imm_file, context_vars=context_vars)
+    return iio.immview(
+        imm,
+        use_highgui=args.use_highgui,
+        max_width=args.max_width,
+        filepath=args.imm_file,
+        logger=logger,
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Tool to view an image with metadata (IMM) file."
+    )
+    parser.add_argument(
+        "--max_width",
+        type=int,
+        default=640,
+        help="The maximum width to view. Default is 640.",
+    )
+    parser.add_argument(
+        "-X",
+        "--use_highgui",
+        action="store_true",
+        help="Uses OpenCV's highgui module to display the image.",
+    )
+    parser.add_argument(
+        "-m",
+        "--show_metadata",
+        action="store_true",
+        help="To show only the metadata of the IMM file.",
+    )
+    parser.add_argument("imm_file", type=str, help="The file to view.")
+    args = parser.parse_args()
+    asyncio.run(main(args, context_vars={"async": True}))
