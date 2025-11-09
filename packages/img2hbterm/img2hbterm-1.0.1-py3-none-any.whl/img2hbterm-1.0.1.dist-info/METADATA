@@ -1,0 +1,76 @@
+Metadata-Version: 2.4
+Name: img2hbterm
+Version: 1.0.1
+Summary: Image to Half-block ANSI art with 256-color XTerm codes.
+Author-email: Swee <meow@swee.codes>
+License: Apache-2.0
+Project-URL: Homepage, https://swee.codes/apps/img2text
+Project-URL: Repository, https://git.swee.codes/swee/img2hbterm
+Project-URL: Issues, https://git.swee.codes/swee/img2hbterm/issues
+Project-URL: Changelog, https://git.swee.codes/swee/img2hbterm/releases
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: typer
+Requires-Dist: typing-extensions
+Requires-Dist: pillow
+Requires-Dist: x256
+Dynamic: license-file
+
+# img2hbterm
+
+Image to Half-block ANSI art with 256-color XTerm codes.
+
+# Installation
+
+## As a CLI app
+
+```
+pipx install img2hbterm
+```
+
+## As a module
+
+```
+pip install img2hbterm
+```
+
+# CLI Usage
+
+Simply convert using
+
+```
+img2hbterm image.png
+```
+
+Flags:
+- `--nearest -n` uses nearest neighbor to resize the image. (useful if antialiasing makes the output look too blurry)
+- `--true-color -t` uses True Color instead of XTerm 256-color. (less term support)
+- `--width <int> -s <int>` set the width of the image. (default: 128)
+
+# Module usage
+
+```python
+from img2hbterm import convert
+from io import BytesIO
+
+print( convert("path") )
+
+# The path can be anything Pillow supports, so BytesIO works as well
+print( convert(BytesIO(b"....")) )
+
+# With all the default values included
+print(
+    convert(
+        "path",
+        nearest=False,
+        true=False, # Not to be confused with the boolean True
+        size=128
+    )
+)
+
+# Works the same way the CLI does, I don't need to document the parameters again.
+```
+
