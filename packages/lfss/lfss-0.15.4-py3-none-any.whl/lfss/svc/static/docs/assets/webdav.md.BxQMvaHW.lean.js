@@ -1,0 +1,1 @@
+import{_ as t,c as i,o,af as s}from"./chunks/framework.CkHvLvtj.js";const b=JSON.parse('{"title":"WebDAV","description":"","frontmatter":{},"headers":[],"relativePath":"webdav.md","filePath":"webdav.md"}'),a={name:"webdav.md"};function l(d,e,r,n,c,h){return o(),i("div",null,[...e[0]||(e[0]=[s("",7)])])}const f=t(a,[["render",l]]);export{b as __pageData,f as default};
