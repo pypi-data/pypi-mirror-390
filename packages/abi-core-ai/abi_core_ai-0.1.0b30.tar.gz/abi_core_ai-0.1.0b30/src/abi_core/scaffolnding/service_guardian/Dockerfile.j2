@@ -1,0 +1,28 @@
+# {{ project_name }} Guardian Service
+FROM smarbuy/abi-image:latest
+
+WORKDIR /app
+
+# Copy service-specific requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Environment variables for embeddings (Guardian runs Ollama)
+ENV START_OLLAMA=true
+ENV LOAD_MODELS=true
+ENV SERVICE_MODULE=main
+ENV SERVICE_PORT=11438
+
+# Expose Guardian port + Ollama for embeddings
+EXPOSE 11438
+EXPOSE 11434
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:11438/health || exit 1
+
+# Run the Guardian service
+CMD ["python", "main.py"]
