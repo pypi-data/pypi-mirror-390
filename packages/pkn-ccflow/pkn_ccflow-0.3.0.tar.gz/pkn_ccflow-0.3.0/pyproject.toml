@@ -1,0 +1,158 @@
+[build-system]
+requires = ["hatchling", "hatch-multi"]
+build-backend="hatchling.build"
+
+[project]
+name = "pkn"
+authors = [{name = "the pkn authors", email = "t.paine154@gmail.com"}]
+description = "My Pocket Knife"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+version = "0.3.0"
+requires-python = ">=3.10"
+keywords = []
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+dynamic = ["dependencies"]
+
+[project.optional-dependencies]
+all = [
+    "boto3",
+    "botocore",
+    "ccflow>=0.6.10",
+    "colorlog",
+    "emails",
+    "jinja2",
+    "pydantic",
+]
+base = [
+    "ccflow>=0.6.10",
+    "colorlog",
+    "pydantic",
+]
+ccflow = [
+    "boto3",
+    "botocore",
+    "ccflow>=0.6.10",
+    "jinja2",
+]
+develop = [
+    "build",
+    "bump-my-version",
+    "check-manifest",
+    "codespell>=2.4,<2.5",
+    "hatchling",
+    "hatch-multi",
+    "mdformat>=0.7.22,<1.1",
+    "mdformat-tables>=1",
+    "pytest",
+    "pytest-cov",
+    "ruff>=0.9,<0.15",
+    "twine",
+    "uv",
+    "wheel",
+    # Optionals
+    "boto3",
+    "botocore",
+    # "ccflow",
+    "ccflow>=0.6.10",
+    "colorlog",
+    "emails",
+    "jinja2",
+    "pydantic",
+]
+logging = []
+
+[project.scripts]
+pkn-cc = "pkn.ccflow.cli:main"
+pkn-cc-explain = "pkn.ccflow.cli:explain"
+
+[project.urls]
+Repository = "https://github.com/1kbgz/pkn"
+Homepage = "https://github.com/1kbgz/pkn"
+
+[tool.bumpversion]
+current_version = "0.3.0"
+commit = true
+tag = true
+commit_args = "-s"
+
+[[tool.bumpversion.files]]
+filename = "pkn/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[tool.check-manifest]
+ignore = [
+    ".copier-answers.yaml",
+    "Makefile",
+    "docs/**/*",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "pkn/tests/integration/",
+]
+[tool.coverage.report]
+exclude_also = [
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+]
+ignore_errors = true
+fail_under = 50
+
+[tool.hatch.build]
+artifacts = []
+
+[tool.hatch.build.sources]
+src = "/"
+
+[tool.hatch.build.targets.sdist]
+packages = ["pkn"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pkn"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+
+[tool.hatch.metadata.hooks.hatch-multi]
+primary = ["base"]
+ccflow = ["ccflow"]
+
+[tool.pytest.ini_options]
+addopts = ["-vvv", "--junitxml=junit.xml"]
+testpaths = "pkn/tests"
+
+[tool.ruff]
+line-length = 150
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+default-section = "third-party"
+known-first-party = ["pkn"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
