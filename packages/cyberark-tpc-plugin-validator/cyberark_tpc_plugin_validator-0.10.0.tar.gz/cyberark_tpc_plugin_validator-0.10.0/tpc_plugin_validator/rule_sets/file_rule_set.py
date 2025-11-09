@@ -1,0 +1,65 @@
+"""Base class for all file rule sets."""
+
+from tpc_plugin_validator.rule_sets.rule_set import RuleSet
+from tpc_plugin_validator.utilities.severity import Severity
+from tpc_plugin_validator.utilities.types import ValidSectionConfig, FileNames, Violations
+
+
+class FileRuleSet(RuleSet):
+    _VALID_SECTIONS: dict[str, ValidSectionConfig] = {}
+
+    def _validate_required_sections(self, file: FileNames) -> None:
+        """
+        Validate the required sections within the supplied file exist.
+
+        :param file: The name of the file from the Filenames enum.
+        """
+        required_sections: list[str] = []
+        required_sections.extend(
+            required_section_name
+            for required_section_name in self._VALID_SECTIONS
+            if self._VALID_SECTIONS[required_section_name].get("required", False)
+        )
+
+        for required_section_name in required_sections:
+            if not self._get_section_name(file=file, section_name=required_section_name):
+                self._add_violation(
+                    name=Violations.missing_section_violation,
+                    severity=self._VALID_SECTIONS[required_section_name].get("severity_level", Severity.CRITICAL),
+                    message=f'"{required_section_name}" is a required section but has not been declared.',
+                    file=file,
+                    section=required_section_name,
+                )
+
+    def _validate_sections(self, file: FileNames) -> None:
+        """
+        Validate the sections within the supplied file is correct.
+
+        :param file: The name of the file from the Filenames enum.
+        """
+
+        valid_sections_dict: dict[str, str] = {
+            valid_section_name.lower(): valid_section_name for valid_section_name in self._VALID_SECTIONS.keys()
+        }
+        for section_name in self._file_sections[file.value]:
+            section = self._get_section_name(file=file, section_name=section_name)
+            if section in self._VALID_SECTIONS.keys():
+                continue
+            elif section_name in valid_sections_dict:
+                # TODO - Update so that we can output the line number of the section
+                self._add_violation(
+                    name=Violations.section_name_case_violation,
+                    severity=Severity.WARNING,
+                    message=f'The section "{valid_sections_dict[section_name]}" has been declared as "{section}".',
+                    file=file,
+                    section=valid_sections_dict[section_name],
+                )
+            else:
+                # TODO - Update so that we can output the line number of the section
+                self._add_violation(
+                    name=Violations.invalid_section_name_violation,
+                    severity=Severity.WARNING,
+                    message=f'The section "{section}" has been declared but is an invalid section name.',
+                    file=file,
+                    line=None,
+                )
