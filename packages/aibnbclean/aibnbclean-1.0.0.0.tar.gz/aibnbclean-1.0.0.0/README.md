@@ -1,0 +1,117 @@
+# aibnbclean
+
+## setup
+
+on raspberry pi
+
+```bash
+sudo apt install chromium-browser
+sudo apt install chromium-chromedriver
+```
+
+### python virtual environment
+
+```pwsh
+git clone <clone url>
+cd ./aibnbclean
+python -m venv .venv
+. ./.venv/bin/activate
+which pip
+pip install -r requirements.txt
+```
+
+## listings.json example
+
+This project expects a JSON array of listing objects at `aibnbclean_config/listings.json` (example file included).
+
+Each object describes a property and the integration points (calendar, spreadsheet, Todoist project, etc.).
+
+Example template:
+
+```json
+[
+  {
+    "name": "Example Listing Name",
+    "type": "airbnb",
+    "laundry": "yes",
+    "url": "https://example.com/calendar.ics",
+    "spreadsheet_id": "<GOOGLE_SHEET_ID>",
+    "spreadsheet_sheet_name": "Sheet1",
+    "spreadsheet_sheet_id": 0,
+    "spreadsheet_bitly_url": "http://bit.ly/example",
+    "checklist_bitly_url": "",
+    "default_cleaning_fee": 100,
+    "qty_to_process": 10,
+    "guests": { "min": 1, "max": 4 },
+    "beds": { "min": 1, "max": 2 },
+    "pnp_beds": { "min": 0, "max": 0 },
+    "days_addrm_notice": 14,
+    "todoist_project_name": "cleaning-tasks"
+  },
+  {
+    "name": "Second Listing Name",
+    "type": "home",
+    "laundry": "no",
+    "url": "https://calendar.google.com/second_calendar.ics",
+    "spreadsheet_id": "<GOOGLE_SHEET_ID>",
+    "spreadsheet_sheet_name": "Sheet1",
+    "spreadsheet_sheet_id": 0,
+    "spreadsheet_bitly_url": "http://bit.ly/secondexample",
+    "checklist_bitly_url": "",
+    "qty_to_process": 5,
+    "default_cleaning_fee": 80,
+    "guests": {},
+    "beds": {},
+    "pnp_beds": {},
+    "days_addrm_notice": 7,
+    "todoist_project_name": "home-cleaning-tasks"
+  }
+]
+```
+
+Field descriptions:
+
+- `name` (string): Human-readable listing name used in logs and UI.
+- `type` (string): Listing type; typically `airbnb` or `home`.
+- `laundry` (string): `yes`/`no` to indicate if cleaners should do laundry.
+- `url` (string): Calendar URL (iCal / .ics) or Google Calendar private feed used to fetch bookings.
+- `spreadsheet_id` (string): Google Sheets ID used for storing cleaning records and schedules.
+- `spreadsheet_sheet_name` (string): Name of the sheet/tab within the spreadsheet.
+- `spreadsheet_sheet_id` (number): Numeric sheet/tab ID (0-based or Google sheet gid depending on usage).
+- `spreadsheet_bitly_url` (string): Short URL to the spreadsheet for displaying in text messages.
+- `checklist_bitly_url` (string): Short URL to the cleaning checklist for displaying in text messages.
+- `default_cleaning_fee` (number): Default fee to use when calculating charges for a clean. Otherwise is home type is airbnb, the fee is pulled from the booking data.
+- `qty_to_process` (number): How many upcoming bookings to process at a time.
+- `guests`, `beds`, `pnp_beds` (objects): Optional min/max counts used for filtering or validations. Provide `{}` or omit if not applicable.
+- `days_addrm_notice` (number): numbers of days in the future to send notifications on dates added/removed.  For example, if set to `14`, notifications will be sent for bookings added/removed that are 14 days from the current date. A date added 30 days from now will not trigger a notification.
+- `todoist_project_name` (string): Name of the Todoist project where tasks should be created.
+
+## secrets configuration
+
+This project expects a JSON object at `aibnbclean_config/secrets.json` (example file included). This file contains API keys and other sensitive information.
+
+```json
+{
+    "gemini_api_key": "api_key",
+    "airbnb_userpass": "user_email:password",
+    "todoist_api_key": "api_key",
+    "twilio": {
+        "client": "clientid:clientsecret",
+        "from_number": "+18005551212",
+        "to_number": "+18005562323"
+    },
+    "google_sa": {
+        "type": "service_account",
+        "project_id": "google-cloud-project-id",
+        "private_key_id": "private_key_id",
+        "private_key": "private_key_contents",
+        "client_email": "client@project.iam.gserviceaccount.com",
+        "client_id": "clientid",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/client%40project.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
+    }
+}
+```
