@@ -1,0 +1,50 @@
+# {{ project_name }} - Project Overview
+
+**Version:** {{ gg.version }}
+**Company:** {{ gg.company }}
+
+## Project Structure
+
+This project consists of {{ modules | length }} modules and {{ endpoints | length }} API endpoints.
+
+## Modules
+
+{% for module in modules -%}
+### {{ loop.index }}. {{ module.name | title }}
+
+{{ module.description }}
+
+- **Components:** {{ module.components | length }}
+- **Documentation Status:** {% if module.documented %}✅ Documented{% else %}⚠️  Internal Only{% endif %}
+- **Component Types:**
+  {%- for component in module.components %}
+  - `{{ component.name }}` ({{ component.type }})
+  {%- endfor %}
+
+{% endfor %}
+
+## API Endpoints
+
+### Public Endpoints ({{ endpoints | selectattr('public', 'equalto', true) | list | length }})
+
+{% for endpoint in endpoints if endpoint.public -%}
+- `{{ endpoint.method }} {{ endpoint.path }}` - {{ endpoint.description }}
+{% endfor %}
+
+### Internal Endpoints ({{ endpoints | selectattr('public', 'equalto', false) | list | length }})
+
+{% for endpoint in endpoints if not endpoint.public -%}
+- `{{ endpoint.method }} {{ endpoint.path }}` - {{ endpoint.description }}
+{% endfor %}
+
+## Statistics
+
+- **Total Modules:** {{ modules | length }}
+- **Total Components:** {{ modules | map(attribute='components') | map('length') | sum }}
+- **Total Endpoints:** {{ endpoints | length }}
+- **Public Endpoints:** {{ endpoints | selectattr('public', 'equalto', true) | list | length }}
+- **Documented Modules:** {{ modules | selectattr('documented', 'equalto', true) | list | length }}
+
+## Generated with PyTemplify
+
+This documentation was automatically generated using PyTemplify v{{ gg.version }}.

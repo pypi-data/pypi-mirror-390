@@ -1,0 +1,39 @@
+# {{ module.name | title }} Module Documentation
+
+**Description:** {{ module.description }}
+
+**Status:** {% if module.documented %}Documented{% else %}Internal{% endif %}
+
+## Components
+
+This module contains {{ module.components | length }} component(s):
+
+{% for component in module.components -%}
+### {{ component.name | title }} ({{ component.type }})
+
+**Available Methods:**
+
+{% for method in component.methods -%}
+- `{{ method }}()` - {{ method | replace('_', ' ') | title }} operation
+{% endfor %}
+
+**Usage Example:**
+
+```python
+from {{ module.name }} import {{ component.name | title }}{{ component.type | title }}
+
+{{ component.name }} = {{ component.name | title }}{{ component.type | title }}()
+# Use the {{ component.type }} methods
+```
+
+---
+
+{% endfor %}
+
+## Related Endpoints
+
+Endpoints using this module:
+
+{% for endpoint in endpoints if endpoint.module == module.name -%}
+- `{{ endpoint.method }} {{ endpoint.path }}` - {{ endpoint.description }}{% if endpoint.public %} (Public){% else %} (Internal){% endif %}
+{% endfor %}

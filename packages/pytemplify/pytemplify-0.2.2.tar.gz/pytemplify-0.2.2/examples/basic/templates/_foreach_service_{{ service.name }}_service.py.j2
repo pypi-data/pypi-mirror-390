@@ -1,0 +1,60 @@
+"""{{ service.name }} - {{ service.description }}
+
+This service runs on port {{ service.port }}.
+{% if service.database %}Connected to database: {{ service.database }}{% endif %}
+"""
+
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+
+class {{ service.name | replace('-', '_') | title | replace('_', '') }}:
+    """{{ service.description }}"""
+
+    def __init__(self):
+        self.name = "{{ service.name }}"
+        self.port = {{ service.port }}
+        {% if service.database -%}
+        self.database = "{{ service.database }}"
+        {%- else -%}
+        self.database = None
+        {%- endif %}
+        logger.info(f"Initializing {self.name} on port {self.port}")
+
+    def start(self) -> None:
+        """Start the {{ service.name }} service."""
+        logger.info(f"Starting {self.name} on port {self.port}")
+        {% if service.database -%}
+        self._connect_database()
+        {%- endif %}
+        # TODO: Implement service startup logic
+
+    {% if service.database -%}
+    def _connect_database(self) -> None:
+        """Connect to the database."""
+        logger.info(f"Connecting to database: {self.database}")
+        # TODO: Implement database connection
+    {%- endif %}
+
+    def stop(self) -> None:
+        """Stop the {{ service.name }} service."""
+        logger.info(f"Stopping {self.name}")
+        {% if service.database -%}
+        # TODO: Close database connection
+        {%- endif %}
+
+
+def main():
+    """Main entry point for {{ service.name }}."""
+    service = {{ service.name | replace('-', '_') | title | replace('_', '') }}()
+    try:
+        service.start()
+        # Service running...
+    except KeyboardInterrupt:
+        service.stop()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,64 @@
+# {{ service.name | upper() }} Service
+# Generated for {{ service.description }}
+# Version: {{ globals.version }}
+# Project: {{ globals.project }}
+
+import logging
+from typing import List, Optional
+from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class {{ service.name | camelcase }}Service:
+    """{{ service.description | title() }}."""
+
+    name: str = "{{ service.name }}"
+    port: int = {{ service.port }}
+    description: str = "{{ service.description }}"
+
+    def __init__(self):
+        self.endpoints = {{ service.endpoints }}
+        self.logger = logging.getLogger(f"{__name__}.{{ service.name }}")
+
+    def start(self) -> bool:
+        """Start the {{ service.name }} service."""
+        try:
+            self.logger.info(f"Starting {{ service.name }} service on port {self.port}")
+            # Service startup logic would go here
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to start {{ service.name }} service: {e}")
+            return False
+
+    def stop(self) -> bool:
+        """Stop the {{ service.name }} service."""
+        try:
+            self.logger.info(f"Stopping {{ service.name }} service")
+            # Service shutdown logic would go here
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to stop {{ service.name }} service: {e}")
+            return False
+
+    def get_endpoints(self) -> List[str]:
+        """Get available endpoints for this service."""
+        return self.endpoints.copy()
+
+    # MANUAL SECTION START: custom_methods
+    # Add your custom service methods here
+    # This section will be preserved during formatting
+    def custom_business_logic(self, data):
+        """Custom business logic for {{ service.name }}."""
+        # Your custom implementation here
+        pass
+    # MANUAL SECTION END
+
+    def health_check(self) -> dict:
+        """Perform a health check on the service."""
+        return {
+            "service": self.name,
+            "status": "healthy",
+            "port": self.port,
+            "endpoints": len(self.endpoints)
+        }

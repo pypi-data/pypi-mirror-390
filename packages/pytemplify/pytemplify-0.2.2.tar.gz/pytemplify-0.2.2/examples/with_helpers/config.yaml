@@ -1,0 +1,43 @@
+# Data Helpers Example
+# This demonstrates using data helpers to add computed properties
+
+globals:
+  version: "1.0.0"
+  project: "DataHelpersExample"
+  generated_date: "2025-10-12"
+
+# Configure data helpers
+data_helpers:
+  discovery_paths:
+    - "../helpers/"
+
+# Additional inline data
+extra_data:
+  - value:
+      report_title: "Company Overview Report"
+      generated_date: "2025-01-15"
+    key: "metadata"
+
+templates:
+  - name: "Company Report"
+    folder: "templates"
+    output: "output"
+    files:
+      include: ["company_report*"]
+    enabled: true
+
+  - name: "Department Reports"
+    folder: "templates"
+    output: "output/departments"
+    iterate: "dept in dd.departments"
+    files:
+      include: ["*department*"]
+    enabled: true
+
+  - name: "Employee Cards"
+    folder: "templates"
+    output: "output/employees"
+    iterate: "dept in dd.departments >> emp in dept.employees"
+    files:
+      include: ["*employee*"]
+    enabled: true

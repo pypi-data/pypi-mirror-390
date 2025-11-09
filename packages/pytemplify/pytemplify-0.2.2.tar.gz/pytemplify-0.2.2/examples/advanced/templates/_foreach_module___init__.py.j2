@@ -1,0 +1,21 @@
+"""{{ module.name | title }} Module
+
+{{ module.description }}
+
+This module contains {{ module.components | length }} component(s).
+"""
+
+from typing import TYPE_CHECKING
+
+{% for component in module.components -%}
+from .{{ component.name }} import {{ component.name | title }}{{ component.type | title }}
+{% endfor %}
+
+__all__ = [
+{%- for component in module.components %}
+    "{{ component.name | title }}{{ component.type | title }}",
+{%- endfor %}
+]
+
+__version__ = "{{ gg.version }}"
+__module__ = "{{ module.name }}"
