@@ -1,0 +1,68 @@
+name: CI
+
+# --- TRIGGER: Runs on Pull Requests ---
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Tests via tox (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed for coverage badge/artifacts
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- SETUP ---
+      - name: Install Rust toolchain
+        # Required for the 'clippy' environment and maturin builds
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv and tools
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install tox and plugins
+        # Install tox and the tox-gh-actions plugin into the base environment
+        run: uv pip install --system tox tox-gh-actions
+
+      # --- LINT & CLIPPY STEPS (Run once on 3.11) ---
+      # Running static checks only on one version to save time
+      - name: 🔎 Run Lint (tox -e lint)
+        if: matrix.python-version == '3.11'
+        run: tox -e lint
+
+      - name: 🔎 Run Rust Checks (tox -e clippy)
+        if: matrix.python-version == '3.11'
+        run: tox -e clippy
+
+      # --- CORE TESTS STEP (Run on both 3.11 and 3.12) ---
+      - name: 🧪 Run Tests (tox -e py${{ matrix.python-version }})
+        id: tests_step
+        # Runs 'maturin develop' and 'pytest -q'
+        run: tox -e py${{ matrix.python-version }}
+
+      # --- COVERAGE & BADGE STEPS (Run once on 3.12) ---
+      - name: 📊 Run Coverage Threshold Check
+        if: matrix.python-version == '3.12'
+        id: coverage_step
+        # This assumes the tox 'coverage' environment produces a coverage.xml file in the repository root.
+        run: |
+          set -euo pipefail
+          tox -e coverage
