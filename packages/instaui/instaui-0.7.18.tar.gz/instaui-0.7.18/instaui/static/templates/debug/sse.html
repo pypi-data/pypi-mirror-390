@@ -1,0 +1,137 @@
+{% macro build_sse(is_debug) %}
+{% if is_debug %}
+  <debug-sse></debug-sse>
+
+  <script data-name="debug-sse">
+  class DebugSSE extends HTMLElement {
+    constructor() {
+      super();
+      this.retryCount = 0;
+      this.tryIntervalMs = 800;
+      this.hasPrintedError = false;
+      this.eventSource = null;
+      this.isUnloading = false;
+
+      const shadow = this.attachShadow({ mode: 'open' });
+
+      shadow.innerHTML = `
+        <style>
+          #debug-sse-box {
+            position: fixed;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 75px;
+            background-color: rgba(104, 184, 93, 0.8);
+            border: 1px solid #dee2e6;
+            box-shadow: 0 4px 6px rgba(104, 184, 93, 0.5);
+            border-radius: 4px;
+            color: #343a40;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: auto;
+            z-index: 9999;
+          }
+
+          #debug-sse-box.show {
+            display: flex;
+          }
+
+          .outter-box {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem;
+          }
+
+          .progress-icon {
+            color: rgb(255 255 255);
+            animation: spin 1s linear infinite;
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-right: .75rem;
+            margin-left: -.25rem;
+          }
+
+        @keyframes spin {
+          100% { transform: rotate(1turn); }
+        }
+        </style>
+
+        <div id="debug-sse-box">
+          <div class="outter-box">
+            <svg class="progress-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle style="opacity: 0.25;" cx="12" cy="12" r="10"
+                stroke="currentColor" stroke-width="4"></circle>
+              <path style="opacity: 0.75;" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
+                  5.291A7.962 7.962 0 014 12H0c0 3.042 
+                  1.135 5.824 3 7.938l3-2.647z">
+              </path>
+            </svg>
+            <span class="msg" style="font-size: 1.25rem;">server reloading...</span>
+          </div>
+        </div>
+      `;
+
+      this.dom_debug_box = shadow.querySelector('#debug-sse-box');
+      this.dom_msg = shadow.querySelector('.msg');
+      this.dom_progress_icon = shadow.querySelector('.progress-icon');
+
+      window.addEventListener('beforeunload', () => {
+        this.isUnloading = true;
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+      });
+    }
+
+    connectedCallback() {
+      this.connect();
+    }
+
+    toggleMessageBox(show) {
+      this.dom_debug_box.classList.toggle('show', show);
+    }
+
+    connect() {
+      if (this.isUnloading) return;
+
+      this.eventSource = new EventSource("/instaui/debug-sse");
+
+      this.eventSource.onopen = () => {
+        this.toggleMessageBox(false);
+        this.hasPrintedError = false;
+        console.log('debug-sse connection opened');
+
+        if (this.retryCount > 0) {
+          window.location.reload(true);
+        }
+      };
+
+      this.eventSource.onerror = () => {
+        this.toggleMessageBox(true);
+        if (!this.hasPrintedError) {
+          console.error("Connection to server failed.");
+          this.hasPrintedError = true;
+        }
+        if (this.eventSource) {
+          this.eventSource.close();
+          this.eventSource = null;
+        }
+        this.retryCount++;
+        setTimeout(() => this.connect(), this.tryIntervalMs);
+      };
+    }
+  }
+
+  customElements.define('debug-sse', DebugSSE);
+  </script>
+{% endif %}
+{% endmacro %}
