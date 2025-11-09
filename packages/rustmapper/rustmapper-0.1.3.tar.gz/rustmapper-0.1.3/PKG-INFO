@@ -1,0 +1,213 @@
+Metadata-Version: 2.4
+Name: rustmapper
+Version: 0.1.3
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Rust
+Classifier: Topic :: Internet :: WWW/HTTP :: Indexing/Search
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: pytest>=7.0 ; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0 ; extra == 'dev'
+Requires-Dist: black>=23.0 ; extra == 'dev'
+Requires-Dist: mypy>=1.0 ; extra == 'dev'
+Requires-Dist: ruff>=0.1.0 ; extra == 'dev'
+Provides-Extra: dev
+Summary: Sitemap crawler and URL discovery tool built with Rust (256 workers, sharded frontier, WAL persistence, optional Redis)
+Keywords: sitemap,crawler,web-scraping,url-discovery,rust
+Author-email: Benjamin Russell <russell27sail@gmail.com>
+Maintainer-email: Benjamin Russell <russell27sail@gmail.com>
+License-Expression: MIT
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://github.com/BenjaminSRussell/Rust-sitemap
+Project-URL: Repository, https://github.com/BenjaminSRussell/Rust-sitemap
+Project-URL: Documentation, https://github.com/BenjaminSRussell/Rust-sitemap#readme
+Project-URL: Bug Tracker, https://github.com/BenjaminSRussell/Rust-sitemap/issues
+
+# Rust Sitemap Crawler
+
+Concurrent web crawler in Rust. 256 concurrent workers, sharded frontier, persistent state with WAL, distributed crawling with Redis.
+
+Available as both a standalone CLI tool and a Python package.
+
+## Install
+
+### Python Package (Recommended)
+
+```bash
+pip install rustmapper
+```
+
+### From Source (Rust)
+
+```bash
+cargo build --release
+```
+
+## Usage
+
+### Python Package
+
+Once installed via pip, use the `rustmapper` command:
+
+```bash
+# Basic crawl
+rustmapper crawl --start-url example.com
+
+# With options
+rustmapper crawl --start-url example.com --workers 128 --timeout 10
+
+# Resume
+rustmapper resume --data-dir ./data
+
+# Export sitemap
+rustmapper export-sitemap --data-dir ./data --output sitemap.xml
+```
+
+### Python API
+
+```python
+from rustmapper import Crawler
+
+# Create a crawler instance
+crawler = Crawler(
+    start_url="https://example.com",
+    data_dir="./data",
+    workers=256,
+    timeout=20,
+    ignore_robots=False
+)
+
+# Start crawling
+results = crawler.crawl()
+print(f"Discovered: {results['discovered']}, Processed: {results['processed']}")
+
+# Export to sitemap
+crawler.export_sitemap(
+    output="sitemap.xml",
+    include_lastmod=True,
+    include_changefreq=True,
+    default_priority=0.5
+)
+```
+
+### Rust CLI (from source)
+
+```bash
+# Basic crawl
+cargo run --release -- crawl --start-url example.com
+
+# With options
+cargo run --release -- crawl --start-url example.com --workers 128 --timeout 10
+
+# Resume
+cargo run --release -- resume --data-dir ./data
+
+# Export sitemap
+cargo run --release -- export-sitemap --data-dir ./data --output sitemap.xml
+```
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--start-url` | required | Starting URL |
+| `--workers` | 256 | Concurrent requests |
+| `--timeout` | 20 | Request timeout (seconds) |
+| `--data-dir` | ./data | Storage location |
+| `--seeding-strategy` | all | none/sitemap/ct/commoncrawl/all |
+| `--ignore-robots` | false | Skip robots.txt |
+| `--enable-redis` | false | Distributed mode |
+| `--redis-url` | - | Redis connection |
+
+## Seeding Strategies
+
+- `none` - Only start URL
+- `sitemap` - Discover from sitemap.xml
+- `ct` - Certificate Transparency logs (finds subdomains)
+- `commoncrawl` - Query Common Crawl index
+- `all` - Use all methods
+
+## Performance
+
+**Timing breakdown per URL:**
+- Body download: 700-900ms (70-90%)
+- Network fetch: 50-550ms (10-20%)
+- Everything else: <50ms (<5%)
+
+**Throughput:** 50-200 URLs/minute depending on page size. Network I/O bound.
+
+**Recommended settings:**
+```bash
+# Focused crawl (skip subdomains)
+--timeout 10 --seeding-strategy sitemap
+
+# University sites (avoid internal hosts)
+--timeout 5 --seeding-strategy sitemap --start-url www.university.edu
+
+# Maximum discovery (all seeders)
+--workers 256 --timeout 10 --seeding-strategy all
+```
+
+## Output
+
+**JSONL** (automatic): `./data/sitemap.jsonl`
+```json
+{"url":"https://example.com/","depth":0,"status_code":200,"content_length":1024,"title":"Example","link_count":5}
+```
+
+**XML sitemap:**
+```bash
+cargo run --release -- export-sitemap --data-dir ./data --output sitemap.xml
+```
+
+## Distributed Crawling
+
+```bash
+# Instance 1
+cargo run --release -- crawl --start-url example.com --enable-redis --redis-url redis://localhost:6379
+
+# Instance 2
+cargo run --release -- crawl --start-url example.com --enable-redis --redis-url redis://localhost:6379
+```
+
+Automatic URL deduplication, work stealing, distributed locks.
+
+## Architecture
+
+- **Frontier**: Sharded queues (14 shards), bloom filter dedup, per-host politeness
+- **State**: Embedded redb database + WAL for crash recovery
+- **Governor**: Adaptive concurrency control based on commit latency
+- **Workers**: Async task pool with semaphore-based backpressure
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Slow crawling | Normal - large pages take ~1s to download | Network I/O bound, expected |
+| Many timeouts | Internal/unreachable hosts (CT log discovery) | Reduce timeout: `--timeout 5` or use `--seeding-strategy sitemap` |
+| Out of memory | Too many concurrent large pages | Reduce workers: `--workers 64` |
+| Stops unexpectedly | Check if naturally completed (frontier empty) | Use `resume` to continue |
+
+## Testing
+
+```bash
+cargo test
+```
+
+## Docs
+
+- [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) - Detailed timing breakdown
+- [BOTTLENECK_SUMMARY.md](BOTTLENECK_SUMMARY.md) - Where time is spent
+
+## License
+
+MIT
+
