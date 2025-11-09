@@ -1,0 +1,64 @@
+name: Guibbon CI/CD
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: 'ubuntu-latest'
+    name: Linter and type checker
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python version 3.12
+        run: |
+          uv python pin 3.12
+
+      - name: Type check with mypy
+        run: |
+          uv run mypy .
+
+      - name: Lint check with ruff
+        run: |
+          uv run ruff check .
+
+  tests-ubuntu:
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    runs-on: 'ubuntu-latest'
+
+    name: "Tests: ubuntu-latest, py ${{ matrix.python-version }}"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tkinter
+        run: |
+          sudo apt-get update && sudo apt-get install -y python3-tk
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python version ${{ matrix.python-version }}
+        run: |
+          uv python pin ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: |
+          echo "Create virtual display to avoid tk/tcl errors on ubuntu"
+          export DISPLAY=:99 
+          Xvfb :99 &  
+          echo "Running tests"
+          uv run pytest

@@ -1,0 +1,79 @@
+[project]
+name = "guibbon"
+version = "0.4.0"
+description = "Very high level GUI with an API similar to the HighGUI of OpenCV"
+authors = [
+    {name = "Manu Gira", email = "manu.gira@outlook.com"}
+]
+readme = "docs/index.md"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python>=4.12.0.88",
+    "pillow>=12.0.0",
+]
+
+[project.urls]
+repository = "https://github.com/ManuGira/Guibbon.git"
+
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocstrings[python]>=0.30.1",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.2",
+    "toml>=0.10.2",
+    "types-toml>=0.10.8.20240310",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "--cov-report=term --cov-report=html:build/pytest_coverage_html --cov=guibbon"
+testpaths = ["tests"]
+cache_dir = "build/.pytest_cache"
+
+[tool.coverage.run]
+data_file="build/.coverage"
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+    ]
+
+[tool.ruff]
+line-length = 160
+cache-dir = "build/.ruff_cache"
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+implicit_reexport = true
+pretty = true
+cache_dir = "build/.mypy_cache"
+exclude = "build/"
