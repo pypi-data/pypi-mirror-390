@@ -1,0 +1,222 @@
+# -------------------------------
+# Build system configuration
+# -------------------------------
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# -------------------------------
+# Core project metadata
+# -------------------------------
+[project]
+name = "qml-hcs"
+version = "0.2.0"
+description = "Quantum Machine Learning with hypercausal feedback for non-stationary environments."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSD-3-Clause" }
+
+authors = [
+  { name = "Neureonmindflux Research Lab", email = "contact@neureonmindfluxlab.org" },
+  { name = "Héctor Mozo" }
+]
+
+# Search tags for PyPI and documentation
+keywords = [
+  "quantum-machine-learning",
+  "hypercausal",
+  "non-stationary",
+  "forecasting",
+  "control",
+  "anomaly-detection",
+  "quantum computing",
+  "quantum ai",
+  "qnn",
+  "physics-informed-ai"
+]
+
+# Official PyPI classifiers
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# -------------------------------
+# Base runtime dependencies
+# -------------------------------
+dependencies = [
+  "numpy>=1.23",
+  "scipy>=1.10",
+  "typing-extensions>=4.6"
+]
+
+# -------------------------------
+# Project URLs
+# -------------------------------
+[project.urls]
+Homepage = "https://github.com/Neureonmindflux-Research-Lab/qml-hcs"
+Issues = "https://github.com/Neureonmindflux-Research-Lab/qml-hcs/issues"
+Documentation = "https://qml-hcs.readthedocs.io"
+
+# -------------------------------
+# Optional dependency groups
+# -------------------------------
+[project.optional-dependencies]
+# Quantum backends
+qiskit = ["qiskit>=1.2"]
+pennylane = ["pennylane>=0.36"]
+
+# Machine learning frameworks
+torch = ["torch>=2.2"]
+jax = ["jax~=0.6.0", "jaxlib~=0.6.0"]
+
+# Visualization utilities
+viz = [
+  "matplotlib>=3.8",
+  "pandas>=2.1",           
+]
+
+# Developer tools (for local builds, linting, packaging)
+dev = [
+  "numpy>=1.26",
+  "matplotlib>=3.8",
+  "ruff>=0.6.0",
+  "mypy>=1.7.0",
+  "build>=1.2.1",
+  "twine>=5.0.0"
+]
+
+# Full documentation stack (Sphinx + themes + parsers)
+docs = [
+  "numpy>=1.26",
+  "matplotlib>=3.8",
+  "pandas>=2.1", 
+  "sphinx>=7.3",
+  "sphinx-book-theme",
+  "furo",
+  "myst-parser",
+  "sphinx-autodoc-typehints",
+  "sphinx-copybutton",
+  "sphinx-rtd-theme",
+  "jinja2>=3.1",
+  "docutils>=0.20",
+  "sphinxcontrib-programoutput>=0.18"
+]
+
+# Testing suite (pytest + coverage)
+test = [
+  "numpy>=1.26",
+  "pytest>=8.1",
+  "pytest-cov>=4.1",
+  "coverage>=7.4",
+  "matplotlib>=3.8",
+  "pandas>=2.1", 
+]
+
+# Convenience meta-extra: install everything
+all = [
+  # quantum backends
+  "qiskit>=1.2",
+  "pennylane>=0.36",
+  # ML frameworks
+  "torch>=2.2",
+  "jax~=0.6.0", "jaxlib~=0.6.0",
+  # viz
+  "matplotlib>=3.8",
+  "pandas>=2.1", 
+  # dev
+  "ruff>=0.6.0", "mypy>=1.7.0", "build>=1.2.1", "twine>=5.0.0",
+  # docs
+  "sphinx>=7.3", "sphinx-book-theme", "furo", "myst-parser",
+  "sphinx-autodoc-typehints", "sphinx-copybutton", "sphinx-rtd-theme",
+  "jinja2>=3.1", "docutils>=0.20", "sphinxcontrib-programoutput>=0.18",
+  # test
+  "pytest>=8.1", "pytest-cov>=4.1", "coverage>=7.4", "numpy>=1.23"
+]
+
+
+# CLI entry point
+[project.scripts]
+qmlhc-demo = "qmlhc.examples.ex_minimal_core_demo:minimal_core_demo"
+
+
+# -------------------------------
+# setuptools configuration
+# -------------------------------
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["qmlhc", "qmlhc.*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+qmlhc = ["py.typed"]
+
+# -------------------------------
+# pytest configuration
+# -------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-q", "--cov=qmlhc", "--cov-report=term-missing"]
+
+# -------------------------------
+# Ruff configuration (lint + format)
+# -------------------------------
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+indent-width = 4
+extend-exclude = ["examples", "docs"]
+lint.select = ["E", "F", "W", "I", "B", "UP"]
+lint.ignore = ["E203"]
+format.quote-style = "double"
+format.indent-style = "space"
+format.docstring-code-format = true
+
+# -------------------------------
+# mypy configuration (static typing)
+# -------------------------------
+[tool.mypy]
+python_version = "3.9"
+packages = ["qmlhc"]
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+strict_optional = true
+no_implicit_optional = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_any_generics = true
+
+# -------------------------------
+# Coverage configuration
+# -------------------------------
+[tool.coverage.run]
+branch = true
+source = ["src/qmlhc"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 75
+
+
