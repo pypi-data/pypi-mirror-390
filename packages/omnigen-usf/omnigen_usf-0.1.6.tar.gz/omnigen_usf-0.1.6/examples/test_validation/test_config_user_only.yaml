@@ -1,0 +1,73 @@
+# Test Configuration for User-Only Base Conversations
+# Testing with only user messages in base data, generating 2-4 turns
+
+workspace_id: "test_user_only"
+
+providers:
+  user_followup:
+    name: "openrouter"
+    api_key: ""
+    model: "google/gemini-2.5-flash"
+    temperature: 0.7
+    max_tokens: 2048
+
+  assistant_response:
+    name: "openrouter"
+    api_key: ""
+    model: "google/gemini-2.5-flash"
+    temperature: 0.7
+    max_tokens: 4096
+
+generation:
+  num_conversations: 5  # Process all 5 user-only samples
+  turn_range:
+    min: 2
+    max: 4
+  parallel_workers: 2
+  extension_mode: "smart"
+  skip_invalid: true
+  turn_calculation: "additional"  # Add 2-4 NEW turns
+  track_tokens: true  # Enable token tracking
+  token_pricing:  # Optional: Set to 0 to disable cost display, or configure your pricing
+    input_cost_per_million: 1.0   # Example: $1.00 per 1M input tokens
+    output_cost_per_million: 2.0  # Example: $2.00 per 1M output tokens
+
+base_data:
+  enabled: true
+  source_type: "jsonl"
+  file_path: "examples/test_validation/test_data_user_only.jsonl"
+  format: "conversations"
+
+storage:
+  type: "jsonl"
+  output_file: "examples/test_validation/output_user_only/generated_conversations.jsonl"
+  partial_file: "examples/test_validation/output_user_only/partial_conversations.jsonl"
+  failed_file: "examples/test_validation/output_user_only/failed_conversations.jsonl"
+
+checkpoint:
+  enabled: true
+  checkpoint_file: "examples/test_validation/output_user_only/checkpoint.json"
+  auto_save_frequency: 5
+  validate_input_hash: true
+  resume_mode: "auto"
+
+monitoring:
+  enabled: false
+
+error_handling:
+  max_retries: 3
+  fail_fast: true
+  save_partial_on_error: true
+
+system_messages:
+  add_if_missing:
+    enabled: false
+  prepend_always:
+    enabled: false
+  append_always:
+    enabled: false
+
+generation_system_messages:
+  assistant_response:
+    enabled: true
+    content: "You are a helpful assistant. Provide detailed, informative responses."

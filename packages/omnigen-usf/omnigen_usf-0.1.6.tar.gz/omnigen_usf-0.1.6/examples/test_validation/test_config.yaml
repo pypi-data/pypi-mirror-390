@@ -1,0 +1,71 @@
+# Test Configuration for Validation Testing
+# Using OpenRouter with Gemini model to test empty content validation
+
+workspace_id: "test_validation_run"
+
+providers:
+  user_followup:
+    name: "openrouter"
+    api_key: ""
+    model: "google/gemini-2.5-flash"
+    temperature: 0.7
+    max_tokens: 2048
+
+  assistant_response:
+    name: "openrouter"
+    api_key: ""
+    model: "google/gemini-2.5-flash"
+    temperature: 0.7
+    max_tokens: 4096
+
+generation:
+  num_conversations: 20  # Process all 20 samples
+  turn_range:
+    min: 2
+    max: 6
+  parallel_workers: 3  # Lower for testing
+  extension_mode: "smart"  # Use smart extension mode
+  skip_invalid: true
+  turn_calculation: "additional"  # Add new turns on top of existing
+
+base_data:
+  enabled: true
+  source_type: "jsonl"
+  file_path: "examples/test_validation/test_data_20_samples.jsonl"
+  format: "conversations"
+
+storage:
+  type: "jsonl"
+  output_file: "examples/test_validation/output/generated_conversations.jsonl"
+  partial_file: "examples/test_validation/output/partial_conversations.jsonl"
+  failed_file: "examples/test_validation/output/failed_conversations.jsonl"
+
+checkpoint:
+  enabled: true
+  checkpoint_file: "examples/test_validation/output/checkpoint.json"
+  auto_save_frequency: 5
+  validate_input_hash: true
+  resume_mode: "auto"
+
+monitoring:
+  enabled: false
+
+error_handling:
+  max_retries: 3
+  fail_fast: true
+  save_partial_on_error: true
+
+# System messages configuration (optional)
+system_messages:
+  add_if_missing:
+    enabled: false
+  prepend_always:
+    enabled: false
+  append_always:
+    enabled: false
+
+# Generation-only system messages (not saved to dataset)
+generation_system_messages:
+  assistant_response:
+    enabled: true
+    content: "You are a helpful assistant in a natural conversation. Provide detailed, contextual responses."
