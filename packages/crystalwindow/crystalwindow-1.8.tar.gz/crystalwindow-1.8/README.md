@@ -1,0 +1,174 @@
+# CRYSTALWINDOW!!!
+
+A tiny but mighty Pygame framework that gives u a full window system, GUI magic, physics, and file power — all packed into one clean lil module.
+
+No setup pain. No folder chaos.
+Just import it. Boom. Instant game window. 🎮
+
+# Quick Start
+pip install crystalwindow
+
+
+then make a new .py file:
+
+    from crystalwindow import Window  # imports everything from crystalwindow (in this case its Window)
+
+    win = Window(800, 600, "Crystal Demo")  # setup: Window(width, height, name, icon=MyIcon.ico)
+    win.run()  # runs the window loop
+    win.quit()   # closes it (for RAM n CPU)
+
+
+Run it. and boom, instant working window.
+Yes, THAT easy.
+
+# Whats Inside
+
+Built-in window manager
+
+Built-in GUI (buttons, sliders, toggles, labels)
+
+Built-in gravity + physics engine
+
+Tilemap system (place & save blocks!)
+
+Image loader (with default base64 logo)
+
+Safe startup (works even inside PyInstaller)
+
+No external dependencies (only pygame)
+
+Works offline
+
+Minimal syntax
+
+Full debug overlay
+
+# Window System
+    from crystalwindow import *
+
+    win = Window(800, 600, "My Game", icon="MyIcon.png")
+
+    def loop(win):
+        win.fill((10, 10, 30))
+        # draw or update stuff here
+
+    win.run(loop)
+    win.quit()
+
+# Features 
+*  handles events
+*  tracks keys + mouse
+*  supports fullscreen
+*  safe to close anytime
+
+# Player Example
+    player = Player(100, 100)
+
+    def loop(win):
+        player.update(win.keys)
+        player.draw(win.screen)
+    move(dx, dy) -> moves player
+    take_damage(x) -> takes damage
+    heal(x) -> heals
+    draw(surface) -> renders sprite
+
+# TileMap
+    tilemap = TileMap(32)
+    tilemap.add_tile(5, 5, "grass")
+    tilemap.save("level.json")
+    add_tile(x, y, type)
+    remove_tile(x, y)
+    draw(surface)
+    save(file) / load(file)
+
+#  GUI System
+    btn = Button(20, 20, 120, 40, "Click Me!", lambda: print("yo"))
+    gui = GUIManager()
+    gui.add(btn)
+
+
+Use built-in stuff like:
+
+    Button(x, y, w, h, text, onclick)
+    Label(x, y, text)
+    Toggle(x, y, w, h, text, default=False)
+    Slider(x, y, w, min, max, default)
+
+# Gravity
+    g = Gravity(0.5)
+    g.update(player)
+
+
+makes objects fall realistically. ez.
+
+# FileHelper
+    save_json("data.json", {"coins": 99})
+    data = load_json("data.json")
+
+
+Also supports:
+
+    save_pickle / load_pickle
+
+    FileDialog("save") (tkinter dialog popup)
+
+# DrawHelper
+    DrawHelper.text(win.screen, "Hello!", (10,10), (255,255,255), 24)
+    DrawHelper.rect(win.screen, (100,0,200), (50,50,100,60))
+
+
+perfect for ui & quick visuals 
+
+# Debug Tools
+debug = DebugOverlay()
+debug.toggle()  # show or hide FPS
+debug.draw(win.screen, {"hp": 100, "fps": win.clock.get_fps()})
+
+# Example Game
+    from crystalwindow import *
+
+    win = Window(800, 600, "My Cool Game")
+    player = Player(100, 100)
+    gravity = Gravity()
+
+    def update(win):
+        win.fill((25, 25, 40))
+        player.update(win.keys)
+        gravity.update(player)
+        player.draw(win.screen)
+
+    win.run(update)
+    win.quit()
+
+# Default Logo
+
+There is a lil encoded PNG inside the file called:
+
+DEFAULT_LOGO_BASE64
+
+
+Its used when no icon is given.
+Set ur own like:
+
+    Window(800, 600, "My Window", icon="MyIcon.png")
+
+
+or do whatever you want.. i guess.
+
+# Example Integration
+    from crystalwindow import Window
+
+    win = Window(800, 600, "My Window", icon="MyIcon.png")
+
+    while win.running:
+        win.check_events()
+        win.fill((10, 10, 20))
+        win.run()
+        win.quit()
+
+# Credits
+
+Made by: CrystalBallyHereXD
+Framework: CrystalWindow
+Powered by: Pygame
+License: Free to use, modify, and vibe with it!
