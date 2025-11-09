@@ -1,0 +1,34 @@
+extensions: ["semantiva-examples"]
+
+pipeline:
+  nodes:
+    - processor: "FloatValueDataSourceWithDefault"
+
+    - processor: "FloatCollectValueProbe"
+      context_key: "initial_float"
+
+    - processor: "FloatMultiplyOperation"
+      parameters:
+        factor: 2.5
+
+    - processor: "FloatSquareOperation"
+
+    - processor: "rename:initial_float:addend"
+
+    - processor: "FloatAddOperation"
+
+    - processor: "FloatSqrtOperation"
+
+    - processor: "FloatDivideOperation"
+      parameters:
+        divisor: 3.0
+
+    - processor: "FloatBasicProbe"
+      context_key: "final_value"
+
+    - processor: "delete:addend"
+
+    - processor: "FloatMockDataSink"
+      parameters:
+        path: "output.txt"
+
