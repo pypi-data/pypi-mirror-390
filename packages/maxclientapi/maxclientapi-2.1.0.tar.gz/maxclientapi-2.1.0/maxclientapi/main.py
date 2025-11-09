@@ -1,0 +1,204 @@
+import json
+import threading
+import time
+from websocket import create_connection, WebSocketConnectionClosedException
+from .listen_handler import listen_handler
+from .start_keepalive import start_keepalive
+from .send_handshake import send_handshake
+from queue import Queue
+
+class ChatClient:
+    def __init__(self, token, deviceId, watch_chats=None, user_agent=None, deviceName=None, osVersion=None, origin=None, url=None):
+        self.url = url or "wss://ws-api.oneme.ru/websocket"
+        self.token = token
+        self.watch_chats = watch_chats or []
+        self.user_agent = user_agent or "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0"
+        self.ws = None
+        self.seq = 0
+        self.running = False
+        self.deviceName = deviceName or "Firefox"
+        self.headerUserAgent = user_agent
+        self.osVersion = osVersion or "Linux"
+        self.deviceId = deviceId
+        self.origin = origin or "https://web.max.ru"
+        self.messages = Queue()
+
+    def connect(self):
+        headers = [
+            ("Origin", self.origin),
+            ("User-Agent", self.user_agent)
+        ]
+    
+        try:
+            print(f"Try to connect")
+            self.ws = create_connection(self.url, header=[f"{h[0]}: {h[1]}" for h in headers])
+            print("Connected")
+        
+            self.running = True
+            threading.Thread(target=self.listen_handler, daemon=True).start()
+            self.send_info()
+    
+        except Exception as e:
+            print(f"Unknown error: {e}")
+            self.running = False
+
+    def send_info(self):
+        print("Sending info")
+        self.seq += 1
+        payload = {"ver":11,
+                   "cmd":0,
+                   "seq":self.seq,
+                   "opcode":6,
+                   "payload":{
+                       "userAgent":{
+                           "deviceType":"WEB",
+                           "locale":"ru",
+                           "deviceLocale":"ru",
+                           "osVersion":self.osVersion,
+                           "deviceName":self.deviceName,
+                           "headerUserAgent":self.headerUserAgent,
+                           "appVersion":"25.11.1",
+                           "screen":"1080x1920 1.0x",
+                           "timezone":"Asia/Yekaterinburg"
+                           },
+                        "deviceId":self.deviceId
+                        }
+                    }
+        self.send(payload, send_type="Info")
+        self.send_handshake()
+
+    send_handshake = send_handshake
+
+    def request_messages(self):
+        self.seq += 1
+        payload = {"ver":11,
+                   "cmd":0,
+                   "seq":self.seq,
+                   "opcode":48,
+                   "payload":{
+                       "chatIds":[0]
+                       }
+                    }
+        print("Attention, the code to request messages is not fully implemented yet.")
+        self.send(payload, send_type="Request messages")
+
+    listen_handler = listen_handler
+
+    def get_message(self, block=False, timeout=None):
+        try:
+            return self.messages.get(block=block, timeout=timeout)
+        except:
+            return None
+
+    def get_video_url(self, videoId, chat_id, messageId):
+        self.seq += 1
+        payload = {"ver":11,
+                   "cmd":0,
+                   "seq":self.seq,
+                   "opcode":83,
+                   "payload":{
+                       "videoId":videoId,
+                       "chatId":chat_id,
+                       "messageId":messageId
+                       }
+                    }
+        self.send(payload, send_type="Get video URL")
+
+    def subscribe_chat(self, chat_id):
+        self.seq += 1
+        payload = {"ver":11,
+                   "cmd":0,
+                   "seq":self.seq,
+                   "opcode":75,
+                   "payload":{
+                       "chatId":chat_id,
+                       "subscribe":True
+                       }
+                    }
+        self.send(payload, send_type="Subscribe chat")
+        print(f"Subscribed to chat: {chat_id}")
+
+    def send_message(self, chat_id, text):
+        self.seq += 1
+        payload = {
+            "ver": 11,
+            "cmd": 0,
+            "seq": self.seq,
+            "opcode": 64,
+            "payload": {
+                "chatId": chat_id,
+                "message": {
+                    "text": text,
+                    "cid": int(time.time() * 1000),
+                    "elements": [],
+                    "attaches": []
+                },
+                "notify": True
+            }
+        }
+
+        self.send(payload, send_type="Message")
+
+        self.seq += 1
+        payload_1 = {"ver":11,
+                     "cmd":0,
+                     "seq":self.seq,
+                     "opcode":177,
+                     "payload":{
+                         "chatId":chat_id,
+                         "time":0
+                         }
+                    }
+        self.send(payload_1)
+        print(f"Message send to chat: {chat_id} with text: {text}")
+
+    def request_url_to_send_file(self, count=1):
+        self.seq += 1
+        payload = {"ver":11,
+                   "cmd":0,
+                   "seq":self.seq,
+                   "opcode":87,
+                   "payload":{
+                       "count":count
+                       }
+                    }
+        self.send(payload, send_type="Request URL to send file")
+
+    def send_file(self, chatId, fileId):
+        self.seq += 1
+        payload = {"ver":11,
+                        "cmd":0,
+                        "seq":self.seq,
+                        "opcode":64,
+                        "payload":{
+                            "chatId":chatId,
+                            "message":{
+                                "cid":int(time.time() * 1000),
+                                "attaches":[
+                                    {
+                                        "_type":"FILE",
+                                        "fileId":fileId
+                                        }
+                                    ]
+                                },
+                                "notify":True
+                                }
+                            }
+        self.send(payload, send_type="File")
+
+    def send(self, data, send_type="Data"):
+        if self.ws:
+            try:
+                self.ws.send(json.dumps(data))
+                print(f"{send_type} sucessfully sent") #{json.dumps(data, indent=2)}
+            except Exception as e:
+                print(f"Unknown error: {e}")
+        else:
+            print("No active WebSocket connection")
+
+    start_keepalive = start_keepalive
+
+    def stop(self):
+        self.running = False
+        if self.ws:
+            self.ws.close()
