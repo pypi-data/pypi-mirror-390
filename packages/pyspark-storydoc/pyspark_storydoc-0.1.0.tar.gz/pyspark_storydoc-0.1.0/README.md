@@ -1,0 +1,803 @@
+# PySpark StoryDoc
+
+> **Transform your PySpark data pipelines into business-friendly documentation**
+
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PySpark](https://img.shields.io/badge/pyspark-3.0+-orange.svg)](https://spark.apache.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
+## What is PySpark StoryDoc?
+
+PySpark StoryDoc bridges the communication gap between data engineers and business stakeholders by automatically generating clear, business-friendly documentation from your PySpark data pipelines.
+
+Instead of explaining complex transformations manually, PySpark StoryDoc automatically tracks your data flow, captures business context, and generates visual documentation that everyone can understand.
+
+## What's New 🆕
+
+**Recent Updates (November 2025)**:
+
+- **ONE-LINE REPORT GENERATION**: Simplified API reduces code by 87.5% - generate any report with a single method call
+- **18 New Abstraction Methods**: All major outputs now accessible via `df.generate_*()` methods
+- **No More Imports**: Zero internal imports required - just call methods on your DataFrame
+- **Smart Defaults**: Auto-detection of pipeline names and intelligent path handling
+- **Enhanced Data Engineer Visualization**: Semantic shapes in Mermaid diagrams (hexagons, diamonds, stadiums) with colorblind-friendly colors
+- **Correlation Analysis**: Track feature correlations throughout your pipeline with `@correlationAnalyzer` decorator
+- **Feature Evolution Tracking**: Visualize how features and correlations change through transformations
+- **Governance Framework**: Comprehensive governance metadata, risk assessment, and compliance reporting
+
+See `examples/data_engineer/` and `examples/data_scientist/` for working examples.
+
+### Recent API Changes
+
+#### get_enhanced_graph() Deprecated (v1.0)
+The method `get_enhanced_graph()` has been renamed to `get_lineage_graph()` for clarity. The old method still works but will show a deprecation warning.
+
+**Migration:**
+```python
+# OLD (deprecated)
+graph = tracker.get_enhanced_graph()
+
+# NEW (recommended)
+graph = tracker.get_lineage_graph()
+```
+
+See `project_documentation/API_DEPRECATION_NOTICE.md` for full migration guide.
+
+## Key Features
+
+### 1. **One-Line Report Generation** 🆕
+Transform complex report generation from 8+ lines to just 1:
+
+```python
+# OLD WAY (Still works but verbose - 8+ lines)
+from pyspark_storydoc.reporting.business_concept_catalog import BusinessConceptCatalog
+from pyspark_storydoc.core.lineage_tracker import get_global_tracker
+
+tracker = get_global_tracker()
+graph = tracker.get_lineage_graph()
+catalog = BusinessConceptCatalog()
+catalog_path = catalog.generate(graph, "catalog.md")
+
+# NEW WAY (Recommended - 1 line) ✅
+result_df = pipeline.transform(source_df)
+catalog_path = result_df.generate_business_catalog()
+```
+
+**Result:** 87.5% code reduction, zero internal imports required
+
+### 2. **Discoverable via IDE Autocomplete**
+Type `df.generate_` and see all 18 available report types instantly. No need to memorize import paths or class names.
+
+### 3. **Smart Defaults**
+Auto-detects pipeline names, creates directories automatically, handles both file and directory paths intelligently.
+
+## Project Goals
+
+### 1. **Business Communication**
+Transform technical PySpark operations into stakeholder-friendly narratives that explain *what* the data pipeline does and *why* it matters to the business.
+
+### 2. **Automatic Documentation**
+Eliminate manual documentation burden by automatically capturing:
+- Data lineage and transformation flow
+- Business logic and decision points
+- Data quality metrics (row counts, filtering impact)
+- Column-level tracking and expression lineage
+
+### 3. **Zero Workflow Disruption**
+Drop-in replacement for standard PySpark DataFrames—add documentation capabilities without changing your existing code structure or performance.
+
+### 4. **Multi-Audience Reporting**
+Generate different views for different audiences:
+- **Executive View**: High-level business impact and data flow
+- **Business Analyst View**: Detailed logic with metrics and filters
+- **Technical View**: Complete operation-level debugging information
+
+## Quick Start
+
+### Installation
+
+```bash
+pip install pyspark-storydoc
+```
+
+### Basic Example: Business Concept Decorator
+
+The simplest way to add business context to your pipeline:
+
+```python
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+from pyspark_storydoc import LineageDataFrame, businessConcept
+from pyspark_storydoc.reporting import generate_business_diagram
+
+# Initialize Spark
+spark = SparkSession.builder.appName("MyApp").getOrCreate()
+
+# Create sample data
+customers_data = [
+    (1, "Alice", "Premium", 1500),
+    (2, "Bob", "Standard", 800),
+    (3, "Charlie", "Premium", 2000),
+    (4, "David", "Basic", 400),
+    (5, "Eve", "Premium", 2500),
+]
+customers = spark.createDataFrame(
+    customers_data,
+    ["customer_id", "name", "tier", "spend"]
+)
+
+# Wrap DataFrame to enable tracking
+customers_ldf = LineageDataFrame(customers, business_label="Customer Data")
+
+# Define business logic with decorator
+@businessConcept(
+    name="Filter High-Value Customers",
+    description="Identify customers with spending above $1000"
+)
+def filter_high_value_customers(df):
+    return df.filter(col("spend") > 1000)
+
+# Execute business concept
+high_value = filter_high_value_customers(customers_ldf)
+print(f"Found {high_value.count()} high-value customers")
+
+# Generate business documentation - ONE LINE!
+diagram_path = high_value.generate_business_flow_diagram()
+```
+
+**Output**: Automatic visualization showing the data flow, filtering impact, and business context.
+
+### Running the Example
+
+```bash
+# Clone the repository
+git clone https://github.com/kaelonlloyd/pyspark_storydoc.git
+cd pyspark_storydoc
+
+# Run basic example
+python examples/basic/01_business_concept_decorator.py
+
+# Run advanced car insurance example
+python examples/advanced/car_insurance_quote_example.py
+
+# View generated outputs
+ls outputs/examples/
+```
+
+All examples write their outputs to the `outputs/examples/` directory with automatically generated markdown files containing Mermaid diagrams.
+
+## Available Reports (18 One-Line Methods) 🆕
+
+All reports are accessible via simple `df.generate_*()` method calls. No imports needed!
+
+### Critical Reports
+- `generate_governance_audit_report()` - Comprehensive governance audit for compliance
+- `generate_data_engineer_report()` - Technical debugging with row counts and data loss detection
+- `generate_governance_report()` - Full governance documentation with risk assessment
+- `generate_comprehensive_tracking_report()` - Multi-view combined report (business + technical)
+
+### Business Stakeholder Reports
+- `generate_business_catalog()` - Business concept catalog with descriptions and metrics
+- `generate_business_flow_diagram()` - Visual Mermaid flowchart of pipeline
+- `generate_concept_relationship_diagram()` - Concept dependencies and relationships
+
+### Data Science Reports
+- `generate_feature_catalog()` - Complete feature documentation with lineage
+- `generate_statistical_profile()` - Statistical profiling with checkpoints
+- `generate_reproducibility_report()` - Experiment reproduction documentation
+- `generate_distribution_report()` - Distribution analysis and value frequencies
+- `generate_describe_profiler_report()` - PySpark describe() statistics
+
+### Governance Reports
+- `generate_governance_catalog()` - Text format governance metadata catalog
+- `generate_comprehensive_governance_catalog()` - Detailed governance catalog
+- `generate_integrated_governance_report()` - Lineage + governance overlay
+
+### Technical Reports
+- `export_lineage_json()` - JSON export for external tools
+- `generate_expression_documentation()` - Expression lineage documentation
+- `generate_expression_impact_diagram()` - Expression dependency visualization
+
+**Usage Example:**
+```python
+# Generate any report with one line
+result_df = transform_pipeline(source_df)
+
+# Business stakeholder view
+catalog = result_df.generate_business_catalog()
+
+# Data engineer debugging
+reports = result_df.generate_data_engineer_report()
+
+# Governance compliance
+audit = result_df.generate_governance_audit_report()
+
+# Data science features
+features = result_df.generate_feature_catalog(target_variable="churn")
+```
+
+## Core Features
+
+### 1. Business Concept Tracking
+
+Group related operations under meaningful business concepts:
+
+```python
+@businessConcept(
+    name="Premium Customer Identification",
+    description="Identify high-value customers for targeted campaigns",
+    track_columns=["customer_id", "tier"]
+)
+def identify_premium_customers(df):
+    """Business logic with automatic tracking."""
+    high_value = df.filter(col("lifetime_value") > 25000)
+    active = high_value.filter(col("status") == "active")
+    return active.filter(col("engagement_score") > 0.8)
+```
+
+### 2. Context Managers
+
+Use context managers for inline grouping:
+
+```python
+from pyspark_storydoc import business_context
+
+with business_context("Geographic Segmentation"):
+    na_customers = df.filter(col("region") == "North America")
+    enriched = na_customers.join(demographics, "customer_id")
+    segmented = enriched.groupBy("state", "age_group").count()
+```
+
+### 3. Distribution Analysis
+
+Automatically analyze data distributions and value frequencies:
+
+```python
+from pyspark_storydoc import distributionAnalysis
+
+@distributionAnalysis(
+    name="Customer Tier Analysis",
+    analyze_columns=["tier", "region"]
+)
+def segment_customers(df):
+    return df.groupBy("tier", "region").agg(
+        count("*").alias("customer_count"),
+        avg("spend").alias("avg_spend")
+    )
+```
+
+### 4. Hierarchical Concepts
+
+Build nested business concepts for complex pipelines:
+
+```python
+from pyspark_storydoc import HierarchyContext
+
+with HierarchyContext("Insurance Quote Calculation"):
+    # Sub-concept 1
+    with HierarchyContext("Risk Assessment"):
+        risk_df = calculate_risk_scores(driver_data)
+
+    # Sub-concept 2
+    with HierarchyContext("Premium Calculation"):
+        premium_df = calculate_premiums(risk_df, policy_data)
+
+    # Final output
+    quotes = generate_quotes(premium_df)
+```
+
+### 5. Expression Lineage
+
+Track how derived columns flow through transformations:
+
+```python
+from pyspark_storydoc.reporting import generate_expression_diagram
+
+# Transformations with derived columns
+df2 = df1.withColumn("revenue", col("price") * col("quantity"))
+df3 = df2.withColumn("profit", col("revenue") - col("cost"))
+df4 = df3.filter(col("profit") > 1000)
+
+# Generate expression lineage diagram
+generate_expression_diagram(graph, "outputs/expression_flow.md")
+```
+
+## Data Engineer Features 🆕
+
+### Enhanced Pipeline Visualization
+
+**Semantic Shapes**: Automatic visual encoding of operation types using Mermaid diagram shapes:
+- Diamond `{}`: Data sources
+- Hexagon `{{}}`: Filters and transformations
+- Rounded Rectangle `()`: Business concepts
+- Rectangle `[]`: Generic transforms
+- Subroutine `[[]]`: Column selections
+- Stadium `([])`: Grouping and aggregations
+
+**Colorblind-Friendly Palette**: Blue/Orange/Green color scheme ensuring accessibility.
+
+```python
+from pyspark_storydoc import LineageDataFrame, businessConcept
+
+# Define pipeline with business context
+@businessConcept(
+    "Clean Sales Data",
+    description="Remove invalid transactions"
+)
+def clean_sales(df):
+    return df.filter(col("amount") > 0)
+
+# Apply transformations
+result_df = clean_sales(source_df)
+
+# Generate report with semantic shapes - ONE LINE!
+reports = result_df.generate_data_engineer_report(
+    output_path="outputs/sales_pipeline",
+    data_loss_threshold=0.10
+)
+print(f"Lineage diagram: {reports['lineage_diagram']}")
+```
+
+**Data Loss Warnings**: Automatic detection of unexpected data volume changes with visual highlighting in diagrams.
+
+**Terminal Summaries**: Quick pipeline overview showing row counts, execution time, and alerts.
+
+See `examples/data_engineer/` for complete working examples.
+
+## Data Scientist Features 🆕
+
+### Correlation Analysis
+
+Track feature correlations throughout your pipeline:
+
+```python
+from pyspark_storydoc.analysis import correlationAnalyzer
+
+@correlationAnalyzer(
+    checkpoint_name="After Feature Engineering",
+    columns=["age", "income", "credit_score"],
+    correlation_threshold=0.7
+)
+def engineer_features(df):
+    return df.withColumn("income_age_ratio", col("income") / col("age"))
+```
+
+**Capabilities**:
+- Compute correlation matrices at pipeline checkpoints
+- Detect multicollinearity issues
+- Track correlation evolution through transformations
+- Integration with feature catalog
+
+### Feature Evolution Tracking
+
+Visualize how features change through your pipeline:
+
+```python
+# Generate catalog with evolution tracking - ONE LINE!
+result_df = feature_engineering_pipeline(source_df)
+catalog_path = result_df.generate_feature_catalog(
+    output_path="outputs/features",
+    include_evolution=True,
+    target_variable="churn"
+)
+```
+
+**Output Files**:
+- `feature_catalog.md`: Complete feature documentation with embedded lineage diagram
+- `feature_catalog_evolution.md`: Correlation evolution report showing changes at each checkpoint
+
+**Lineage Diagrams with Analyzers**:
+- Yellow hexagon nodes for analyzer checkpoints
+- Dotted arrows connecting analyzers to operations
+- Visual distinction between data flow and analysis
+
+### Statistical Profiling
+
+Enhanced describe profiling with checkpoint tracking:
+
+```python
+from pyspark_storydoc.analysis import describeProfiler
+
+@describeProfiler(
+    checkpoint_name="Before Transformation",
+    include_percentiles=True
+)
+def transform_data(df):
+    return df.withColumn("normalized_score", col("score") / 100)
+```
+
+See `examples/data_scientist/` for complete working examples.
+
+## Example Gallery
+
+### Basic Examples (`examples/basic/`)
+1. **`01_business_concept_decorator.py`** - Basic decorator usage
+2. **`02_business_concept_context.py`** - Context manager usage
+3. **`03_distribution_analysis_decorator.py`** - Distribution analysis
+4. **`04_distribution_analysis_context.py`** - Distribution with contexts
+5. **`05_lineage_tracking_decorator.py`** - Full lineage tracking
+6. **`06_lineage_tracking_context.py`** - Lineage with context managers
+
+### Advanced Examples (`examples/advanced/`)
+- **`car_insurance_quote_example.py`** - Complete insurance quote pipeline with hierarchical concepts, risk assessment, and premium calculation
+- **`car_insurance_with_governance.py`** 🆕 - Full governance framework demonstration with risk tracking, customer impact, bias analysis, and compliance reporting
+- **`hierarchical_concepts_example.py`** - Nested business concept demonstration
+- **`streaming_service_analysis.py`** - Video streaming analytics pipeline
+
+### Data Engineer Examples (`examples/data_engineer/`) 🆕
+- **`simple_debugging_example.py`** - Simple pipeline debugging with semantic shapes and data loss warnings
+- **`customer_enrichment_pipeline.py`** - Large-scale pipeline (100K+ rows) with multiple operation types and quality alerts
+
+### Data Scientist Examples (`examples/data_scientist/`) 🆕
+- **`customer_churn_features.py`** - Feature engineering with business context, statistical profiling, and feature catalog
+- **`feature_evolution_demo.py`** - Feature evolution tracking with correlation analysis and lineage diagrams
+
+### Running Any Example
+
+```bash
+# Navigate to project directory
+cd pyspark_storydoc
+
+# Run any example directly
+python examples/basic/01_business_concept_decorator.py
+python examples/advanced/car_insurance_quote_example.py
+
+# View the generated documentation
+cat outputs/examples/basic/business_concept_lineage.md
+cat outputs/examples/advanced/car_insurance/insurance_quote_flow.md
+```
+
+All examples are self-contained and include sample data.
+
+## Documentation Features
+
+### Automatic Diagram Generation 🆕
+
+**NEW Simplified API** - Generate any report with one method call:
+
+```python
+# No imports needed! Just call methods on your DataFrame
+result_df = transform_pipeline(source_df)
+
+# Generate specific reports
+business_flow = result_df.generate_business_flow_diagram(detail_level="impacting")
+catalog = result_df.generate_business_catalog()
+comprehensive = result_df.generate_comprehensive_tracking_report()
+
+# Or generate multiple reports
+reports = result_df.generate_data_engineer_report()  # Returns dict with all paths
+print(f"Lineage diagram: {reports['lineage_diagram']}")
+print(f"Terminal summary: {reports['terminal_summary']}")
+print(f"Column lineage: {reports['column_lineage']}")
+```
+
+**Migration Note:** Old API still works but the new pattern is recommended:
+```python
+# OLD WAY (still works, but verbose)
+from pyspark_storydoc.reporting import generate_business_diagram
+from pyspark_storydoc.core.lineage_tracker import get_global_tracker
+graph = get_global_tracker().get_lineage_graph()
+generate_business_diagram(graph, "outputs/diagram.md")
+
+# NEW WAY (recommended - simpler!)
+result_df.generate_business_flow_diagram(output_path="outputs/diagram.md")
+```
+
+### Detail Levels
+- **`minimal`**: Only business concepts and key transformations
+- **`impacting`**: Operations that change data volume or structure (default)
+- **`all`**: Every operation including passthroughs
+
+### Output Formats
+- **Markdown with Mermaid**: GitHub-compatible diagrams
+- **JSON**: Programmatic access to lineage data
+- **Describe Reports**: Data profiling with statistics
+
+## Performance Configuration
+
+### Control Materialization
+
+```python
+# Global settings
+from pyspark_storydoc.core.lineage_tracker import get_global_tracker
+
+tracker = get_global_tracker()
+tracker.set_global_materialize(False)  # Disable expensive metrics
+
+# Per-concept settings
+@businessConcept(
+    name="Large Dataset Processing",
+    materialize=False,  # Skip row counting
+    auto_cache=True     # Enable smart caching
+)
+def process_large_dataset(df):
+    return df.filter(complex_condition)
+```
+
+### Smart Caching
+
+```python
+# Automatic caching for reused DataFrames
+df = LineageDataFrame(
+    spark_df,
+    auto_cache=True,
+    cache_threshold=2  # Cache after 2 uses
+)
+```
+
+## Use Cases
+
+### 1. **Stakeholder Communication**
+Generate executive-friendly reports showing how raw data becomes business insights.
+
+### 2. **Data Governance**
+Maintain audit trails with automatic lineage capture and business context.
+
+### 3. **Pipeline Optimization**
+Identify bottlenecks by visualizing where data volume changes occur.
+
+### 4. **Knowledge Transfer**
+Document complex pipelines for team onboarding and handoffs.
+
+### 5. **Compliance Reporting**
+Track data transformations with detailed context for regulatory requirements.
+
+## Governance Framework 🆕
+
+PySpark StoryDoc includes a comprehensive governance framework to help organizations meet regulatory and compliance requirements.
+
+### Quick Governance Example
+
+```python
+from pyspark_storydoc import businessConcept
+from pyspark_storydoc.governance import create_quick_governance
+
+@businessConcept(
+    "Calculate Insurance Premium",
+    description="Calculate customer premium based on risk assessment",
+    governance=create_quick_governance(
+        why="Required for automated underwriting and pricing",
+        risks=["Potential algorithmic bias in risk scoring"],
+        mitigations=["Quarterly fairness audits by third party"],
+        impacts_customers=True,
+        impacting_columns=["premium", "risk_score"]
+    )
+)
+def calculate_premium(df):
+    return df.withColumn("premium", col("base_rate") + (col("risk_score") * 5))
+```
+
+### Governance Features
+
+#### 1. Business Justification
+Document why each operation exists and its business purpose:
+```python
+from pyspark_storydoc.governance import create_governance_dict
+
+governance = create_governance_dict(
+    business_justification="Calculate customer risk for premium pricing",
+    regulatory_requirement="State insurance commission rate filing requirement"
+)
+```
+
+#### 2. Risk Assessment
+Track known risks and mitigation strategies:
+```python
+governance = create_governance_dict(
+    known_risks=[{
+        "risk_id": "R001",
+        "severity": "high",
+        "description": "Indirect discrimination through proxy variables",
+        "category": "fairness"
+    }],
+    risk_mitigations=[{
+        "risk_id": "R001",
+        "mitigation": "Quarterly fairness audit, demographic parity monitoring",
+        "status": "implemented"
+    }]
+)
+```
+
+#### 3. Customer Impact Tracking
+Identify operations that directly affect customers:
+```python
+governance = create_governance_dict(
+    customer_impact_level="direct",  # or "indirect", "none"
+    impacting_columns=["approval_status", "premium"],
+    impact_description="Determines customer's insurance cost and eligibility"
+)
+```
+
+#### 4. PII and Data Classification
+Track sensitive data handling:
+```python
+governance = create_governance_dict(
+    processes_pii=True,
+    pii_columns=["ssn", "driver_license", "address"],
+    data_classification="confidential",
+    data_retention_days=2555  # 7 years for regulatory compliance
+)
+```
+
+#### 5. Approval Workflows
+Document approval requirements:
+```python
+governance = create_governance_dict(
+    requires_approval=True,
+    approval_status="approved",
+    approved_by="Chief Risk Officer",
+    approval_date="2025-01-15",
+    approval_reference="TICKET-12345"
+)
+```
+
+### Complete Governance Example
+
+See `examples/advanced/car_insurance_with_governance.py` for a full working example showing:
+- Comprehensive risk assessment
+- Customer impact tracking
+- Bias analysis for protected attributes
+- Regulatory compliance documentation
+- Approval workflows
+- Governance summary reports
+
+```bash
+python examples/advanced/car_insurance_with_governance.py
+# View generated report:
+cat outputs/examples/advanced/car_insurance_governance/governance_summary.md
+```
+
+**Generate Governance Reports - NEW Simplified API:**
+```python
+# Apply transformations with governance metadata
+result_df = risk_assessment_pipeline(source_df)
+
+# Generate all governance reports with one-line calls
+audit_report = result_df.generate_governance_audit_report()
+gov_report = result_df.generate_governance_report()
+catalog = result_df.generate_governance_catalog()
+integrated = result_df.generate_integrated_governance_report()
+```
+
+### Governance Context Manager
+
+For pipeline-level governance with operation-specific overrides:
+
+```python
+from pyspark_storydoc.governance import GovernanceContext
+
+with GovernanceContext(
+    pipeline_name="Insurance Underwriting",
+    business_justification="Automated risk assessment and pricing",
+    risk_owner="underwriting-team@company.com",
+    data_classification="confidential"
+) as gov:
+    @businessConcept(
+        "Filter High Risk",
+        governance=gov.inherit({
+            "customer_impact_level": "direct",
+            "impacting_columns": ["approval_status"]
+        })
+    )
+    def filter_high_risk(df):
+        return df.filter(col("risk_score") > 80)
+```
+
+### Validation and Reporting
+
+```python
+from pyspark_storydoc.governance import (
+    GovernanceValidator,
+    RiskAssessmentEngine,
+    BiasDetectionEngine
+)
+
+# Validate governance completeness
+validator = GovernanceValidator()
+result = validator.validate_concept_node(concept)
+
+# Automatic risk detection
+risk_engine = RiskAssessmentEngine()
+detected_risks = risk_engine.analyze_concept(concept)
+
+# Bias analysis
+bias_engine = BiasDetectionEngine()
+bias_analysis = bias_engine.analyze_for_bias(concept)
+```
+
+For more details, see:
+- **Documentation**: `GOVERNANCE_PROPOSITION.md` - Complete governance framework design
+- **Implementation Status**: `GOVERNANCE_IMPLEMENTATION_STATUS.md` - Current implementation state
+- **Example**: `examples/advanced/car_insurance_with_governance.py` - Full working example
+
+## Project Structure
+
+```
+pyspark_storydoc/
+├── core/                    # Core tracking and lineage
+│   ├── decorators.py       # @businessConcept, @distributionAnalysis
+│   ├── lineage_tracker.py  # Global lineage tracking
+│   └── hierarchy_context.py # Hierarchical concept support
+├── governance/             # 🆕 Governance framework
+│   ├── metadata.py         # Governance metadata structures
+│   ├── risk_assessment.py  # Risk detection engine
+│   ├── customer_impact.py  # Customer impact detector
+│   ├── bias_detection.py   # Bias and fairness analysis
+│   ├── validation.py       # Governance validation
+│   ├── reporting.py        # Governance reports
+│   └── governance_context.py # Context manager and helpers
+├── reporting/              # Report generation
+│   ├── business_flow_diagram.py
+│   ├── expression_impact_diagram.py
+│   └── hierarchical_diagram.py
+├── analysis/               # Analysis features
+│   ├── distribution_decorator.py
+│   ├── expression_extractor.py
+│   ├── describe_profiler.py       # 🆕 Statistical profiling
+│   └── correlation_analyzer.py    # 🆕 Correlation analysis
+├── data_scientist/          # 🆕 Data scientist tools
+│   └── feature_catalog.py  # Feature documentation and evolution
+└── visualization/          # Diagram generators
+    └── lineage_diagram_generator.py
+
+examples/
+├── basic/                  # Getting started examples
+├── advanced/               # Real-world examples
+│   └── car_insurance_with_governance.py  # 🆕 Governance example
+├── data_engineer/          # 🆕 Pipeline debugging and monitoring
+│   ├── simple_debugging_example.py
+│   └── customer_enrichment_pipeline.py
+├── data_scientist/         # 🆕 Feature engineering and analysis
+│   ├── customer_churn_features.py
+│   └── feature_evolution_demo.py
+└── features/              # Feature demonstrations
+
+tests/
+├── unit/                  # Unit tests
+├── integration/           # Integration tests
+└── manual/               # Manual validation tests
+```
+
+## Testing
+
+```bash
+# Run all tests
+python run_all_tests.py
+
+# Run specific test categories
+python run_all_tests.py --unit
+python run_all_tests.py --integration
+
+# Run with verbose output
+python run_all_tests.py --verbose
+```
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+
+```bash
+git clone https://github.com/kaelonlloyd/pyspark_storydoc.git
+cd pyspark_storydoc
+pip install -r requirements.txt
+python run_all_tests.py
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+
+---
+
+## Get Started Now
+
+```bash
+pip install pyspark-storydoc
+python examples/basic/01_business_concept_decorator.py
+```
+
+**Questions?** [Open an issue](https://github.com/kaelonlloyd/pyspark_storydoc/issues) or [start a discussion](https://github.com/kaelonlloyd/pyspark_storydoc/discussions)
