@@ -1,0 +1,134 @@
+from dataclasses import dataclass
+from functools import cached_property
+import re
+import shlex
+import subprocess
+
+from dyngle.error import DyngleError
+from dyngle.model.live_data import LiveData
+from dyngle.model.template import Template
+
+
+class Operation:
+    """A named operation defined in configuration. Can be called from a Dyngle
+    command (i.e. `dyngle run`) or as a sub-operation."""
+
+    all_locals = {}
+
+    def __init__(self, dyngleverse, definition: dict | list, key: str):
+        """
+        definition: Either a dict containing steps and local
+        expressions/values, or a list containing only steps
+        """
+        self.dyngleverse = dyngleverse
+        if isinstance(definition, list):
+            steps_def = definition
+        elif isinstance(definition, dict):
+            steps_def = definition.get('steps') or []
+            self.all_locals = dyngleverse.parse_constants(definition)
+        self.sequence = Sequence(dyngleverse, self, steps_def)
+
+    def run(self, data: dict | LiveData, args: list):
+        """
+        data - The main set of data going into the operation
+
+        args - Arguments to the operation
+        """
+
+        # The tye of data tells us the run condition - if already a LiveData
+        # object then we don't recreate it (i.e. sub-operation)
+
+        if not isinstance(data, LiveData):
+            live_data = LiveData(data) | self.dyngleverse.all_globals
+        else:
+            live_data = data
+        live_data |= self.all_locals | {'args': args}
+        self.sequence.run(live_data)
+
+
+class Sequence:
+    """We allow for the possibility that a sequence of steps might run at other
+    levels than the operation itself, for example in a conditional block."""
+
+    def __init__(self, dyngleverse, operation: Operation, steps_def: list):
+        self.steps = [Step.parse_def(dyngleverse, d) for d in steps_def]
+
+    def run(self, live_data: LiveData):
+        for step in self.steps:
+            step.run(live_data)
+
+
+class Step:
+
+    @staticmethod
+    def parse_def(dyngleverse, definition: dict | str):
+        for step_type in [CommandStep, SubOperationStep]:
+            if step_type.fits(definition):
+                return step_type(dyngleverse, definition)
+        raise DyngleError(f"Unknown step definition\n{definition}")
+
+
+# Ideally these would be subclasses in a ClassFamily (or use an ABC)
+
+class CommandStep:
+
+    PATTERN = re.compile(
+        r'^\s*(?:([\w.-]+)\s+->\s+)?(.+?)(?:\s+=>\s+([\w.-]+))?\s*$')
+
+    @classmethod
+    def fits(cls, definition: dict | str):
+        return isinstance(definition, str)
+
+    def __init__(self, dyngleverse, markup: str):
+        self.markup = markup
+        if match := self.PATTERN.match(markup):
+            self.input, command_text, self.output = match.groups()
+            command_template = shlex.split(command_text.strip())
+            self.command_template = command_template
+        else:
+            raise DyngleError(f"Invalid step markup {{markup}}")
+
+    def run(self, live_data: LiveData):
+        command = [Template(word).render(live_data).strip()
+                   for word in self.command_template]
+        pipes = {}
+        if self.input:
+            pipes["input"] = live_data.resolve(self.input)
+        if self.output:
+            pipes['stdout'] = subprocess.PIPE
+        result = subprocess.run(command, text=True, **pipes)
+        if result.returncode != 0:
+            raise DyngleError(
+                f'Step failed with code {result.returncode}: {self.markup}')
+        if self.output:
+            live_data[self.output] = result.stdout.rstrip()
+
+
+class SubOperationStep:
+    """Instead of calling a system command, call another operation in the same
+    Dyngleverse"""
+
+    @classmethod
+    def fits(cls, definition: dict | str):
+        return isinstance(definition, dict) and 'sub' in definition
+
+    def __init__(self, dyngleverse, definition: dict):
+        self.dyngleverse = dyngleverse
+        self.operation_key = definition['sub']
+        self.args_template = definition.get('args') or ''
+
+    def run(self, live_data: LiveData):
+        # Resolve the operation at runtime, not at init time
+        operation = self.dyngleverse.operations.get(self.operation_key)
+        if not operation:
+            raise DyngleError(f"Unknown operation {self.operation_key}")
+        # Render args for the sub-operation
+        args = [Template(word).render(live_data).strip()
+                for word in self.args_template]
+        # Save parent's args to restore after sub-operation completes
+        saved_args = live_data.get('args', [])
+        try:
+            operation.run(live_data, args)
+        finally:
+            # Restore parent's args (args are locally scoped to each operation)
+            live_data['args'] = saved_args
