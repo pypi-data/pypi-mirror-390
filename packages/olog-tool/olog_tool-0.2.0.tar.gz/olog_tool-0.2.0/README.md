@@ -1,0 +1,514 @@
+# Olog Tool
+
+A command-line tool for backing up, restoring, and generating reports from Olog servers using the Olog REST API.
+
+## Features
+
+- **Backup**: Complete backup of logs and attachments from an Olog server
+- **Restore**: Restore logs and attachments from a backup
+- **Metadata Backup**: Backup of tags, properties, logbooks, levels, and templates
+- **Metadata Restore**: Restore metadata entities from a backup
+- **Individual Creation**: Create templates, properties, and logbooks individually
+- **Markdown Reports**: Generate Markdown documentation of logs with custom titles
+- **PDF Reports**: Generate PDF reports with logs, metadata, and embedded images with custom titles
+- **HTML Reports**: Generate HTML reports with logs, metadata, and embedded images with custom titles
+
+## Understanding Olog Properties
+
+**Properties** are structured metadata fields that can be attached to log entries and templates. They provide a way to add custom, structured information beyond the basic title, description, tags, and logbooks.
+
+### Property Structure
+
+Each property has:
+- **Name**: Unique identifier (e.g., "resource", "experiment", "shift")
+- **Attributes**: Key-value pairs that define the property's data fields
+- **State**: "Active" or "Inactive"
+
+### Example Property
+
+```json
+{
+  "name": "resource",
+  "state": "Active",
+  "attributes": [
+    {
+      "name": "type",
+      "value": "beamline",
+      "state": "Active"
+    },
+    {
+      "name": "name",
+      "value": "BL01",
+      "state": "Active"
+    }
+  ]
+}
+```
+
+### Properties in Templates
+
+Templates can include properties to pre-fill structured data. When users create logs from templates, they can modify the property values:
+
+```json
+{
+  "name": "Beamline Incident Report",
+  "title": "Report beamline incident with resource details",
+  "properties": [
+    {
+      "name": "resource",
+      "attributes": [
+        {"name": "type", "value": null},
+        {"name": "name", "value": null}
+      ]
+    }
+  ]
+}
+```
+
+### Properties in Log Entries
+
+Log entries can include properties with actual values:
+
+```json
+{
+  "title": "Beamline BL01 vacuum issue",
+  "description": "Vacuum pressure increased unexpectedly",
+  "properties": [
+    {
+      "name": "resource",
+      "attributes": [
+        {"name": "type", "value": "beamline"},
+        {"name": "name", "value": "BL01"}
+      ]
+    }
+  ]
+}
+```
+
+**Note**: Properties must be defined at the system level before they can be used in templates or log entries.
+
+### Creating Custom Properties
+
+To create custom properties, you need to modify the `metadata.json` file in your backup directory and restore it. Properties are defined at the system level and can then be referenced by templates and log entries.
+
+Example of adding a custom property:
+
+```json
+{
+  "name": "experiment",
+  "state": "Active", 
+  "attributes": [
+    {
+      "name": "id",
+      "value": null,
+      "state": "Active"
+    },
+    {
+      "name": "proposal",
+      "value": null,
+      "state": "Active"
+    },
+    {
+      "name": "scientist",
+      "value": null,
+      "state": "Active"
+    }
+  ]
+}
+```
+
+After adding custom properties to your `metadata.json`, use the `restore-metadata` command to create them on the target server.
+
+## Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install olog-tool
+```
+
+### From Source
+
+1. Clone or download this repository
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Or install in development mode:
+
+```bash
+pip install -e .
+```
+
+## Usage
+
+### Basic Syntax
+
+```bash
+olog-tool --url <olog-server-url> [OPTIONS] COMMAND
+```
+
+### Authentication
+
+Use the `--username` and `--password` options for authenticated access:
+
+```bash
+olog-tool --url https://olog.example.com --username myuser --password mypass COMMAND
+```
+
+### Time Range
+
+Use `--start` and `--end` to specify a time range (ISO format):
+
+```bash
+olog-tool --url https://olog.example.com --start 2025-01-01T00:00:00 --end 2025-12-31T23:59:59 COMMAND
+```
+
+## Commands
+
+### Backup
+
+Backup all logs and attachments from the Olog server:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass backup --output ./backup_dir
+```
+
+With time range:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  backup --output ./backup_january
+```
+
+### Backup Metadata
+
+Backup all metadata entities (tags, properties, logbooks, levels, and templates) from the Olog server:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass backup-metadata --output ./metadata_backup
+```
+
+### Restore Metadata
+
+Restore metadata entities from a backup directory:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass restore-metadata --input ./metadata_backup
+```
+
+**Note**: Metadata restore operations create new entities, so IDs will be different from the original server.
+
+### Create Template
+
+Create a new template with specified metadata and optional source text:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass create-template \
+  --name "maintenance-template" \
+  --title "Equipment Maintenance" \
+  --level "Info" \
+  --source "# Maintenance Checklist\n\n- Equipment: \n- Issue: \n- Action: " \
+  --logbooks "operations,maintenance" \
+  --tags "maintenance,checklist" \
+  --properties '[{"name": "resource", "attributes": [{"name": "type", "value": null}, {"name": "name", "value": null}]}]'
+```
+
+### Create Property
+
+Create a new property with specified attributes:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass create-property \
+  --name "experiment" \
+  --attributes '[{"name": "id", "value": null, "state": "Active"}, {"name": "name", "value": null, "state": "Active"}]'
+```
+
+### Create Logbook
+
+Create a new logbook:
+
+```bash
+olog-tool --url https://olog.example.com --username user --password pass create-logbook \
+  --name "beamline-a" \
+  --owner "operator"
+```
+
+#### Properties in Templates
+
+When creating templates with properties, you must reference existing properties defined in the Olog system. Each property reference must include ALL attributes defined for that property in the system.
+
+**Critical Note**: When creating templates with properties, ALL attributes must have `"value": null`. This allows users to fill in the actual values when creating log entries from the template. Providing non-null values will result in a 400 error.
+
+**Example Template with Properties**:
+
+```json
+{
+    "name": "Maintenance Template",
+    "title": "Beamline maintenance checklist",
+    "level": "Info",
+    "logbooks": [{"name": "operations"}],
+    "tags": [{"name": "maintenance"}],
+    "properties": [
+        {
+            "name": "resource",
+            "attributes": [
+                {"name": "type", "value": null},
+                {"name": "name", "value": null},
+                {"name": "location", "value": null}
+            ]
+        }
+    ]
+}
+```
+
+**Important**: 
+- Properties must already exist in the Olog system
+- All attributes defined for the property must be included
+- Each attribute must have `name`, `value`, and `state` fields
+- **Always use `"value": null`** for template properties to allow user input
+
+### Generate Markdown Report
+
+Create a Markdown document with logs and their metadata:
+
+```bash
+olog-tool --url https://olog.example.com markdown --output report.md
+```
+
+With time range and authentication:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --username user --password pass \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  markdown --output january_report.md
+```
+
+### Generate PDF Report
+
+Create a PDF document with logs and their metadata. Image attachments are automatically embedded in the PDF:
+
+```bash
+olog-tool --url https://olog.example.com pdf --output report.pdf
+```
+
+With time range and authentication:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --username user --password pass \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  pdf --output january_report.pdf
+```
+
+To disable embedding of image attachments (faster, smaller file):
+
+```bash
+olog-tool --url https://olog.example.com pdf --output report.pdf --no-embed
+```
+
+### Generate HTML Report
+
+Create an HTML document with logs and their metadata. Image attachments are automatically embedded as base64:
+
+```bash
+olog-tool --url https://olog.example.com html --output report.html
+```
+
+With time range and authentication:
+
+```bash
+olog-tool --url https://olog.example.com \
+  --username user --password pass \
+  --start 2025-01-01T00:00:00 \
+  --end 2025-01-31T23:59:59 \
+  html --output january_report.html
+```
+
+To disable embedding of image attachments:
+
+```bash
+olog-tool --url https://olog.example.com html --output report.html --no-embed
+```
+
+## Examples
+
+### Example 1: Monthly Backup
+
+Backup all logs from October 2025:
+
+```bash
+olog-tool \
+  --url https://olog.example.com \
+  --username admin \
+  --password secret \
+  --start 2025-10-01T00:00:00 \
+  --end 2025-10-31T23:59:59 \
+  backup --output ./backup_2025_10
+```
+
+### Example 2: Generate Reports with Custom Titles
+
+Generate Markdown, HTML, and PDF reports for a specific time range with custom titles:
+
+```bash
+# Markdown report with custom title
+olog-tool \
+  --url https://olog.example.com \
+  --start 2025-11-01T00:00:00 \
+  --end 2025-11-07T23:59:59 \
+  --title "Weekly Operations Summary" \
+  markdown --output weekly_report.md
+
+# HTML report with embedded images and custom title
+olog-tool \
+  --url https://olog.example.com \
+  --start 2025-11-01T00:00:00 \
+  --end 2025-11-07T23:59:59 \
+  --title "Beamline Status Report" \
+  html --output weekly_report.html
+
+# PDF report with embedded images and custom title
+olog-tool \
+  --url https://olog.example.com \
+  --start 2025-11-01T00:00:00 \
+  --end 2025-11-07T23:59:59 \
+  --title "Weekly Operations Report" \
+  pdf --output weekly_report.pdf
+```
+
+### Example 3: Complete Backup and Restore
+
+Backup from one server and restore to another:
+
+```bash
+# Backup from production
+olog-tool \
+  --url https://olog-prod.example.com \
+  --username admin \
+  --password prod_pass \
+  backup --output ./prod_backup
+
+# Restore to development
+olog-tool \
+  --url https://olog-dev.example.com \
+  --username admin \
+  --password dev_pass \
+  restore --input ./prod_backup
+```
+
+### Example 4: Metadata Backup and Restore with Templates
+
+Backup and restore metadata including custom templates:
+
+```bash
+# Backup metadata from production
+olog-tool \
+  --url https://olog-prod.example.com \
+  --username admin \
+  --password prod_pass \
+  backup-metadata --output ./metadata_backup
+
+# Restore metadata to development (includes templates)
+olog-tool \
+  --url https://olog-dev.example.com \
+  --username admin \
+  --password dev_pass \
+  restore-metadata --input ./metadata_backup
+```
+
+### Example 5: Creating Individual Metadata Entities
+
+Create custom properties, logbooks, and templates individually:
+
+```bash
+# Create a custom property for experiments
+olog-tool \
+  --url https://olog.example.com \
+  --username admin \
+  --password pass \
+  create-property \
+  --name "experiment" \
+  --attributes '[{"name": "id", "value": null, "state": "Active"}, {"name": "name", "value": null, "state": "Active"}, {"name": "type", "value": null, "state": "Active"}]'
+
+# Create a new logbook
+olog-tool \
+  --url https://olog.example.com \
+  --username admin \
+  --password pass \
+  create-logbook \
+  --name "beamline-maintenance" \
+  --owner "maintenance-team"
+
+# Create a template with the new property and logbook
+olog-tool \
+  --url https://olog.example.com \
+  --username admin \
+  --password pass \
+  create-template \
+  --name "maintenance-report" \
+  --title "Beamline Maintenance Report" \
+  --level "Info" \
+  --source "# Maintenance Report\n\n**Issue:** \n**Action Taken:** \n**Next Steps:** " \
+  --logbooks "beamline-maintenance,operations" \
+  --tags "maintenance,beamline" \
+  --properties '[{"name": "experiment", "attributes": [{"name": "id", "value": null, "state": "Active"}, {"name": "name", "value": null, "state": "Active"}, {"name": "type", "value": null, "state": "Active"}]}]'
+```
+
+Create a custom template with properties by editing the `metadata.json` file in your backup directory. Ensure properties reference existing system properties with all required attributes.
+
+## Backup Directory Structure
+
+When you create a backup, the following structure is created:
+
+```
+backup_dir/
+├── logs.json              # JSON file with all log metadata
+├── metadata.json          # JSON file with all metadata entities (tags, properties, logbooks, levels, templates)
+└── attachments/           # Directory containing attachments
+    ├── 123/               # Directory for log ID 123
+    │   ├── image1.png
+    │   └── data.csv
+    └── 124/               # Directory for log ID 124
+        └── document.pdf
+```
+
+For metadata-only backups, only the `metadata.json` file is created.
+
+## Requirements
+
+- Python 3.6 or higher
+- requests library
+- reportlab library (for PDF generation)
+
+## API Reference
+
+This tool uses the [Olog REST API](https://olog.readthedocs.io/en/latest/). The main endpoints used are:
+
+- `GET /logs` - Search for logs
+- `GET /logs/{id}` - Get a specific log
+- `GET /logs/attachments/{id}/{filename}` - Download attachment
+- `PUT /logs` - Create a new log
+- `POST /logs/attachments/{id}` - Upload attachment
+
+## Limitations
+
+- The backup/restore process creates new log entries, so log IDs will be different
+- Very large backups may take significant time and disk space
+- PDF generation requires the reportlab library
+- Image embedding in PDF/HTML works for common formats (PNG, JPG, GIF, BMP, SVG)
+- Large images are automatically scaled in PDF to fit the page
+- HTML reports with many embedded images may be large files
+- Properties in templates must reference existing system properties with all required attributes
+- Template properties are validated against system property definitions
+
+## License
+
+This tool is provided as-is for use with Olog servers.
