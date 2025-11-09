@@ -1,0 +1,21 @@
+<form method="post">
+    {% csrf_token %}
+    {% include "bank_transaction_bridge/snippets/actions.html" %}
+    {% if object_list %}
+        <div class="{{ extra_main_div_class }}">
+            <table class="table table-lg table-zebra w-full {% if selected_to_delete %}text-red-300{% endif %}">
+                <thead>
+                    {% include title_row_template %}
+                </thead>
+                <tbody>
+                    {% for object in object_list %}
+                        {% if selected_to_delete %}<input type="hidden" name="selected_item_ids" value={{ object.pk }}>{% endif %}
+                        {% include row_template %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div>No {{ empty_label|default:"Items" }} yet.</div>
+    {% endif %}
+</form>

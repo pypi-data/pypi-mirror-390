@@ -1,0 +1,46 @@
+<tr id=item{{ object.pk }}>
+    {% if not selected_to_delete %}
+        <td>
+            <div class="whitespace-nowrap">
+                {% include 'bank_transaction_bridge/snippets/action_inputs.html' %}
+                {% include 'bank_transaction_bridge/snippets/transaction_tooltip_buttons.html' %}
+                {% if object.connected_item %}
+                    <a class="btn btn-sm btn-circle"
+                       href="{{ object.connected_item.get_absolute_url }}">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1.5"
+                             stroke="currentColor"
+                             class="size-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                        </svg>
+                    </a>
+                {% elif connected_item_class %}
+                    <button class="btn btn-sm btn-circle"
+                            type="submit"
+                            name="action"
+                            value="create_connected_item_{{ object.pk }}">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1"
+                             class="h-8 w-8 shrink-0 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                    </a>
+                {% endif %}
+            </div>
+        </td>
+    {% endif %}
+    <td>
+        {% if object.bank_account.alias %}
+            {{ object.bank_account.alias }}
+        {% else %}
+            {{ object.bank_account.bank_name }}
+        {% endif %}
+    </td>
+    <td>{{ object.booking_date.isoformat }}</td>
+    <td>{{ object.payment_participant }}</td>
+    <td>{{ object.amount }} {{ object.currency }}</td>
+</tr>
