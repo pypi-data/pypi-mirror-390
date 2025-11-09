@@ -1,0 +1,80 @@
+# Social Media GIF Downloader
+
+A user-friendly GUI application for downloading videos and GIFs from Twitter/X, Pinterest, and Instagram posts and converting them to GIF format. Built with Python, this tool leverages yt-dlp for media downloading and moviepy for high-quality GIF conversion, ensuring optimal frame rates and seamless performance.
+
+## Features
+
+- **Multi-Platform Support**: Download from Twitter/X, Pinterest, and Instagram (videos only from Instagram)
+- **Simple GUI Interface**: Intuitive CustomTkinter-based interface for easy URL input and file saving.
+- **Automatic FPS Detection**: Analyzes the source video to detect and apply the appropriate frame rate for GIF conversion.
+- **High-Quality Conversion**: Uses moviepy and FFmpeg to convert videos to GIFs with preserved quality.
+- **GIF Preservation**: Downloads Pinterest GIFs directly without re-encoding when possible.
+- **Cross-Platform Compatibility**: Runs on all platforms including Windows, macOS, and Linux with bundled dependencies.
+- **Error Handling and Logging**: Comprehensive logging for troubleshooting, especially in bundled executable mode.
+- **Background Processing**: Non-blocking downloads and conversions using threading for a responsive UI.
+- **Custom Save Locations**: Allows users to choose output filenames and directories via a save dialog.
+
+## Installation
+
+1.  **Install Python**: Ensure you have Python 3.8 or higher installed. You can download it from [python.org](https://www.python.org/).
+2.  **Install FFmpeg**: This is required for video processing.
+    -   **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add the `bin` directory to your system's PATH.
+    -   **macOS**: `brew install ffmpeg`
+    -   **Linux**: `sudo apt-get install ffmpeg` (or use your distribution's package manager).
+3.  **Install the Application**:
+    ```bash
+    pip install social-media-gif-downloader
+    ```
+4.  **Run the Application**:
+    ```bash
+    social-media-gif-downloader
+    ```
+
+That's it! The application should launch.
+
+## Usage
+
+1. Launch the application.
+2. Paste a social media post URL into the input field:
+   - Twitter/X: `https://x.com/user/status/123456789`
+   - Pinterest: `https://www.pinterest.com/pin/123456789/`
+   - Instagram: `https://www.instagram.com/p/{post_id}/` or `https://www.instagram.com/reel/{reel_id}/`
+3. Click "Download as GIF".
+4. Choose a save location and filename for the GIF in the dialog that appears.
+5. The application will download the media, detect its FPS (for videos), and convert it to a GIF.
+6. Monitor progress via the status messages in the interface.
+
+**Note**: The tool automatically detects the platform from the URL. Pinterest GIFs are downloaded directly when available, while videos from all platforms are converted to GIF format. Instagram support is limited to videos only (posts and reels).
+
+
+## Entry Point
+
+This package installs a command-line entry point. After installation, you can run the application from your terminal by simply typing:
+
+```bash
+social-media-gif-downloader
+```
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Attributions
+
+This project relies on several open-source dependencies. For detailed information about licenses, copyrights, and attribution requirements for all dependencies used in this project, please refer to the [ATTRIBUTIONS.md](ATTRIBUTIONS.md) file.
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/your-feature-name`.
+3. Make your changes and commit: `git commit -m 'Add some feature'`.
+4. Push to the branch: `git push origin feature/your-feature-name`.
+5. Open a Pull Request.
+
+For bug reports or feature requests, please use the issues page.
+
+---
+
+**Disclaimer**: This tool is for personal use only. Respect the terms of service and copyright laws of Twitter/X, Pinterest, and Instagram when downloading content.
