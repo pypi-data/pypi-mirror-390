@@ -1,0 +1,1 @@
+from .malaria_test_form_validator import MalariaTestFormValidator

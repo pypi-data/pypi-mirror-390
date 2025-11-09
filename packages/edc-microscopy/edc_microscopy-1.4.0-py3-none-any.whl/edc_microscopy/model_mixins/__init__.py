@@ -1,0 +1,1 @@
+from .malaria_test_model_mixin import MalariaTestModelMixin
