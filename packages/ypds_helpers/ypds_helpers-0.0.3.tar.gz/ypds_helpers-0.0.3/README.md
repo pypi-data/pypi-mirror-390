@@ -1,0 +1,225 @@
+# ypds_helpers
+
+[![PyPI - Version](https://img.shields.io/pypi/v/ypds-helpers.svg)](https://pypi.org/project/ypds-helpers)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ypds-helpers.svg)](https://pypi.org/project/ypds-helpers)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> A Python toolkit for data analysis, visualization, and machine learning preprocessing
+
+`ypds_helpers` is a collection of utility functions and tools designed to streamline common data science workflows. It provides convenient helpers for data exploration, correlation analysis, visualization, and machine learning model preprocessing pipelines.
+
+[Features](#features) • [Installation](#installation) • [Usage](#usage) • [API Reference](#api-reference)
+
+## Features
+
+- **Data Handling**: Quick data exploration with comprehensive statistics and type-based column selection
+- **Correlation Analysis**: Advanced correlation detection using Phik (φk) correlation coefficient for mixed data types
+- **Visualization**: Ready-to-use plotting functions for distributions, categorical data, and model residuals
+- **ML Preprocessing**: Pre-built pipelines for numerical and categorical data preprocessing
+- **Model Evaluation**: Grid search utilities with automatic result tracking and comparison
+- **Jupyter Integration**: Automatic detection and proper display in both Jupyter notebooks and regular Python environments
+
+## Installation
+
+```bash
+pip install ypds-helpers
+```
+
+The package requires Python ≤3.13 and automatically installs the following dependencies:
+- pandas
+- numpy
+- scikit-learn
+- seaborn
+- matplotlib
+- phik
+
+## Usage
+
+### Quick Data Exploration
+
+```python
+import pandas as pd
+from ypds_helpers.data_handling import show_df, get_num_cols, get_cat_cols
+
+# Load your data
+df = pd.read_csv('data.csv')
+
+# Get comprehensive overview
+show_df(df, n=10)  # Shows first 10 rows, statistics for numerical and categorical columns
+
+# Get column lists by type
+numerical_cols = get_num_cols(df, exclude_cols=['id'])
+categorical_cols = get_cat_cols(df, exclude_cols=['target'])
+```
+
+### Correlation Analysis
+
+```python
+from ypds_helpers.data_handling import highest_corrs
+
+# Find strongest correlations using Phik (works with mixed data types)
+top_correlations = highest_corrs(
+    df, 
+    cols=['age', 'income', 'category', 'score'],
+    interval_cols=['age', 'income', 'score'],
+    num=15
+)
+```
+
+### Data Visualization
+
+```python
+from ypds_helpers.plotting import plot_numeric, plot_cats, show_residues
+
+# Visualize numerical features with histograms and boxplots
+plot_numeric(
+    df, 
+    num_cols=['age', 'income', 'score'],
+    hue='category',  # Split by category
+    normalize=True,
+    kde=True
+)
+
+# Visualize categorical distributions
+plot_cats(
+    df,
+    cat_cols=['region', 'product_type'],
+    hue='customer_segment',
+    max_cats=10  # Group smaller categories
+)
+
+# Analyze model residuals
+show_residues(y_true, y_pred, title='Model Performance')
+```
+
+### Machine Learning Preprocessing
+
+```python
+from ypds_helpers.models import (
+    make_num_processor,
+    make_ord_processor,
+    make_typo_corrector,
+    grid_search
+)
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+
+# Create preprocessing pipelines
+num_pipeline = make_num_processor(min_val=0, max_val=100)
+cat_pipeline = make_ord_processor(categories=['low', 'medium', 'high'])
+
+# Combine transformers
+preprocessor = ColumnTransformer([
+    ('num', num_pipeline, numerical_cols),
+    ('cat', cat_pipeline, categorical_cols)
+])
+
+# Create full pipeline
+pipeline = Pipeline([
+    ('preprocessor', preprocessor),
+    ('model', RandomForestRegressor())
+])
+
+# Grid search with automatic result tracking
+param_grid = {
+    'model__n_estimators': [100, 200],
+    'model__max_depth': [10, 20, None]
+}
+
+grid_search(
+    pipeline=pipeline,
+    grid=param_grid,
+    X_train=X_train,
+    y_train=y_train,
+    model='random_forest',
+    scoring='neg_mean_squared_error',
+    cv_method=5,
+    n_jobs=-1
+)
+```
+
+## API Reference
+
+### Data Handling Module
+
+#### `show_df(df, n=5)`
+Display comprehensive information about a DataFrame including head, statistics, and info.
+
+**Parameters:**
+- `df`: DataFrame to analyze
+- `n`: Number of rows to display (default: 5)
+
+#### `get_num_cols(df, exclude_cols=None)`
+Returns list of numerical column names.
+
+#### `get_cat_cols(df, exclude_cols=None)`
+Returns list of categorical column names.
+
+#### `print_unique_cat_vals(dfs, exclude=None)`
+Print unique values for categorical features across one or multiple DataFrames.
+
+#### `highest_corrs(df, cols=None, interval_cols=None, num=10)`
+Calculate and return the highest correlations using Phik coefficient.
+
+**Parameters:**
+- `df`: DataFrame with data
+- `cols`: Columns to analyze (default: all columns)
+- `interval_cols`: Numerical columns for interval correlation
+- `num`: Number of top correlations to return (default: 10)
+
+### Plotting Module
+
+#### `plot_numeric(df, num_cols=None, title='', hue=None, normalize=False, kde=True, ncols=2, scale=2.5, **kwargs)`
+Create histograms and boxplots for numerical features.
+
+#### `plot_cats(df, cat_cols=None, hue=None, title='', ncols=2, max_cats=10, max_cats_alias='all_other', **kwargs)`
+Create bar charts for categorical feature distributions.
+
+#### `show_residues(y_true, y_pred, title='', **kwargs)`
+Plot residual distribution and scatter plot for model evaluation.
+
+### Models Module
+
+#### `make_num_processor(min_val, max_val)`
+Create a preprocessing pipeline for numerical data with sanitization, imputation, and scaling.
+
+#### `make_ord_processor(categories)`
+Create a preprocessing pipeline for ordinal categorical data with typo correction, encoding, and imputation.
+
+#### `make_typo_corrector(correct_vals)`
+Create a transformer that corrects single-character typos using Hamming distance.
+
+#### `grid_search(pipeline, grid, X_train, y_train, model, scoring='roc_auc', cv_method=None, n_jobs=-1)`
+Perform grid search with automatic result tracking and model comparison.
+
+**Parameters:**
+- `pipeline`: Scikit-learn pipeline
+- `grid`: Parameter grid (list or dict)
+- `X_train`, `y_train`: Training data
+- `model`: Model name for tracking
+- `scoring`: Scoring metric (default: 'roc_auc')
+- `cv_method`: Cross-validation method (default: 5-fold)
+- `n_jobs`: Number of parallel jobs (default: -1 for all cores)
+
+#### `show_search_result(search, n_results=10)`
+Display formatted grid search results.
+
+#### `evaluate_params(grid)`
+Display maximum metric values for each hyperparameter.
+
+## Examples
+
+Check out the [examples](examples/) directory for complete working examples including:
+- Data exploration workflows
+- Feature engineering pipelines
+- Model training and evaluation
+- Visualization galleries
+
+## Development Status
+
+This package is currently in Beta (Development Status: 4 - Beta). The API may change in future releases.
+
+## License
+
+`ypds_helpers` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.

@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ypds_helpers"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = "<=3.13"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Anton Popov", email = "a.popov.fizteh@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.12"
+]
+dependencies = [
+  "pandas",
+  "numpy",
+  "scikit-learn",
+  "seaborn",
+  "matplotlib",
+  "phik"
+]
+
+[project.urls]
+Documentation = "https://github.com/Kaldarinz/ypds_helpers#readme"
+Issues = "https://github.com/Kaldarinz/ypds_helpers/issues"
+Source = "https://github.com/Kaldarinz/ypds_helpers"
+
+[tool.hatch.version]
+path = "src/ypds_helpers/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/ypds_helpers tests}"
+
+[tool.coverage.run]
+source_pkgs = ["ypds_helpers", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/ypds_helpers/__about__.py",
+]
+
+[tool.coverage.paths]
+ypds_helpers = ["src/ypds_helpers", "*/ypds-helpers/src/ypds_helpers"]
+tests = ["tests", "*/ypds-helpers/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
