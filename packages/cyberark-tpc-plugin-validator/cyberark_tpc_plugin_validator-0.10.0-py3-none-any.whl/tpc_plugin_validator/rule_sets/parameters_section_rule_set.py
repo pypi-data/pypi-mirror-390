@@ -1,0 +1,110 @@
+"""Handle validation of the Parameters section in the process file."""
+
+import contextlib
+
+from tpc_plugin_parser.lexer.tokens.assignment import Assignment
+from tpc_plugin_parser.lexer.utilities.token_name import TokenName
+from tpc_plugin_validator.rule_sets.section_rule_set import SectionRuleSet
+from tpc_plugin_validator.utilities.severity import Severity
+from tpc_plugin_validator.utilities.types import FileNames, SectionNames, Violations
+
+
+class ParametersSectionRuleSet(SectionRuleSet):
+    """
+    Handle validation of the Parameters section in the process file.
+    """
+
+    _CONFIG_KEY: str = "parameters"
+    _FILE_TYPE: FileNames = FileNames.process
+    _SECTION_NAME: SectionNames = SectionNames.parameters
+    _VALID_TOKENS: list[str] = [
+        TokenName.ASSIGNMENT.value,
+        TokenName.COMMENT.value,
+    ]
+
+    def validate(self) -> None:
+        """Validate the Parameters section of the process file."""
+        section = self._get_section(file=self._FILE_TYPE, section_name=self._SECTION_NAME)
+        if not section:
+            # Missing sections are handled at the file level.
+            return
+
+        self._validate_tokens(file=self._FILE_TYPE)
+        self._validate_duplicates()
+        self._validate_human_min_max()
+
+    def _validate_human_min_max(self) -> None:
+        """Check that the SendHumanMin and SendHumanMax have valid values if set."""
+
+        section = self._get_section(file=self._FILE_TYPE, section_name=self._SECTION_NAME)
+
+        human_min: Assignment | None = None
+        human_max: Assignment | None = None
+
+        for token in section:
+            if token.token_name == TokenName.ASSIGNMENT.value and token.name == "SendHumanMin":
+                human_min = token
+            elif token.token_name == TokenName.ASSIGNMENT.value and token.name == "SendHumanMax":
+                human_max = token
+
+        if not human_min and not human_max:
+            return
+
+        with contextlib.suppress(ValueError):
+            if (
+                human_min
+                and human_min.assigned
+                and human_max
+                and human_max.assigned
+                and float(human_min.assigned) > float(human_max.assigned)
+            ):
+                self._add_violation(
+                    name=Violations.value_violation,
+                    severity=Severity.CRITICAL,
+                    message=f'"SendHumanMin" cannot be greater than "SendHumanMax", "SendHumanMin" is set to {float(human_min.assigned)} and "SendHumanMax" is set to {float(human_max.assigned)}.',
+                    section=self._SECTION_NAME,
+                    file=self._FILE_TYPE,
+                    line=human_min.line_number,
+                )
+
+        try:
+            if human_min and human_min.assigned and float(human_min.assigned) < 0:
+                self._add_violation(
+                    name=Violations.value_violation,
+                    severity=Severity.CRITICAL,
+                    message=f'"SendHumanMin" is set to {float(human_min.assigned)} this cannot be less than 0.',
+                    file=self._FILE_TYPE,
+                    section=self._SECTION_NAME,
+                    line=human_min.line_number,
+                )
+        except ValueError:
+            if human_min:
+                self._add_violation(
+                    name=Violations.value_violation,
+                    severity=Severity.CRITICAL,
+                    message=f'"SendHumanMin" is set to "{human_min.assigned}", the value must be numerical.',
+                    file=self._FILE_TYPE,
+                    section=self._SECTION_NAME,
+                    line=human_min.line_number,
+                )
+
+        try:
+            if human_max and human_max.assigned and float(human_max.assigned) < 0:
+                self._add_violation(
+                    name=Violations.value_violation,
+                    severity=Severity.CRITICAL,
+                    message=f'"SendHumanMax" is set to {float(human_max.assigned)} this cannot be less than 0.',
+                    file=self._FILE_TYPE,
+                    section=self._SECTION_NAME,
+                    line=human_max.line_number,
+                )
+        except ValueError:
+            if human_max:
+                self._add_violation(
+                    name=Violations.value_violation,
+                    severity=Severity.CRITICAL,
+                    message=f'"SendHumanMax" is set to "{human_max.assigned}", the value must be numerical.',
+                    section=self._SECTION_NAME,
+                    file=self._FILE_TYPE,
+                    line=human_max.line_number,
+                )
