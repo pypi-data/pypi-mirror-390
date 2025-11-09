@@ -1,0 +1,65 @@
+{% set name = "allmark" %}
+{% set version = "0.4.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/allmark-{{ version }}.tar.gz
+  sha256: REPLACE_WITH_SHA256_FROM_PYPI  # Update after PyPI release
+
+build:
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    - allmark = allmark.cli:main
+
+requirements:
+  host:
+    - python >=3.7
+    - pip
+    - setuptools >=45
+    - wheel
+  run:
+    - python >=3.7
+    - pandoc
+    - poppler
+
+test:
+  imports:
+    - allmark
+    - allmark.patterns
+    - allmark.converter
+    - allmark.cleaners
+    - allmark.ocr
+  commands:
+    - allmark --help
+    - pip check
+  requires:
+    - pip
+
+about:
+  home: https://github.com/dcondrey/allmark
+  license: MIT
+  license_file: LICENSE
+  summary: Universal eBook to Markdown converter and cleaner
+  description: |
+    allmark is a universal eBook to Markdown converter that supports 25+ formats
+    including EPUB, MOBI, PDF, DOCX, and more. It intelligently cleans converted
+    text by removing frontmatter, backmatter, headers, footers, and OCR artifacts.
+
+    Features:
+    - Convert 25+ ebook formats to clean Markdown
+    - Intelligent OCR artifact repair
+    - Automatic frontmatter/backmatter removal
+    - Chapter detection and standardization
+    - Header/footer removal
+    - JSONL output with token-based chunking for LLM training
+  doc_url: https://github.com/dcondrey/allmark/blob/master/README.md
+  dev_url: https://github.com/dcondrey/allmark
+
+extra:
+  recipe-maintainers:
+    - dcondrey
