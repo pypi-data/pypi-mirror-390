@@ -1,0 +1,297 @@
+Metadata-Version: 2.4
+Name: autosubtitle-api
+Version: 1.0.1
+Summary: Official Python client library for AutoSubtitle.net API
+Author-email: AutoSubtitle <info@berkbirkan.com>
+License: MIT
+Project-URL: Homepage, https://autosubtitle.net
+Project-URL: Documentation, https://autosubtitle.net/docs
+Keywords: autosubtitle,subtitles,video,transcription,api,client
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.28.0
+Dynamic: license-file
+
+# AutoSubtitle Python Client
+
+Official Python client library for [AutoSubtitle.net](https://autosubtitle.net) API - Automatically generate subtitles for videos.
+
+## Installation
+
+```bash
+pip install autosubtitle-api
+```
+
+**Note:** The package name on PyPI is `autosubtitle-api`, but you import it as `autosubtitle`:
+
+```python
+from autosubtitle import AutoSubtitleClient
+```
+
+## Quick Start
+
+```python
+from autosubtitle import AutoSubtitleClient
+
+# Initialize the client
+client = AutoSubtitleClient(api_key="your-api-key")
+
+# Create a subtitle job from video URL
+response = client.create_subtitle(
+    video_url="https://example.com/video.mp4",
+    language="en",
+    font_name="Montserrat",
+    font_size=100,
+    position="bottom"
+)
+
+transaction_id = response["transaction"]["id"]
+print(f"Transaction created: {transaction_id}")
+
+# Wait for the transaction to complete
+transaction = client.wait_for_transaction(transaction_id)
+print(f"Status: {transaction['status']}")
+```
+
+## Features
+
+- ✅ Create subtitles from video URL or file
+- ✅ Get transaction history
+- ✅ Get specific transaction by ID
+- ✅ Get billing summary and usage
+- ✅ Wait for transaction completion with polling
+- ✅ Full type hints support
+- ✅ Comprehensive error handling
+
+## API Reference
+
+### AutoSubtitleClient
+
+#### Constructor
+
+```python
+client = AutoSubtitleClient(
+    api_key: str,
+    base_url: str = "https://api.autosubtitle.net"
+)
+```
+
+#### Methods
+
+##### `create_subtitle()`
+
+Create a subtitle generation job.
+
+```python
+response = client.create_subtitle(
+    video_url: Optional[str] = None,
+    video_file: Optional[Union[BinaryIO, bytes]] = None,
+    language: Optional[str] = None,
+    font_name: Optional[str] = None,
+    font_size: Optional[int] = None,
+    font_weight: Optional[str] = None,  # 'normal', 'bold', 'light'
+    font_color: Optional[str] = None,  # Hex code
+    highlight_color: Optional[str] = None,  # Hex code
+    stroke_width: Optional[int] = None,
+    stroke_color: Optional[str] = None,  # Hex code
+    background_color: Optional[str] = None,  # Hex code
+    background_opacity: Optional[float] = None,  # 0.0-1.0
+    position: Optional[str] = None,  # 'top', 'center', 'bottom'
+    y_offset: Optional[int] = None,
+    words_per_subtitle: Optional[int] = None,
+    enable_animation: Optional[bool] = None
+)
+```
+
+**Returns:** `Dict[str, Any]` with transaction details
+
+**Example:**
+
+```python
+# From URL
+response = client.create_subtitle(
+    video_url="https://example.com/video.mp4",
+    language="en",
+    font_name="Montserrat"
+)
+
+# From file
+with open("video.mp4", "rb") as f:
+    response = client.create_subtitle(
+        video_file=f,
+        language="tr",
+        font_size=120
+    )
+```
+
+##### `get_transactions()`
+
+Get all subtitle transactions.
+
+```python
+response = client.get_transactions()
+```
+
+**Returns:** `Dict[str, Any]` with list of transactions
+
+##### `get_transaction(transaction_id: str)`
+
+Get a specific transaction by ID.
+
+```python
+response = client.get_transaction("transaction-id")
+```
+
+**Returns:** `Dict[str, Any]` with transaction details
+
+##### `get_billing_summary()`
+
+Get billing summary and usage information.
+
+```python
+summary = client.get_billing_summary()
+```
+
+**Returns:** `Dict[str, Any]` with billing information
+
+##### `wait_for_transaction()`
+
+Wait for a transaction to complete.
+
+```python
+transaction = client.wait_for_transaction(
+    transaction_id: str,
+    interval: int = 2000,  # milliseconds
+    timeout: int = 300000,  # milliseconds (5 minutes)
+    on_progress: Optional[Callable[[Dict[str, Any]], None]] = None
+)
+```
+
+**Returns:** `Dict[str, Any]` with completed transaction
+
+**Example:**
+
+```python
+def on_progress(transaction):
+    print(f"Status: {transaction['status']}")
+
+transaction = client.wait_for_transaction(
+    transaction_id,
+    interval=2000,
+    timeout=60000,
+    on_progress=on_progress
+)
+```
+
+## Error Handling
+
+The client raises `AutoSubtitleError` for API errors:
+
+```python
+from autosubtitle import AutoSubtitleClient, AutoSubtitleError
+
+try:
+    response = client.create_subtitle(video_url="invalid-url")
+except AutoSubtitleError as e:
+    print(f"Error: {e.message}")
+    print(f"Status: {e.status}")
+    print(f"Code: {e.code}")
+```
+
+## Examples
+
+### Complete Workflow
+
+```python
+from autosubtitle import AutoSubtitleClient
+
+client = AutoSubtitleClient(api_key="your-api-key")
+
+# Create subtitle job
+response = client.create_subtitle(
+    video_url="https://example.com/video.mp4",
+    language="en",
+    font_name="Montserrat",
+    font_size=100,
+    position="bottom",
+    font_color="#FFFFFF",
+    highlight_color="#800080"
+)
+
+transaction_id = response["transaction"]["id"]
+
+# Wait for completion
+def on_progress(transaction):
+    print(f"Processing... Status: {transaction['status']}")
+
+transaction = client.wait_for_transaction(
+    transaction_id,
+    on_progress=on_progress
+)
+
+if transaction["status"] == "completed":
+    print(f"Result video: {transaction['result_video_url']}")
+    print(f"Transcription: {transaction['transcription']}")
+```
+
+### Get Transaction History
+
+```python
+response = client.get_transactions()
+
+for transaction in response["projects"]:
+    print(f"ID: {transaction['id']}")
+    print(f"Status: {transaction['status']}")
+    print(f"Created: {transaction['created_at']}")
+    print("---")
+```
+
+### Get Billing Information
+
+```python
+summary = client.get_billing_summary()
+
+print(f"Plan: {summary['plan']['name']}")
+print(f"Usage: {summary['usage']['used']}/{summary['usage']['limit']}")
+print(f"Reset Date: {summary['usage']['resetDate']}")
+```
+
+## Testing
+
+### Unit Tests (with mocking)
+
+```bash
+python -m pytest tests/test_client.py
+```
+
+### Integration Tests (with real API)
+
+```bash
+export AUTOSUBTITLE_API_KEY="your-api-key"
+python -m pytest tests/test_integration.py
+```
+
+## Requirements
+
+- Python 3.8+
+- requests >= 2.28.0
+
+## License
+
+MIT
+
+## Support
+
+- Documentation: https://autosubtitle.net/docs
+- Homepage: https://autosubtitle.net
+
