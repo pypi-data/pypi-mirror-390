@@ -1,0 +1,431 @@
+Metadata-Version: 2.4
+Name: axcode
+Version: 0.2.1
+Summary: AST-based code consistency checker and fixer using pure algorithms
+Author-email: CAVELAB-HK <contact@cavelab.dev>
+License: MIT
+Project-URL: Homepage, https://github.com/CAVELAB-HK/AX
+Project-URL: Repository, https://github.com/CAVELAB-HK/AX.git
+Project-URL: Issues, https://github.com/CAVELAB-HK/AX/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Software Development :: Quality Assurance
+Classifier: Topic :: Software Development :: Code Generators
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: typer>=0.9.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: watchdog>=3.0.0
+Requires-Dist: toml>=0.10.2
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+
+# AX - AST-Based Code Consistency Checker
+
+> Keep your codebase consistent across multiple languages using pure algorithmic analysis
+
+AX is an intelligent code consistency checker and fixer that helps maintain consistent coding patterns across your entire project. It uses pure AST-based analysis with advanced algorithms to identify inconsistencies, logical errors, security issues, and performance problems.
+
+## Features
+
+- **Cross-File Consistency Analysis**: Learns patterns from your project and ensures consistency
+- **Multi-Language Support**: Python, JavaScript, TypeScript, Java, Go, Rust, and more
+- **Pure AST Analysis**: Uses abstract syntax tree parsing for reliable detection
+- **Auto-Fix Capabilities**: Automatically fixes issues with configurable confidence thresholds
+- **Logical Error Detection**: Finds bugs like missing operators, unreachable code, infinite loops
+- **Security Scanning**: Detects hardcoded secrets, SQL injection risks, unsafe deserialization
+- **Performance Analysis**: Identifies N+1 queries, inefficient loops, unnecessary conversions
+- **Interactive Fixes**: Review and approve fixes with diff preview
+- **Project-Wide Learning**: Automatically detects and enforces your team's coding patterns
+- **Fast and Efficient**: Pure algorithmic approach with caching for speed
+
+## What AX Checks
+
+### Consistency Issues
+- Naming conventions (snake_case vs camelCase)
+- None/Null checking patterns (is None vs == None)
+- Type hint usage consistency
+- Error handling patterns (exceptions vs return values)
+- Import styles
+- String quote preferences
+- Docstring conventions
+
+### Logical Errors
+- Missing augmented operators (x = x + 1 vs x += 1)
+- Incorrect comparisons
+- Unreachable code after return/raise
+- Infinite loops without break
+- Loop variable modifications
+- Missing return statements
+- Unused variables
+- Off-by-one errors
+
+### Security Issues
+- Hardcoded secrets (API keys, passwords, tokens)
+- SQL injection vulnerabilities
+- Command injection risks
+- Unsafe deserialization (pickle)
+- Weak cryptography (MD5, SHA1)
+- Unsafe eval/exec usage
+- Missing file encoding
+
+### Performance Problems
+- N+1 query patterns
+- Inefficient loops (list comprehension opportunities)
+- Repeated expensive computations
+- Inefficient string concatenation
+- Unnecessary type conversions
+- Missing caching opportunities
+
+## Installation
+
+### For Users (PyPI)
+
+```bash
+pip install axcode
+```
+
+After installation, the `ax` command will be available globally.
+
+### For Development
+
+```bash
+# Clone the repository
+git clone https://github.com/CAVELAB-HK/AX.git
+cd AX
+
+# Install in development mode
+pip install -e .
+
+# Install development dependencies
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### 1. Install
+
+```bash
+pip install axcode
+```
+
+### 2. Verify Installation
+
+```bash
+ax --help
+```
+
+### 3. Analyze and Fix Your Code
+
+```bash
+# Analyze and fix a single file
+ax fix myfile.py
+
+# Analyze and fix entire project
+ax fix .
+
+# Just analyze without fixing
+ax fix --analyze-only myfile.py
+
+# Auto-fix all high-confidence issues
+ax fix --auto myfile.py
+
+# Fix specific directory recursively
+ax fix ./src --recursive
+
+# Output results as JSON
+ax fix myfile.py --json
+```
+
+### 4. Use in Your IDE (Optional)
+
+Install the VS Code or Cursor extension for real-time feedback:
+
+- **VS Code**: Search "AX Consistency" in the marketplace
+- **Cursor**: See extensions documentation (if available)
+
+## Usage
+
+### CLI Commands
+
+```bash
+# Fix issues (default command)
+ax fix <file_or_directory>        # Analyze and fix interactively
+ax fix --auto <file>              # Auto-fix high-confidence issues
+ax fix --analyze-only <file>      # Just analyze without fixing
+ax fix --json <file>              # Output results in JSON format
+
+# Options
+ax fix -r <directory>             # Recursive (default: true)
+ax fix --include "*.py"           # Include specific patterns
+ax fix --exclude "test_*.py"      # Exclude specific patterns
+```
+
+### Python API
+
+```python
+from pathlib import Path
+from ax.core import AnalysisPipeline, FixExecutor
+
+# Initialize pipeline
+pipeline = AnalysisPipeline(use_cache=True)
+
+# Analyze a file
+project_files = list(Path('.').rglob('*.py'))
+result = pipeline.analyze_file(Path('myfile.py'), project_files)
+
+# Generate and apply fixes
+issues = result['issues']
+fixes = pipeline.generate_fixes(Path('myfile.py'), issues)
+
+executor = FixExecutor()
+fix_result = executor.execute_fixes(Path('myfile.py'), fixes, auto=False)
+
+print(f"Found {result['issue_count']} issues")
+print(f"Applied {len(fix_result.get('changes', []))} fixes")
+```
+
+### Configuration File
+
+Create `.axconfig.toml` in your project root:
+
+```toml
+[analysis]
+enabled_strategies = [
+    "naming",
+    "type_hints",
+    "imports",
+    "docstrings",
+    "error_handling",
+    "logical_errors",
+    "security",
+    "performance"
+]
+auto_fix_threshold = 0.9
+interactive_threshold = 0.6
+ignore_patterns = [
+    "__pycache__/*",
+    "*.pyc",
+    ".git/*",
+    "venv/*",
+    "node_modules/*"
+]
+
+[cache]
+enabled = true
+directory = ".ax_cache"
+
+[output]
+format = "terminal"
+colors = true
+verbose = false
+```
+
+## Examples
+
+### Before AX
+
+```python
+def processData(data):
+    if data == None:
+        return
+    total = 0
+    password = "secret123"
+    for item in items:
+        total = total + item
+    return total
+```
+
+### After AX Fix
+
+```python
+def process_data(data):
+    if data is None:
+        return
+    total = 0
+    password = os.getenv('PASSWORD')
+    for item in items:
+        total += item
+    return total
+```
+
+## IDE Extensions
+
+### VS Code Extension
+
+1. Install from marketplace: "AX Consistency"
+2. Or install manually: `code --install-extension extensions/vscode-ax/ax-consistency-1.0.0.vsix`
+3. Configure in settings (Cmd/Ctrl + ,):
+   - `ax.enabled`: Enable/disable extension
+   - `ax.autoCheckOnSave`: Check files on save
+   - `ax.autoFix`: Automatically fix issues
+
+**Keyboard Shortcuts**:
+- `Cmd/Ctrl + Shift + A`: Analyze current file
+- `Cmd/Ctrl + Shift + F`: Fix current file
+
+### Cursor Extension
+
+See [extensions/cursor-ax/INSTALL_CURSOR.md](extensions/cursor-ax/INSTALL_CURSOR.md) for installation instructions.
+
+## Architecture
+
+AX uses a pure AST-based architecture:
+
+1. **AST Parsing**: Uses abstract syntax tree parsing for reliable pattern detection
+2. **Pattern Learning**: Learns dominant patterns from your project automatically
+3. **Strategy System**: Pluggable strategies for different types of checks (naming, logical errors, security, performance)
+4. **Smart Caching**: Caches results to avoid redundant analysis
+5. **Fix Generation**: Generates fixes with confidence scores for safe automated fixes
+
+## Development
+
+### Project Structure
+
+```
+AX/
+├── ax/                      # Core package
+│   ├── cli/                # CLI interface
+│   ├── core/               # Core analysis engine
+│   │   ├── pipeline.py     # AST-based pipeline
+│   │   ├── parser.py       # AST parser
+│   │   ├── fix_executor.py # Fix application engine
+│   │   └── pattern_learner.py  # Pattern detection
+│   ├── strategies/         # Analysis strategies
+│   │   ├── naming.py
+│   │   ├── logical_errors.py
+│   │   ├── security.py
+│   │   └── performance.py
+│   ├── models/            # Data models
+│   └── utils/             # Utility functions
+├── extensions/             # IDE extensions
+│   ├── vscode-ax/         # VS Code extension
+│   └── cursor-ax/         # Cursor extension
+└── tests/                 # Test suite
+```
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+### Building Extensions
+
+```bash
+# VS Code extension
+cd extensions/vscode-ax
+npm install
+npm run compile
+npm run package
+
+# Cursor extension
+cd extensions/cursor-ax
+npm install
+npm run compile
+```
+
+## Publishing to PyPI
+
+### First Time Setup
+
+1. Create accounts on PyPI and TestPyPI
+2. Install build tools:
+   ```bash
+   pip install build twine
+   ```
+
+### Publishing Process
+
+```bash
+# 1. Update version in pyproject.toml
+# 2. Build distribution
+python -m build
+
+# 3. Test on TestPyPI (optional)
+python -m twine upload --repository testpypi dist/*
+
+# 4. Publish to PyPI
+python -m twine upload dist/*
+```
+
+### After Publishing
+
+Users can install with:
+```bash
+pip install ax-consistency
+```
+
+## Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`pytest`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+## Troubleshooting
+
+### "AX CLI not found"
+
+Make sure AX is installed and in your PATH:
+```bash
+pip install axcode
+# Or for development:
+pip install -e /path/to/AX
+```
+
+### Extension Not Working
+
+1. Check that AX CLI is installed: `ax --version`
+2. Check extension settings in VS Code
+3. Restart VS Code/Cursor
+4. Check the extension output panel for errors
+
+### Analysis Too Slow
+
+1. Enable caching in `.axconfig.toml`
+2. Add ignore patterns for large dependencies
+3. Use `--include` flag to focus on specific file patterns
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Authors
+
+- CAVELAB-HK (contact@cavelab.dev)
+
+## Links
+
+- **GitHub**: https://github.com/CAVELAB-HK/AX
+- **Issues**: https://github.com/CAVELAB-HK/AX/issues
+- **Documentation**: https://github.com/CAVELAB-HK/AX/wiki
+- **Discussions**: https://github.com/CAVELAB-HK/AX/discussions
+
+## Contributing
+
+Found a bug or have a feature request? Please open an issue on GitHub!
+
+## Acknowledgments
+
+AX is built with:
+- Python's built-in AST module for parsing
+- Rich for beautiful terminal output
+- Typer for CLI interface
+- Advanced algorithmic analysis for reliable detection
+

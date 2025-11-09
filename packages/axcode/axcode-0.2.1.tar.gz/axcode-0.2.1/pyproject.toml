@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axcode"
+version = "0.2.1"
+description = "AST-based code consistency checker and fixer using pure algorithms"
+authors = [
+    {name = "CAVELAB-HK", email = "contact@cavelab.dev"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "watchdog>=3.0.0",
+    "toml>=0.10.2",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+ax = "ax.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/CAVELAB-HK/AX"
+Repository = "https://github.com/CAVELAB-HK/AX.git"
+Issues = "https://github.com/CAVELAB-HK/AX/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ax*"]
+
+[tool.ax]
+# Default AX configuration
+analysis.enabled_strategies = [
+    "naming",
+    "type_hints",
+    "imports",
+    "docstrings",
+    "error_handling",
+    "logical_errors",
+    "security",
+    "performance"
+]
+analysis.auto_fix_threshold = 0.9
+analysis.interactive_threshold = 0.6
+analysis.ignore_patterns = [
+    "__pycache__/*",
+    "*.pyc",
+    ".git/*",
+    "venv/*",
+    "env/*",
+    "node_modules/*"
+]
+
+cache.enabled = true
+cache.directory = ".ax_cache"
+
+output.format = "terminal"
+output.colors = true
+output.verbose = false
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
