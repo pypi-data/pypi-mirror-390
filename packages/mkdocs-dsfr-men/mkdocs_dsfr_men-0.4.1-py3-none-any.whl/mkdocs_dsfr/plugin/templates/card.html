@@ -1,0 +1,38 @@
+<div class="fr-grid-row fr-grid-row--center fr-mb-3w">
+  {% for item in data.group %}
+  <div class="fr-col
+        {%- if item.col_md is defined %} fr-col-md-{{ item.col_md }}{% else %} fr-col-md-3{% endif %}
+        {%- if item.margin_x is defined %} fr-mx-{{ item.margin_x }}w{% endif %}
+        {%- if item.margin_y is defined %} fr-my-{{ item.margin_y }}w{% endif -%}
+        ">
+    <div class="fr-card{% if item.labels is not defined or item.labels | length < 1 %} fr-enlarge-link{% endif %}">
+      <div class="fr-card__body">
+        <div class="fr-card__content">
+          <h3 class="fr-card__title">
+            <a href="{{ item.link | default('#') }}">{{ item.title }}</a>
+          </h3>
+          <p class="fr-card__desc">{{ item.description }}</p>
+        </div>
+        {% if item.labels is defined and item.labels | length > 0 %}
+        <div class="fr-card__footer">
+          <ul class="fr-links-group">
+            {% for label in item.labels %}
+            <li>
+              <a class="fr-link" href="{{ label.link }}">
+                {{ label.name }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+      <div class="fr-card__header">
+        <div class="fr-card__img">
+          <img class="fr-responsive-img{% if item.image_ratio %} fr-ratio-{{ item.image_ratio }}{% endif %}" src="{{ base_url }}{{ item.image }}" alt="" width="{{ item.image_width | default('') }}" height="{{ item.image_height | default('') }}">
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

@@ -1,0 +1,32 @@
+<figure class="fr-quote fr-quote--column{% if data.color %} fr-quote--{{ data.color }}{% endif %}">
+  <blockquote{% if data.source_url %} cite="{{ data.source_url }}"{% endif %}>
+    <p>« {{ data.text }} »</p>
+  </blockquote>
+  <figcaption>
+    {% if data.author %}
+    <p class="fr-quote__author">{{ data.author }}</p>
+    {% endif %}
+    {% if data.details %}
+    <ul class="fr-quote__source">
+      {% for detail in data.details %}
+        {% if detail.is_title %}
+      <li>
+        <cite>{{ detail.text }}</cite>
+      </li>
+        {% elif not detail.is_title and detail.source_url %}
+      <li>
+        <a target="_blank" rel="noopener external" title="{{ detail.text }} - nouvelle fenêtre" href="{{ detail.source_url }}">{{ detail.text }}</a>
+      </li>
+        {% else %}
+      <li>{{ detail.text }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if data.image %}
+    <div class="fr-quote__image">
+      <img src="{{ base_url }}{{ data.image }}" class="fr-responsive-img" alt="" width="{{ data.image_width | default('') }}" height="{{ data.image_height | default('') }}" />
+    </div>
+    {% endif %}
+  </figcaption>
+</figure>
