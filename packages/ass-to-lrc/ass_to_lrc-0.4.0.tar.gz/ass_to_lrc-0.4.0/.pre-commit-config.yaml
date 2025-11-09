@@ -1,0 +1,61 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+# Optimize performance
+ci:
+  autofix_commit_msg: |
+    chore(pre-commit): Auto-fixes from pre-commit hooks
+  autoupdate_commit_msg: |
+    chore(pre-commit): Update pre-commit hooks
+
+repos:
+  # Fast basic checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-merge-conflict
+
+  # Ruff - extremely fast Python linter & formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--exit-non-zero-on-fix]
+      - id: ruff-format
+        args: [--check]
+
+  # Use local mypy for faster execution
+  # - repo: local
+    # hooks:
+      # - id: mypy
+        # name: mypy
+        # entry: uv run mypy
+        # language: system
+        # types: [python]
+        # require_serial: true
+        # args: [--ignore-missing-imports, --no-error-summary]
+
+  # Use local markdownlint (already installed)
+  - repo: local
+    hooks:
+      - id: markdownlint
+        name: markdownlint
+        entry: markdownlint
+        language: system
+        types: [markdown]
+
+  # Commitlint for commit messages
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.11.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        additional_dependencies: ['@commitlint/config-conventional']

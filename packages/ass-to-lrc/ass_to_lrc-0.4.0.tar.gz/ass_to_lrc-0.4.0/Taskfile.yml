@@ -1,0 +1,159 @@
+version: '3'
+
+vars:
+  PACKAGE_NAME: ass2lrc
+  PYTHON: python3
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  install:
+    desc: Install package in development mode
+    cmds:
+      - uv sync
+
+  install-dev:
+    desc: Install package with dev dependencies
+    cmds:
+      - uv sync --all-extras
+
+  test:
+    desc: Run all tests
+    cmds:
+      - uv run pytest tests/ -v
+
+  test-cov:
+    desc: Run tests with coverage report
+    cmds:
+      - uv run pytest tests/ -v --cov={{.PACKAGE_NAME}} --cov-report=term-missing
+
+  test-cov-html:
+    desc: Run tests with HTML coverage report
+    cmds:
+      - uv run pytest tests/ -v --cov={{.PACKAGE_NAME}} --cov-report=html
+      - echo "Coverage report generated in htmlcov/index.html"
+
+  lint:
+    desc: Run ruff linter
+    cmds:
+      - uv run ruff check {{.PACKAGE_NAME}}/
+
+  lint-fix:
+    desc: Run ruff linter with auto-fix
+    cmds:
+      - uv run ruff check --fix {{.PACKAGE_NAME}}/
+
+  format:
+    desc: Format code with ruff
+    cmds:
+      - uv run ruff format {{.PACKAGE_NAME}}/
+
+  format-check:
+    desc: Check code formatting
+    cmds:
+      - uv run ruff format --check {{.PACKAGE_NAME}}/
+
+  typecheck:
+    desc: Run mypy type checking
+    cmds:
+      - uv run mypy {{.PACKAGE_NAME}}/
+
+  lint-md:
+    desc: Lint markdown files
+    cmds:
+      - markdownlint README.md TESTING.md PUBLISHING.md CONTRIBUTING.md GEMINI.md
+
+  lint-md-fix:
+    desc: Fix markdown linting issues
+    cmds:
+      - markdownlint --fix README.md TESTING.md PUBLISHING.md CONTRIBUTING.md
+
+  qa:
+    desc: Run all quality checks (lint, format, typecheck, test)
+    cmds:
+      - task: lint
+      - task: format-check
+      - task: typecheck
+      - task: lint-md
+      - task: test
+
+  clean:
+    desc: Remove generated files and caches
+    cmds:
+      - find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+      - find . -type f -name "*.pyc" -delete
+      - rm -rf build/ dist/ htmlcov/ .coverage
+
+  build:
+    desc: Build distribution packages
+    deps: [clean]
+    cmds:
+      - uv build
+      - echo "Build complete! Packages in dist/"
+
+  publish-test:
+    desc: Upload to TestPyPI
+    deps: [build]
+    cmds:
+      - echo "Publishing to TestPyPI..."
+      - uv publish --publish-url https://test.pypi.org/legacy/
+      - echo "✓ Published to TestPyPI"
+      - echo "Install with pip install --index-url https://test.pypi.org/simple/ {{.PACKAGE_NAME}}"
+
+  publish:
+    desc: Upload to PyPI (production)
+    deps: [build]
+    cmds:
+      - echo "⚠️  Publishing to PRODUCTION PyPI!"
+      - echo "Press Ctrl+C to cancel, or Enter to continue..."
+      - sh -c "read _"
+      - uv publish
+      - echo "✓ Published to PyPI"
+      - echo "Install with pip install {{.PACKAGE_NAME}}"
+
+  version:
+    desc: Show current version
+    cmds:
+      - grep "version = " pyproject.toml | head -1
+
+  bump-patch:
+    desc: Bump patch version (0.1.0 -> 0.1.1)
+    cmds:
+      - echo "Not implemented - manually update pyproject.toml"
+
+  bump-minor:
+    desc: Bump minor version (0.1.0 -> 0.2.0)
+    cmds:
+      - echo "Not implemented - manually update pyproject.toml"
+
+  bump-major:
+    desc: Bump major version (0.1.0 -> 1.0.0)
+    cmds:
+      - echo "Not implemented - manually update pyproject.toml"
+
+  dev:
+    desc: Setup development environment
+    cmds:
+      - uv sync --all-extras
+      - uv run pre-commit install
+      - uv run pre-commit install --hook-type commit-msg
+      - echo "✓ Development environment ready!"
+      - echo "✓ Pre-commit hooks installed"
+      - echo "Run 'task qa' to check everything works"
+
+  pre-commit:
+    desc: Run pre-commit hooks on all files
+    cmds:
+      - uv run pre-commit run --all-files
+
+  pre-commit-update:
+    desc: Update pre-commit hooks
+    cmds:
+      - uv run pre-commit autoupdate
