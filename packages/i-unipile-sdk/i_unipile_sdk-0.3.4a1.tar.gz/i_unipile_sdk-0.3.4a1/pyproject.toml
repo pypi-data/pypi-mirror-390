@@ -1,0 +1,109 @@
+[project]
+name = "i-unipile-sdk"
+version = "0.3.4a1"
+description = "Python SDK for interacting with Unipile API."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.10.6",
+]
+
+[dependency-groups]
+dev = [
+    "python-dotenv>=1.2.1",
+    "ruff>=0.14.3",
+    "basedpyright>=1.32.1",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-v",
+    "--dist", "loadscope",  # Group by module
+]
+testpaths = [
+    "tests",
+    "integration",
+]
+log_cli = true
+log_cli_level = "INFO"
+markers = [
+    "messaging: marks tests as messaging tests",
+]
+
+[tool.basedpyright]
+typeCheckingMode = "basic"
+
+# Disable some reporting, to avoid interference with ruff
+reportFunctionMemberAccess = false
+reportMissingImports = false
+reportMissingModuleSource = false
+reportImportCycles = false
+reportUnusedImport = false
+reportUnusedClass = false
+reportUnusedFunction = false
+reportUnusedVariable = false
+reportDuplicateImport = false
+reportWildcardImportFromLibrary = false
+reportAbstractUsage = false
+reportAttributeAccessIssue = false
+reportCallIssue = false
+reportInconsistentOverload = false
+reportIndexIssue = false
+reportNoOverloadImplementation = false
+reportOperatorIssue = false
+reportOptionalSubscript = false
+reportOptionalMemberAccess = false
+reportOptionalCall = false
+reportOptionalIterable = false
+reportOptionalContextManager = false
+reportOptionalOperand = false
+reportRedeclaration = false
+reportPrivateUsage = false
+reportPrivateImportUsage = false
+reportConstantRedefinition = false
+reportDeprecated = false
+reportIncompatibleMethodOverride = false
+reportIncompatibleVariableOverride = false
+reportInconsistentConstructor = false
+reportOverlappingOverload = false
+reportPossiblyUnboundVariable = false
+reportMissingSuperCall = false
+reportUninitializedInstanceVariable = false
+reportInvalidStringEscapeSequence = false
+reportCallInDefaultInitializer = false
+reportUnnecessaryIsInstance = false
+reportUnnecessaryCast = false
+reportUnnecessaryComparison = false
+reportUnnecessaryContains = false
+reportAssertAlwaysTrue = false
+reportSelfClsParameterName = false
+reportImplicitStringConcatenation = false
+reportUndefinedVariable = false
+reportUnboundVariable = false
+reportUnhashable = false
+reportUnsupportedDunderAll = false
+reportUnusedCallResult = false
+reportUnusedCoroutine = false
+reportUnusedExcept = false
+reportUnusedExpression = false
+reportMatchNotExhaustive = false
+reportImplicitOverride = false
+
+[tool.ruff]
+line-length = 79
+indent-width = 4
+target-version = "py39"
+
+# Disable some duplicate diagnostic from pyright
+# Source: https://github.com/DetachHead/basedpyright/blob/main/pyproject.toml
+[tool.ruff.lint]
+extend-select = ["B", "Q"]
+
+[tool.ruff.format]
+line-ending = "auto"
+docstring-code-format = true
