@@ -1,0 +1,76 @@
+Metadata-Version: 2.4
+Name: openstreetmap-downloader
+Version: 1.1.3
+Summary: Downloads OpenStreetMap data by configurations
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: boto3>=1.40.69
+Requires-Dist: click>=8.2.1
+Requires-Dist: fsspec>=2025.10.0
+Requires-Dist: geopandas>=1.1.1
+Requires-Dist: osmnx>=2.0.6
+Requires-Dist: pandas>=2.3.2
+Requires-Dist: python-dotenv>=1.1.1
+Requires-Dist: pyyaml>=6.0.2
+Dynamic: license-file
+
+# openstreetmap-downloader
+
+Downloads OpenStreetMap data by configurations
+
+## Setup
+
+```bash
+# Install dependencies
+uv sync
+```
+
+## Usage
+
+```bash
+# Run importer
+uv run -m osm_downloader.main
+```
+
+Usage from python
+
+```python
+from osm_downloader import osm_download
+
+osm_download()
+```
+
+## Configuration
+
+Check [osm_config.yaml](./osm_config.yaml) for a configuration example.
+
+This examples creates a file `./data/borgo_vals/parking.geojson` with all records matching the properties in `groups.parking` (parking areas and EV charging stations).
+
+```yaml
+areas:
+  - name: borgo_vals
+    place: "Borgo Valsugana, Trentino"
+    groups:
+      parking:
+        - key: "amenity"
+          value: "parking"
+        - key: "amenity"
+          value: "parking_space"
+        - key: "amenity"
+          value: "charging_station"
+```
+
+A `.env` file can be used to control those variables
+
+```ini
+# base path where to save downloaded data
+DATA_DIR=./data
+
+# path to config file
+CONFIG_PATH=./osm_config.yaml
+```
+
+## License
+
+Licensed under `Apache-2.0` see [LICENSE](./LICENSE)
