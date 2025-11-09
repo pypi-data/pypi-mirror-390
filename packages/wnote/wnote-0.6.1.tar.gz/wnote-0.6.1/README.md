@@ -1,0 +1,1057 @@
+# WNote - Terminal Note Taking Application 📝
+
+[![PyPI version](https://badge.fury.io/py/wnote.svg)](https://badge.fury.io/py/wnote)
+[![Python Version](https://img.shields.io/pypi/pyversions/wnote.svg)](https://pypi.org/project/wnote/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+WNote is a beautiful, feature-rich CLI note-taking application that runs entirely in your terminal. Designed for developers and power users who prefer working in the command line, WNote combines simplicity with powerful features like tags, smart attachments with **symlink support**, reminders, templates, and backups.
+
+![WNote Demo](https://via.placeholder.com/800x450.png?text=WNote+Terminal+Application)
+
+## 🎯 Why WNote?
+
+- **💾 Space Efficient**: Symlink mode saves 99% disk space on attachments
+- **⚡ Lightning Fast**: Operations complete in milliseconds
+- **🎨 Beautiful UI**: Rich terminal interface with colors and tables
+- **🔒 Privacy First**: All data stored locally, no cloud sync
+- **🛠️ Developer Friendly**: Built with modern Python, easy to extend
+- **📦 Zero Config**: Works out of the box, customize when you need
+
+## ✨ Features
+
+### Core Features
+- ✏️ **Note Management**: Create, edit, view, update, and delete notes with ease
+- 🏷️ **Tag System**: Organize notes with customizable colored tags
+- 🔍 **Advanced Search**: Full-text search with relevance scoring and filtering
+- 📊 **Statistics**: Comprehensive statistics and analytics about your notes
+- 🎨 **Beautiful UI**: Rich terminal interface powered by the Rich library
+
+### Advanced Features
+- 📎 **Smart Attachments**: Three modes for maximum flexibility
+  - 🔗 **Symlink** (default): Saves 99% space, stays in sync with original
+  - 📄 **Copy**: Safe snapshot, independent of original
+  - 📌 **Reference**: Path-only, no storage overhead
+- ⏰ **Reminders**: Set reminders for important notes with due date tracking
+- 📋 **Templates**: Create and use note templates for common formats
+- 💾 **Backup & Restore**: Automatic and manual backup system with compression
+- 📦 **Archive System**: Archive old notes without deleting them
+- 📤 **Export**: Export notes to Markdown, HTML, or plain text
+- 🔗 **Note Linking**: Create relationships between notes (coming soon)
+- 📝 **Editor Integration**: Use your favorite text editor (vim, nano, etc.)
+
+## 🏗️ Architecture
+
+### Project Structure
+
+```
+wnote/
+├── wnote/                      # Main package directory
+│   ├── __init__.py            # Package initialization
+│   ├── cli.py                 # CLI entry point
+│   ├── core/                  # Core functionality
+│   │   ├── __init__.py
+│   │   ├── config.py          # Configuration management
+│   │   └── database.py        # Database operations
+│   ├── utils/                 # Utility functions
+│   │   ├── __init__.py
+│   │   ├── decorators.py      # Decorators (retry logic, etc.)
+│   │   ├── formatters.py      # Formatting utilities
+│   │   └── file_ops.py        # File operations
+│   └── commands/              # Command modules
+│       ├── __init__.py
+│       ├── note_commands.py   # Note CRUD operations
+│       ├── tag_commands.py    # Tag management
+│       ├── attachment_commands.py
+│       ├── reminder_commands.py
+│       ├── export_commands.py
+│       ├── config_commands.py
+│       └── backup_commands.py
+├── setup.py                   # Setup configuration
+├── pyproject.toml            # Modern Python packaging config
+├── requirements.txt          # Runtime dependencies
+├── README.md                 # This file
+├── CHANGELOG.md              # Version history
+├── LICENSE                   # MIT License
+└── MANIFEST.in              # Package inclusion rules
+```
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        CLI Interface (Click)                 │
+│                         wnote.cli                            │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+        ┌────────────┼────────────┬─────────────────┐
+        │            │            │                 │
+┌───────▼──────┐ ┌──▼──────┐ ┌──▼──────┐ ┌────────▼────────┐
+│ Note Commands│ │   Tag   │ │Reminder │ │ Backup Commands │
+│              │ │Commands │ │Commands │ │                 │
+└───────┬──────┘ └──┬──────┘ └──┬──────┘ └────────┬────────┘
+        │           │            │                 │
+        └───────────┴────────────┴─────────────────┘
+                                │
+                    ┌───────────▼────────────┐
+                    │    Core Modules        │
+                    ├────────────────────────┤
+                    │  • Database (SQLite)   │
+                    │  • Configuration       │
+                    │  • File Operations     │
+                    └───────────┬────────────┘
+                                │
+                    ┌───────────▼────────────┐
+                    │    Data Layer          │
+                    ├────────────────────────┤
+                    │  • SQLite Database     │
+                    │  • JSON Config         │
+                    │  • Attachments Dir     │
+                    │  • Backups Dir         │
+                    └────────────────────────┘
+```
+
+### Database Schema
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   notes     │     │  note_tags   │     │    tags     │
+├─────────────┤     ├──────────────┤     ├─────────────┤
+│ id (PK)     │────┐│ note_id (FK) │┌────│ id (PK)     │
+│ title       │    ││ tag_id (FK)  ││    │ name        │
+│ content     │    │└──────────────┘│    └─────────────┘
+│ is_archived │    │                 │
+│ created_at  │    │                 │
+│ updated_at  │    │                 │
+└─────────────┘    │                 │
+       │           │                 │
+       │           │  ┌──────────────▼────────┐
+       │           └──│  attachments          │
+       │              ├───────────────────────┤
+       │              │ id (PK)               │
+       │              │ note_id (FK)          │
+       │              │ filename              │
+       │              │ original_path         │
+       │              │ stored_path           │
+       │              │ is_directory          │
+       │              │ attachment_mode 🔗    │
+       │              │ created_at            │
+       │              └───────────────────────┘
+       │
+       │              ┌─────────────────┐
+       └──────────────│   reminders     │
+                      ├─────────────────┤
+                      │ id (PK)         │
+                      │ note_id (FK)    │
+                      │ reminder_date   │
+                      │ message         │
+                      │ is_completed    │
+                      └─────────────────┘
+
+🔗 attachment_mode: 'symlink' | 'copy' | 'reference'
+```
+
+## 🛠️ Technology Stack
+
+### Core Technologies
+- **Python 3.7+**: Programming language
+- **Click 8.1+**: Command-line interface creation
+- **Rich 13.7+**: Beautiful terminal formatting and UI
+- **SQLite**: Embedded database for data storage
+
+### Dependencies
+- **Markdown 3.4+**: Markdown processing for exports
+- **Colorama 0.4+**: Cross-platform colored terminal text
+- **Tabulate 0.9+**: Pretty-print tabular data
+- **Requests 2.28+**: HTTP library (future features)
+
+### Development Tools
+- **pytest**: Unit testing framework
+- **black**: Code formatting
+- **isort**: Import sorting
+- **mypy**: Static type checking
+- **flake8**: Linting
+
+## 📦 Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install wnote
+```
+
+### From Source
+
+```bash
+git clone https://github.com/imnotnahn/wnote.git
+cd wnote
+pip install -e .
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/imnotnahn/wnote.git
+cd wnote
+pip install -e ".[dev]"
+```
+
+## 🚀 Quick Start
+
+```bash
+# Create your first note
+wnote add "My First Note" -t "personal,ideas"
+
+# View all notes
+wnote show
+
+# Search notes
+wnote search "keyword"
+
+# Create a backup
+wnote backup
+
+# View statistics
+wnote stats
+```
+
+## 📖 Usage Guide
+
+### Note Management
+
+```bash
+# Create a note with editor
+wnote add "Meeting Notes"
+
+# Create a note with inline content
+wnote add "Quick Note" -c "Note content here"
+
+# Create a note with tags
+wnote add "Project Plan" -t "work,project,planning"
+
+# Create a note with template
+wnote add "Weekly Report" --template weekly
+
+# View all notes
+wnote show
+
+# View specific note
+wnote show 1
+
+# View notes by tag
+wnote show -t work
+
+# Show archived notes
+wnote show --archived
+
+# Edit note content
+wnote edit 1
+
+# Update note title or tags
+wnote update 1 -t "New Title"
+wnote update 1 --tags "new,tags"
+
+# Archive a note
+wnote update 1 --archive
+wnote archive 1  # Alternative
+
+# Unarchive a note
+wnote update 1 --unarchive
+wnote archive --restore-note 1  # Alternative
+
+# Delete note (archives by default)
+wnote delete 1
+
+# Permanently delete note
+wnote delete 1 --permanent
+```
+
+### Tags
+
+```bash
+# View all tags
+wnote tags
+
+# Set tag color
+wnote color work blue
+wnote color personal green
+wnote color urgent red
+
+# Delete a tag
+wnote delete work --tag
+```
+
+Available colors: `red`, `green`, `blue`, `yellow`, `magenta`, `cyan`, `white`, `black`, `bright_red`, `bright_green`, `bright_blue`, `bright_yellow`, `bright_magenta`, `bright_cyan`, `bright_white`, `bright_black`
+
+### Attachments
+
+WNote v0.6.1+ supports **three attachment modes** for maximum flexibility:
+
+| Mode | Icon | Description | Use Case | Disk Usage |
+|------|------|-------------|----------|------------|
+| **Symlink** 🔗 | Default | Creates symbolic link | Files you update frequently | <1% |
+| **Copy** 📄 | Safe | Copies file/folder | Snapshots, backups | 100% |
+| **Reference** 📌 | Minimal | Saves path only | Large files on external drives | 0% |
+
+```bash
+# Attach with symlink (default, recommended)
+wnote attach 1 ~/Documents/report.pdf
+wnote attach 1 ~/Documents/report.pdf --mode symlink
+
+# Attach with copy (safe snapshot)
+wnote attach 1 ~/config.json --mode copy
+
+# Attach with reference only (no copy/link)
+wnote attach 1 /mnt/external/bigdata.csv --mode reference
+
+# Attach directory (works with all modes)
+wnote attach 1 ~/Projects/code --mode symlink
+
+# Create note with attachment in one command
+wnote add "Report" -f ~/report.pdf -t "work"
+wnote add "Backup" -f ~/config.json --attach-mode copy
+
+# List attachments (shows mode icons: 🔗 📄 📌)
+wnote deattach 1 --list
+
+# Remove specific attachment (safe: only removes link/copy, not original)
+wnote deattach 1 --attachment-id 2
+
+# Remove all attachments
+wnote deattach 1 --all
+
+# View note with attachments
+wnote show 1 -o  # Auto-open all attachments
+```
+
+**🛡️ Safety Note**: When you delete a note or remove an attachment:
+- **Symlink mode**: Only the link is removed, original file stays intact ✅
+- **Copy mode**: Only the copied file is removed, original stays intact ✅
+- **Reference mode**: Only the path record is removed, original untouched ✅
+
+**Your original files are NEVER deleted!**
+
+### Reminders
+
+```bash
+# Add reminder with date and time
+wnote reminder 1 "2025-12-31 14:30" "Project deadline"
+
+# Add reminder with date only (defaults to 09:00)
+wnote reminder 1 "2025-12-31" "Important meeting"
+
+# View all reminders
+wnote reminders
+
+# View reminders for specific note
+wnote reminders -n 1
+
+# View including completed reminders
+wnote reminders -c
+
+# Mark reminder as completed
+wnote reminders --complete 1
+
+# Delete reminder
+wnote reminders --delete 1
+```
+
+### Search & Export
+
+```bash
+# Search notes (case-insensitive by default)
+wnote search "keyword"
+
+# Case-sensitive search
+wnote search "Keyword" --case-sensitive
+
+# Search with tag filter
+wnote search "project" --tag work
+
+# Include archived notes in search
+wnote search "old" --archived
+
+# Export note to markdown
+wnote export 1 --format markdown
+
+# Export note to HTML file
+wnote export 1 --format html --output note.html
+
+# Export to plain text
+wnote export 1 --format text --output note.txt
+```
+
+### Templates
+
+```bash
+# Create new template
+wnote template create meeting
+
+# Create template with description
+wnote template create "project-plan" -d "Template for project planning"
+
+# List all templates
+wnote template list
+
+# View template content
+wnote template show meeting
+
+# Use template when creating note
+wnote add "Weekly Meeting" --template meeting
+```
+
+### Backup & Restore
+
+```bash
+# Create automatic backup
+wnote backup
+
+# Create named backup
+wnote backup --name "before-cleanup"
+
+# Create compressed backup
+wnote backup --compress
+
+# List all backups
+wnote list-backups
+
+# Restore from backup
+wnote restore backup_20250315_120000
+
+# Delete a backup
+wnote list-backups --delete backup_20250315_120000
+```
+
+### Configuration
+
+```bash
+# View configuration
+wnote config
+
+# Reset to defaults
+wnote config --reset
+
+# Manually edit config
+nano ~/.config/wnote/config.json
+```
+
+### Statistics
+
+```bash
+# View comprehensive statistics
+wnote stats
+```
+
+Shows:
+- Total, active, and archived notes
+- Tag distribution
+- Attachment statistics
+- Reminder status
+- Recent activity
+- Note timeline
+- Helpful tips
+
+## ⚙️ Configuration
+
+WNote stores its configuration in `~/.config/wnote/config.json`. You can customize:
+
+```json
+{
+  "editor": "nano",
+  "default_color": "white",
+  "file_opener": "xdg-open",
+  "auto_backup": true,
+  "backup_interval_days": 7,
+  "max_backups": 10,
+  "search_limit": 100,
+  "preview_length": 40,
+  "date_format": "%d/%m/%Y %H:%M",
+  "tag_colors": {
+    "work": "blue",
+    "personal": "green",
+    "urgent": "red",
+    "idea": "yellow"
+  }
+}
+```
+
+### Configuration Paths
+
+- **Database**: `~/.config/wnote/notes.db`
+- **Config**: `~/.config/wnote/config.json`
+- **Attachments**: `~/.config/wnote/attachments/`
+- **Backups**: `~/.config/wnote/backups/`
+- **Templates**: `~/.config/wnote/templates/`
+- **Archive**: `~/.config/wnote/archive/`
+
+## 🔧 Development
+
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/imnotnahn/wnote.git
+cd wnote
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# or
+venv\Scripts\activate  # Windows
+
+# Install in development mode with dev dependencies
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=wnote --cov-report=html
+
+# Run specific test file
+pytest tests/test_database.py
+```
+
+### Code Quality
+
+```bash
+# Format code
+black wnote/
+isort wnote/
+
+# Lint code
+flake8 wnote/
+
+# Type checking
+mypy wnote/
+```
+
+### Building Package
+
+```bash
+# Clean previous builds
+rm -rf dist/ build/ *.egg-info
+
+# Build distribution packages
+python -m build
+
+# Check built packages
+ls -lh dist/
+
+# Test installation locally
+pip install dist/wnote-0.6.1-py3-none-any.whl
+
+# Or test with editable install
+pip install -e .
+```
+
+### 📦 Publishing to PyPI
+
+**Complete guide for uploading WNote to PyPI:**
+
+#### Prerequisites
+
+```bash
+# Install build tools
+pip install --upgrade pip build twine
+
+# Ensure you have PyPI account
+# Register at: https://pypi.org/account/register/
+# Register at TestPyPI: https://test.pypi.org/account/register/
+```
+
+#### Step 1: Prepare Your Package
+
+```bash
+# 1. Update version in these files:
+#    - wnote/__init__.py: __version__ = "0.6.1"
+#    - setup.py: version="0.6.1"
+#    - pyproject.toml: version = "0.6.1"
+
+# 2. Update CHANGELOG.md with new version info
+
+# 3. Update README.md with latest features
+
+# 4. Commit all changes
+git add .
+git commit -m "Release v0.6.1"
+git tag -a v0.6.1 -m "Release v0.6.1"
+git push origin master --tags
+```
+
+#### Step 2: Build the Package
+
+```bash
+# Clean old builds
+rm -rf dist/ build/ *.egg-info wnote.egg-info
+
+# Build source distribution and wheel
+python -m build
+
+# Verify build output
+ls -lh dist/
+# Should see:
+#   wnote-0.6.1-py3-none-any.whl
+#   wnote-0.6.1.tar.gz
+```
+
+#### Step 3: Test on TestPyPI (Recommended)
+
+```bash
+# Upload to TestPyPI first (for testing)
+python -m twine upload --repository testpypi dist/*
+
+# You'll be prompted for:
+#   Username: __token__
+#   Password: <your TestPyPI API token>
+
+# Test installation from TestPyPI
+pip install --index-url https://test.pypi.org/simple/ wnote
+
+# Test the package
+wnote --version
+wnote add "Test note" -c "Testing from TestPyPI"
+wnote show
+
+# If everything works, proceed to real PyPI
+pip uninstall wnote
+```
+
+#### Step 4: Upload to PyPI
+
+```bash
+# Upload to real PyPI
+python -m twine upload dist/*
+
+# You'll be prompted for:
+#   Username: __token__
+#   Password: <your PyPI API token>
+
+# Alternative: Use .pypirc for automation
+# Create ~/.pypirc:
+# [pypi]
+# username = __token__
+# password = <your-pypi-token>
+#
+# [testpypi]
+# username = __token__
+# password = <your-testpypi-token>
+```
+
+#### Step 5: Verify Upload
+
+```bash
+# Check on PyPI
+# Visit: https://pypi.org/project/wnote/
+
+# Test installation
+pip install wnote
+
+# Or upgrade
+pip install --upgrade wnote
+
+# Verify version
+wnote --version
+# Should output: WNote, version 0.6.1
+```
+
+#### API Token Setup (Recommended)
+
+For secure uploads without storing password:
+
+1. **Go to PyPI account settings**: https://pypi.org/manage/account/
+2. **Scroll to API tokens** → Click "Add API token"
+3. **Token name**: `wnote-upload` (or any name)
+4. **Scope**: Select "Entire account" or specific project
+5. **Copy the token** (starts with `pypi-...`)
+6. **Store safely** - you won't see it again!
+
+**Use token for upload:**
+
+```bash
+# When prompted for username: __token__
+# When prompted for password: paste your token (pypi-...)
+
+# Or save in .pypirc:
+cat > ~/.pypirc << EOF
+[pypi]
+username = __token__
+password = pypi-YourActualTokenHere
+
+[testpypi]
+username = __token__
+password = pypi-YourTestPyPITokenHere
+EOF
+
+chmod 600 ~/.pypirc
+```
+
+#### Troubleshooting Upload Issues
+
+**Error: File already exists**
+```bash
+# PyPI doesn't allow re-uploading same version
+# Solution: Bump version number and rebuild
+```
+
+**Error: Invalid distribution**
+```bash
+# Check package with twine
+python -m twine check dist/*
+```
+
+**Error: Missing README or metadata**
+```bash
+# Ensure MANIFEST.in includes all necessary files
+# Verify setup.py and pyproject.toml are correct
+```
+
+**Error: Package size too large**
+```bash
+# Remove unnecessary files from package
+# Check MANIFEST.in and .gitignore
+# Remove __pycache__, .pyc files
+find . -type d -name "__pycache__" -exec rm -rf {} +
+```
+
+#### Post-Release Checklist
+
+- ✅ Verify package on PyPI: https://pypi.org/project/wnote/
+- ✅ Test installation: `pip install wnote`
+- ✅ Update GitHub release with changelog
+- ✅ Announce on social media / forums
+- ✅ Update documentation links if needed
+- ✅ Monitor PyPI stats: https://pypistats.org/packages/wnote
+
+#### Version Numbering Guide
+
+Follow [Semantic Versioning](https://semver.org/):
+
+```
+MAJOR.MINOR.PATCH (e.g., 0.6.1)
+
+MAJOR: Breaking changes (0 → 1)
+MINOR: New features, backward compatible (6 → 7)
+PATCH: Bug fixes, minor improvements (1 → 2)
+```
+
+Examples:
+- `0.6.1` → `0.6.2`: Bug fixes only
+- `0.6.1` → `0.7.0`: New features added
+- `0.6.1` → `1.0.0`: Major rewrite or breaking changes
+
+## ⚡ Performance & Storage
+
+### Attachment Mode Comparison
+
+| Metric | Symlink 🔗 | Copy 📄 | Reference 📌 |
+|--------|------------|---------|--------------|
+| **Attach 100MB file** | <0.1s | ~2s | <0.1s |
+| **Attach 1GB folder** | <0.1s | ~30s | <0.1s |
+| **Disk overhead** | <0.1% | 100% | 0% |
+| **Speed** | **20-300x faster** | Baseline | **20-300x faster** |
+| **Stays in sync** | ✅ Yes | ❌ No | ✅ Yes |
+| **Snapshot** | ❌ No | ✅ Yes | ❌ No |
+| **Original file needed** | ✅ Yes | ❌ No | ✅ Yes |
+
+### Storage Example
+
+```
+Scenario: 10 notes with 100MB attachments each
+
+Symlink mode:  ~10KB   (99.99% space saved!)
+Copy mode:     ~1GB    (full duplication)
+Reference mode: ~5KB   (only paths stored)
+```
+
+### When to Use Each Mode
+
+**🔗 Symlink (Default)**
+- ✅ Files you're actively working on
+- ✅ Large files/folders (videos, datasets, projects)
+- ✅ Files on same filesystem
+- ✅ When you want to save space
+- ❌ Files on removable drives (might disconnect)
+
+**📄 Copy**
+- ✅ Creating backups/snapshots
+- ✅ Files you might delete later
+- ✅ Files on removable drives
+- ✅ When you need version history
+- ❌ Very large files (wastes space)
+
+**📌 Reference**
+- ✅ Very large files (>1GB)
+- ✅ Files on external/network drives
+- ✅ When you just need to remember location
+- ✅ Files you won't delete
+- ❌ If you need quick file access
+
+## 🐛 Troubleshooting
+
+### Database Locked Error
+
+If you encounter database locked errors:
+
+```bash
+# WNote automatically handles this with retry logic, but you can manually clean up
+rm ~/.config/wnote/notes.db-wal
+rm ~/.config/wnote/notes.db-shm
+```
+
+### Attachments Not Opening
+
+Ensure you have the correct file opener configured:
+
+```bash
+# Linux
+wnote config  # Check "file_opener": "xdg-open"
+
+# macOS
+# Set "file_opener": "open" in config
+
+# Windows
+# Set "file_opener": "start" in config
+```
+
+### Broken Symlinks
+
+If you see "❌ Missing" for attachments:
+
+```bash
+# This means the original file was moved or deleted
+# To find broken symlinks:
+wnote show <note_id>  # Look for "Missing" status
+
+# Remove broken attachment:
+wnote deattach <note_id> --list
+wnote deattach <note_id> -a <attachment_id>
+
+# Original file was moved? Re-attach it:
+wnote attach <note_id> /new/path/to/file
+```
+
+### Permission Denied on Symlink Creation
+
+On some systems, symlink creation requires special permissions:
+
+```bash
+# Linux: Usually no issue
+# Windows: May need admin rights or Developer Mode enabled
+# Solution: Use copy mode instead
+wnote attach 1 file.txt --mode copy
+```
+
+### Editor Not Working
+
+Set your preferred editor:
+
+```bash
+export EDITOR=vim  # Add to ~/.bashrc or ~/.zshrc
+# or edit config.json: "editor": "vim"
+```
+
+## 📚 Quick Reference
+
+### Most Used Commands
+
+```bash
+# Create & View
+wnote add "Title" -c "Content" -t "tag1,tag2"  # Create note
+wnote show                                      # List all notes
+wnote show 1                                    # View note #1
+wnote search "keyword"                          # Search notes
+
+# Edit & Update
+wnote edit 1                                    # Edit content
+wnote update 1 --title "New Title"              # Update title
+wnote update 1 --tags "new,tags"                # Update tags
+wnote update 1 --archive                        # Archive note
+
+# Attachments (NEW in v0.6.1)
+wnote attach 1 file.pdf                         # Symlink (default)
+wnote attach 1 file.pdf --mode copy             # Copy file
+wnote attach 1 file.pdf --mode reference        # Path only
+wnote deattach 1 --list                         # List attachments
+wnote deattach 1 -a 2                           # Remove attachment
+
+# Organization
+wnote tags                                      # List all tags
+wnote color work blue                           # Set tag color
+wnote stats                                     # View statistics
+
+# Reminders
+wnote reminder 1 "2025-12-31 14:30" "Deadline"  # Add reminder
+wnote reminders                                 # View reminders
+wnote reminders --complete 1                    # Mark complete
+
+# Backup & Export
+wnote backup                                    # Create backup
+wnote export 1 --format markdown                # Export to MD
+wnote restore backup_20250315_120000            # Restore backup
+
+# Delete
+wnote delete 1                                  # Archive (soft delete)
+wnote delete 1 --permanent                      # Permanent delete
+```
+
+### Keyboard Shortcuts & Tips
+
+```bash
+# Use TAB for autocompletion (if supported by your shell)
+
+# Quick note creation
+wnote add "Quick note" -c "$(xclip -o)"        # From clipboard
+
+# Pipe content
+echo "Note content" | wnote add "Title" -c -
+
+# Editor shortcuts (when editing notes)
+# Ctrl+X (nano), :wq (vim), Ctrl+O+Enter (most editors)
+
+# View help for any command
+wnote <command> --help
+```
+
+### File Locations
+
+```bash
+~/.config/wnote/
+├── notes.db              # SQLite database
+├── config.json           # Configuration
+├── attachments/          # Symlinks and copied files
+├── backups/              # Database backups
+├── templates/            # Note templates
+└── archive/              # Archived exports
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Contribution Guidelines
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+### Code Style
+
+- Follow PEP 8 guidelines
+- Use type hints where appropriate
+- Add docstrings to functions and classes
+- Write tests for new features
+- Format code with `black` and `isort`
+
+### Areas for Contribution
+
+- 🐛 Bug fixes and improvements
+- ✨ New features (templates, plugins, integrations)
+- 📚 Documentation improvements
+- 🌍 Translations (i18n support)
+- 🎨 UI/UX enhancements
+- 🧪 Test coverage expansion
+- 🚀 Performance optimizations
+
+## 🆕 What's New in v0.6.1
+
+### 🔗 Symlink Support (Major Feature)
+
+WNote now supports **three attachment modes** for maximum flexibility:
+
+1. **Symlink (Default)** - Creates symbolic links, saves 99% disk space
+2. **Copy** - Old behavior, copies files for safety
+3. **Reference** - Only saves path, no storage overhead
+
+```bash
+# Symlink mode (new default)
+wnote attach 1 large_file.mp4  # <0.1s, saves space
+
+# Copy mode (old behavior)
+wnote attach 1 important.pdf --mode copy
+
+# Reference mode (path only)
+wnote attach 1 /external/dataset.csv --mode reference
+```
+
+### 🛡️ Critical Bug Fixes
+
+- **Fixed**: Permanent delete now properly removes attachments from disk
+- **Fixed**: Original files are never deleted (only links/copies removed)
+- **Fixed**: Help text formatting for better readability
+
+### 📊 Performance Improvements
+
+- **20-300x faster** attachment operations
+- **99% disk space savings** with symlink mode
+- Better database error handling with retry logic
+
+### 🎨 UI/UX Improvements
+
+- Mode indicators in attachment listings (🔗 📄 📌)
+- Better help text formatting with examples
+- Broken symlink detection (shows "❌ Missing")
+- Improved error messages
+
+## 🔄 Migrating from v0.6.0 to v0.6.1
+
+**Good news**: Migration is automatic! Just update and run.
+
+```bash
+# Update WNote
+pip install --upgrade wnote
+
+# Run any command to trigger auto-migration
+wnote show
+
+# Your existing attachments will be marked as 'copy' mode
+# New attachments will default to 'symlink' mode
+```
+
+**No data loss** - all existing notes and attachments remain intact!
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Click](https://click.palletsprojects.com/) - For the excellent CLI framework
+- [Rich](https://rich.readthedocs.io/) - For beautiful terminal formatting
+- All contributors and users of WNote
+
+## 🔗 Links
+
+- **GitHub**: https://github.com/imnotnahn/wnote
+- **PyPI**: https://pypi.org/project/wnote/
+- **Issues**: https://github.com/imnotnahn/wnote/issues
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
+
+## 📊 Project Stats
+
+![GitHub stars](https://img.shields.io/github/stars/imnotnahn/wnote?style=social)
+![GitHub forks](https://img.shields.io/github/forks/imnotnahn/wnote?style=social)
+![PyPI downloads](https://img.shields.io/pypi/dm/wnote)
+![GitHub last commit](https://img.shields.io/github/last-commit/imnotnahn/wnote)
+
+---
+
+**Made with ❤️ by [imnahn](https://github.com/imnotnahn)**
+
+*If you find WNote useful, please consider giving it a star ⭐ on GitHub!*
+
+```
+     _    _   _   _       _       
+    | |  | | | \ | |     | |      
+    | |  | | |  \| | ___ | |_ ___ 
+    | |/\| | | . ` |/ _ \| __/ _ \
+    \  /\  / | |\  | (_) | ||  __/
+     \/  \/  |_| \_|\___/ \__\___|
+                                   
+    Terminal Note Taking, Perfected.
+```
