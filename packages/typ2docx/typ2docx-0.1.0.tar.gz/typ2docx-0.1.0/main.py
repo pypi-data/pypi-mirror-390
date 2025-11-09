@@ -1,0 +1,155 @@
+#! /usr/bin/env python3
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from pathlib import Path
+from shutil import copy2, move
+from subprocess import CalledProcessError, run
+from tempfile import TemporaryDirectory
+from typing import Annotated, Optional
+
+from extract import extract as extract_equations  # ty: ignore[unresolved-import]
+from rich.console import Console
+from typer import Argument, Exit, Option, Typer
+
+HERE: Path = Path(__file__).parent
+app = Typer(
+    name="typ2docx",
+    help="Converting Typst project to DOCX format.",
+)
+console = Console()
+DIR: Path = Path.cwd() / ".typ2docx/"
+INPUT: Path
+OUTPUT: Path
+DEBUG: bool = False
+
+
+@contextmanager
+def WorkDirectory():
+    global DIR
+    if DEBUG:
+        DIR.mkdir(exist_ok=True)
+        yield
+    else:
+        with TemporaryDirectory(prefix=".typ2docx_") as tmpdir:
+            DIR = Path(tmpdir)
+            yield
+
+
+@app.command()
+def main(
+    input: Annotated[Path, Argument(help="Entry point to the Typst project")],
+    output: Annotated[
+        Optional[Path],
+        Option(
+            "-o",
+            help="Output DOCX file path. Defaults to input filename with .docx extension.",
+        ),
+    ] = None,
+    debug: Annotated[
+        bool,
+        Option(
+            "-d",
+            help="Keep intermediate files in working directory for inspection.",
+        ),
+    ] = False,
+):
+    """Convert a Typst project to DOCX format."""
+    global INPUT, OUTPUT, DEBUG
+    INPUT = input
+    OUTPUT = output or Path.cwd() / f"{INPUT.stem}.docx"
+    DEBUG = debug
+
+    console.print(f"[bold blue]Converting[/bold blue] {INPUT}...")
+    if debug:
+        console.print(
+            "[yellow]Debug mode:[/yellow] Intermediate files will be kept in ./.typ2docx/"
+        )
+
+    with WorkDirectory():
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(branch1)
+            future2 = executor.submit(branch2)
+            future1.result()
+            future2.result()
+        console.print("[bold green]Merging[/bold green] DOCX")
+        docx2docx()
+        move(DIR / "out.docx", OUTPUT)
+    console.print(f"[bold green]Output saved to[/bold green] {OUTPUT}")
+
+
+def branch1():
+    typ2pdf()
+    pdf2docx()
+
+
+def branch2():
+    """Typst -- Math Extracted -> Typst -- Pandoc -> DOCX"""
+    typ2typ()
+    typ2docx()
+
+
+def typ2pdf():
+    console.print("[bold green]Converting[/bold green] TYP -> PDF with Typst")
+    try:
+        run(
+            ["typst", "compile", "-", DIR / "a.pdf"],
+            cwd=INPUT.parent,
+            text=True,
+            input=(HERE / "preamble.typ").read_text() + INPUT.read_text(),
+            check=True,
+        )
+    except CalledProcessError:
+        console.print("[bold red]Error:[/bold red] Failed to compile TYP to PDF")
+        raise Exit(1)
+
+
+def pdf2docx():
+    # TODO: other engines
+    console.print("[bold green]Converting[/bold green] PDF -> DOCX with Acrobat")
+    try:
+        run(
+            ["osascript", HERE / "acrobat.applescript", DIR / "a.pdf"],
+            cwd=DIR,
+            check=True,
+        )
+    except CalledProcessError:
+        console.print(
+            "[bold red]Error:[/bold red] Failed to convert PDF -> DOCX with Acrobat",
+        )
+        raise Exit(1)
+
+
+def typ2typ():
+    """Typst to Typst (math only)"""
+    console.print("[bold green]Extracting[/bold green] math source code")
+    # construct source file, empty equations are omitted
+    eqs = [eq for eq in extract_equations(str(INPUT)) if eq[1:-1].strip()]
+    console.print(f"[bold green]Extracted[/bold green] {len(eqs)} math blocks")
+    src = "\n\n".join(eqs)
+    (DIR / "b.typ").write_text(src)
+
+
+def typ2docx():
+    """Typst to DOCX (with Pandoc, math only)"""
+    console.print("[bold green]Converting[/bold green] TYP -> DOCX with Pandoc")
+    try:
+        run(["pandoc", "b.typ", "-o", "b.docx"], cwd=DIR, check=True)
+    except CalledProcessError:
+        console.print(
+            "[bold red]Error:[/bold red] Failed to convert Typst to DOCX with Pandoc"
+        )
+        raise Exit(1)
+
+
+def docx2docx():
+    # Saxon evaluates path relative to the xsl, must be copied
+    copy2(HERE / "merge.xslt", DIR / "merge.xslt")
+    try:
+        run(["sh", HERE / "merge.sh"], cwd=DIR, check=True)
+    except CalledProcessError:
+        console.print("[bold red]Error:[/bold red] Failed to merge DOCX with Saxon")
+        raise Exit(1)
+
+
+if __name__ == "__main__":
+    app()
