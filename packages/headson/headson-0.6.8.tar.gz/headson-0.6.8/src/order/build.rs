@@ -1,0 +1,640 @@
+use anyhow::Result;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
+use std::sync::Arc;
+use unicode_segmentation::UnicodeSegmentation;
+
+use super::scoring::*;
+use super::types::*;
+use crate::utils::tree_arena::JsonTreeArena;
+
+#[derive(Clone)]
+struct Entry {
+    score: u128,
+    // Index into the priority-ordered nodes (0..total_nodes)
+    priority_index: usize,
+    depth: usize,
+    // When present, we can read kind from the arena (parsed JSON) node.
+    // When None, this is a synthetic entry (used for string grapheme entries).
+    arena_index: Option<usize>,
+}
+impl PartialEq for Entry {
+    fn eq(&self, other: &Self) -> bool {
+        self.score == other.score
+            && self.priority_index == other.priority_index
+    }
+}
+impl Eq for Entry {}
+impl PartialOrd for Entry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.score
+            .cmp(&other.score)
+            .then_with(|| self.priority_index.cmp(&other.priority_index))
+    }
+}
+
+struct CommonChild {
+    arena_index: Option<usize>,
+    score: u128,
+    ranked: RankedNode,
+    index_in_parent_array: Option<usize>,
+}
+
+struct Scope<'a> {
+    arena: &'a JsonTreeArena,
+    config: &'a PriorityConfig,
+    next_pq_id: &'a mut usize,
+    parent: &'a mut Vec<Option<NodeId>>,
+    children: &'a mut Vec<Vec<NodeId>>,
+    metrics: &'a mut Vec<NodeMetrics>,
+    nodes: &'a mut Vec<RankedNode>,
+    heap: &'a mut BinaryHeap<Reverse<Entry>>,
+    safety_cap: usize,
+    object_type: &'a mut Vec<ObjectType>,
+    index_in_parent_array: &'a mut Vec<Option<usize>>,
+    force_first_child: &'a mut Vec<bool>,
+    arena_to_pq: &'a mut Vec<Option<usize>>,
+}
+
+impl<'a> Scope<'a> {
+    fn push_child_common(
+        &mut self,
+        entry: &Entry,
+        child_priority_index: usize,
+        common: CommonChild,
+    ) {
+        let id = entry.priority_index;
+        self.parent.push(Some(NodeId(id)));
+        self.children.push(Vec::new());
+        self.metrics.push(NodeMetrics::default());
+        self.nodes.push(common.ranked);
+        self.index_in_parent_array
+            .push(common.index_in_parent_array);
+        // Children created from parsing regular JSON are standard objects/arrays/etc.
+        // If child is an object, default to Object type.
+        self.object_type.push(ObjectType::Object);
+        let force = common
+            .arena_index
+            .and_then(|idx| {
+                self.arena.nodes.get(idx).map(|n| n.force_first_line)
+            })
+            .unwrap_or(false);
+        self.force_first_child.push(force);
+        self.children[id].push(NodeId(child_priority_index));
+        if let Some(arena_idx) = common.arena_index {
+            if arena_idx >= self.arena_to_pq.len() {
+                self.arena_to_pq.resize(arena_idx + 1, None);
+            }
+            self.arena_to_pq[arena_idx] = Some(child_priority_index);
+        }
+        self.heap.push(Reverse(Entry {
+            score: common.score,
+            priority_index: child_priority_index,
+            depth: entry.depth + 1,
+            arena_index: common.arena_index,
+        }));
+    }
+    fn record_array_metrics(&mut self, id: usize, arena_id: usize) {
+        let array_len = self.arena.nodes[arena_id]
+            .array_len
+            .unwrap_or(self.arena.nodes[arena_id].children_len);
+        self.metrics[id].array_len = Some(array_len);
+    }
+
+    fn record_object_metrics(&mut self, id: usize, arena_id: usize) {
+        let object_len = self.arena.nodes[arena_id]
+            .object_len
+            .unwrap_or(self.arena.nodes[arena_id].children_len);
+        self.metrics[id].object_len = Some(object_len);
+    }
+
+    fn record_string_metrics(&mut self, id: usize) {
+        let s = match &self.nodes[id] {
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
+            _ => unreachable!(
+                "record_string_metrics called for non-string node: id={id}"
+            ),
+        };
+        let mut iter = UnicodeSegmentation::graphemes(s, true);
+        let count =
+            iter.by_ref().take(self.config.max_string_graphemes).count();
+        self.metrics[id].string_len = Some(count);
+        if iter.next().is_some() {
+            self.metrics[id].string_truncated = true;
+        }
+    }
+
+    fn record_metrics_for(
+        &mut self,
+        id: usize,
+        kind: NodeKind,
+        arena_id: usize,
+    ) {
+        match kind {
+            NodeKind::Array => self.record_array_metrics(id, arena_id),
+            NodeKind::Object => self.record_object_metrics(id, arena_id),
+            NodeKind::String => self.record_string_metrics(id),
+            _ => {}
+        }
+    }
+
+    fn resolved_bias(
+        &self,
+        arena_id: Option<usize>,
+        depth: usize,
+    ) -> super::types::ArrayBias {
+        let mut bias = self.config.array_bias;
+        if let Some(aid) = arena_id {
+            if let Some(override_bias) =
+                self.arena.nodes[aid].array_bias_override
+            {
+                bias = override_bias;
+            }
+        }
+        if matches!(bias, super::types::ArrayBias::HeadTail) && depth == 0 {
+            super::types::ArrayBias::HeadMidTail
+        } else {
+            bias
+        }
+    }
+
+    fn bias_extra(
+        bias: super::types::ArrayBias,
+        i: usize,
+        kept: usize,
+    ) -> u128 {
+        match bias {
+            super::types::ArrayBias::Head => {
+                let ii = i as u128;
+                ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT
+            }
+            super::types::ArrayBias::HeadMidTail => {
+                let mid_hi = kept.saturating_sub(1) / 2;
+                let mid_lo = kept / 2;
+                let d_head = i as isize;
+                let d_tail = kept.saturating_sub(1) as isize - i as isize;
+                let d_mid_hi = (i as isize - mid_hi as isize).abs();
+                let d_mid_lo = (i as isize - mid_lo as isize).abs();
+                let d_mid = d_mid_hi.min(d_mid_lo);
+                let d = d_head.min(d_tail).min(d_mid).unsigned_abs() as u128;
+                d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
+            }
+            super::types::ArrayBias::HeadTail => {
+                let d_head = i as isize;
+                let d_tail = kept.saturating_sub(1) as isize - i as isize;
+                let d = d_head.min(d_tail).unsigned_abs() as u128;
+                d * d * d * ARRAY_INDEX_CUBIC_WEIGHT
+            }
+        }
+    }
+
+    fn array_extra_for_index(
+        &self,
+        i: usize,
+        kept: usize,
+        arena_id: Option<usize>,
+        depth: usize,
+    ) -> u128 {
+        if self.config.prefer_tail_arrays {
+            let idx_for_priority = kept.saturating_sub(1).saturating_sub(i);
+            let ii = idx_for_priority as u128;
+            return ii * ii * ii * ARRAY_INDEX_CUBIC_WEIGHT;
+        }
+        let bias = self.resolved_bias(arena_id, depth);
+        Self::bias_extra(bias, i, kept)
+    }
+
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Array child expansion mixes scoring, arena index mapping, and PQ wiring; splitting would obscure the flow"
+    )]
+    fn expand_array_children(&mut self, entry: &Entry, arena_id: usize) {
+        let node = &self.arena.nodes[arena_id];
+        let kept = node.children_len;
+        for i in 0..kept {
+            let child_arena_id = self.arena.children[node.children_start + i];
+            let child_kind = self.arena.nodes[child_arena_id].kind;
+            let child_priority_index = *self.next_pq_id;
+            *self.next_pq_id += 1;
+            // Original index in source array if tracked; fall back to kept index.
+            let orig_index = if node.arr_indices_len > 0 {
+                let start = node.arr_indices_start;
+                self.arena.arr_indices[start + i]
+            } else {
+                i
+            };
+            let extra: u128 = self.array_extra_for_index(
+                i,
+                kept,
+                Some(arena_id),
+                entry.depth,
+            );
+            let mut score = entry.score + ARRAY_CHILD_BASE_INCREMENT + extra;
+            if self.arena.nodes[child_arena_id].prefers_parent_line {
+                score = score.saturating_sub(CODE_PARENT_LINE_BONUS);
+            }
+            let child_node = &self.arena.nodes[child_arena_id];
+            if matches!(
+                child_kind,
+                NodeKind::Null | NodeKind::Bool | NodeKind::Number
+            ) && child_node
+                .atomic_token
+                .as_deref()
+                .map(|s| s.trim().is_empty())
+                .unwrap_or(false)
+            {
+                score = score.saturating_add(CODE_EMPTY_LINE_PENALTY);
+            }
+            let atomic = child_node.atomic_token.clone();
+            self.push_child_common(
+                entry,
+                child_priority_index,
+                CommonChild {
+                    arena_index: Some(child_arena_id),
+                    score,
+                    ranked: match child_kind {
+                        NodeKind::Array => RankedNode::Array {
+                            node_id: NodeId(child_priority_index),
+                            key_in_object: None,
+                        },
+                        NodeKind::Object => RankedNode::Object {
+                            node_id: NodeId(child_priority_index),
+                            key_in_object: None,
+                        },
+                        NodeKind::String => RankedNode::SplittableLeaf {
+                            node_id: NodeId(child_priority_index),
+                            key_in_object: None,
+                            value: child_node
+                                .string_value
+                                .clone()
+                                .unwrap_or_default(),
+                        },
+                        NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
+                            RankedNode::AtomicLeaf {
+                                node_id: NodeId(child_priority_index),
+                                key_in_object: None,
+                                token: atomic.unwrap_or_default(),
+                            }
+                        }
+                    },
+                    index_in_parent_array: Some(orig_index),
+                },
+            );
+            if *self.next_pq_id >= self.safety_cap {
+                break;
+            }
+        }
+    }
+
+    #[allow(
+        clippy::cognitive_complexity,
+        reason = "Object child expansion handles sorting by key, scoring, and PQ wiring in one place for clarity"
+    )]
+    fn expand_object_children(&mut self, entry: &Entry, arena_id: usize) {
+        let node = &self.arena.nodes[arena_id];
+        let mut items: Vec<(usize, usize)> =
+            Vec::with_capacity(node.children_len);
+        for i in 0..node.children_len {
+            let key_idx = node.obj_keys_start + i;
+            let child_arena_id = self.arena.children[node.children_start + i];
+            items.push((key_idx, child_arena_id));
+        }
+        items.sort_by(|a, b| {
+            let ka = &self.arena.obj_keys[a.0];
+            let kb = &self.arena.obj_keys[b.0];
+            match ka.cmp(kb) {
+                std::cmp::Ordering::Equal => a.0.cmp(&b.0),
+                other => other,
+            }
+        });
+        for (key_idx, child_arena_id) in items {
+            let child_kind = self.arena.nodes[child_arena_id].kind;
+            let child_priority_index = *self.next_pq_id;
+            *self.next_pq_id += 1;
+            let score = entry.score + OBJECT_CHILD_BASE_INCREMENT;
+            let child_node = &self.arena.nodes[child_arena_id];
+            let atomic = child_node.atomic_token.clone();
+            self.push_child_common(
+                entry,
+                child_priority_index,
+                CommonChild {
+                    arena_index: Some(child_arena_id),
+                    score,
+                    ranked: match child_kind {
+                        NodeKind::Array => RankedNode::Array {
+                            node_id: NodeId(child_priority_index),
+                            key_in_object: Some(
+                                self.arena.obj_keys[key_idx].clone(),
+                            ),
+                        },
+                        NodeKind::Object => RankedNode::Object {
+                            node_id: NodeId(child_priority_index),
+                            key_in_object: Some(
+                                self.arena.obj_keys[key_idx].clone(),
+                            ),
+                        },
+                        NodeKind::String => RankedNode::SplittableLeaf {
+                            node_id: NodeId(child_priority_index),
+                            key_in_object: Some(
+                                self.arena.obj_keys[key_idx].clone(),
+                            ),
+                            value: child_node
+                                .string_value
+                                .clone()
+                                .unwrap_or_default(),
+                        },
+                        NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
+                            RankedNode::AtomicLeaf {
+                                node_id: NodeId(child_priority_index),
+                                key_in_object: Some(
+                                    self.arena.obj_keys[key_idx].clone(),
+                                ),
+                                token: atomic.unwrap_or_default(),
+                            }
+                        }
+                    },
+                    index_in_parent_array: None,
+                },
+            );
+            if *self.next_pq_id >= self.safety_cap {
+                break;
+            }
+        }
+    }
+
+    fn expand_string_children(&mut self, entry: &Entry) {
+        let id = entry.priority_index;
+        let full = match &self.nodes[id] {
+            RankedNode::SplittableLeaf { value, .. } => value.as_str(),
+            // LeafPart (and any non-splittable) should not expand further; treat as empty
+            _ => "",
+        };
+        let count = UnicodeSegmentation::graphemes(full, true)
+            .take(self.config.max_string_graphemes)
+            .count();
+        for i in 0..count {
+            let child_priority_index = *self.next_pq_id;
+            *self.next_pq_id += 1;
+            let extra = if i > STRING_INDEX_INFLECTION {
+                let d = (i - STRING_INDEX_INFLECTION) as u128;
+                d * d * STRING_INDEX_QUADRATIC_WEIGHT
+            } else {
+                0
+            };
+            let score = entry.score
+                + STRING_CHILD_BASE_INCREMENT
+                + (i as u128) * STRING_CHILD_LINEAR_WEIGHT
+                + extra;
+            self.push_child_common(
+                entry,
+                child_priority_index,
+                CommonChild {
+                    arena_index: None,
+                    score,
+                    ranked: RankedNode::LeafPart {
+                        node_id: NodeId(child_priority_index),
+                        key_in_object: None,
+                    },
+                    index_in_parent_array: None,
+                },
+            );
+            if *self.next_pq_id >= self.safety_cap {
+                break;
+            }
+        }
+    }
+
+    fn resolve_kind(&self, entry: &Entry) -> NodeKind {
+        if let Some(ar_id) = entry.arena_index {
+            self.arena.nodes[ar_id].kind
+        } else {
+            NodeKind::String
+        }
+    }
+
+    fn expand_for(&mut self, entry: &Entry, kind: NodeKind) {
+        match kind {
+            NodeKind::Array => {
+                if let Some(ar_id) = entry.arena_index {
+                    self.expand_array_children(entry, ar_id);
+                }
+            }
+            NodeKind::Object => {
+                if let Some(ar_id) = entry.arena_index {
+                    self.expand_object_children(entry, ar_id);
+                }
+            }
+            NodeKind::String => self.expand_string_children(entry),
+            _ => {}
+        }
+    }
+
+    fn process_entry(
+        &mut self,
+        entry: &Entry,
+        ids_by_order: &mut Vec<NodeId>,
+    ) {
+        let id = entry.priority_index;
+        ids_by_order.push(NodeId(id));
+        let kind = self.resolve_kind(entry);
+        if let Some(ar_id) = entry.arena_index {
+            self.record_metrics_for(id, kind, ar_id);
+        }
+        self.expand_for(entry, kind);
+    }
+}
+
+#[allow(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "Orchestrates the full build; further splitting would decrease readability"
+)]
+pub fn build_order(
+    arena: &JsonTreeArena,
+    config: &PriorityConfig,
+) -> Result<PriorityOrder> {
+    let mut next_pq_id: usize = 0;
+    let mut nodes: Vec<RankedNode> = Vec::new();
+    let mut parent: Vec<Option<NodeId>> = Vec::new();
+    let mut children: Vec<Vec<NodeId>> = Vec::new();
+    let mut metrics: Vec<NodeMetrics> = Vec::new();
+    let mut order: Vec<NodeId> = Vec::new();
+    let mut object_type: Vec<ObjectType> = Vec::new();
+    let mut heap: BinaryHeap<Reverse<Entry>> = BinaryHeap::new();
+    let mut index_in_parent_array: Vec<Option<usize>> = Vec::new();
+    let mut force_first_child: Vec<bool> = Vec::new();
+    let mut arena_to_pq: Vec<Option<usize>> = vec![None; arena.nodes.len()];
+
+    // Seed root from arena
+    let root_ar = arena.root_id;
+    let root_kind = arena.nodes[root_ar].kind;
+    let root_priority_index = next_pq_id;
+    next_pq_id += 1;
+    parent.push(None);
+    children.push(Vec::new());
+    metrics.push(NodeMetrics::default());
+    index_in_parent_array.push(None);
+    let n = &arena.nodes[root_ar];
+    let root_atomic = n.atomic_token.clone();
+    let root_node = match root_kind {
+        NodeKind::Array => RankedNode::Array {
+            node_id: NodeId(root_priority_index),
+            key_in_object: None,
+        },
+        NodeKind::Object => RankedNode::Object {
+            node_id: NodeId(root_priority_index),
+            key_in_object: None,
+        },
+        NodeKind::String => RankedNode::SplittableLeaf {
+            node_id: NodeId(root_priority_index),
+            key_in_object: None,
+            value: n.string_value.clone().unwrap_or_default(),
+        },
+        NodeKind::Null | NodeKind::Bool | NodeKind::Number => {
+            RankedNode::AtomicLeaf {
+                node_id: NodeId(root_priority_index),
+                key_in_object: None,
+                token: root_atomic.unwrap_or_default(),
+            }
+        }
+    };
+    nodes.push(root_node);
+    // Root object type: mark fileset root specially, otherwise Object.
+    let root_ot = if arena.is_fileset {
+        ObjectType::Fileset
+    } else {
+        ObjectType::Object
+    };
+    object_type.push(root_ot);
+    force_first_child.push(arena.nodes[root_ar].force_first_line);
+    if root_ar >= arena_to_pq.len() {
+        arena_to_pq.resize(root_ar + 1, None);
+    }
+    arena_to_pq[root_ar] = Some(root_priority_index);
+    heap.push(Reverse(Entry {
+        score: ROOT_BASE_SCORE,
+        priority_index: root_priority_index,
+        depth: 0,
+        arena_index: Some(root_ar),
+    }));
+
+    while let Some(Reverse(entry)) = heap.pop() {
+        let mut scope = Scope {
+            arena,
+            config,
+            next_pq_id: &mut next_pq_id,
+            parent: &mut parent,
+            children: &mut children,
+            metrics: &mut metrics,
+            nodes: &mut nodes,
+            heap: &mut heap,
+            safety_cap: SAFETY_CAP,
+            object_type: &mut object_type,
+            index_in_parent_array: &mut index_in_parent_array,
+            force_first_child: &mut force_first_child,
+            arena_to_pq: &mut arena_to_pq,
+        };
+        scope.process_entry(&entry, &mut order);
+        if next_pq_id >= SAFETY_CAP {
+            break;
+        }
+    }
+
+    let total = next_pq_id;
+    let mut code_lines: HashMap<usize, Arc<Vec<String>>> = HashMap::new();
+    for (arena_idx, lines) in &arena.code_lines {
+        if let Some(Some(pq_id)) = arena_to_pq.get(*arena_idx) {
+            code_lines.insert(*pq_id, Arc::clone(lines));
+        }
+    }
+    Ok(PriorityOrder {
+        metrics,
+        nodes,
+        parent,
+        children,
+        index_in_parent_array,
+        by_priority: order,
+        total_nodes: total,
+        object_type,
+        force_first_child,
+        code_lines,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use insta::assert_snapshot;
+
+    #[test]
+    fn order_empty_array() {
+        let arena = crate::ingest::formats::json::build_json_tree_arena(
+            "[]",
+            &PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = super::build_order(
+            &arena,
+            &PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut items_sorted: Vec<_> = build.nodes.clone();
+        // Build a transient mapping from id -> by_priority index
+        let mut order_index = vec![usize::MAX; build.total_nodes];
+        for (idx, &pid) in build.by_priority.iter().enumerate() {
+            let pidx = pid.0;
+            if pidx < build.total_nodes {
+                order_index[pidx] = idx;
+            }
+        }
+        items_sorted.sort_by_key(|it| {
+            order_index
+                .get(it.node_id().0)
+                .copied()
+                .unwrap_or(usize::MAX)
+        });
+        let mut lines = vec![format!("len={}", build.total_nodes)];
+        for it in items_sorted {
+            lines.push(format!("{it:?}"));
+        }
+        assert_snapshot!("order_empty_array_order", lines.join("\n"));
+    }
+
+    #[test]
+    fn order_single_string_array() {
+        let arena = crate::ingest::formats::json::build_json_tree_arena(
+            "[\"ab\"]",
+            &PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let build = super::build_order(
+            &arena,
+            &PriorityConfig::new(usize::MAX, usize::MAX),
+        )
+        .unwrap();
+        let mut items_sorted: Vec<_> = build.nodes.clone();
+        let mut order_index = vec![usize::MAX; build.total_nodes];
+        for (idx, &pid) in build.by_priority.iter().enumerate() {
+            let pidx = pid.0;
+            if pidx < build.total_nodes {
+                order_index[pidx] = idx;
+            }
+        }
+        items_sorted.sort_by_key(|it| {
+            order_index
+                .get(it.node_id().0)
+                .copied()
+                .unwrap_or(usize::MAX)
+        });
+        let mut lines = vec![format!("len={}", build.total_nodes)];
+        for it in items_sorted {
+            lines.push(format!("{it:?}"));
+        }
+        assert_snapshot!("order_single_string_array_order", lines.join("\n"));
+    }
+}
