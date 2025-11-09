@@ -1,0 +1,51 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+
+{% block blogs-style %}
+<link rel="stylesheet" href="{% static 'blogs/css/create-style.css' %}">
+<link rel="stylesheet" href="{% static 'blogs/css/markdown-style.css' %}">
+<link rel="stylesheet" href="{% static 'blogs/css/nnfx-dark.css' %}">
+{% endblock blogs-style %}
+
+{% block content %}
+
+<!-- コンテナ内　記事更新フォーム・マークダウンのコード -->
+<div class="blogs-title container">
+  <!-- マークダウン記法のリスト -->
+  {% include 'blogs/markdown_modal.html' %}
+  <!-- 記事更新フォーム -->
+  <!-- FormViewで使用する場合、action="{ url 'blogs:edit_blog' blog.pk %}"のやり方もある。 -->
+  <form action="" method="POST">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-group">
+      <label for="{{ field.id }}">{{field.label_tag }}</label>
+      {{ field }}
+    </div>
+    {% endfor %}
+    <div class="sticky-bottom">
+      <!-- 詳細ページに戻るリンク -->
+      {% if blog.is_publick %}
+      <a href="{% url 'blogs:detail' blog.pk %}">
+	<button type="button" class="btn btn-dark btn-smdisabled">戻る</button>
+      </a>
+      {% else %}
+      <a href="{% url 'blogs:private_detail' blog.pk %}">
+	<button type="button" class="btn btn-dark btn-smdisabled">戻る</button>
+      </a>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm">再投稿</button>
+    </div>
+  </form>
+  <!-- 記事更新フォーム終 -->
+
+  <!-- markdownxのプレビュー表示 -->
+  {{ form.media }}
+
+</div>
+
+<!-- シンタックスハイライト -->
+<script type="text/javascript" src="{% static 'blogs/js/highlight.js' %}"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+{% endblock %}
