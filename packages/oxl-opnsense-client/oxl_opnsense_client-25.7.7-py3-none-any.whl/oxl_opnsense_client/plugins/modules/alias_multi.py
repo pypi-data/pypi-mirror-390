@@ -1,0 +1,96 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+# Copyright: (C) 2025, Pascal Rath <contact+opnsense@OXL.at>
+# GNU General Public License v3.0+ (see https://www.gnu.org/licenses/gpl-3.0.txt)
+
+# see: https://docs.opnsense.org/development/api/core/firewall.html
+
+from basic.ansible import AnsibleModule
+
+from plugins.module_utils.base.handler import \
+    module_dependency_error, MODULE_EXCEPTIONS
+
+try:
+    from plugins.module_utils.base.wrapper import \
+        module_multi_wrapper
+    from plugins.module_utils.base.multi import \
+        build_multi_mod_args, MultiModuleCallbacks
+    from plugins.module_utils.defaults.main import \
+        RELOAD_MOD_ARG_DEF_FALSE, OPN_MOD_ARGS
+    from plugins.module_utils.defaults.alias import \
+        ALIAS_MOD_ARGS
+    from plugins.module_utils.main.alias import Alias
+    from plugins.module_utils.helper.main import ensure_list
+    from plugins.module_utils.helper.alias import \
+        builtin_alias, build_updatefreq
+
+except MODULE_EXCEPTIONS:
+    module_dependency_error()
+
+
+# DOCUMENTATION = 'https://ansible-opnsense.oxl.app/modules/alias.html'
+# EXAMPLES = 'https://ansible-opnsense.oxl.app/modules/alias.html'
+
+
+class MultiCallbacks(MultiModuleCallbacks):
+    @staticmethod
+    def build(entry: dict) -> dict:
+        entry['content'] = list(map(str, ensure_list(entry['content'])))
+        if 'updatefreq_days' in entry:
+            entry['updatefreq_days'] = build_updatefreq(entry['updatefreq_days'])
+
+        return entry
+
+    @staticmethod
+    def purge_exclude(entry: dict) -> bool:
+        return builtin_alias(entry['name'])
+
+
+def run_module(module_input):
+    entry_multi_args = build_multi_mod_args(
+        mod_args=ALIAS_MOD_ARGS,
+        aliases=['aliases'],
+        not_required=['name'],
+    )
+
+    module_args = dict(
+        **entry_multi_args,
+        **OPN_MOD_ARGS,
+        **RELOAD_MOD_ARG_DEF_FALSE,  # default-true takes pretty long sometimes (urltables and so on)
+    )
+
+    module = AnsibleModule(
+        module_input=module_input,
+        argument_spec=module_args,
+        supports_check_mode=True,
+        required_one_of=[
+            ('multi', 'multi_purge', 'multi_control.purge_all'),
+        ],
+    )
+
+    result = dict(
+        changed=False,
+        diff={
+            'before': {},
+            'after': {},
+        }
+    )
+
+    module_multi_wrapper(
+        module=module,
+        result=result,
+        obj=Alias,
+        kind='alias',
+        entry_args=entry_multi_args,
+        callbacks=MultiCallbacks(),
+    )
+    return result
+
+
+
+
+
+
+if __name__ == '__main__':
+    pass
