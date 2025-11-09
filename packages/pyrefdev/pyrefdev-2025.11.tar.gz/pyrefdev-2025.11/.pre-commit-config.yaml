@@ -1,0 +1,22 @@
+repos:
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.8.4
+  hooks:
+    - id: ruff
+      args: [--fix]
+    - id: ruff-format
+- repo: local
+  hooks:
+  - id: type-check
+    name: Python type checking
+    language: system
+    entry: uvx ty check
+    pass_filenames: false
+    files: \.py$
+  - id: update-landing-page
+    name: Update landing page
+    language: system
+    entry: uv run pyrefdev-indexer update-landing-page
+    pass_filenames: false
+    files: \.(py|yaml)$
+    verbose: true
