@@ -1,0 +1,33 @@
+# DATAMIMIC
+# Copyright (c) 2023-2025 Rapiddweller Asia Co., Ltd.
+# This software is licensed under the MIT License.
+# See LICENSE file for the full text of the license.
+# For questions and support, contact: info@rapiddweller.com
+
+from xml.etree.ElementTree import Element
+
+from datamimic_ce.constants.element_constants import EL_ARRAY
+from datamimic_ce.model.array_model import ArrayModel
+from datamimic_ce.parsers.statement_parser import StatementParser
+from datamimic_ce.statements.array_statement import ArrayStatement
+
+
+class ArrayParser(StatementParser):
+    def __init__(
+        self,
+        element: Element,
+        properties: dict,
+    ):
+        super().__init__(
+            element,
+            properties,
+            valid_element_tag=EL_ARRAY,
+        )
+
+    def parse(self, **kwargs) -> ArrayStatement:
+        """
+        Parse element "array" to ArrayStatement
+        :return:
+        """
+
+        return ArrayStatement(self.validate_attributes(ArrayModel))
