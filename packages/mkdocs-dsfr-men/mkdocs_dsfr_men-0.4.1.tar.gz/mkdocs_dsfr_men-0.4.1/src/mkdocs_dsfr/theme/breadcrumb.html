@@ -1,0 +1,27 @@
+{% if page %}
+{% set path_list = page.url[:-1].split('/') %}
+
+<nav role="navigation" class="fr-breadcrumb" aria-label="vous êtes ici :">
+  <button class="fr-breadcrumb__button" aria-expanded="false" aria-controls="breadcrumb-1">Voir le fil d’Ariane</button>
+  <div class="fr-collapse" id="breadcrumb-1">
+    <ol class="fr-breadcrumb__list">
+      <li>
+          <a class="fr-breadcrumb__link"
+              href="{{ base_url }}">Accueil</a>
+      </li>
+      {% for path in path_list[:-1] %}
+      <li>
+          <a class="fr-breadcrumb__link"
+              href="{{ config.site_url ~ path_list[:loop.index - (path_list | length)] | join('/') }}">{{
+              path | replace('-', ' ') | replace('_', ' ') | title }}</a>
+      </li>
+      {% endfor %}
+      <li>
+          <a class="fr-breadcrumb__link"
+              aria-current="page">{{ page.title }}</a>
+      </li>
+    </ol>
+  </div>
+</nav>
+
+{% endif %}
