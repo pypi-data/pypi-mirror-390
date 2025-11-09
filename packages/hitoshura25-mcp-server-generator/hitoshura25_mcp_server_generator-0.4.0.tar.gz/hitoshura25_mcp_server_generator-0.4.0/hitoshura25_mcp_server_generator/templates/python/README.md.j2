@@ -1,0 +1,148 @@
+# {{ project_name }}
+
+{{ description }}
+
+## Installation
+
+### For MCP Server Usage (Recommended)
+
+**Using uvx (no installation required):**
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "{{ package_name }}": {
+      "command": "uvx",
+      "args": ["{{ project_name }}"]
+    }
+  }
+}
+```
+
+**Prerequisites:** Install [uv](https://docs.astral.sh/uv/):
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### For CLI Usage (Alternative)
+
+**Using pipx (isolated installation):**
+
+```bash
+pipx install {{ project_name }}
+```
+
+**Using pip:**
+
+```bash
+pip install {{ project_name }}
+```
+
+## Usage
+
+### MCP Server Mode (For AI Agents)
+
+If using pipx/pip installation, configure:
+
+```json
+{
+  "mcpServers": {
+    "{{ package_name }}": {
+      "command": "{{ project_name }}"
+    }
+  }
+}
+```
+
+### CLI Mode (For Developers)
+
+{% for tool in tools %}
+#### {{ tool.name }}
+
+{{ tool.description }}
+
+```bash
+{{ project_name }} {{ tool.name }}{% for param in tool.parameters %} --{{ param.name }} <value>{% endfor %}
+```
+
+**Parameters:**
+{% for param in tool.parameters %}
+- `--{{ param.name }}` ({{ param.type }}{% if param.required %}, required{% endif %}): {{ param.description }}
+{% endfor %}
+
+{% endfor %}
+
+## Available Tools
+
+{% for tool in tools %}
+### {{ tool.name }}
+
+{{ tool.description }}
+
+**Parameters:**
+{% for param in tool.parameters %}
+- `{{ param.name }}` ({{ param.type }}{% if param.required %}, required{% endif %}): {{ param.description }}
+{% endfor %}
+
+{% endfor %}
+
+## Development
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd {{ project_name }}
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest
+
+# Install locally
+pip install -e .
+```
+
+## Requirements
+
+- Python ≥3.10 (required for MCP SDK)
+- MCP SDK (Model Context Protocol)
+
+## Publishing to PyPI
+
+This project includes a GitHub Actions workflow for automated PyPI publishing.
+
+### Setup
+
+1. Configure PyPI Trusted Publisher:
+   - Go to https://pypi.org/manage/account/publishing/
+   - Add your GitHub repository as a trusted publisher
+   - Workflow name: `pypi-publish.yml`
+
+2. Create a release:
+   ```bash
+   # Install pypi-workflow-generator
+   pip install pypi-workflow-generator
+
+   # Create and push a release tag
+   pypi-release patch  # or: minor, major
+   ```
+
+3. The GitHub Actions workflow will automatically:
+   - Run tests
+   - Build the package
+   - Publish to PyPI
+
+## License
+
+{{ license }}
+
+## Author
+
+{{ author }}
