@@ -1,0 +1,42 @@
+Metadata-Version: 2.1
+Name: v-installer
+Version: 0.0.33
+Summary: Install my app, not for all people
+Home-page: http://gitea:8000/datlt4/fortifai_monitoring
+Author: Koi
+Author-email: your.email@example.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests
+Requires-Dist: textual (==0.89.1)
+Requires-Dist: textual-dev (==1.7.0)
+
+# Build package
+
+```bash
+python3 setup.py sdist bdist_wheel
+```
+
+# Publish package to Pypi
+
+```bash
+twine upload dist/*
+```
+
+# Docker environment
+
+```bash
+docker run -it --rm -v $(pwd):/workspace/v-installer python:3.10.10-alpine /bin/sh
+
+apk update
+cd /workspace/v-installer
+python3 -m pip install setuptools
+python3 setup.py sdist bdist_wheel
+apk add twine
+apk add gcc python3-dev musl-dev linux-headers
+TWINE_USERNAME="__token__" TWINE_PASSWORD="pypi-....................................................." twine upload --non-interactive dist/*
+```
