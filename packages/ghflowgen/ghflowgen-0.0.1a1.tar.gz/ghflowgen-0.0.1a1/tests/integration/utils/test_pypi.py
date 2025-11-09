@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+import pytest
+
+from ghflowgen.utils.pypi import get_pypi_versions
+
+
+@pytest.fixture(autouse=True)
+def _reset_cache() -> None:
+    get_pypi_versions.cache_clear()
+
+
+#######################################
+#     Tests for get_pypi_versions     #
+#######################################
+
+
+def test_get_pypi_versions_requests() -> None:
+    versions = get_pypi_versions("requests")
+    assert isinstance(versions, tuple)
+    assert len(versions) >= 157
+    assert "2.32.5" in versions
+
+
+def test_get_pypi_versions_torch() -> None:
+    versions = get_pypi_versions("torch")
+    assert isinstance(versions, tuple)
+    assert len(versions) >= 42
+    assert "2.8.0" in versions

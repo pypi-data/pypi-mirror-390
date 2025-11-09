@@ -1,0 +1,175 @@
+name: Test - Dependencies
+on:
+  workflow_call:
+  workflow_dispatch:  # to trigger manually
+
+permissions:
+  contents: read
+
+jobs:
+  get-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      package_versions: ${{ steps.extract.outputs.versions }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Read versions
+        id: extract
+        run: |
+          echo "versions=$(cat assets/package_versions.json)" >> $GITHUB_OUTPUT
+
+      - name: Show versions
+        run: |
+          echo "versions: ${{ toJson(fromJson(steps.extract.outputs.versions)) }}"
+
+
+  coola:
+    needs: get-versions
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+        package-version: ${{ fromJson(needs.get-versions.outputs.package_versions).coola }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install --all-deps
+
+      - name: Install valid package version
+        uses: durandtibo/uv-install-package-action@v0.1.1
+        with:
+          package-name: 'coola'
+          package-version: ${{ matrix.package-version }}
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Run unit tests
+        run: |
+          inv unit-test
+
+
+  packaging:
+    needs: get-versions
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+        package-version: ${{ fromJson(needs.get-versions.outputs.package_versions).packaging }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install --all-deps
+
+      - name: Install valid package version
+        uses: durandtibo/uv-install-package-action@v0.1.1
+        with:
+          package-name: 'packaging'
+          package-version: ${{ matrix.package-version }}
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Run unit tests
+        run: |
+          inv unit-test
+
+
+  requests:
+    needs: get-versions
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 8
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.14', '3.13', '3.12', '3.11', '3.10' ]
+        package-version: ${{ fromJson(needs.get-versions.outputs.package_versions).requests }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: true
+
+      - name: Install invoke
+        run: |
+          make install-invoke
+
+      - name: Install packages
+        run: |
+          inv install --all-deps
+
+      - name: Install valid package version
+        uses: durandtibo/uv-install-package-action@v0.1.1
+        with:
+          package-name: 'requests'
+          package-version: ${{ matrix.package-version }}
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show python config
+        run: |
+          inv show-python-config
+
+      - name: Show installed packages
+        run: |
+          inv show-installed-packages
+
+      - name: Run unit tests
+        run: |
+          inv unit-test
