@@ -1,0 +1,38 @@
+# BUCKPY
+Probabilistic Lateral Buckling Algorithm.
+
+## Project Philosophy
+[Xodus Group](https://www.xodusgroup.com/) (hereafter referred to as Xodus) and [TotalEnergies OneTech](https://totalenergies.com/) (hereafter referred to as TTE OneTech) have co-writen BuckPy.
+
+**BuckPy** is an open-source algorithm that has been developed to facilitate the implementation of the probabilistic lateral buckling methodology presented in the paper published by Ismael Ripoll, Carlos Sicilia and Emilien Bonnet at the 2023 Subsea Pipeline Technology Congress in London (SPT 2023).
+
+Xodus and TTE OneTech have decided jointly to make [BuckPy](https://github.com/Xodus-Group/plba) available with the intend of allowing the pipeline community to review, expand and use it under a [GNU General Public License v3.0](https://github.com/Xodus-Group/plba/blob/main/LICENSE>).
+
+## Team Members
+Team members responsible for the management of this open-source project are:
+- [Ismael Ripoll](https://github.com/ismaelripoll-xodus), Xodus
+- Carlos Sicilia Gaillard, TTE OneTech
+- Emilien Bonnet, TTE OneTech
+
+## How to Contribute to the Project
+Interested in contributing to the project? If you have a contribution in mind, please add in [Discussions](https://github.com/Xodus-Group/plba/discussions). If you have identified an issue with the code, please add in [Issues](https://github.com/Xodus-Group/plba/issues).
+
+## Documentation
+The script documentation can be found in the following folder of this repository: `https://buckpy-org.github.io/`
+
+## BuckPy Python Library Versions
+The script has been developed and shown to run using:
+- Python 3.11
+- matplotlib==3.8.3
+- multiprocess==0.70.16
+- numba==0.59.0
+- numpy==1.26.4
+- openpyxl==3.1.5
+- pandas==2.2.1
+- scipy==1.12.0
+- xlrd==2.0.1
+- XlsxWriter==3.2.0
+
+To install the previous Python libraries: pip install -r REQUIREMENTS.txt
+
+
