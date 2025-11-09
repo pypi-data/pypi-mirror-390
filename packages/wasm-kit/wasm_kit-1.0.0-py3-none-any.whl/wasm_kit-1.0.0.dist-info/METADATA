@@ -1,0 +1,358 @@
+Metadata-Version: 2.4
+Name: wasm-kit
+Version: 1.0.0
+Summary: The Docker of WebAssembly - Build any codebase to WASM with zero setup
+Author-email: wasm-kit contributors <wasm-kit@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/wasm-kit/wasm-kit
+Project-URL: Documentation, https://wasm-kit.readthedocs.io
+Project-URL: Repository, https://github.com/wasm-kit/wasm-kit
+Project-URL: Issues, https://github.com/wasm-kit/wasm-kit/issues
+Keywords: wasm,webassembly,compiler,rust,python,javascript,typescript,component-model,docker
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Compilers
+Classifier: Topic :: Software Development :: Build Tools
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click>=8.0.0
+Requires-Dist: docker>=6.0.0
+Requires-Dist: rich>=13.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: tomli>=2.0.0; python_version < "3.11"
+Requires-Dist: wasmtime>=14.0.0
+Requires-Dist: flask>=3.0.0
+Requires-Dist: flask-cors>=4.0.0
+Requires-Dist: watchdog>=3.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Dynamic: license-file
+
+# wasm-kit
+
+**The Docker of WebAssembly** — Build any codebase to WASM with zero setup.
+
+[![PyPI version](https://badge.fury.io/py/wasm-kit.svg)](https://badge.fury.io/py/wasm-kit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+## Quick Start
+
+```bash
+# Install
+pip install wasm-kit
+
+# Build any project
+cd my-python-project
+wasm-kit build .
+
+# Run instantly
+wasm-kit run
+
+# Or serve with auto-reload
+wasm-kit dev
+```
+
+Zero config. One command. Any language.
+
+---
+
+## Why wasm-kit?
+
+Like Docker standardized containers, wasm-kit standardizes WebAssembly builds.
+
+| Before wasm-kit | With wasm-kit |
+|-----------------|---------------|
+| Install Rust, cargo-component, wasm32 | `wasm-kit build .` |
+| Install Node, npm, componentize-js | `wasm-kit build .` |
+| Configure WIT files manually | Auto-detected |
+| Debug build errors | Clear fixes shown |
+| Rebuild on every change | `wasm-kit dev` auto-reloads |
+
+One command. All languages. Zero config.
+
+---
+
+## Commands
+
+### Build
+```bash
+wasm-kit build .                    # Auto-detect and build
+wasm-kit build . --type standalone  # Build standalone binary
+wasm-kit build . -o output.wasm     # Custom output
+```
+
+### Run
+```bash
+wasm-kit run                  # Run built component
+wasm-kit run -- --arg value   # Pass arguments
+```
+
+### Dev Server
+```bash
+wasm-kit dev                  # Auto-rebuild on changes
+wasm-kit dev --port 3000      # Custom port
+wasm-kit dev --build-only     # Build mode only
+```
+
+Features:
+- File watching with auto-rebuild
+- HTTP server with hot-reload
+- Terminal UI with build stats
+- Error recovery
+
+### Test
+```bash
+wasm-kit test                 # Run component tests
+wasm-kit test --watch         # Watch mode
+```
+
+### Serve
+```bash
+wasm-kit serve                # Serve on :8080
+wasm-kit serve --port 3000    # Custom port
+```
+
+### Init
+```bash
+wasm-kit init python          # New Python project
+wasm-kit init javascript      # New JS project
+wasm-kit init rust            # New Rust project
+```
+
+---
+
+## Supported Languages
+
+### Python
+```bash
+cd my-python-project
+wasm-kit build .
+```
+
+**Requirements**: `pyproject.toml` or `requirements.txt`
+
+### JavaScript/TypeScript
+```bash
+cd my-js-project
+wasm-kit build .
+```
+
+**Requirements**: `package.json`
+
+### Rust
+```bash
+cd my-rust-project
+wasm-kit build .
+```
+
+**Requirements**: `Cargo.toml` with component metadata
+
+### Go (TinyGo)
+```bash
+cd my-go-project
+wasm-kit build . --type standalone
+```
+
+**Requirements**: `go.mod` or `.go` files
+
+### C/C++
+```bash
+cd my-cpp-project
+wasm-kit build . --type standalone
+```
+
+**Requirements**: `.c`/`.cpp` files
+
+---
+
+## Installation
+
+```bash
+pip install wasm-kit
+```
+
+**Requirements:**
+- Python 3.8+
+- Docker (for builds)
+
+Optional:
+- `wasmtime` (for running components)
+- `wasm-tools` (for WIT inspection)
+
+---
+
+## Build Caching
+
+Builds are automatically cached based on source file hashes:
+
+```bash
+# First build
+wasm-kit build .  # ~30 seconds
+
+# No changes - instant cache hit
+wasm-kit build .  # <1 second
+
+# Change source - rebuild only
+wasm-kit build .  # ~30 seconds
+```
+
+Cache is stored in `~/.cache/wasm-kit/builds/`
+
+Disable caching: `wasm-kit build . --no-cache`
+
+---
+
+## File Types
+
+wasm-kit uses clear extensions:
+
+| Extension | Type | Use Case |
+|-----------|------|----------|
+| `.wasm` | Standalone | CLI tools, executables |
+| `.wcmp` | Component | Libraries, composable modules |
+
+**Both types run the same way:**
+```bash
+wasm-kit run  # Handles both automatically
+```
+
+See [docs/STANDALONE_VS_COMPONENT.md](docs/STANDALONE_VS_COMPONENT.md) for details.
+
+---
+
+## Production Features
+
+### Structured Logging
+```python
+from utils.structured_logger import logger
+
+logger.info("Build started", project="my-app")
+```
+
+JSON output for production monitoring.
+
+### Metrics Collection
+```python
+from utils.structured_logger import metrics
+
+metrics.record_build(success=True, duration=1.5)
+stats = metrics.get_metrics()
+# Returns: build_success_rate, cache_hit_rate, etc.
+```
+
+### Security
+- Path validation and sanitization
+- Rate limiting for HTTP APIs
+- Input validation
+- Secure subprocess handling
+
+---
+
+## CI/CD
+
+GitHub Actions workflows included:
+
+- **test.yml**: Multi-platform testing (Ubuntu, macOS, Windows)
+- **release.yml**: Automated PyPI publishing with multi-arch wheels
+
+See [.github/workflows/README.md](.github/workflows/README.md) for details.
+
+---
+
+## Development
+
+```bash
+# Clone and setup
+git clone https://github.com/wasm-kit/wasm-kit.git
+cd wasm-kit
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+# Run tests
+pytest
+
+# Run linting
+ruff check src/
+black --check src/
+```
+
+---
+
+## Architecture
+
+**Build Process:**
+1. Detect language from config files
+2. Select appropriate builder
+3. Build in Docker (cached images)
+4. Optimize with wasm-opt
+5. Cache result by content hash
+
+**Builders:**
+- `PythonWasmBuilder` → componentize-py
+- `JavaScriptWasmBuilder` → componentize-js
+- `RustWasmBuilder` → cargo-component
+- `GoWasmBuilder` → TinyGo
+- `CppWasmBuilder` → WASI-SDK
+
+All builders implement the same interface.
+
+---
+
+## Performance
+
+### Build Times
+
+| Language | First Build | Cached |
+|----------|-------------|--------|
+| Python | 1-2 min | 5-30s |
+| JavaScript | 1-2 min | 5-30s |
+| Rust | 5-10 min | 5-30s |
+
+First build downloads and caches Docker images. Subsequent builds are much faster.
+
+### Cache Performance
+- Cache hit: <1 second
+- Cache miss: Normal build time
+- Cache storage: `~/.cache/wasm-kit/`
+
+---
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) - System design
+- [API](docs/API.md) - API reference
+- [Contributing](docs/CONTRIBUTING.md) - Contribution guide
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
+- [Production Roadmap](docs/PRODUCTION_ROADMAP.md) - Production features
+
+---
+
+## Contributing
+
+Contributions welcome! See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
+
+**Adding a language:**
+1. Create builder in `src/engine/builders/`
+2. Implement `WasmBuilder` interface
+3. Add Dockerfile in `docker/`
+4. Update factory and detection logic
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE).
