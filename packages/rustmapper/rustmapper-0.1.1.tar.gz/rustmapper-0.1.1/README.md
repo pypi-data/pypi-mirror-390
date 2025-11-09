@@ -1,0 +1,172 @@
+# RustMapper
+
+Concurrent web crawler and sitemap generator built with Rust. Supports up to 256 concurrent workers, sharded frontier architecture, persistent state with Write-Ahead Logging, and distributed crawling with Redis.
+
+## Installation
+
+### From PyPI
+
+```bash
+pip install rustmapper
+```
+
+### From Source
+
+```bash
+git clone https://github.com/BenjaminSRussell/Rust-sitemap.git
+cd Rust-sitemap
+cargo build --release
+```
+
+## Usage
+
+### Python
+
+```python
+from rustmapper import Crawler
+
+crawler = Crawler(
+    start_url="https://example.com",
+    workers=128,
+    timeout=10
+)
+results = crawler.crawl()
+
+for url_data in results:
+    print(f"{url_data['url']}: {url_data['status_code']}")
+```
+
+### Command Line
+
+```bash
+# Basic crawl
+rustmapper crawl --start-url https://example.com
+
+# With options
+rustmapper crawl --start-url https://example.com --workers 128 --timeout 10
+
+# Resume interrupted crawl
+rustmapper resume --data-dir ./data
+
+# Export sitemap
+rustmapper export-sitemap --data-dir ./data --output sitemap.xml
+```
+
+### Cargo
+
+```bash
+# Basic crawl
+cargo run --release -- crawl --start-url https://example.com
+
+# With options
+cargo run --release -- crawl --start-url https://example.com --workers 128 --timeout 10
+
+# Resume
+cargo run --release -- resume --data-dir ./data
+
+# Export sitemap
+cargo run --release -- export-sitemap --data-dir ./data --output sitemap.xml
+```
+
+## Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--start-url` | required | Starting URL |
+| `--workers` | 256 | Concurrent requests |
+| `--timeout` | 20 | Request timeout (seconds) |
+| `--data-dir` | ./data | Storage location |
+| `--seeding-strategy` | all | none/sitemap/ct/commoncrawl/all |
+| `--ignore-robots` | false | Skip robots.txt |
+| `--enable-redis` | false | Distributed mode |
+| `--redis-url` | - | Redis connection |
+
+## Seeding Strategies
+
+- `none` - Only start URL
+- `sitemap` - Discover from sitemap.xml
+- `ct` - Certificate Transparency logs (finds subdomains)
+- `commoncrawl` - Query Common Crawl index
+- `all` - Use all methods
+
+## Performance
+
+Throughput: 50-200 URLs/minute depending on page size. Network I/O bound.
+
+Timing breakdown per URL:
+- Body download: 700-900ms (70-90%)
+- Network fetch: 50-550ms (10-20%)
+- Everything else: <50ms (<5%)
+
+Recommended settings:
+```bash
+# Focused crawl (skip subdomains)
+--timeout 10 --seeding-strategy sitemap
+
+# University sites (avoid internal hosts)
+--timeout 5 --seeding-strategy sitemap --start-url www.university.edu
+
+# Maximum discovery
+--workers 256 --timeout 10 --seeding-strategy all
+```
+
+## Output
+
+JSONL (automatic): `./data/sitemap.jsonl`
+```json
+{"url":"https://example.com/","depth":0,"status_code":200,"content_length":1024,"title":"Example","link_count":5}
+```
+
+XML sitemap:
+```bash
+rustmapper export-sitemap --data-dir ./data --output sitemap.xml
+```
+
+## Distributed Crawling
+
+```bash
+# Instance 1
+rustmapper crawl --start-url https://example.com --enable-redis --redis-url redis://localhost:6379
+
+# Instance 2
+rustmapper crawl --start-url https://example.com --enable-redis --redis-url redis://localhost:6379
+```
+
+Includes URL deduplication, work stealing, and distributed locks.
+
+## Architecture
+
+- Frontier: Sharded queues (14 shards), bloom filter deduplication, per-host politeness
+- State: Embedded redb database + WAL for crash recovery
+- Governor: Adaptive concurrency control based on commit latency
+- Workers: Async task pool with semaphore-based backpressure
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Slow crawling | Large pages take ~1s to download | Network I/O bound, expected |
+| Many timeouts | Internal/unreachable hosts (CT log discovery) | Reduce timeout: `--timeout 5` or use `--seeding-strategy sitemap` |
+| Out of memory | Too many concurrent large pages | Reduce workers: `--workers 64` |
+| Stops unexpectedly | Crawl completed (frontier empty) | Use `resume` to continue |
+
+## Development
+
+Build from source:
+```bash
+cargo build --release
+```
+
+Run tests:
+```bash
+cargo test
+```
+
+## Documentation
+
+- [Performance Analysis](PERFORMANCE_ANALYSIS.md) - Detailed timing breakdown
+- [Bottleneck Summary](BOTTLENECK_SUMMARY.md) - Where time is spent
+
+## License
+
+MIT

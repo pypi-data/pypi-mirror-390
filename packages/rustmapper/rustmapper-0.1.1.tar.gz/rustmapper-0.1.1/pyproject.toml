@@ -1,0 +1,79 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rustmapper"
+dynamic = ["version"]
+description = "Concurrent web crawler and sitemap generator built with Rust"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Benjamin Russell", email = "russell27sail@gmail.com"},
+]
+maintainers = [
+    {name = "Benjamin Russell", email = "russell27sail@gmail.com"},
+]
+keywords = ["sitemap", "crawler", "web-scraping", "url-discovery", "rust", "seo"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.scripts]
+rustmapper = "rustmapper:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/BenjaminSRussell/Rust-sitemap"
+Repository = "https://github.com/BenjaminSRussell/Rust-sitemap"
+Documentation = "https://github.com/BenjaminSRussell/Rust-sitemap#readme"
+"Bug Tracker" = "https://github.com/BenjaminSRussell/Rust-sitemap/issues"
+
+[tool.maturin]
+python-source = "python"
+module-name = "rustmapper._rustmapper"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
