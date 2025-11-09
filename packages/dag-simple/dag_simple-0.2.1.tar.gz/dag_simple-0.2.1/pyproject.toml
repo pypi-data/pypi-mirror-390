@@ -1,0 +1,147 @@
+[project]
+name = "dag-simple"
+version = "0.2.1"
+description = "A dead simple, type-safe DAG (Directed Acyclic Graph) library with runtime validation, caching, and async support"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Apex Engineers, Inc." }]
+keywords = [
+    "dag",
+    "directed-acyclic-graph",
+    "workflow",
+    "pipeline",
+    "async",
+    "asyncio",
+    "type-safe",
+    "validation",
+    "caching",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Apex-Engineers-Inc/dag_simple"
+Documentation = "https://github.com/Apex-Engineers-Inc/dag_simple#readme"
+Repository = "https://github.com/Apex-Engineers-Inc/dag_simple"
+"Bug Tracker" = "https://github.com/Apex-Engineers-Inc/dag_simple/issues"
+
+[project.optional-dependencies]
+dev = [
+    "rustest>=0.4.0",
+    "coverage[toml]>=7.0.0",
+    "pyright>=1.1.350",
+    "ruff>=0.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dag_simple"]
+
+# Pytest configuration removed - now using rustest>=0.4.0 for all testing
+# rustest 0.4.0+ includes built-in markdown codeblock testing support
+
+[tool.coverage.run]
+source = ["dag_simple"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.pyright]
+include = ["src", "tests", "examples"]
+exclude = ["**/__pycache__", ".venv", "build", "dist"]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+pythonVersion = "3.10"
+pythonPlatform = "All"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dag_simple"]
+force-single-line = false
+combine-as-imports = true
+split-on-trailing-comma = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.poe.tasks]
+test = { cmd = "coverage run -m rustest tests/", help = "Run the test suite with rustest and coverage" }
+test-md = { cmd = "python -m rustest README.md CONTRIBUTING.md", help = "Run markdown codeblock tests with rustest" }
+coverage-report = { cmd = "coverage report", help = "Display coverage report" }
+coverage-html = { cmd = "coverage html", help = "Generate HTML coverage report" }
+lint = { cmd = "ruff check .", help = "Run ruff linting on the entire project" }
+format = { cmd = "ruff format .", help = "Format code using ruff" }
+type-check = { cmd = "pyright", help = "Run pyright type checking on the entire project" }
+check-all = { sequence = [
+    "lint",
+    "type-check",
+    "test",
+    "test-md",
+    "coverage-report",
+], help = "Run all checks: linting, type checking, and tests (both rustest and markdown)" }
+bump-patch = { cmd = "uv version --bump patch", help = "Increment the project patch version" }
+bump-minor = { cmd = "uv version --bump minor", help = "Increment the project minor version" }
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.350",
+    "rustest>=0.4.0",
+    "coverage[toml]>=7.0.0",
+    "ruff>=0.14.2",
+    "poethepoet>=0.25.0",
+]
