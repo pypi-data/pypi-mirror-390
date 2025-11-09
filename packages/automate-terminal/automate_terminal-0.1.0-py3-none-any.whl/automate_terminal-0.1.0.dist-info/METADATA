@@ -1,0 +1,161 @@
+Metadata-Version: 2.4
+Name: automate-terminal
+Version: 0.1.0
+Summary: Automate opening of new tabs and windows in terminal programs
+Author-email: Steve <steve@stevelandey.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: terminal
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: MacOS
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: System :: Shells
+Requires-Python: >=3.10
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# automate-terminal
+
+Automate opening of new tabs and windows in terminal programs. Currently supports iTerm2, Terminal.app, and Ghostty on macOS, with additional terminals and OSes added by request.
+
+automate-terminal is a best-effort project. Some terminals do not support automation at all!
+
+## Installation
+
+```bash
+pip install automate-terminal
+```
+
+```bash
+mise install pip:automate-terminal
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/yourusername/automate-terminal.git
+cd automate-terminal
+pip install -e .
+```
+
+## Supported Terminals
+
+| Terminal     | New Tabs/Windows | Switch by ID | Switch by Working Dir | List Sessions | Paste Commands |
+|--------------|------------------|--------------|----------------------|---------------|----------------|
+| iTerm2       | ✅               | ✅           | ✅                   | ✅            | ✅             |
+| Terminal.app | ✅               | ❌           | ✅                   | ✅            | ✅             |
+| Ghostty      | ✅               | ❌           | ❌                   | ❌            | ✅             |
+
+Other terminals are not supported; `automate-terminal` will exit with an error code in other terminals.
+
+## Quick Start
+
+```bash
+# Check if your terminal is supported
+automate-terminal check
+
+# Create a new tab
+automate-terminal new-tab /path/to/project
+
+# Switch to existing session by directory
+automate-terminal switch-to --working-directory=/path/to/project
+
+# Create new window with initialization script
+automate-terminal new-window /path/to/project \
+  --paste-and-run="source .env && npm run dev"
+```
+
+## Commands
+
+### check
+
+Detect terminal capabilities.
+
+```bash
+automate-terminal check
+automate-terminal check --output=json
+```
+
+### switch-to
+
+Switch to existing session. Errors if not found.
+
+```bash
+# By working directory (or use --wd alias)
+automate-terminal switch-to --working-directory=/path/to/dir
+
+# By session ID (or use --id alias)
+automate-terminal switch-to --session-id=w0t0p2:ABC123
+
+# Both (session ID takes precedence)
+automate-terminal switch-to \
+  --session-id=w0t0p2:ABC123 \
+  --working-directory=/path/to/dir
+
+# Match sessions in subdirectories
+automate-terminal switch-to --working-directory=/path/to/dir --subdirectory-ok
+```
+
+### new-tab
+
+Create new tab.
+
+```bash
+automate-terminal new-tab /path/to/dir
+```
+
+### new-window
+
+Create new window.
+
+```bash
+automate-terminal new-window /path/to/dir
+```
+
+### list-sessions
+
+List all sessions.
+
+```bash
+automate-terminal list-sessions
+automate-terminal list-sessions --output=json
+```
+
+## Options
+
+### Output Format
+
+- `--output=text` - Human-readable (default)
+- `--output=json` - JSON for programmatic use
+- `--output=none` - Silent
+
+### Paste and Run
+
+Execute commands after creating/switching sessions.
+
+```bash
+--paste-and-run="echo 'I run unconditionally'"
+--paste-and-run-bash="echo 'I only run if the current shell is bash'"
+--paste-and-run-zsh="echo 'I only run if the current shell is zsh'"
+--paste-and-run-fish="echo 'I only run if the current shell is fish'"
+```
+
+Shell-specific flags override generic `--paste-and-run` when detected shell matches.
+
+### Debug and Dry Run
+
+```bash
+--debug     # Enable debug logging to stderr
+--dry-run   # Log actions instead of executing them
+```
+
+Use `--dry-run` to see what AppleScript commands would be executed without actually running them. Useful for debugging and understanding what the tool will do.
