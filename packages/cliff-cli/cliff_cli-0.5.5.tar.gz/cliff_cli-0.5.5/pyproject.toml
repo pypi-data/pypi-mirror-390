@@ -1,0 +1,70 @@
+[project]
+name = "cliff-cli"
+authors = [{ name = "Pierce Kelaita", email = "pierce@kelaita.com" }]
+description = "Generate Unix commands in the terminal"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+urls.Homepage = "https://github.com/pkelaita/cliff"
+urls.Documentation = "https://github.com/pkelaita/cliff/blob/main/README.md"
+urls.Repository = "https://github.com/pkelaita/cliff.git"
+urls.Issues = "https://github.com/pkelaita/cliff/issues"
+dynamic = ["version"]
+dependencies = ["l2m2==0.0.61", "pydantic==2.11.9", "rich==14.1.0"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.14.4",
+    "tox>=4.24.1",
+    "twine>=6.1.0",
+    "ty>=0.0.1a25",
+]
+
+[project.scripts]
+cliff = "cliff.cliff:main"
+
+
+[tool.setuptools]
+dynamic.version = { attr = "cliff.__version__" }
+packages = { find = { where = ["."], include = ["cliff*"] } }
+package-data.cliff = ["resources/**/*", "prompts/**/*"]
+
+
+[tool.ty.environment]
+python = "./.venv"
+
+
+[tool.mypy]
+exclude = [
+    "build",
+    "dist",
+    "venv",
+    "integration_tests",
+    "scripts",
+    "tests",
+    "playground",
+]
+mypy_path = ["."]
+python_version = "3.13"
+ignore_missing_imports = true
+explicit_package_bases = true
+namespace_packages = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+
+
+[tool.uv]
+package = true
+
+
+[tool.ruff]
+exclude = ["scripts"]
+line-length = 120
