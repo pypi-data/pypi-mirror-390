@@ -1,0 +1,116 @@
+"""Magic layer generation."""
+
+from __future__ import annotations
+
+from glove80.base import (
+    KeySpec,
+    Layer,
+    LayerSpec,
+    PatchSpec,
+    apply_patch_if,
+    build_layer_from_spec,
+    copy_layer,
+)
+
+from ..alpha_layouts import base_variant_for
+
+
+MAGIC_SPEC = LayerSpec(
+    overrides={
+        0: KeySpec("&mstr1_v1_TKZ"),
+        1: KeySpec("&mstr2_v1_TKZ"),
+        2: KeySpec("&none"),
+        3: KeySpec("&none"),
+        4: KeySpec("&none"),
+        5: KeySpec("&none"),
+        6: KeySpec("&none"),
+        7: KeySpec("&none"),
+        8: KeySpec("&bt", (KeySpec("BT_CLR"),)),
+        9: KeySpec("&bt", (KeySpec("BT_CLR_ALL"),)),
+        10: KeySpec("&to", (KeySpec(0),)),
+        11: KeySpec("&none"),
+        12: KeySpec("&to", (KeySpec(1),)),
+        13: KeySpec("&none"),
+        14: KeySpec("&none"),
+        15: KeySpec("&to", (KeySpec(2),)),
+        16: KeySpec("&none"),
+        17: KeySpec("&none"),
+        18: KeySpec("&none"),
+        19: KeySpec("&none"),
+        20: KeySpec("&none"),
+        21: KeySpec("&none"),
+        22: KeySpec("&none"),
+        23: KeySpec("&rgb_ug", (KeySpec("RGB_SPI"),)),
+        24: KeySpec("&rgb_ug", (KeySpec("RGB_SAI"),)),
+        25: KeySpec("&rgb_ug", (KeySpec("RGB_HUI"),)),
+        26: KeySpec("&rgb_ug", (KeySpec("RGB_BRI"),)),
+        27: KeySpec("&rgb_ug", (KeySpec("RGB_TOG"),)),
+        28: KeySpec("&none"),
+        29: KeySpec("&none"),
+        30: KeySpec("&none"),
+        31: KeySpec("&none"),
+        32: KeySpec("&none"),
+        33: KeySpec("&none"),
+        34: KeySpec("&bootloader"),
+        35: KeySpec("&rgb_ug", (KeySpec("RGB_SPD"),)),
+        36: KeySpec("&rgb_ug", (KeySpec("RGB_SAD"),)),
+        37: KeySpec("&rgb_ug", (KeySpec("RGB_HUD"),)),
+        38: KeySpec("&rgb_ug", (KeySpec("RGB_BRD"),)),
+        39: KeySpec("&rgb_ug", (KeySpec("RGB_EFF"),)),
+        40: KeySpec("&none"),
+        41: KeySpec("&none"),
+        42: KeySpec("&none"),
+        43: KeySpec("&none"),
+        44: KeySpec("&none"),
+        45: KeySpec("&bootloader"),
+        46: KeySpec("&reset"),
+        47: KeySpec("&none"),
+        48: KeySpec("&none"),
+        49: KeySpec("&none"),
+        50: KeySpec("&none"),
+        51: KeySpec("&none"),
+        52: KeySpec("&bt_2"),
+        53: KeySpec("&bt_3"),
+        54: KeySpec("&none"),
+        55: KeySpec("&none"),
+        56: KeySpec("&none"),
+        57: KeySpec("&none"),
+        58: KeySpec("&none"),
+        59: KeySpec("&none"),
+        60: KeySpec("&none"),
+        61: KeySpec("&none"),
+        62: KeySpec("&none"),
+        63: KeySpec("&reset"),
+        64: KeySpec("&none"),
+        65: KeySpec("&none"),
+        66: KeySpec("&none"),
+        67: KeySpec("&none"),
+        68: KeySpec("&none"),
+        69: KeySpec("&bt_0"),
+        70: KeySpec("&bt_1"),
+        71: KeySpec("&out", (KeySpec("OUT_USB"),)),
+        72: KeySpec("&none"),
+        73: KeySpec("&none"),
+        74: KeySpec("&none"),
+        75: KeySpec("&none"),
+        76: KeySpec("&none"),
+        77: KeySpec("&none"),
+        78: KeySpec("&none"),
+        79: KeySpec("&none"),
+    }
+)
+
+_BASE_MAGIC_LAYER: Layer = build_layer_from_spec(MAGIC_SPEC)
+
+
+_DUAL_PATCH: PatchSpec = {
+    11: KeySpec("&to", (KeySpec(1),)),
+    12: KeySpec("&to", (KeySpec(2),)),
+    15: KeySpec("&to", (KeySpec(3),)),
+}
+
+
+def build_magic_layer(variant: str) -> Layer:
+    layer = copy_layer(_BASE_MAGIC_LAYER)
+    apply_patch_if(layer, base_variant_for(variant) == "dual", _DUAL_PATCH)
+    return layer
