@@ -1,0 +1,54 @@
+name: Run the test suite
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: '0 16 * * 5'  # Every Friday 4pm
+  workflow_dispatch:
+
+jobs:
+  install_and_run:
+    name: Run the test suite
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", 3.14]  # no need for anything in between
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |-
+          python3 -m venv venv/
+          source venv/bin/activate
+          pip3 install \
+            --disable-pip-version-check \
+            --no-warn-script-location \
+            -r requirements.txt
+          pip3 check
+          # Ensure that even indirect dependencies are fully pinned
+          diff -u0 \
+            <(sed -e '/^#/d' -e '/^$/d' requirements.txt | sort -f) \
+            <(pip3 freeze | sort -f)
+
+      - name: Run the test suite
+        run: |-
+          source venv/bin/activate
+          coverage run -m pytest -v --doctest-modules
+          coverage report --show-missing | tee coverage.txt
+          coverage html
+
+      - name: Upload HTML coverage report as an artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4  # v5.0.0
+        with:
+          name: "coverage_python_${{ matrix.python-version }}"  # .zip
+          path: |
+            coverage.txt
+            htmlcov/
+          if-no-files-found: error

@@ -1,0 +1,68 @@
+name: Smoke test creation of Arch OpenStack images
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: '0 16 * * 5'  # Every Friday 4pm
+
+jobs:
+  install_and_run:
+    name: Smoke test creation of Arch OpenStack images
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Git repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+
+      - name: Cache pip
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: 3.14
+
+      - name: Install
+        run: |-
+          sudo pip3 install \
+            --disable-pip-version-check \
+            .
+
+      - name: Install runtime dependencies
+        run: |-
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            kpartx \
+            qemu-utils
+
+      - name: Smoke test creation of Arch OpenStack images
+        run: |-
+          cd /tmp  # to not be in Git clone folder
+
+          image-bootstrap --help       ; echo
+          image-bootstrap arch --help  ; echo
+
+          truncate --size 3g /tmp/disk
+          LOOP_DEV="$(sudo losetup --show --find -f /tmp/disk | tee /dev/stderr)"
+          echo "LOOP_DEV=${LOOP_DEV}" >> "${GITHUB_ENV}"
+
+          sudo PYTHONUNBUFFERED=1 image-bootstrap --verbose --debug --openstack arch ${LOOP_DEV}
+
+      - name: Create .qcow2 image from loop device
+        run: |-
+          set -eux
+          git fetch --force --tags --unshallow origin  # for "git describe"
+          img_base_name="arch-openstack-$(date '+%Y-%m-%d-%H-%M')-image-bootstrap-$(git describe --tags).qcow2"
+          sudo qemu-img convert -f raw -O qcow2 "${LOOP_DEV}" "${img_base_name}"
+          ls -lh "${img_base_name}"
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4  # v5.0.0
+        with:
+          name: arch-openstack-qcow2
+          path: '*.qcow2'
+          if-no-files-found: error
