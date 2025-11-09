@@ -1,0 +1,32 @@
+# NASA Admin CLI Project #
+## Overview
+<div align="center">
+  <a href="https://moonshot.hackclub.com" target="_blank">
+    <img src="https://hc-cdn.hel1.your-objectstorage.com/s/v3/35ad2be8c916670f3e1ac63c1df04d76a4b337d1_moonshot.png" 
+         alt="This project is part of Moonshot, a 4-day hackathon in Florida visiting Kennedy Space Center and Universal Studios!" 
+         style="width: 100%;">
+  </a>
+</div>
+
+_This project is a part of MOONSHOT!!_
+
+Pretend you are a NASA admin (or launch person) through this CLI-based project! Currently supporting **10 COMMANDS**, this provides a fun experience of being part of NASA through your terminal!
+
+## Key tools used
+**Libraries:**
+1. Hashlib - Used to provide a secure encryption for all passwords in the system.
+2. Pwninput - Used to hide password entry when creating or entering passwords.
+3. Time - Used for smoothness (1 line only)
+4. Firebase_admin - Used to connect missions to Firebase DB (NOT IN USE)
+5. JSON - Replacement of firebase
+6. Sys - Used for simple quit in the system
+7. Datetime - Used for my time and date handling system.
+
+## IDE Used by me
+PyCharm
+
+## How to run?
+1. To run first clone this repository using `git clone --mirror https://github.com/nexora-droid/NASA-Admin-CLI` in your terminal.
+2. Then run `pip3 install -r requirments.txt` to install the one necessary library.
+3. Then in the same terminal run `clear`.
+4. Then type `python main.py` to run the code and enjoy my project!
