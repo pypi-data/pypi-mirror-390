@@ -1,0 +1,16 @@
+{% extends "layout.html.j2" %}
+
+{% block scripts %}
+<script async src="{{ url_for('static', path=asset_url('tournament_display.js')) }}" type="module"></script>
+<script id="tournament-data" type="application/json">
+{
+  {%if cutoff%}"cutoff": {{ cutoff | jsonable | tojson }},{% endif %}
+  {% if deck_infos %}"deck_infos": {{ deck_infos | jsonable | tojson }},{% endif %}
+  "tournament": {{ tournament | jsonable | tojson }}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div id="tournamentDisplay"></div>
+{% endblock %}
