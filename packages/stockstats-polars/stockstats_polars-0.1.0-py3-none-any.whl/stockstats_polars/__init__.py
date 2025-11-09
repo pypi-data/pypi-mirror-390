@@ -1,0 +1,1 @@
+from .polars_namespace import StockStatsNS
