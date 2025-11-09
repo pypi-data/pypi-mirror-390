@@ -1,0 +1,29 @@
+/**
+ * @title Anomalous cgroup activity in webapp logs
+ * @author Hashfastr
+ * @id 90e356e9-7243-40a6-8dba-dcaf12832859
+ * 
+ * @status stable
+ * @level high
+ * @schedule 0 * * * *
+ * @description
+ * Retro hunt focused detection looking for anomalous cgroup
+ * behavior for the waterusage webapp
+ * 
+ * @tags
+ * - tracerfire
+ * 
+ * @triage drink celsius
+ * @falsepositives
+ * - certainly
+ * 
+ * @authornotes 
+ * @references
+ * - https://hql.dev
+ * 
+ * @changelog
+ * - 2025-11-08 Hashfastr: Init detection
+ */
+database('tf11-elastic').index('waterusage')
+| where program == 'conmon'
+| where message contains "cgroup"

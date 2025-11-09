@@ -1,0 +1,690 @@
+product:
+  name: 'windows'
+  configured: True
+  upstream:
+    # - hql: |
+    #     database('tf11-elastic').index('so-beats-*')
+    #     | where host.os.type == 'windows'
+    #   services:
+    #     sysmon:
+    #       hql: |
+    #         | where event.module == 'sysmon'
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             UtcTime = winlog.event_data.UtcTime,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.user.name,
+    #             RuleName = winlog.event_data.RuleName
+    #     security:
+    #       hql: |
+    #         | where event.module == "windows_eventlog"
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             UtcTime = ['@timestamp'],
+    #             SubjectUserSid = winlog.event_data.SubjectUserSid,
+    #             SubjectUserName = winlog.event_data.SubjectUserName,
+    #             SubjectDomainName = winlog.event_data.SubjectDomainName,
+    #             SubjectLogonId = winlog.event_data.SubjectLogonId,
+    #             TargetUserSid = winlog.event_data.TargetUserSid,
+    #             TargetUserName = winlog.event_data.TargetUserName,
+    #             TargetDomainName = winlog.event_data.TargetDomainName,
+    #             LogonType = winlog.event_data.LogonType,
+    #             IpAddress = winlog.event_data.IpAddress,
+    #             WorkstationName = winlog.event_data.WorkstationName
+    #         | where EventID in (4624, 4625, 4672, 4688, 4720, 4732)
+    #     system:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             UtcTime = ['@timestamp'],
+    #             ServiceName = winlog.event_data.ServiceName,
+    #             ImagePath = winlog.event_data.ImagePath,
+    #             ServiceType = winlog.event_data.ServiceType,
+    #             StartType = winlog.event_data.StartType,
+    #             AccountName = winlog.event_data.AccountName
+    #         | where EventID in (7045, 7036, 7040)
+    #     # application:
+    #     #   hql: |
+    #     #     | project
+    #     #         _hqltimestamp = ['@timestamp'],
+    #     #         EventID = event.code,
+    #     #         UtcTime = ['@timestamp'],
+    #     #         Source = placeholder_source,
+    #     #         User = placeholder_user,
+    #     #         Data = placeholder_data,
+    #     #         Message = placeholder_message
+    #     #     | where EventID in (1000, 1001, 1002)
+    #     powershell:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             UtcTime = ['@timestamp'],
+    #             HostName = host.name,
+    #             HostVersion = host.os.version,
+    #             HostApplication = winlog.event_data.Application,
+    #             EngineVersion = message,
+    #             ScriptName = message,
+    #             CommandLine = message,
+    #             CommandInvocation = message
+    #         | where EventID in (400, 403, 600, 800, 4103, 4104)
+    #     # dns-server:
+    #     #   hql: |
+    #     #     | project
+    #     #         _hqltimestamp = ['@timestamp'],
+    #     #         EventID = placeholder_event_id,
+    #     #         QNAME = placeholder_qname,
+    #     #         QTYPE = placeholder_qtype,
+    #     #         Source = placeholder_source,
+    #     #         Destination = placeholder_destination,
+    #     #         InterfaceIP = placeholder_interface_ip
+    #     #     | where EventID in (150, 256, 257)
+    #     # filewall-as:
+    #     #   hql: |
+    #     #     | project
+    #     #         _hqltimestamp = ['@timestamp'],
+    #     #         EventID = placeholder_event_id,
+    #     #         Application = placeholder_application,
+    #     #         Direction = placeholder_direction,
+    #     #         SourceAddress = placeholder_source_address,
+    #     #         SourcePort = placeholder_source_port,
+    #     #         DestAddress = placeholder_dest_address,
+    #     #         DestPort = placeholder_dest_port,
+    #     #         Protocol = placeholder_protocol,
+    #     #         FilterRTID = placeholder_filter_rtid
+    #     #     | where EventID in (5156, 5157, 5158)
+    #     # defender:
+    #     #   hql: |
+    #     #     | project
+    #     #         _hqltimestamp = ['@timestamp'],
+    #     #         EventID = placeholder_event_id,
+    #     #         ThreatName = placeholder_threat_name,
+    #     #         Severity = placeholder_severity,
+    #     #         Path = placeholder_path,
+    #     #         DetectionUser = placeholder_detection_user,
+    #     #         ProcessName = placeholder_process_name,
+    #     #         ActionSuccess = placeholder_action_success,
+    #     #         DetectionTime = placeholder_detection_time
+    #     #     | where EventID in (1116, 1117, 1118, 1119, 5001, 5007)
+    #     # taskscheduler:
+    #     #   hql: |
+    #     #     | project
+    #     #         _hqltimestamp = ['@timestamp'],
+    #     #         EventID = placeholder_event_id,
+    #     #         TaskName = placeholder_task_name,
+    #     #         UserContext = placeholder_user_context,
+    #     #         ActionName = placeholder_action_name,
+    #     #         ResultCode = placeholder_result_code,
+    #     #         Path = placeholder_path
+    #     #     | where EventID in (106, 129, 140, 141, 200, 201)
+    #   categories:
+    #     process_creation:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             RuleName = winlog.event_data.RuleName,
+    #             UtcTime = winlog.event_data.UtcTime,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             FileVersion = process.pe.file_version,
+    #             Description = process.pe.description,
+    #             Product = process.pe.product,
+    #             Company = process.pe.company,
+    #             OriginalFileName = process.pe.original_file_name,
+    #             CommandLine = process.command_line,
+    #             CurrentDirectory = process.working_directory,
+    #             User = winlog.usr.name,
+    #             LogonGuid = winlog.event_data.LogonGuid,
+    #             LogonId = winlog.event_data.LogonId,
+    #             TerminalSessionId = winlog.event_data.TerminalSessionId,
+    #             IntegrityLevel = winlog.event_data.IntegrityLevel,
+    #             Hashes = winlog.event_data.Hashes,
+    #             ParentProcessGuid = process.parent.entity_id,
+    #             ParentProcessId = process.ppid,
+    #             ParentImage = process.parent.executable,
+    #             ParentCommandLine = process.paent.command_line,
+    #             ParentUser = winglog.event_data.ParentUser
+    #         | where EventID == 1
+    #     network_connection:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             Protocol = network.transport,
+    #             Initiated = winlog.event_data.Initiated,
+    #             SourceIsIpv6 = winlog.event_data.SourceIsIpv6,
+    #             SourceIp = source.ip,
+    #             SourceHostname = source.hostname,
+    #             SourcePort = source.port,
+    #             SourcePortName = winlog.event_data.SourcePortName,
+    #             DestinationIsIpv6 = winlog.event_data.DestinationIsIpv6,
+    #             DestinationIp = destination.ip,
+    #             DestinationHostname = destination.hostname,
+    #             DestinationPort = destination.port,
+    #             DestinationPortName = winlog.event_data.DestinationPortName
+    #         | where EventID == 3
+    #     registry_event|registry_add|registry_set|registry_delete:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             TargetFilename = winlog.event_data.TargetObject,
+    #             CreationUtcTime = winlog.event_data.UtcTime,
+    #             PreviousCreationUtcTime = winlog.event_data.UtcTime, 
+    #         | where EventID in (12, 13, 14, 4657)
+    #     file_event|file_create|file_delete|file_rename:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             TargetFilename = winlog.event_data.TargetObject,
+    #             CreationUtcTime = winlog.event_data.UtcTime,
+    #             PreviousCreationUtcTime = winlog.event_data.UtcTime, 
+    #         | where EventID in (11, 23, 26)
+    #     image_load:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             ImageLoaded = winlog.event_data.ImageLoaded,
+    #             FileVersion = process.pe.file_version,
+    #             Description = process.pe.description,
+    #             Product = process.pe.product,
+    #             Company = process.pe.company,
+    #             OriginalFileName = process.pe.original_file_name,
+    #             Hashes = winlog.event_data.Hashes,
+    #             Signed = winlog.event_data.Signed,
+    #             Signature = winlog.event_data.Signature,
+    #             SignatureStatus = winlog.event_data.SignatureStatus
+    #         | where EventID == 7
+    #     driver_load:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ImageLoaded = winlog.event_data.ImageLoaded,
+    #             Hashes = winlog.event_data.Hashes,
+    #             Signed = winlog.event_data.Signed,
+    #             Signature = winlog.event_data.Signature,
+    #             SignatureStatus = winlog.event_data.SignatureStatus
+    #         | where EventID in (6, 4697)
+    #     create_remote_thread:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             SourceProcessGuid = winlog.event_data.SourceProcessGuid,
+    #             SourceProcessId = winlog.event_data.SourceProcessId,
+    #             SourceImage = winlog.event_data.SourceImage,
+    #             TargetProcessGuid = winlog.event_data.TargetProcessGuid,
+    #             TargetProcessId = winlog.event_data.TargetProcessId,
+    #             TargetImage = winlog.event_data.TargetImage,
+    #             User = winlog.usr.name,
+    #             NewThreadId = winlog.process.thread.id,
+    #             StartAddress = winlog.event_data.StartAddress,
+    #             StartModule = winlog.event_data.StartModule,
+    #             StartFunction = winlog.event_data.StartFunction
+    #         | where EventID == 8
+    #     raw_access_thread:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             Device = winlog.event_data.Device
+    #         | where EventID == 9
+    #     process_access:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             SourceProcessGuid = winlog.event_data.SourceProcessGUID,
+    #             SourceProcessId = winlog.event_data.SourceProcessId,
+    #             SourceThreadId = winlog.event_data.SourceThreadId,
+    #             SourceImage = winlog.event_data.SourceImage,
+    #             TargetProcessGuid = winlog.event_data.TargetProcessGUID,
+    #             TargetProcessId = winlog.event_data.TargetProcessId,
+    #             TargetImage = winlog.event_data.TargetImage,
+    #             User = winlog.usr.name,
+    #             GrantedAccess = winlog.event_data.GrantedAccess,
+    #             CallTrace = winlog.event_data.CallTrace
+    #         | where EventID == 10
+    #     dns_query:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             QueryName = winlog.event_data.QueryName,
+    #             QueryStatus = winlog.event_data.QueryStatus,
+    #             QueryResults = winlog.event_data.QueryResults
+    #         | where EventID == 22
+    #     pipe_created:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ProcessGuid = process.entity_id,
+    #             ProcessId = process.pid,
+    #             Image = process.executable,
+    #             User = winlog.usr.name,
+    #             PipeName = winlog.event_data.PipeName
+    #         | where EventID in (17, 18)
+    #     # wmi_event:
+    #     #   hql: |
+    #     #     | project
+    #     #         _hqltimestamp = ['@timestamp'],
+    #     #         EventID = event.code,
+    #     #         Operation = event.action,
+    #     #         User = winlog.usr.name,
+    #     #         EventNamespace = ,
+    #     #         Name = ,
+    #     #         Query = ,
+    #     #         Type = ,
+    #     #         Destination = ,
+    #     #         Consumer = ,
+    #     #         Filter = ,
+    #     #     | where EventID in (19, 20, 21)
+    #     # clipboard_capture:
+    #     #   hql: |
+    #     #     | project
+    #     #          _hqltimestamp = ['@timestamp'],
+    #     #         EventID = event.code,
+    #     #         ProcessGuid = process.entity_id,
+    #     #         ProcessId = process.pid,
+    #     #         Image = process.executable,
+    #     #         User = winlog.usr.name,
+    #     #         Session = ,
+    #     #         ClientInfo = ,
+    #     #         Hashes = ,
+    #     #         Archived = 
+    #     #     | where EventID == 24
+    #     ps_script|ps_module|ps_classic_start:
+    #       hql: |
+    #         | project
+    #             _hqltimestamp = ['@timestamp'],
+    #             EventID = event.code,
+    #             ContextInfo = message,
+    #             HostApplication = message,
+    #             ScriptBlockText = winlog.event_data.ScriptBlockText,
+    #             ScriptBlockId = winlog.event_data.ScriptBlockId,
+    #             Path = winlog.event_data.Path,
+    #             MessageNumber = winlog.event_data.MessageNumber
+    #             MessageTotal = winlog.event_data.MessageTotal,
+    #             Payload = message
+    #         | where EventID in (4103, 4104, 600)
+
+    ##########
+    # SPLUNK #
+    ##########
+
+    - hql: |
+        database('death-splunk').index('windows')
+      services:
+        sysmon:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                User = User
+            | where EventID between (1 .. 28)
+        security:
+          hql: |
+            | where event.module == "windows_eventlog"
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                SubjectUserSid = SubjectUserSid,
+                SubjectUserName = SubjectUserName,
+                SubjectDomainName = SubjectDomainName,
+                SubjectLogonId = SubjectLogonId,
+                TargetUserSid = TargetUserSid,
+                TargetUserName = TargetUserName,
+                TargetDomainName = TargetDomainName,
+                TargetLogonId = TargetLogonId,
+                LogonType = LogonType,
+                LogonProcessName = LogonProcessName,
+                AuthenticationPackageName = AuthenticationPackageName,
+                WorkstationName = WorkstationName,
+                IpAddress = IpAddress,
+                IpPort = IpPort,
+                ProcessId = ProcessId,
+                ProcessName = ProcessName,
+                NewProcessId = NewProcessId,
+                NewProcessName = NewProcessName,
+                TokenElevationType = TokenElevationType,
+                CommandLine = CommandLine,
+                ParentProcessName = ParentProcessName,
+                MandatoryLabel = MandatoryLabel,
+                Status = Status,
+                FailureReason = FailureReason
+            | where EventID in (4624, 4625, 4648, 4672, 4688, 4689, 4697, 4720, 4722, 4732, 4756, 4768, 4769, 4776)
+        powershell:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                HostName = HostName,
+                HostVersion = HostVersion,
+                HostId = HostId,
+                HostApplication = HostApplication,
+                EngineVersion = EngineVersion,
+                RunspaceId = RunspaceId,
+                PipelineId = PipelineId,
+                CommandName = CommandName,
+                CommandType = CommandType,
+                ScriptName = ScriptName,
+                CommandPath = CommandPath,
+                CommandLine = CommandLine,
+                SequenceNumber = SequenceNumber,
+                UserId = UserId,
+                ConnectedUser = ConnectedUser,
+                NewEngineState = NewEngineState,
+                PreviousEngineState = PreviousEngineState
+            | where EventID in (400, 403, 600, 800, 4103, 4104, 4105, 4106)
+      categories:
+        process_creation:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                FileVersion = FileVersion,
+                Description = Description,
+                Product = Product,
+                Company = Company,
+                OriginalFileName = OriginalFileName,
+                CommandLine = CommandLine,
+                CurrentDirectory = CurrentDirectory,
+                User = User,
+                LogonGuid = LogonGuid,
+                LogonId = LogonId,
+                TerminalSessionId = TerminalSessionId,
+                IntegrityLevel = IntegrityLevel,
+                Hashes = Hashes,
+                ParentProcessGuid = ParentProcessGuid,
+                ParentProcessId = ParentProcessId,
+                ParentImage = ParentImage,
+                ParentCommandLine = ParentCommandLine,
+                ParentUser = ParentUser
+            | where EventID == 1
+        network_connection:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                User = User,
+                Protocol = Protocol,
+                Initiated = Initiated,
+                SourceIsIpv6 = SourceIsIpv6,
+                SourceIp = SourceIp,
+                SourceHostname = SourceHostname,
+                SourcePort = SourcePort,
+                SourcePortName = SourcePortName,
+                DestinationIsIpv6 = DestinationIsIpv6,
+                DestinationIp = DestinationIp,
+                DestinationHostname = DestinationHostname,
+                DestinationPort = DestinationPort,
+                DestinationPortName = DestinationPortName
+            | where EventID == 3
+        registry_event|registry_add|registry_set|registry_delete:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                EventType = EventType,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                TargetObject = TargetObject,
+                Details = Details,
+                User = User,
+                NewName = NewName
+            | where EventID in (12, 13, 14)
+        file_event|file_create|file_delete|file_rename:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                TargetFilename = TargetFilename,
+                CreationUtcTime = CreationUtcTime,
+                PreviousCreationUtcTime = PreviousCreationUtcTime,
+                User = User,
+                Hashes = Hashes
+            | where EventID in (11, 23, 26)
+        image_load:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                ImageLoaded = ImageLoaded,
+                FileVersion = FileVersion,
+                Description = Description,
+                Product = Product,
+                Company = Company,
+                OriginalFileName = OriginalFileName,
+                Hashes = Hashes,
+                Signed = Signed,
+                Signature = Signature,
+                SignatureStatus = SignatureStatus,
+                User = User
+            | where EventID == 7
+        driver_load:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ImageLoaded = ImageLoaded,
+                Hashes = Hashes,
+                Signed = Signed,
+                Signature = Signature,
+                SignatureStatus = SignatureStatus
+            | where EventID == 6
+        create_remote_thread:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                SourceProcessGuid = SourceProcessGuid,
+                SourceProcessId = SourceProcessId,
+                SourceImage = SourceImage,
+                TargetProcessGuid = TargetProcessGuid,
+                TargetProcessId = TargetProcessId,
+                TargetImage = TargetImage,
+                NewThreadId = NewThreadId,
+                StartAddress = StartAddress,
+                StartModule = StartModule,
+                StartFunction = StartFunction,
+                User = User
+            | where EventID == 8
+        raw_access_thread:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                Device = Device,
+                User = User
+            | where EventID == 9
+        process_access:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                SourceProcessGuid = SourceProcessGuid,
+                SourceProcessId = SourceProcessId,
+                SourceThreadId = SourceThreadId,
+                SourceImage = SourceImage,
+                TargetProcessGuid = TargetProcessGuid,
+                TargetProcessId = TargetProcessId,
+                TargetImage = TargetImage,
+                GrantedAccess = GrantedAccess,
+                CallTrace = CallTrace,
+                User = User
+            | where EventID == 10
+        file_stream:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                TargetFilename = TargetFilename,
+                CreationUtcTime = CreationUtcTime,
+                Hash = Hash,
+                Contents = Contents,
+                User = User
+            | where EventID == 15
+        dns_query:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                QueryName = QueryName,
+                QueryStatus = QueryStatus,
+                QueryResults = QueryResults,
+                Image = Image,
+                User = User
+            | where EventID == 22
+        pipe_created:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                EventType = EventType,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                PipeName = PipeName,
+                Image = Image,
+                User = User
+            | where EventID in (17, 18)
+        wmi_event:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                EventType = EventType,
+                UtcTime = UtcTime,
+                Operation = Operation,
+                User = User,
+                EventNamespace = EventNamespace,
+                Name = Name,
+                Query = Query,
+                Type = Type,
+                Destination = Destination,
+                Consumer = Consumer,
+                Filter = Filter
+            | where EventID in (19, 20, 21)
+        clipboard_capture:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                RuleName = RuleName,
+                UtcTime = UtcTime,
+                ProcessGuid = ProcessGuid,
+                ProcessId = ProcessId,
+                Image = Image,
+                Session = Session,
+                ClientInfo = ClientInfo,
+                Hashes = Hashes,
+                Archived = Archived,
+                User = User
+            | where EventID == 24
+        ps_script|ps_module|ps_classic_start:
+          hql: |
+            | project
+                _hqltimestamp = _time,
+                EventID = EventCode,
+                ScriptBlockText = ScriptBlockText,
+                ScriptBlockId = ScriptBlockId,
+                Path = Path,
+                MessageNumber = MessageNumber,
+                MessageTotal = MessageTotal,
+                ContextInfo = ContextInfo,
+                HostApplication = HostApplication,
+                HostName = HostName,
+                HostVersion = HostVersion,
+                EngineVersion = EngineVersion,
+                PipelineId = PipelineId,
+                CommandName = CommandName,
+                CommandType = CommandType,
+                ScriptName = ScriptName,
+                CommandPath = CommandPath,
+                Payload = Payload
+            | where EventID in (4103, 4104, 600, 800)
