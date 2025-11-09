@@ -1,0 +1,141 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grammdb"
+dynamic = ["version"]
+description = "GrammAcc's Async Data Layer for Python Apps"
+authors = [{ name = "GrammAcc" }]
+maintainers = [{ name = "GrammAcc" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["sqlalchemy[asyncio]"]
+
+
+[project.optional-dependencies]
+dev = ["hatch"]
+
+[tool.hatch.version]
+path = "src/grammdb/__init__.py"
+
+
+[tool.hatch.build]
+ignore-vcs = true
+include = ["py.typed"]
+
+
+# This is needed for hatchling to find the version in the package __init__.py file.
+# See https://github.com/pypa/hatch/issues/981#issuecomment-1743631364
+[tool.hatch.build.targets.sdist]
+include = ["src"]
+
+# This is needed for hatchling to find the version in the package __init__.py file.
+# See https://github.com/pypa/hatch/issues/981#issuecomment-1743631364
+[tool.hatch.build.targets.wheel]
+packages = ["src/grammdb"]
+
+[tool.hatch.envs.default]
+python = "3.13"
+dependencies = ["black", "flake8", "isort", "mypy", "pdoc"]
+
+
+[tool.hatch.envs.default.scripts]
+
+typecheck = "mypy -p grammdb {args}"
+format = ["isort --atomic .", "black ."]
+lint = "flake8 src test docs"
+"docs.build" = "pdoc 'grammdb' --docformat='google' --output-directory='docs'"
+"docs.serve" = "python documentation/serve.py"
+"docs.test" = "hatch run test:docs"
+
+"test.unit" = "hatch run test:unit"
+
+"test.integration" = "hatch run test:integration"
+
+"test.cov" = "hatch run test:cov"
+
+ci = [
+    "hatch run test.unit",
+    "hatch run docs.test",
+    "hatch run typecheck",
+    "hatch run lint",
+]
+
+all = [
+    "hatch run format",
+    "- hatch run test.integration",
+    "- hatch run docs.test",
+    "- hatch run test.cov",
+    "- hatch run typecheck",
+    "- hatch run lint",
+]
+
+[tool.hatch.envs.test]
+dependencies = [
+    "aiosqlite",
+    "asyncpg",
+    "pdoc",
+    "pytest",
+    # See: https://github.com/pytest-dev/pytest-asyncio/issues/706
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov",
+]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.12", "3.13"]
+
+[tool.hatch.envs.test.scripts]
+
+"unit" = ["NO_DOCKER=true pytest test {args}"]
+
+"integration" = [
+    "docker compose up -d",
+    "pytest test {args}",
+    "docker stop test-postgres-db",
+]
+
+"docs" = "python documentation/run_doctests.py"
+
+"cov" = [
+    "docker compose up -d",
+    "pytest --cov-config=pyproject.toml --cov-report html:htmlcov --cov=grammdb",
+    "docker stop test-postgres-db",
+]
+
+
+[tool.pytest.ini_options]
+log_file = "logs/testsuite.log"
+log_file_level = "WARNING"
+addopts = "--import-mode=importlib --show-capture=no"
+asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+omit = ["__init__.py"]
+fail_under = 90
+
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+force_grid_wrap = 2
+
+[tool.mypy]
+check_untyped_defs = true
+
+[tool.black]
+line-length = 100
