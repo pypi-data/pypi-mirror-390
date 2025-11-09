@@ -1,0 +1,187 @@
+[build-system]
+requires = ["setuptools>=62.6"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "folioflex"
+description = "A collection of portfolio tracking capabilities"
+dynamic = ["version"]
+authors = [{ name = "John Koestner", email = "johnkoestner@outlook.com" }]
+readme = 'README.md'
+license = { file = 'LICENSE.md' }
+requires-python = '>=3.10'
+
+dependencies = [
+    "ipywidgets>=8.1.5",
+    "fredapi>=0.5.2",
+    "jupyter-dash>=0.4.2",
+    "jupyterlab>=4.3.0",
+    "kaleido>=0.1.0,<0.2.0",          # restricted from 0.2.1 due to performance issues
+    "numpy>=1.26.4",
+    "openpyxl>=3.1.5",
+    "pandas>=2.2.3",
+    "pandas-market-calendars>=4.4.1",
+    "pyxirr>=0.10.6",
+    "sqlalchemy>=2.0.36",
+    "yfinance>=0.2.51",
+    "tzlocal>=5.2",
+
+    # web
+    "dash>=3.0.2",
+    "dash-ag-grid>=31.3.1",
+    "dash_bootstrap_components>=2.0.0",
+    "dash-core-components>=2.0.0",
+    "dash-html-components>=2.0.0",
+    "dash-renderer>=1.9.1",
+    "dash-table>=5.0.0",
+    "Flask>=3.0.3",
+    "Flask-Compress>=1.17",
+    "Flask-Login>=0.6.3",
+    "gunicorn>=23.0.0",
+    "lxml>=5.3.1",
+
+    # worker
+    "celery>=5.4.0",
+    "flower>=2.0.1",
+    "redis>=5.2.0",
+
+    # gpt
+    "g4f>=0.3.3.3",         # this package has loose testing support
+    "hugchat>=0.4.12",
+    "openai>=1.54.3",
+    "pyautogui>=0.9.54",
+    "seleniumbase>=4.32.8",
+
+    # budget
+    "emoji>=2.14.0",
+    "gensim>=4.3.3",
+    "scikit-learn>=1.5.2",
+    "scipy<1.14",              # restricted from gensim
+    "psycopg2-binary>=2.9.10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.10.0",
+    "isort>=5.13.2",
+    "jupyterlab-code-formatter>=3.0.2",
+    "pytest>=8.3.3",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.7.3",
+    "sphinx>=8.1",
+    "sphinx_rtd_theme>=3.0.1",
+]
+
+[project.scripts]
+ffx = "folioflex.utils.cli:cli" # the entry points provide console scripts at command line
+
+[project.urls]
+homepage = "https://github.com/jkoestner/folioflex"
+documentation = 'https://jkoestner.github.io/folioflex/'
+repository = 'https://github.com/jkoestner/folioflex'
+
+# TODO: Remove after setuptools support is dropped.
+[tool.setuptools]
+include-package-data = true # include files from MANIFEST.in
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "folioflex.version.version" }
+
+# coverage config file for pytest-cov coming from
+# https://pytest-cov.readthedocs.io/en/latest/
+# run using pytest --cov=folioflex --cov-report=html
+[tool.coverage.run]
+data_file = "docs/coverage/.coverage"
+omit = [
+    "folioflex/dashboard/*", # omit everything in /dashboard
+    "__init__.py",           # omit init files
+]
+
+[tool.coverage.html]
+directory = "docs/coverage/htmlcov"
+
+[tool.ruff]
+line-length = 88
+fix = false
+unfixable = []
+extend-include = ["*.ipynb"]
+
+select = [
+    # pyflakes
+    "F",
+    # pycodestyle
+    "E",
+    "W",
+    # isort
+    "I",
+    # pydocstyle
+    "D",
+    # flake8-2020
+    "YTT",
+    # flake8-bugbear
+    "B",
+    # flake8-quotes
+    "Q",
+    # flake8-debugger
+    "T10",
+    # flake8-gettext
+    "INT",
+    # pylint
+    "PL",
+    # misc lints
+    "PIE",
+    # flake8-pyi
+    "PYI",
+    # tidy imports
+    "TID",
+    # implicit string concatenation
+    "ISC",
+    # type-checking imports
+    "TCH",
+    # comprehensions
+    "C4",
+    # pygrep-hooks
+    "PGH",
+    # Ruff-specific rules
+    "RUF",
+    # flake8-bandit: exec-builtin
+    "S102",
+    # numpy-legacy-random
+    "NPY002",
+    # Perflint
+    "PERF",
+    # flynt
+    "FLY",
+    # flake8-logging-format
+    "G",
+]
+
+ignore = [
+    ### Intentionally disabled
+    # type hinting exceptions
+    "ANN101",
+    "ANN401",
+    # logging statement uses f-string
+    "G004",
+    # ignore __init__ docstring
+    "D107",
+    # these are conflicting errors
+    "D203",
+    "D212",
+    # ignore == False vs is False due to pandas series
+    "E712",
+    "ISC001",
+    # ignore magic numbers
+    "PLR2004",
+    # ignore too many return statements or branches
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+]
+
+[tool.ruff.lint]
+exclude = ["*.ipynb"]
+pylint.max-args = 10
