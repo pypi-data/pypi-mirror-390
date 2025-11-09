@@ -1,0 +1,29 @@
+[package]
+name = "ms_toollib"
+version = "1.4.11-alpha"
+description = "Algorithms  for Minesweeper"
+documentation = "https://docs.rs/ms_toollib/"
+license = "MIT"
+readme = "readme.md"
+keywords = ["minesweeper", "probability", "solver", "laymine", "3BV"]
+edition = "2021"
+authors = ["Wang Jianing <wangjn@88.com>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pyo3 = { version ="0.27.1", features = ["extension-module", "abi3-py37"] }
+ms_toollib_original = { path = "../base", features = ["py"], package="ms_toollib" }
+itertools = { version ="0.6.0" }
+
+[lib]
+name = "ms_toollib"
+crate-type = ["cdylib", "lib"]
+
+
+[profile.release]
+opt-level = "z"  # 优化大小
+lto = true       # 链接时优化，跨crate优化代码
+panic = "abort"  # 禁用恐慌的展开信息
+strip = true     # 剥离调试符号
+
