@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polytts"
+version = "0.1.0"
+description = "A unified interface for multiple TTS providers requiring minimal code changes for hotswapping."
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["tts", "text-to-speech", "speech-synthesis", "audio", "voice"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "numpy<2.0",
+    "python-dotenv"
+]
+
+[project.optional-dependencies]
+
+# Development/Testing
+dev = [
+    "pytest",
+    "filetype",
+    "mutagen",
+    "pydub"
+]
+
+# Cloud TTS providers
+openai = ["openai"]
+elevenlabs = ["elevenlabs"]
+fishaudio = ["fish-audio-sdk"]
+
+# Local TTS providers
+kokoro = ["kokoro"]
+
+# All providers
+all = [
+    "openai",
+    "elevenlabs",
+    "fish-audio-sdk",
+    "kokoro"
+]
+
+[project.urls]
+Homepage = "https://github.com/spava002/PolyTTS.git"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["polytts*"]
+
+[tool.setuptools.package-data]
+polytts = ["audio/**/*"]
