@@ -1,0 +1,226 @@
+# Changelog
+
+All notable changes to AI Journal Kit will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.0.13] - 2025-11-09
+
+### Added
+- **New `add-ide` command**: Add IDE configurations to existing journal without recreating
+  - Install Cursor, Windsurf, Claude Code, or GitHub Copilot configs to existing journal
+  - Use `ai-journal-kit add-ide <ide>` or interactive prompt
+  - Idempotent - safe to run multiple times
+  - Preserves all journal content and settings
+  - Supports adding individual IDEs or all at once with `add-ide all`
+
+### Changed
+- Enhanced IDE configuration flexibility
+- Users can now mix and match multiple IDE configurations in one journal
+
+## [1.0.12] - 2025-11-09
+
+### Fixed
+- **Update command downgrade protection**: Fixed bug where update command would attempt to downgrade when running development version
+  - Now properly compares semantic versions using `packaging.version.parse()`
+  - Detects when current version is newer than PyPI and refuses to downgrade
+  - Shows clear warning when running development version
+  - Use `--force` to refresh IDE configs without package downgrade
+
+## [1.0.11] - 2025-11-09
+
+### Fixed
+- **Template updater bug**: Fixed incorrect import that prevented template update functionality from working
+  - Changed `get_template_path` to `get_template` in template_updater.py
+  - Template comparison and updates now work correctly
+- **Claude Code IDE detection**: Fixed doctor command to check for correct file
+  - Now correctly checks for `SYSTEM-PROTECTION.md` instead of `CLAUDE.md`
+  - Matches actual Claude Code template structure
+- **Claude Code template installation**: Fixed template copying to match actual structure
+  - Copies markdown files to journal root directory as intended
+- **Pydantic v2 compatibility**: Eliminated deprecation warnings
+  - Migrated from class-based `Config` to `ConfigDict` pattern
+  - No functional changes, internal modernization only
+
+### Changed
+- **Improved automation support**: `--no-confirm` flag now auto-creates parent directories
+  - Applies to both `setup` and `move` commands
+  - Better support for scripted/automated installations
+- **Massively improved test coverage**: Increased from 75% to 99% coverage
+  - Added 116 new tests (181 → 297 total tests)
+  - Comprehensive unit tests for all core modules
+  - Integration tests for all CLI commands
+  - End-to-end workflow testing
+  - All 264 tests passing on Ubuntu, macOS, and Windows
+
+### Developer Experience
+- **Enhanced type safety**: Improved validation.py type checking
+- **Test infrastructure**: Added isolated test fixtures and helpers
+- **CI improvements**: Better GitHub Actions workflow for cross-platform testing
+
+## [1.0.10] - 2025-11-07
+
+### Fixed
+- **Cross-platform pip detection**: Update command now auto-detects the correct pip command
+  - Tries `pip`, `pip3`, `python -m pip`, `python3 -m pip` in order
+  - Works on Windows where `python3` doesn't exist (uses `pip` or `python -m pip`)
+  - Works on Linux/Mac where `pip` might not exist (uses `pip3` or `python3 -m pip`)
+  - Shows correct command in error messages based on detected pip
+
+### Changed
+- **Smart pip command selection**: No more hardcoded `python3 -m pip`
+  - Automatically adapts to user's system
+  - Better cross-platform compatibility
+
+## [1.0.9] - 2025-11-07
+
+### Fixed
+- **Critical update command bug**: `--force` flag no longer skips package upgrade
+  - Previously `--force` would skip the pip upgrade entirely, causing silent failures
+  - Now package upgrade always happens, even with `--force`
+  - Better error messages when upgrade fails (shows stderr, suggests --no-cache-dir)
+  - `--force` now only skips version check/confirmation, as intended
+
+### Changed
+- **Update command behavior**: Package upgrade is now mandatory during updates
+  - Ensures IDE configs match installed package version
+  - Prevents stale configuration files
+  - More reliable update process
+
+## [1.0.8] - 2025-11-07
+
+### Added
+- **Copilot user customizations**: Added `.ai-instructions/` support for GitHub Copilot users
+  - Created `user-customizations.instructions.md` to load custom coaching preferences
+  - Copilot now checks for and applies `.ai-instructions/my-coach.md` overrides
+  - Full feature parity with Cursor, Windsurf, and Claude Code
+  - Users can customize AI behavior without modifying core system files
+
+### Changed
+- **Copilot coaching instructions**: Added user customization section to `journal-coach.instructions.md`
+  - Explicitly mentions checking `.ai-instructions/` folder
+  - Documents available customization files
+  - Aligns with other IDE implementations
+
+## [1.0.7] - 2025-11-07
+
+### Changed
+- **Copilot configuration structure**: Reorganized GitHub Copilot instructions for consistency
+  - Moved `copilot-instructions.md` to `.github/instructions/journal-coach.instructions.md`
+  - All instructions now in `.github/instructions/` folder for better organization
+  - Matches pattern used by Cursor and Windsurf IDEs
+  
+### Fixed
+- **Update command**: Automatically cleans up old Copilot structure for existing users
+  - Removes outdated `copilot-instructions.md` from `.github/` root if present
+  - Applies new structure seamlessly during updates
+
+## [1.0.6] - 2025-11-07
+
+### Fixed
+- **Module packaging**: Added `__init__.py` files to `templates/` and `templates/ide-configs/` directories
+  - Fixes "No module named 'ai_journal_kit.templates'" error during `update` command
+  - Templates directory now properly recognized as a Python module
+  - Ensures IDE configs can be refreshed during updates
+- **Update command**: Fixed `show_success()` call with incorrect number of arguments
+  - Corrected function call to pass only the message parameter
+  - Resolves `TypeError: show_success() takes 1 positional argument but 2 were given`
+
+## [1.0.5] - 2025-11-07
+
+### Fixed
+- **GitHub Copilot support**: Added complete AI coaching instructions for Copilot users
+  - Main coaching instructions (`.github/copilot-instructions.md`)
+  - Daily notes path-specific rules (`.github/instructions/daily-notes.instructions.md`)
+  - System protection rules (`.github/instructions/system-protection.instructions.md`)
+  - Previously only had system-protection, now has full coaching support
+
+## [1.0.4] - 2025-11-07
+
+### Added
+- **Template updating**: `--templates` flag for update command to refresh templates with automatic backup
+- **Beautiful new README**: Rich with emojis, clear value props, quick start
+- **Template management module**: Check, update, backup, and restore templates
+
+### Changed
+- **README completely revamped**: More exciting, value-focused, privacy-first messaging
+- **Emphasis on framework-agnostic nature**: Works with GTD, PARA, Bullet Journal, or your own system
+
+## [1.0.3] - 2025-11-07
+
+### Fixed
+- **Update command**: Fixed package upgrade to use `pip install --upgrade` instead of non-existent `uvx --upgrade`
+- **Changelog display**: Now fetches actual release notes from GitHub API instead of placeholder text
+
+### Added
+- **RELEASING.md**: Comprehensive release process documentation for maintainers
+
+## [1.0.2] - 2025-11-07
+
+### Fixed
+- **Version string**: Fixed `__version__` in `__init__.py` to match package version
+
+## [1.0.1] - 2025-11-07
+
+### Fixed
+- **Update command**: Now properly checks PyPI for latest version instead of always returning "Unable to check"
+
+## [1.0.0] - 2025-11-07
+
+### Added
+- **Modern Python CLI** powered by `uv`, Typer, and Rich for beautiful terminal UI
+- **`setup` command**: Interactive first-time setup with path validation and IDE selection
+- **`status` command**: View journal health and configuration at a glance
+- **`doctor` command**: Diagnose and auto-fix common issues
+- **`update` command**: Safely update core system while preserving journal content
+- **`move` command**: Relocate journal to different filesystem location
+- **Cross-platform support**: Works seamlessly on macOS, Linux, and Windows
+- **Multi-editor integration**: Built-in support for Cursor, Windsurf, Claude Code, and GitHub Copilot
+- **Flexible journal location**: Store journal anywhere (local, Google Drive, Dropbox, etc.)
+- **XDG-compliant config**: Uses platformdirs for proper config file storage
+- **Comprehensive testing**: Unit + integration + E2E tests with 80%+ coverage
+- **CI/CD pipelines**: Automated testing on all platforms via GitHub Actions
+
+### Changed
+- **Installation method**: Now installable via `uvx ai-journal-kit` from PyPI (replaces shell scripts)
+- **Package structure**: Reorganized as proper Python package with clear module separation
+- **Configuration management**: Config now stored in platform-specific locations (was: `.ai-journal-config.json` in repo)
+
+### Deprecated
+- Shell scripts (`setup.sh`, `update-core.sh`, `change-location.sh`) - replaced by Python CLI commands
+
+### AI Behavior Changes
+- No changes to AI coaching behavior in this release - all AI instructions preserved
+
+### Migration Guide
+See [MIGRATION.md](./MIGRATION.md) for upgrading from shell-script version to Python CLI.
+
+---
+
+## Format
+
+### Version Headers
+- **[Unreleased]**: Changes not yet released
+- **[X.Y.Z] - YYYY-MM-DD**: Released versions with date
+
+### Change Categories
+- **Added**: New features
+- **Changed**: Changes to existing functionality
+- **Deprecated**: Soon-to-be-removed features
+- **Removed**: Removed features
+- **Fixed**: Bug fixes
+- **Security**: Security improvements
+- **AI Behavior Changes**: Changes to default AI coaching personality or functionality
+
+### AI Behavior Change Policy
+Changes to AI coaching personality, tone, or core behavior MUST be documented under "AI Behavior Changes" section with:
+1. Clear description of what changed
+2. Rationale for the change
+3. How users can opt-out or customize
+
+[Unreleased]: https://github.com/troylar/ai-journal-kit/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/troylar/ai-journal-kit/releases/tag/v1.0.0
+
