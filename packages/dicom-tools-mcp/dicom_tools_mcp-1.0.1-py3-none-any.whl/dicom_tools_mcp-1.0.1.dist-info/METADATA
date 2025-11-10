@@ -1,0 +1,264 @@
+Metadata-Version: 2.4
+Name: dicom-tools-mcp
+Version: 1.0.1
+Summary: 基于 MCP (Model Context Protocol) 的 DICOM 医学影像文件分析工具
+Project-URL: Homepage, https://github.com/yourusername/dicom-tools-mcp
+Project-URL: Repository, https://github.com/yourusername/dicom-tools-mcp
+Project-URL: Issues, https://github.com/yourusername/dicom-tools-mcp/issues
+Author-email: Your Name <your.email@example.com>
+License: MIT
+Keywords: dicom,mcp,medical-imaging,model-context-protocol,orthanc
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Healthcare Industry
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Medical Science Apps.
+Requires-Python: >=3.10
+Requires-Dist: mcp>=0.9.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydicom>=2.4.0
+Requires-Dist: pyorthanc
+Requires-Dist: requests>=2.31.0
+Requires-Dist: tqdm>=4.66.0
+Description-Content-Type: text/markdown
+
+# DICOM Tools MCP
+
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-0.9.0%2B-green.svg)](https://modelcontextprotocol.io)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+基于 MCP (Model Context Protocol) 的 DICOM 医学影像文件分析工具。提供扫描、解析、映射和上传等功能的 Python 实现。
+
+## ✨ 功能特性
+
+- 📁 **目录扫描**：快速扫描 DICOM 文件目录，生成统计摘要
+- 📄 **文件解析**：提取 DICOM 文件的关键元数据信息
+- 🗂️ **序列映射**：生成患者-序列的详细映射关系
+- 📤 **自动上传**：支持自动上传 DICOM 文件进行在线分析
+- 🔍 **序列分析**：支持主动脉和二尖瓣等医学影像分析
+- 📊 **JSON 导出**：导出完整的扫描结果为 JSON 格式
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Python 3.10 或更高版本
+- Windows/Linux/macOS
+
+### 安装
+
+#### 使用 uv (推荐)
+
+```bash
+# 安装 uv
+pip install uv
+
+# 安装项目依赖
+uv sync
+```
+
+#### 使用 pip
+
+```bash
+pip install -r requirements.txt
+```
+
+#### 从源码安装
+
+```bash
+pip install -e .
+```
+
+### 配置
+
+1. 复制 `.env.example` 为 `.env`（如果存在）
+2. 配置必要的环境变量
+
+## 📖 使用方法
+
+### 作为 MCP 服务器运行
+
+```bash
+python main.py
+```
+
+### 命令行工具
+
+```bash
+# 运行 DICOM 工具
+dicom-tools-mcp
+```
+
+### 作为 Python 模块使用
+
+```python
+from dicom_tools.scanner import scan_dicom_directory_tool
+from dicom_tools.parser import parse_dicom_file_tool
+
+# 扫描目录
+result = await scan_dicom_directory_tool("/path/to/dicom/files")
+
+# 解析单个文件
+result = await parse_dicom_file_tool("/path/to/file.dcm")
+```
+
+## 🛠️ 可用工具
+
+### 1. scan-dicom-directory
+扫描指定目录下的所有 DICOM 文件，返回统计摘要。
+
+**输入参数：**
+- `directory_path` (string): 要扫描的目录路径
+
+**返回信息：**
+- 总数据量
+- 患者数量
+- 序列数量
+- 文件统计
+
+### 2. parse-dicom-file
+解析单个 DICOM 文件，提取关键元数据。
+
+**输入参数：**
+- `file_path` (string): DICOM 文件的路径
+
+**返回信息：**
+- PatientID
+- PatientName
+- SeriesInstanceUID
+- SeriesDescription
+- 其他 DICOM 标签信息
+
+### 3. get-dicom-series-mapping
+生成患者-序列的详细映射关系。
+
+**输入参数：**
+- `directory_path` (string): 要扫描的目录路径
+
+**返回信息：**
+- 患者映射
+- 序列列表
+- 文件列表
+
+### 4. export-dicom-json
+导出完整的 DICOM 扫描结果为 JSON 格式。
+
+**输入参数：**
+- `directory_path` (string): 要扫描的目录路径
+
+**输出：**
+- 包含所有患者、序列和文件信息的 JSON 文件
+
+### 5. Analysis_dicom_directory
+扫描并自动上传 DICOM 文件进行在线分析。
+
+**输入参数：**
+- `directory_path` (string): DICOM 文件夹路径
+- `series_type` (string): 分析方法（1=主动脉，9=二尖瓣）
+
+**返回信息：**
+- 上传信息
+- 分析 URL
+
+### 6. separate-series-by-patient
+按患者分离 DICOM 序列文件。
+
+**输入参数：**
+- `fileforsep` (string): 要处理的文件路径
+
+## 📁 项目结构
+
+```
+dicom-tools-mcp/
+├── main.py                 # MCP 服务器主入口
+├── upload.py              # 上传和分析功能
+├── getcookie.py           # Cookie 管理
+├── getcrpit.py            # 加密工具
+├── pyproject.toml         # 项目配置
+├── dicom_tools/           # DICOM 工具核心模块
+│   ├── __init__.py
+│   ├── scanner.py         # 目录扫描
+│   ├── parser.py          # 文件解析
+│   ├── mapping.py         # 序列映射
+│   ├── exporter.py        # JSON 导出
+│   ├── types.py           # 数据类型定义
+│   └── utils.py           # 工具函数
+└── src/                   # 应用源码
+    ├── api/               # API 接口
+    ├── core/              # 核心处理逻辑
+    ├── models/            # 数据模型
+    └── utils/             # 辅助工具
+```
+
+## 🔧 开发
+
+### 运行测试
+
+```bash
+pytest
+```
+
+### 代码格式化
+
+```bash
+black .
+```
+
+### 类型检查
+
+```bash
+mypy .
+```
+
+## 📦 依赖项
+
+主要依赖：
+
+- `mcp>=0.9.0` - Model Context Protocol 框架
+- `pydicom>=2.4.0` - DICOM 文件处理
+- `requests>=2.31.0` - HTTP 请求
+- `pydantic>=2.0.0` - 数据验证
+- `tqdm>=4.66.0` - 进度条显示
+- `pyorthanc` - Orthanc PACS 集成
+
+完整依赖列表请查看 `pyproject.toml`。
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+## 🔗 相关资源
+
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
+- [PyDICOM 文档](https://pydicom.github.io/)
+- [DICOM 标准](https://www.dicomstandard.org/)
+- [Orthanc PACS](https://www.orthanc-server.com/)
+
+## 📧 联系方式
+
+如有问题或建议，请通过以下方式联系：
+
+- 提交 Issue: [GitHub Issues](https://github.com/yourusername/dicom-tools-mcp/issues)
+- Email: your.email@example.com
+
+## 🙏 致谢
+
+感谢所有为本项目做出贡献的开发者！
+
+---
+
+**注意**: 本工具仅供研究和学习使用，处理医疗数据时请遵守相关法律法规和隐私保护要求。
