@@ -1,0 +1,181 @@
+[project]
+authors = [{ name = "Jacob Pieniazek", email = "jacob@pieniazek.me" }]
+maintainers = [{ name = "Jacob Pieniazek", email = "jacob@pieniazek.me" }]
+dependencies = [
+    "econml>=0.16",
+    "flaml[automl]>=2.0.0",
+    "doubleml>=0.8.0",
+    "matplotlib>=3.9.2",
+    "rich>=13.9.4",
+    "patsy>=1.0.1",
+    "llvmlite>0.40",
+    "numpy<2",
+]
+description = "Extensions & abstractions of advanced econometric techniques leveraging machine learning."
+name = "caml"
+requires-python = ">= 3.10"
+version = "0.0.0-dev16"
+license = { text = "MIT" }
+readme = "README.md"
+keywords = [
+    "causal inference",
+    "econometrics",
+    "machine learning",
+    "automl",
+    "heterogeneity",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.urls]
+Homepage = "https://caml-docs.com"
+Documentation = "https://caml-docs.com/"
+"Source Code" = "https://github.com/jakepenzak/caml"
+"Bug Tracker" = "https://github.com/jakepenzak/caml/issues"
+
+[dependency-groups]
+test = [
+    "polars>=1.31.0",
+    "pyarrow>=20.0.0",
+    "pytest>=8.3.2",
+    "pytest-cov>=5.0.0",
+    "pytest-html>=4.1.1",
+    "pytest-mock>=3.14.0",
+    "typeguard>=4.4.4",
+]
+dev = [
+    "jupyter>=1.1.0",
+    "marimo>0.14",
+    "openai>=2.7.1",
+    "pre-commit>=3.5.0",
+    "ruff>=0.6.2",
+]
+docs = ["quarto-cli<1.7.32", "quartodoc>=0.9.1"]
+
+# TODO: Complete refactor of optional dependencies and removal of different backends (jax, polars, pyspark, etc.)
+[project.optional-dependencies]
+pyspark = ["flaml[spark]>=2.0.0", "optuna>=3.6.1", "pyspark>=3.5.2"]
+polars = ["polars>=1.17.1", "pyarrow>=20.0.0"]
+jax = ["jax>=0.5.2"]
+jax-gpu = ["jax[cuda12]>=0.5.2"]
+ray = [
+ "ray[tune]>=2.51.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+exclude = [
+    "scripts/notebooks/",
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    "notebooks/",
+]
+
+extend-include = ["*.ipynb"]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402", "F401"]     # Import violations
+"**/{tests,docs,tools}/*" = ["E402"] # Import violations
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "Q", "D", "I"]
+ignore = ["D401", "D100", "D101", "D102", "D103", "E501", "E203"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 88
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+filterwarnings = "ignore::DeprecationWarning"
+addopts = "--cov=caml/ --cov-branch --cov-report=term-missing --cov-report=html:tests/reports/htmlcov --cov-report=xml:tests/reports/coverage.xml"
+markers = [
+    "ols: mark tests for the FastOLS/ols module",
+    "core: mark tests for the core module",
+    "extensions: mark tests for the extensions module",
+    "synthetic_data: mark tests for the synthetic data module`",
+]
+typeguard-packages = "caml"
+typeguard-collection-check-strategy = "ALL_ITEMS"
+typeguard-forward-ref-policy = "ERROR"
+
+[tool.coverage.run]
+omit = ["caml/logging.py", "caml/extensions/plots.py"]
+
+[tool.bumpversion]
+current_version = "0.0.0-dev16"
+parse = """(?x)
+    (?P<major>0|[1-9]\\d*)\\.
+    (?P<minor>0|[1-9]\\d*)\\.
+    (?P<patch>0|[1-9]\\d*)
+    (?:
+        -                             # dash separator for pre-release section
+        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
+        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
+    )?                                # pre-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+ignore_missing_files = false
+tag = false
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = false
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+setup_hooks = []
+pre_commit_hooks = []
+post_commit_hooks = []
+
+[tool.bumpversion.parts.pre_l]
+values = ["dev", "rc", "final"]
+optional_value = "final"
+
+[[tool.bumpversion.files]]
+filename = "caml/_version.py"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "basic"
+exclude = ["tests", "notebooks"]

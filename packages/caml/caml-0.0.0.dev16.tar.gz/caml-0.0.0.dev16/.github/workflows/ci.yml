@@ -1,0 +1,68 @@
+name: Caml CI/CD
+
+on:
+  push:
+    branches: ["main", "develop"]
+  workflow_dispatch:
+
+jobs:
+  run_tests:
+    if: github.event.pull_request.draft == false
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install uv & Set Python Version
+        uses: astral-sh/setup-uv@22695119d769bdb6f7032ad67b9bca0ef8c4a174
+        with:
+          version: ${{ vars.UV_VERSION }}
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies for macOS
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
+      - name: Install the project (Linux)
+        if: runner.os == 'Linux'
+        run: uv sync --all-extras --all-groups --frozen
+
+      - name: Install the project (Windows & MacOS)
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: uv sync --all-groups --extra pyspark --extra polars --extra jax --frozen
+
+      - name: Run tests
+        run: uv run pytest tests
+
+  mock_build_docs:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182
+        with:
+          version: ${{ vars.UV_VERSION }}
+
+      - name: Create environment
+        run: uv sync --all-groups --frozen
+
+      - name: Render & Publish Docs
+        shell: bash -l {0}
+        run: |
+          set -e
+          source .venv/bin/activate
+          bash docs/marimo_examples_to_quarto.sh
+          quartodoc build --config docs/_quarto.yml
+          quarto render docs/
