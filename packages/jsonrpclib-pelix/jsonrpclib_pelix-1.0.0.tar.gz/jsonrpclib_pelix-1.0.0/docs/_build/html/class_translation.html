@@ -1,0 +1,192 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class Translation &mdash; jsonrpclib-pelix 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Release Notes" href="changelog.html" />
+    <link rel="prev" title="Simple JSON-RPC Server" href="server.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            jsonrpclib-pelix
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="client.html">JSON-RPC Client usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Simple JSON-RPC Server</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Class Translation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">jsonrpclib-pelix</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Class Translation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/class_translation.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="class-translation">
+<h1>Class Translation<a class="headerlink" href="#class-translation" title="Link to this heading"></a></h1>
+<p>The library supports an <em>“automatic”</em> class translation process, although it
+is turned off by default.
+This can be devastatingly slow if improperly used, so the following is just a
+short list of things to keep in mind when using it.</p>
+<ul class="simple">
+<li><p>Keep It (the object) Simple Stupid. (for exceptions, keep reading)</p></li>
+<li><p>Do not require init params (for exceptions, keep reading)</p></li>
+<li><p>Getter properties without setters could be dangerous (read: not tested)</p></li>
+</ul>
+<p>If any of the above are issues, use the <code class="docutils literal notranslate"><span class="pre">_serialize</span></code> method (see usage below).
+The server and client must <strong>BOTH</strong> have <code class="docutils literal notranslate"><span class="pre">use_jsonclass</span></code> configuration
+item on and they must both have access to the same libraries used by the
+objects for this to work.</p>
+<p>If you have excessively nested arguments, it would be better to turn off the
+translation and manually invoke it on specific objects using
+<code class="docutils literal notranslate"><span class="pre">jsonrpclib.jsonclass.dump</span></code> / <code class="docutils literal notranslate"><span class="pre">jsonrpclib.jsonclass.load</span></code> (since the default
+behavior recursively goes through attributes and lists / dicts / tuples).</p>
+<ul class="simple">
+<li><p>Sample file: <code class="docutils literal notranslate"><span class="pre">test_obj.py</span></code></p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># This object is /very/ simple, and the system will look through the</span>
+<span class="c1"># attributes and serialize what it can.</span>
+<span class="k">class</span> <span class="nc">TestObj</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="s1">&#39;bar&#39;</span>
+
+<span class="c1"># This object requires __init__ params, so it uses the _serialize</span>
+<span class="c1"># method and returns a tuple of init params and attribute values</span>
+<span class="c1"># (the init params can be a dict or a list, but the attribute</span>
+<span class="c1"># values must be a dict.)</span>
+<span class="k">class</span> <span class="nc">TestSerial</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="s1">&#39;bar&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;foo&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">foo</span><span class="p">,})</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Sample usage:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">jsonrpclib</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">test_obj</span>
+
+<span class="go"># History is used only to print the serialized form of beans</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">history</span> <span class="o">=</span> <span class="n">jsonrpclib</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">History</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testobj1</span> <span class="o">=</span> <span class="n">test_obj</span><span class="o">.</span><span class="n">TestObj</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">testobj2</span> <span class="o">=</span> <span class="n">test_obj</span><span class="o">.</span><span class="n">TestSerial</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">server</span> <span class="o">=</span> <span class="n">jsonrpclib</span><span class="o">.</span><span class="n">Server</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s1">&#39;http://localhost:8080&#39;</span><span class="p">,</span> <span class="n">history</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
+
+<span class="go"># The &#39;ping&#39; just returns whatever is sent</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ping1</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">ping</span><span class="p">(</span><span class="n">testobj1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ping2</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">ping</span><span class="p">(</span><span class="n">testobj2</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">history</span><span class="o">.</span><span class="n">request</span><span class="p">)</span>
+<span class="go">{&quot;id&quot;: &quot;7805f1f9-9abd-49c6-81dc-dbd47229fe13&quot;, &quot;jsonrpc&quot;: &quot;2.0&quot;,</span>
+<span class="go"> &quot;method&quot;: &quot;ping&quot;, &quot;params&quot;: [</span>
+<span class="go">    {&quot;__jsonclass__&quot;: [&quot;test_obj.TestSerial&quot;, []], &quot;foo&quot;: &quot;bar&quot;}</span>
+<span class="go"> ]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">history</span><span class="o">.</span><span class="n">response</span><span class="p">)</span>
+<span class="go">{&quot;id&quot;: &quot;7805f1f9-9abd-49c6-81dc-dbd47229fe13&quot;, &quot;jsonrpc&quot;: &quot;2.0&quot;,</span>
+<span class="go"> &quot;result&quot;: {</span>
+<span class="go">    &quot;__jsonclass__&quot;: [&quot;test_obj.TestSerial&quot;, []],</span>
+<span class="go">    &quot;foo&quot;: &quot;bar&quot;</span>
+<span class="go"> }}</span>
+</pre></div>
+</div>
+<p>This behavior is turned on by default.
+To deactivate it, just set the <code class="docutils literal notranslate"><span class="pre">use_jsonclass</span></code> member of a server <code class="docutils literal notranslate"><span class="pre">Config</span></code>
+to <code class="docutils literal notranslate"><span class="pre">False</span></code>.
+If you want to use a per-class serialization method, set its name in the
+<code class="docutils literal notranslate"><span class="pre">serialize_method</span></code> member of a server <code class="docutils literal notranslate"><span class="pre">Config</span></code>.
+Finally, if you are using classes that you have defined in the implementation
+(as in, not a separate library), you’ll need to add those
+(on <strong>BOTH</strong> the server and the client) using the <code class="docutils literal notranslate"><span class="pre">config.classes.add()</span></code>
+method.</p>
+<p>Feedback on this “feature” is very, VERY much appreciated.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="server.html" class="btn btn-neutral float-left" title="Simple JSON-RPC Server" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Release Notes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Thomas Calmant.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
