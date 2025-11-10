@@ -1,0 +1,514 @@
+# MCP File Tool
+
+面向大文本文件的 MCP 工具集与服务，使用 Python + 官方 MCP SDK（FastMCP）。支持分片读取/写入、搜索与精确定位，内置结构化日志与可配置参数，避免一次性读入超大文件导致上下文爆炸。可作为命令行服务或在 IDE（Trae/Claude Desktop）中作为工具调用。
+
+## 功能特性
+- 分片读取：按字节偏移读取；按行范围读取
+- 分片写入：覆盖写入、末尾追加、任意偏移插入（原子替换）
+- 高效搜索：流式正则与字面量搜索，返回命中偏移、近似行号、上下文片段
+- 行索引：可选构建每N行的偏移索引，加速行定位
+- 结构化日志：JSON日志输出到控制台与滚动文件
+- 可配置：通过环境变量调优缓冲区大小、最大读取字节数、日志等级等
+
+## 安装
+
+通过 PyPI（准备发布）：
+
+```bash
+pip install mcp-file-tool
+```
+
+从源码运行：
+
+```bash
+# 创建虚拟环境（可选）
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动 MCP 服务（STDIO 传输）
+mcp-file-tool
+```
+
+## 与 AI 客户端集成
+- Claude Desktop / Trae：在“工具”中添加本地 STDIO 服务，命令使用 `mcp-file-tool`。
+- 运行后，客户端将自动调用本 MCP 工具以读取/写入、搜索文件，实现“只读片段”的上下文管理。
+
+示例Claude Desktop手动配置（参考）：
+```json
+{
+  "mcpServers": {
+    "bigfile-mcp": {
+      "command": "python",
+      "args": ["/absolute/path/to/main.py"],
+      "env": {
+        "MCP_FILE_TOOL_RUNTIME_DIR": "~/.mft",
+        "MCP_FILE_TOOL_LOG_LEVEL": "INFO",
+        "MCP_FILE_TOOL_MAX_READ_BYTES": "4194304",
+        "MCP_FILE_TOOL_STREAM_BUFFER": "65536"
+      }
+    }
+  }
+}
+```
+
+## 可用工具（Tools）
+以下为 MCP 导出工具名（参数统一为 `file_path`；完整说明参见 `docs/api.md`，示例参见 `docs/usage.md`）。
+- `read_bytes(file_path, offset, length, encoding?)`
+- `read_lines(file_path, start_line, num_lines, encoding?)`
+- `read_last_lines(file_path, num_lines, encoding?)`
+- `write_overwrite(file_path, offset, data, encoding?)`
+- `append(file_path, data, encoding?)`
+- `insert(file_path, offset, data, encoding?, temp_dir?)`
+- `file_info(file_path)`
+- `build_line_index(file_path, step?)`
+- `line_number_at_offset(file_path, offset)`
+- `search_regex(file_path, pattern, encoding?, start_offset?, end_offset?, max_results?, context_chars?, flags?)`
+- `search_literal(file_path, query, encoding?, start_offset?, end_offset?, max_results?, context_chars?, case_sensitive?)`
+ - 倒排索引（SQLite）：
+   - `build_inverted_index(file_path, incremental?, token_pattern?, lower?)`
+   - `search_index_term(file_path, term, prefix?, limit?, context_chars?)`
+
+### MCP 客户端调用示例（导出名）
+
+- 请求体示例（调用 `read_bytes`）：
+
+```json
+{
+  "name": "read_bytes",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "offset": 0,
+    "length": 64,
+    "encoding": "utf-8"
+  }
+}
+```
+
+- 响应示例（`ReadBytesResult`）：
+
+```json
+{
+  "data": "LINE-0000LINE-0001...",
+  "offset": 0,
+  "bytes_read": 64,
+  "end_offset": 64,
+  "file_size": 123456
+}
+```
+
+- 说明：
+  - 外层协议封装（如 `type`、`requestId` 等）由具体 MCP 客户端生成；工具调用关键是 `name` 与 `arguments`。
+  - 其他工具的请求体与上述结构一致，`name` 使用“可用工具”列表中的导出名，`arguments` 对应各工具参数。
+  - 启动服务：在终端运行 `mcp-file-tool`（或 `python -m mcp_file_tool`）以 STDIO 方式提供 MCP 工具。
+
+- 下面补充所有工具的请求/响应示例（数值均为示意，用于展示结构）。
+
+- 请求体示例（调用 `read_lines`）：
+
+```json
+{
+  "name": "read_lines",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "start_line": 10,
+    "num_lines": 5,
+    "encoding": "utf-8"
+  }
+}
+```
+
+- 响应示例（`ReadLinesResult`）：
+
+```json
+{
+  "lines": ["LINE-0010", "LINE-0011", "LINE-0012", "LINE-0013", "LINE-0014"],
+  "start_line": 10,
+  "end_line": 14,
+  "total_lines": 12345,
+  "start_offset": 1280,
+  "end_offset": 1350
+}
+```
+
+- 请求体示例（调用 `read_last_lines`）：
+
+```json
+{
+  "name": "read_last_lines",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "num_lines": 10,
+    "encoding": "utf-8"
+  }
+}
+```
+
+- 响应示例（`ReadLinesResult`）：
+
+```json
+{
+  "lines": ["...", "LINE-12336", "LINE-12337", "LINE-12338", "LINE-12339", "LINE-12340", "LINE-12341", "LINE-12342", "LINE-12343", "LINE-12344"],
+  "start_line": 12335,
+  "end_line": 12344,
+  "total_lines": 12344,
+  "start_offset": 987654,
+  "end_offset": 990000
+}
+```
+
+- 请求体示例（调用 `write_overwrite`）：
+
+```json
+{
+  "name": "write_overwrite",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "offset": 6,
+    "data": "ABC",
+    "encoding": "utf-8"
+  }
+}
+```
+
+- 响应示例（`WriteResult`）：
+
+```json
+{
+  "path": "/Users/me/sample.txt",
+  "offset": 6,
+  "bytes_written": 3,
+  "end_offset": 9
+}
+```
+
+- 请求体示例（调用 `append`）：
+
+```json
+{
+  "name": "append",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "data": "\nAppended line",
+    "encoding": "utf-8"
+  }
+}
+```
+
+- 响应示例（`WriteResult`）：
+
+```json
+{
+  "path": "/Users/me/sample.txt",
+  "offset": 123456,
+  "bytes_written": 14,
+  "end_offset": 123470
+}
+```
+
+- 请求体示例（调用 `insert`）：
+
+```json
+{
+  "name": "insert",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "offset": 10,
+    "data": "hello",
+    "encoding": "utf-8"
+  }
+}
+```
+
+- 响应示例（`InsertResult`）：
+
+```json
+{
+  "path": "/Users/me/sample.txt",
+  "offset": 10,
+  "bytes_inserted": 5,
+  "new_size": 265
+}
+```
+
+- 请求体示例（调用 `file_info`）：
+
+```json
+{
+  "name": "file_info",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt"
+  }
+}
+```
+
+- 响应示例（`FileInfo`）：
+
+```json
+{
+  "path": "/Users/me/sample.txt",
+  "size": 123456,
+  "mtime": 1730790725
+}
+```
+
+- 请求体示例（调用 `build_line_index`）：
+
+```json
+{
+  "name": "build_line_index",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "step": 1000
+  }
+}
+```
+
+- 响应示例（`LineIndexBuildResult`）：
+
+```json
+{
+  "path": "/Users/me/sample.txt",
+  "index_path": "/Users/me/.mft/.mcp_index/sample.txt.lineidx.json",
+  "entries": 64,
+  "step": 1000
+}
+```
+
+- 请求体示例（调用 `line_number_at_offset`）：
+
+```json
+{
+  "name": "line_number_at_offset",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "offset": 1024
+  }
+}
+```
+
+- 响应示例（`LineNumberResult`）：
+
+```json
+{
+  "line": 90,
+  "scanned_bytes": 8192,
+  "from_checkpoint": true
+}
+```
+
+- 请求体示例（调用 `search_regex`）：
+
+```json
+{
+  "name": "search_regex",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "pattern": "ERROR\\s+\\d+",
+    "encoding": "utf-8",
+    "start_offset": 0,
+    "end_offset": null,
+    "max_results": 2,
+    "context_chars": 30,
+    "flags": "i"
+  }
+}
+```
+
+- 响应示例（`RegexSearchResult`）：
+
+```json
+{
+  "matches": [
+    {
+      "start_offset": 2048,
+      "end_offset": 2060,
+      "start_line": 150,
+      "end_line": 150,
+      "snippet": "... error 42 occurred at module X ..."
+    },
+    {
+      "start_offset": 4096,
+      "end_offset": 4108,
+      "start_line": 300,
+      "end_line": 300,
+      "snippet": "... Error 99 while processing request ..."
+    }
+  ],
+  "count": 2
+}
+```
+
+- 请求体示例（调用 `search_literal`）：
+
+```json
+{
+  "name": "search_literal",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "query": "mcp",
+    "encoding": "utf-8",
+    "start_offset": 0,
+    "end_offset": null,
+    "max_results": 2,
+    "context_chars": 40,
+    "case_sensitive": false
+  }
+}
+```
+
+- 响应示例（`LiteralSearchResult`）：
+
+```json
+{
+  "matches": [
+    {
+      "start_offset": 512,
+      "end_offset": 515,
+      "start_line": 40,
+      "end_line": 40,
+      "snippet": "... using mcp tool for large files ..."
+    }
+  ],
+  "count": 1
+}
+```
+
+- 请求体示例（调用 `build_inverted_index`）：
+
+```json
+{
+  "name": "build_inverted_index",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "incremental": true,
+    "token_pattern": "[\\w\\-]+",
+    "lower": true
+  }
+}
+```
+
+- 响应示例（`BuildInvertedIndexResult`）：
+
+```json
+{
+  "db_path": "/Users/me/.mft/.mcp_index/sample.txt.invidx.sqlite",
+  "mode": "full",
+  "indexed_bytes": 524288
+}
+```
+
+- 请求体示例（调用 `search_index_term`）：
+
+```json
+{
+  "name": "search_index_term",
+  "arguments": {
+    "file_path": "/Users/me/sample.txt",
+    "term": "error",
+    "prefix": false,
+    "limit": 2,
+    "context_chars": 50
+  }
+}
+```
+
+- 响应示例（`IndexSearchResult`）：
+
+```json
+{
+  "matches": [
+    {
+      "term": "error",
+      "offset": 8192,
+      "end_offset": 8197,
+      "line": 600,
+      "snippet": "... critical error in subsystem ..."
+    },
+    {
+      "term": "error",
+      "offset": 16384,
+      "end_offset": 16389,
+      "line": 1200,
+      "snippet": "... minor error resolved ..."
+    }
+  ],
+  "count": 2
+}
+```
+
+#### 参数对照（必填/可选）
+- 通用：除特别说明外，所有工具都需要 `file_path`。
+- 默认值来源：`encoding` 默认 `utf-8`；`max_results` 默认 200（可由 `MCP_FILE_TOOL_MAX_SEARCH_RESULTS` 调整）；`context_chars` 默认 96（可由 `MCP_FILE_TOOL_CONTEXT_CHARS` 调整）。
+
+- `read_bytes`：必填 `file_path`, `offset`, `length`；可选 `encoding`。
+- `read_lines`：必填 `file_path`, `start_line`, `num_lines`；可选 `encoding`。
+- `read_last_lines`：必填 `file_path`, `num_lines`；可选 `encoding`。
+- `write_overwrite`：必填 `file_path`, `offset`, `data`；可选 `encoding`。
+- `append`：必填 `file_path`, `data`；可选 `encoding`。
+- `insert`：必填 `file_path`, `offset`, `data`；可选 `encoding`, `temp_dir`。
+- `file_info`：必填 `file_path`。
+- `build_line_index`：必填 `file_path`；可选 `step`（默认 1000）。
+- `line_number_at_offset`：必填 `file_path`, `offset`。
+- `search_regex`：必填 `file_path`, `pattern`；可选 `encoding`, `start_offset`（默认 0）, `end_offset`（默认到文件尾）, `max_results`（默认 200）, `context_chars`（默认 96）, `flags`（`i,m,s,x`）。
+- `search_literal`：必填 `file_path`, `query`；可选 `encoding`, `start_offset`（默认 0）, `end_offset`（默认到文件尾）, `max_results`（默认 200）, `context_chars`（默认 96）, `case_sensitive`（默认 true）。
+- `build_inverted_index`：必填 `file_path`；可选 `incremental`（默认 true）, `token_pattern`（默认 `[\w\-]+`）, `lower`（默认 true）。
+- `search_index_term`：必填 `file_path`, `term`；可选 `prefix`（默认 false）, `limit`（默认 200）, `context_chars`（默认 96）。
+
+#### 返回类型对照
+- `file_info` → `FileInfo`
+- `read_bytes` → `ReadBytesResult`
+- `read_lines` → `ReadLinesResult`
+- `read_last_lines` → `ReadLinesResult`
+- `write_overwrite` → `WriteResult`
+- `append` → `WriteResult`
+- `insert` → `InsertResult`
+- `build_line_index` → `LineIndexBuildResult`
+- `line_number_at_offset` → `LineNumberResult`
+- `search_regex` → `RegexSearchResult`
+- `search_literal` → `LiteralSearchResult`
+- `build_inverted_index` → `BuildInvertedIndexResult`
+- `search_index_term` → `IndexSearchResult`
+
+- 说明：搜索类与索引查询类响应都包含 `matches` 列表与 `count` 总数；其中正则/字面量的命中元素包含 `start_offset`, `end_offset`, `start_line`, `end_line`, `snippet`，索引查询的命中元素包含 `term`, `offset`, `end_offset`, `line`, `snippet`。
+
+### 倒排索引说明
+- 默认存储位置：`~/.mft/.mcp_index/<filename>.invidx.sqlite`
+- 支持增量索引（仅限末尾追加）：通过尾部快照比对避免因中间插入/覆盖导致偏移错误；如检测到非追加修改，会自动执行全量重建。
+- 分词规则：默认 `\w+`，可通过 `token_pattern` 自定义；可选择小写归一（`lower=True`）。
+- 查询：支持精确词项与前缀匹配；返回偏移与近似行号，以及片段上下文。
+
+## 环境变量
+- `MCP_FILE_TOOL_ENCODING`：默认 `utf-8`
+- `MCP_FILE_TOOL_MAX_READ_BYTES`：单次读取上限（默认4MiB）
+- `MCP_FILE_TOOL_STREAM_BUFFER`：流式缓冲大小（默认64KiB）
+- `MCP_FILE_TOOL_LOCK_TIMEOUT`：写入锁超时（默认 10s）
+- `MCP_FILE_TOOL_RUNTIME_DIR`：运行时根目录（默认 `~/.mft`）
+- `MCP_FILE_TOOL_INDEX_DIR`：索引目录（默认 `~/.mft/.mcp_index`）
+- `MCP_FILE_TOOL_LOG_DIR`：日志目录（默认 `~/.mft/logs`）
+- `MCP_FILE_TOOL_LOG_LEVEL`：日志等级（默认 `INFO`）
+- `MCP_FILE_TOOL_MAX_SEARCH_RESULTS`：搜索条数限制（默认200）
+- `MCP_FILE_TOOL_CONTEXT_CHARS`：搜索上下文字符数（默认96）
+
+## 架构设计摘要
+- 所有读取/搜索均采用流式处理与分块拼接，避免一次性加载超大文件
+- 插入写入通过临时文件 + 原子替换，保证安全性与一致性
+- 搜索支持跨块匹配，通过“携带余量”避免边界遗漏
+- 行号统计为近似值，若需更高精度可先构建行索引再结合偏移定位
+
+## 调试与日志
+- 控制台输出：JSON格式，便于在MCP客户端查看
+- 文件输出：`~/.mft/logs/mcp_file_tool.log`（10MB滚动，保留5份）
+- 调试建议：提高 `MCP_FILE_TOOL_LOG_LEVEL` 到 `DEBUG`，观察工具的入参与返回元信息
+
+## 许可证与贡献
+- 许可证：MIT（详见 `LICENSE`）
+- 贡献指南：见 `CONTRIBUTING.md` 与 `CODE_OF_CONDUCT.md`
+- 安全政策：见 `SECURITY.md`
+
+## 发布与版本
+- 当前版本：`0.1.2`（见 `CHANGELOG.md`）
+- 打包与发布：参考 `docs/development.md`
+```
