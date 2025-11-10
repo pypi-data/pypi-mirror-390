@@ -1,0 +1,113 @@
+![standard(2)](https://github.com/user-attachments/assets/c2dd55f0-7e59-4e96-982d-335b19d2f727)
+
+<p align="center">
+  <a href="https://pypi.org/project/hexstyle/"><img src="https://img.shields.io/badge/PyPI-hexstyle-orange?style=for-the-badge&logo=pypi" alt="PyPI"></a>
+  <a href="https://www.python.org" target="_blank"><img src="https://img.shields.io/badge/Language-Python-3776AB?style=for-the-badge&logo=python" alt="Python"></a>
+  <a href="https://t.me/swezy" target="_blank"><img src="https://img.shields.io/badge/Telegram-@Swezy-blue?style=for-the-badge&logo=telegram" alt="Telegram"/></a>
+  <br>
+  <a href="https://pypi.org/project/hexstyle/"><img src="https://img.shields.io/badge/Version-1.1.1-green?style=for-the-badge&logo=pypi" alt="PyPI"></a>
+  <br>
+  <code>Leave a ⭐ if you like this repository</code>
+</p>
+
+---
+
+## 🚩 What is `hexstyle`?
+
+`hexstyle` is a tiny, dependency-free Python package that lets you print colored text in your terminal using HEX color codes — just like in web design. It's simple, lightweight, and supports every imaginable color with easy-to-use helper functions.
+
+---
+
+## 🚀 Installation
+
+Install from PyPI:
+
+```bash
+pip install hexstyle
+```
+
+PyPI: [https://pypi.org/project/hexstyle/](https://pypi.org/project/hexstyle/)
+
+---
+
+## 🧩 Quick usage
+
+```py
+import hexstyle
+
+print(hexstyle.set("#ff0000") + "Hello, world!" + hexstyle.reset())
+```
+
+`hexstyle.set(hex: str)`
+
+* `hex`: the hex color you want to use
+
+---
+
+## 📚 Features
+
+* Use any HEX color to style your terminal text
+* Lightweight & dependency-free — pure Python
+* Works on most modern terminals (Windows, macOS, Linux)
+
+---
+
+## ⚠️ Notes & Limitations
+
+* ANSI color codes may not display correctly in environments that don't support truecolor (24-bit) — for example, some older Windows terminals or minimal Docker shells.
+* Output colors may vary slightly depending on your terminal theme or emulator.
+* This package only affects terminal (stdout) text — it won’t color text in log files or GUI applications.
+* Unicode/emoji characters work fine, but truecolor accuracy may vary between fonts or shells.
+
+---
+
+## 🧪 Examples
+
+A short interactive example:
+
+```py
+import hexstyle
+
+print(hexstyle.set("#ff0000") + "Hello, world!" + hexstyle.reset())
+input(hexstyle.set("#00ff00") + "How are you today?: " + hexstyle.set("#0000ff"))
+```
+
+---
+
+## 🆘 Quick Fix
+
+* If you see weird formatting like `←[38;2;255;0;0mHello, world!←[0m`, try **clearing the terminal** (`cls` on Windows, `clear` on Linux/macOS) or **switching to a terminal that supports ANSI colors**.
+
+---
+
+## 📦 Where to get help
+
+* Project on PyPI: [pypi.org/project/hexstyle/](https://pypi.org/project/hexstyle/)
+* Telegram: [@Swezy](https://t.me/Swezy)
+
+---
+
+## 📝 License
+
+Distributed under the **MIT License** — see `LICENSE` for details.
+
+---
+
+## 👤 Maintainer & Contact
+
+* Maintainer: [@SwezyDev](https://github.com/SwezyDev)
+* Telegram: [@Swezy](https://t.me/Swezy)
+
+---
+
+<p align="center">
+  <sub>Made with ❤️ — If you find this useful, please leave a ⭐ on the repo</sub>
+</p>
+
+<a href="https://star-history.com/#SwezyDev/hexstyle&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=SwezyDev/hexstyle&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=SwezyDev/hexstyle&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=SwezyDev/hexstyle&type=Date" />
+  </picture>
+</a>
