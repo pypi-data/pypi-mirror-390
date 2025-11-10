@@ -1,0 +1,91 @@
+amphora-agent:
+  installtype: package
+
+# Note: Uninstall of this does not remove all of the development packages.
+#       So some are called out here explicitly to be removed.
+build-essential:
+  build-only: True
+gcc:
+  uninstall: True
+gcc-11:
+  uninstall: True
+  when:
+    - DISTRO_NAME = ubuntu
+gcc-12:
+  uninstall: True
+  when:
+    - DISTRO_NAME = ubuntu
+git-man:
+  uninstall: True
+perl:
+  uninstall: True
+# diskimage-builder installs firewalld in rockylinux, it's not needed as it
+# blocks management and tenant traffic by default and we use security groups
+firewalld:
+  uninstall: True
+
+libffi-dev:
+  build-only: True
+libssl-dev:
+  build-only: True
+python3-dev:
+  build-only: True
+  installtype: source
+python3-pip:
+  installtype: source
+python3:
+python3-venv:
+  installtype: source
+
+acl:
+# Note: Red Hat family does not currently ship acpid for ppc64le.
+# This sets up a pkg-map to exclude it for Red Hat family ppc64le arch
+acpid-ppc64le:
+  arch: ppc64le, ppc64el
+acpid:
+  arch: amd64, aarch64, arm64, s390x
+apparmor:
+apt-transport-https:
+at:
+bash-completion:
+cloud-guest-utils:
+cloud-init:
+cron:
+curl:
+dbus:
+dkms:
+dmeventd:
+ethtool:
+gawk:
+ifenslave:
+ifupdown:
+iptables:
+iputils-tracepath:
+irqbalance:
+isc-dhcp-client:
+less:
+logrotate:
+lsof:
+net-tools:
+netbase:
+netcat-openbsd:
+network-scripts:
+open-vm-tools:
+  arch: amd64
+openssh-client:
+openssh-server:
+pollinate:
+ppc64-diag:
+  arch: ppc64le, ppc64el
+psmisc:
+rsyslog:
+screen:
+socat:
+tcpdump:
+ubuntu-cloudimage-keyring:
+uuid-runtime:
+vim-tiny:
+vlan:
+
+nftables:
+  when: DIB_OCTAVIA_AMP_USE_NFTABLES = True

@@ -1,0 +1,138 @@
+# Note: Some official OpenStack wide jobs are still defined in the
+#       project-config repository
+- project:
+    templates:
+      - check-requirements
+      - periodic-stable-jobs-neutron
+      - openstack-cover-jobs
+      - openstack-python3-jobs
+      - publish-openstack-docs-pti
+      - release-notes-jobs-python3
+      - octavia-tox-tips
+    check:
+      jobs:
+        - openstack-tox-pip-check-reqs:
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^doc/.*$
+              - ^etc/.*$
+              - ^octavia/tests/.*$
+              - ^releasenotes/.*$
+        - openstack-tox-functional-py39:
+            irrelevant-files: &tox-func-irrelevant-files
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^doc/.*$
+              - ^etc/.*$
+              - ^octavia/tests/unit/.*$
+              - ^releasenotes/.*$
+        - openstack-tox-functional-py310:
+            irrelevant-files: *tox-func-irrelevant-files
+        - openstack-tox-functional-py311:
+            irrelevant-files: *tox-func-irrelevant-files
+        # Undefined yet:
+#        - openstack-tox-functional-py312:
+#            irrelevant-files: *tox-irrelevant-files
+#            voting: false
+        - octavia-v2-dsvm-noop-api:
+            irrelevant-files: &irrelevant-files
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^doc/.*$
+              - ^octavia/tests/.*$
+              - ^releasenotes/.*$
+        - octavia-v2-dsvm-scenario-traffic-ops:
+            irrelevant-files: *irrelevant-files
+        - octavia-v2-dsvm-scenario-non-traffic-ops:
+            irrelevant-files: *irrelevant-files
+        - octavia-v2-dsvm-scenario-traffic-ops-ubuntu-jammy:
+            irrelevant-files: *irrelevant-files
+        - octavia-v2-dsvm-scenario-non-traffic-ops-ubuntu-jammy:
+            irrelevant-files: *irrelevant-files
+        - octavia-v2-dsvm-scenario-traffic-ops-jobboard:
+            irrelevant-files: *irrelevant-files
+        - octavia-v2-dsvm-scenario-non-traffic-ops-jobboard:
+            irrelevant-files: *irrelevant-files
+        - octavia-v2-dsvm-tls-barbican:
+            irrelevant-files: *irrelevant-files
+            voting: false
+        - octavia-grenade:
+            irrelevant-files: &grenade-irrelevant-files
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^doc/.*$
+              - ^octavia/tests/.*$
+              - ^releasenotes/.*$
+              - ^setup.cfg$
+              - ^tools/.*$
+              - ^(test-|)requirements.txt$
+              - ^tox.ini$
+            voting: false
+        - octavia-grenade-skip-level:
+            irrelevant-files: *grenade-irrelevant-files
+            voting: false
+        - octavia-v2-dsvm-tls-barbican-fips:
+            irrelevant-files: *irrelevant-files
+            voting: false
+        - octavia-v2-act-stdby-dsvm-scenario:
+            irrelevant-files: *irrelevant-files
+            voting: false
+        - octavia-v2-dsvm-cinder-amphora:
+            irrelevant-files: *irrelevant-files
+            voting: false
+        - octavia-v2-dsvm-scenario-two-node:
+            irrelevant-files: *irrelevant-files
+            voting: false
+        - octavia-v2-dsvm-scenario-ipv6-only:
+            irrelevant-files: *irrelevant-files
+            voting: false
+        - octavia-v2-dsvm-scenario-centos-9-stream:
+            irrelevant-files: *irrelevant-files
+            voting: false
+    queue: octavia
+    gate:
+      fail-fast: true
+      jobs:
+        - openstack-tox-pip-check-reqs:
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^doc/.*$
+              - ^etc/.*$
+              - ^octavia/tests/.*$
+              - ^releasenotes/.*$
+        - openstack-tox-functional-py311:
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^doc/.*$
+              - ^etc/.*$
+              - ^octavia/tests/unit/.*$
+              - ^releasenotes/.*$
+        - octavia-v2-dsvm-noop-api
+        - octavia-v2-dsvm-scenario-traffic-ops
+        - octavia-v2-dsvm-scenario-non-traffic-ops
+        - octavia-v2-dsvm-scenario-traffic-ops-ubuntu-jammy
+        - octavia-v2-dsvm-scenario-non-traffic-ops-ubuntu-jammy
+        #- octavia-grenade
+        #- octavia-grenade-skip-level
+    periodic:
+      jobs:
+        - publish-openstack-octavia-amphora-image-noble:
+            branches:
+              regex: ^stable/.*$
+              negate: true
+        - publish-openstack-octavia-amphora-image-centos-9-stream:
+            branches:
+              regex: ^stable/.*$
+              negate: true
+        - octavia-amphora-image-build
+# Putting octavia-v2-dsvm-scenario-fips in periodic as centos 8 is too slow
+        - octavia-v2-dsvm-scenario-fips:
+            voting: false
+    experimental:
+      jobs:
+        - octavia-v2-dsvm-scenario-nftables
+        - octavia-v2-dsvm-scenario-traffic-ops-jobboard-etcd
+        - octavia-v2-dsvm-scenario-non-traffic-ops-jobboard-etcd
