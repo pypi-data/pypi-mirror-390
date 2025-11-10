@@ -1,0 +1,154 @@
+[build-system]
+requires = ["setuptools>=80.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fair-search-packages"
+version = "0.2.0"
+description = "RAG 기반 공평 검색(Fair Search) 알고리즘을 위한 전역 Util 함수들, 환경 설정, 크롤러들"
+readme = "README.md"
+authors = [
+  { name = "Your Name", email = "you@example.com" },
+]
+
+# Python 3.10.18 환경 기준 (patch 까지 고정은 어려우니 3.10 대역으로 제한)
+requires-python = ">=3.10,<3.11"
+
+# --- RAG 코어 + 밀접하게 연관된 패키지들만 추린 목록 ---
+dependencies = [
+  # --- API & 런타임 ---
+  "fastapi==0.116.1",
+  "uvicorn[standard]==0.35.0",
+  "python-dotenv==1.0.1",
+  "pydantic==2.9.2",
+  "pydantic-settings==2.2.1",
+  "PyYAML==6.0.2",
+  "requests==2.32.3",
+  "httpx==0.27.2",
+  "anyio==4.9.0",
+  "tenacity==8.5.0",
+
+  # --- LLM / 번역 API (RAG 응답 생성·후처리) ---
+  "openai==1.102.0",
+  "anthropic==0.64.0",
+  "tiktoken==0.11.0",
+  "deepl==1.22.0",
+
+  # --- LangChain / LangGraph / LangSmith (RAG 파이프라인 코어) ---
+  "langchain==0.3.27",
+  "langchain-core==0.3.72",
+  "langchain-openai==0.3.28",
+  "langchain-huggingface==0.3.1",
+  "langchain-chroma==0.2.4",
+  "langchain-experimental==0.3.4",
+  "langchain-text-splitters==0.3.9",
+  "langgraph==0.5.4",
+  "langgraph-checkpoint==2.1.1",
+  "langgraph-prebuilt==0.5.2",
+  "langgraph-sdk==0.1.74",
+  "langsmith==0.4.4",
+
+  # --- Web 검색 기반 RAG ---
+  "tavily-python==0.7.11",
+
+  # --- 벡터 스토어 / 검색기 ---
+  "chromadb==1.0.15",
+  "faiss-cpu==1.11.0.post1",
+  "rank-bm25==0.2.2",
+  "Whoosh==2.7.4",
+
+  # --- 임베딩 & 허깅페이스 스택 ---
+  "sentence-transformers==5.0.0",
+  "huggingface-hub==0.34.3",
+  "transformers==4.53.3",
+  "safetensors==0.5.3",
+  "tokenizers==0.21.2",
+
+  # --- PyTorch (sentence-transformers 등에서 사용) ---
+  "torch==2.8.0+cu126",
+  "torchvision==0.23.0+cu126",
+  "torchaudio==2.7.0+cu118",
+
+  # --- 데이터/ML 유틸 ---
+  "numpy==1.26.4",
+  "scipy==1.13.1",
+  "scikit-learn==1.5.2",
+  "pandas==2.3.1",
+  "datasets==4.3.0",
+  "pyarrow==21.0.0",
+  "tqdm==4.67.1",
+  "regex==2024.11.6",
+
+  # --- 한국어 처리 (토큰화, 형태소 분석 등) ---
+  "kss==6.0.5",
+  "kiwipiepy==0.21.0",
+  "kiwipiepy_model==0.21.0",
+  "mecab-python3==1.0.10",
+  "pecab==1.0.8",
+  "hangul-jamo==1.0.1",
+  "jamo==0.4.1",
+  "tossi==0.3.1",
+
+  # --- DB 연동 (검색 코퍼스 / 로그 저장) ---
+  "PyMySQL==1.1.1",
+  "SQLAlchemy==2.0.41",
+]
+
+[project.optional-dependencies]
+# 크롤링/문서 수집용(필요할 때만 설치)
+crawler = [
+  "newspaper3k==0.2.8",
+  "beautifulsoup4==4.13.4",
+  "bs4==0.0.2",
+  "lxml==6.0.1",
+  "feedparser==6.0.11",
+  "feedfinder2==0.0.4",
+  "tldextract==5.3.0",
+  "requests-file==2.1.0",
+  "selenium==4.34.2",
+  "webdriver-manager==4.0.2",
+  "pdf2image==1.17.0",
+  "pillow==11.0.0",
+]
+
+# Pinecone 벡터DB 사용 시
+pinecone = [
+  "pinecone-client==6.0.0",
+  "pinecone-plugin-interface==0.0.7",
+  "pinecone-text==0.11.0",
+]
+
+# 임베딩 시각화/분석용
+analysis = [
+  "umap-learn==0.5.9.post2",
+  "pynndescent==0.5.13",
+]
+
+# 관측/모니터링용
+observability = [
+  "opentelemetry-api==1.36.0",
+  "opentelemetry-sdk==1.36.0",
+  "opentelemetry-exporter-otlp-proto-common==1.36.0",
+  "opentelemetry-exporter-otlp-proto-grpc==1.36.0",
+  "opentelemetry-proto==1.36.0",
+  "opentelemetry-semantic-conventions==0.57b0",
+  "posthog==5.4.0",
+]
+
+# 노트북/디버깅/테스트용
+dev = [
+  "ipython==8.37.0",
+  "ipykernel==6.30.1",
+  "jupyter_client==8.6.3",
+  "jupyter_core==5.8.1",
+  "rich==14.0.0",
+  "pytest==8.4.1",
+]
+
+# --- src 디렉토리만 패키징 ---
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["*"]
