@@ -1,0 +1,231 @@
+# epicstore_api_additions
+
+[![Current pypi version](https://img.shields.io/pypi/v/epicstore-api-additions.svg)](https://pypi.org/project/epicstore-api-additions/)
+[![Supported py versions](https://img.shields.io/pypi/pyversions/epicstore-api-additions.svg)](https://pypi.org/project/epicstore-api-additions/)
+[![Downloads](https://pepy.tech/badge/epicstore-api-additions)](https://pypi.org/project/epicstore-api-additions/)
+
+An unofficial library to work with Epic Games Store Web API.
+**The library works with `cloudscraper` under the hood to battle the anti-bot protections, please be careful with the amount of requests you do, as this is not a silver bullet.**
+
+## About This Fork
+
+This is a customized fork of the original `epicstore_api` library with additional features and improvements:
+
+- Added `get_store_config()` method to retrieve store configuration for products by sandbox ID
+- Added `get_product_by_id()` method to retrieve product details by product ID
+- Added `get_product_offer_by_id()` method to retrieve offer details by product ID and offer ID
+- Added `get_product_critic_reviews()` method to retrieve critic reviews (OpenCritic) scores by product ID
+- Added `get_product_ipv4()` method to retrieve product details using IPv4 endpoint
+- Added `get_catalog_offer()` method to retrieve catalog offer details with flexible sha256Hash support
+- Added `get_video_by_id()` method to retrieve video information and mediaRefId by video ID
+- Implemented support for persisted GraphQL queries with hash caching mechanism
+- Added configurable hash endpoint for fetching GraphQL operation hashes
+- Enhanced performance with caching for sha256Hash values
+- Improved error handling and flexibility for API interactions
+- sha256Hash can be provided at call time for persisted queries, avoiding hardcoding in the package
+- No hardcoded sha256Hash values - all hashes must be provided explicitly or via hash_endpoint
+
+## Installing
+
+**Python 3.7 or higher is required**
+
+To install the library you can just run the following command:
+
+``` sh
+# Linux/macOS
+python3 -m pip install -U epicstore_api_additions
+
+# Windows
+py -3 -m pip install -U epicstore_api_additions
+```
+
+
+### Quick Example
+
+``` py
+api = EpicGamesStoreAPI()
+namespace, slug = next(iter(api.get_product_mapping().items()))
+first_product = api.get_product(slug)
+offers = [
+    OfferData(page['namespace'], page['offer']['id'])
+    for page in first_product['pages']
+    if page.get('offer') and 'id' in page['offer']
+]
+offers_data = api.get_offers_data(*offers)
+for offer_data in offers_data:
+    data = offer_data['data']['Catalog']['catalogOffer']
+    developer_name = ''
+    for custom_attribute in data['customAttributes']:
+        if custom_attribute['key'] == 'developerName':
+            developer_name = custom_attribute['value']
+    print('Offer ID:', data['id'], '\nDeveloper Name:', developer_name)
+```
+
+### New Feature: Get Store Configuration
+
+This method can retrieve various product information including:
+- Supported languages (支持语言)
+- Hardware requirements (硬件要求)
+- Tags (标签)
+- Developer information (开发商信息)
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant")
+
+# Get store configuration for a product by sandbox ID
+# Option 1: Provide sha256Hash explicitly
+sandbox_id = "13b88612e6e14cfb80a1de47948fc2a9"  # Example sandbox ID
+sha256_hash = "f51a14bfd8e8969386e70f7c734c2671d9f61833021174e44723ddda9881739e"
+config = api.get_store_config(sandbox_id, sha256_hash=sha256_hash)
+print(config)
+
+# Option 2: Configure hash_endpoint to fetch hash automatically
+# api = EpicGamesStoreAPI(locale="zh-Hant", hash_endpoint="https://your-hash-service.com/api/hash")
+# config = api.get_store_config(sandbox_id)  # Will fetch hash from endpoint
+```
+
+### New Feature: Get Product by ID
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant", country="TW")
+
+# Get product details by product ID
+product_id = "3ac65ef5cdf44b8084fcac818002635f"  # Example product ID
+product = api.get_product_by_id(product_id)
+print(product)
+```
+
+### New Feature: Get Product Offer by ID
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant", country="TW")
+
+# Get offer details by product ID and offer ID
+product_id = "3ac65ef5cdf44b8084fcac818002635f"  # Example product ID
+offer_id = "cb49140c3c11429589ab22fd75c41504"  # Example offer ID
+offer = api.get_product_offer_by_id(product_id, offer_id)
+print(offer)
+```
+
+### New Feature: Get Product Critic Reviews
+
+Get critic reviews (OpenCritic) scores for a product by product ID.
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant")
+
+# Get critic reviews for a product
+product_id = "eea910a7cb414468a2b6eef5a33d0b71"  # Example product ID
+reviews = api.get_product_critic_reviews(
+    product_id=product_id,
+    count=3,    # Number of reviews to retrieve (default: 3)
+    start=0     # Starting index for pagination (default: 0)
+)
+print(reviews)
+```
+
+### New Feature: Get Product by Slug (IPv4 Endpoint)
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant")
+
+# Get product details using IPv4 endpoint
+slug = "fall-guys"  # Product slug
+product = api.get_product_ipv4(slug)
+print(product)
+# Returns detailed product information including pages, namespace, theme, etc.
+```
+
+### New Feature: Get Catalog Offer
+
+**Note:** This method returns the short description (短描述) of the product.
+For long description (长描述) content, please use other methods.
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant", country="TW")
+
+# Get catalog offer details
+# Option 1: Provide sha256Hash explicitly (recommended)
+offer = api.get_catalog_offer(
+    offer_id="f506d29d55bb4c72b8d57fd9857b2be4",
+    sandbox_id="94cec4802e954a6c9579e29e8b817f3a",
+    sha256_hash="abafd6e0aa80535c43676f533f0283c7f5214a59e9fae6ebfb37bed1b1bb2e9b"
+)
+# Access short description: offer['data']['Catalog']['catalogOffer']['description']
+
+# Option 2: Let the method get hash from cache/endpoint (if configured)
+offer = api.get_catalog_offer(
+    offer_id="f506d29d55bb4c72b8d57fd9857b2be4",
+    sandbox_id="94cec4802e954a6c9579e29e8b817f3a"
+)
+print(offer)
+```
+
+The `sha256_hash` parameter allows you to provide the hash at call time, avoiding hardcoding it in the package. If not provided, the method will try to get it from cache or configured hash_endpoint. If hash_endpoint is not configured, you must provide the sha256_hash parameter explicitly.
+
+### New Feature: Get Video by ID
+
+Get video information by video ID and retrieve the mediaRefId. The video_id can be extracted from `fetch_store_games` response.
+
+**Note:** The video_id comes from `fetch_store_games` response, where video URLs are in the format:
+```
+{
+  "type": "heroCarouselVideo",
+  "url": "com.epicgames.video://6e8b6bc1-825e-4d09-acb2-a4c4e99a6856?cover=..."
+}
+```
+
+The video_id is the part between `com.epicgames.video://` and `?`.
+
+```python
+from epicstore_api import EpicGamesStoreAPI
+import re
+
+# Initialize API
+api = EpicGamesStoreAPI(locale="zh-Hant")
+
+# Extract video_id from fetch_store_games response
+video_url = "com.epicgames.video://6e8b6bc1-825e-4d09-acb2-a4c4e99a6856?cover=..."
+match = re.search(r'com\.epicgames\.video://([^?]+)', video_url)
+video_id = match.group(1) if match else None
+
+# Get video information
+# Option 1: Provide sha256Hash explicitly
+sha256_hash = "52dbe3764aa1012313360dbbfaf2b550975edd7f30c2427ad00495c269646003"
+video = api.get_video_by_id(video_id, sha256_hash=sha256_hash)
+# Access mediaRefIds: video['data']['Video']['fetchVideoByLocale']
+# Each item in the list contains 'recipe' and 'mediaRefId'
+
+# Option 2: Let the method get hash from cache/endpoint (if configured)
+video = api.get_video_by_id(video_id)
+print(video)
+```
+
+You can find more examples in the examples directory.
+
+### Contributing
+Feel free to contribute by creating PRs and sending your issues
+
+## Links
+* [Documentation](https://epicstore-api.readthedocs.io/en/latest/)
+
+## License
+MIT
