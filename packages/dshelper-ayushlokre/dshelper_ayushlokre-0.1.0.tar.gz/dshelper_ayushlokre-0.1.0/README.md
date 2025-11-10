@@ -1,0 +1,356 @@
+# DSHelper 🚀
+
+**A Quality-of-Life Data Science Helper Library**
+
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://badge.fury.io/py/dshelper.svg)](https://badge.fury.io/py/dshelper)
+
+DSHelper is a comprehensive toolkit designed to eliminate repetitive boilerplate code in data science and machine learning workflows. It wraps common operations into simple, intuitive functions that save time and improve code readability.
+
+## ✨ Features
+
+- **🔍 Missing Value Analysis**: Comprehensive tools for detecting, visualizing, and handling missing data
+- **📊 Correlation Analysis**: Quick correlation matrices, heatmaps, and feature selection
+- **⚙️ Preprocessing Pipeline**: Train-test split with automatic scaling in one line
+- **📈 Model Evaluation**: Instant metrics, confusion matrices, and visualizations
+- **🎯 Feature Engineering**: Outlier detection, encoding, and feature selection utilities
+- **🔄 Cross-Validation**: Easy cross-validation with beautiful summaries
+
+## 📦 Installation
+
+```bash
+pip install dshelper
+```
+
+For development installation:
+
+```bash
+pip install dshelper[dev]
+```
+
+## 🚀 Quick Start
+
+```python
+import pandas as pd
+from dshelper import missing, preprocessing, correlation, evaluation
+
+# Load your data
+df = pd.read_csv('your_data.csv')
+
+# 1. Analyze missing values
+missing_report = missing.analyze(df, show_plot=True)
+print(missing_report)
+
+# 2. Quick correlation heatmap
+corr_matrix = correlation.heatmap(df, method='pearson')
+
+# 3. Split and scale in one go
+X_train, X_test, y_train, y_test = preprocessing.split_and_scale(
+    X, y, test_size=0.2, scaler='standard'
+)
+
+# 4. Train your model
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
+
+# 5. Quick evaluation
+y_pred = model.predict(X_test)
+metrics = evaluation.quick_eval(y_test, y_pred)
+```
+
+## 📚 Documentation
+
+### Missing Values Module
+
+#### `missing.analyze(df, threshold=0.0, show_plot=True)`
+Analyze missing values and generate a comprehensive report with visualization.
+
+```python
+from dshelper import missing
+
+# Get detailed missing value report
+report = missing.analyze(df, threshold=5.0, show_plot=True)
+# Shows only columns with >5% missing values
+```
+
+#### `missing.quick_summary(df)`
+Get a quick statistical summary of missing values.
+
+```python
+summary = missing.quick_summary(df)
+print(f"Total missing: {summary['total_missing']}")
+print(f"Missing percentage: {summary['missing_percentage']:.2f}%")
+```
+
+#### `missing.fill_missing(df, strategy='mean')`
+Fill missing values using various strategies.
+
+```python
+# Fill with mean
+df_filled = missing.fill_missing(df, strategy='mean')
+
+# Fill with median
+df_filled = missing.fill_missing(df, strategy='median')
+
+# Fill with constant
+df_filled = missing.fill_missing(df, strategy='constant', fill_value=0)
+```
+
+### Correlation Module
+
+#### `correlation.heatmap(df, method='pearson')`
+Generate beautiful correlation heatmaps.
+
+```python
+from dshelper import correlation
+
+# Basic heatmap
+corr_matrix = correlation.heatmap(df)
+
+# Spearman correlation with custom styling
+corr_matrix = correlation.heatmap(
+    df, 
+    method='spearman',
+    figsize=(14, 12),
+    threshold=0.5  # Only show correlations > 0.5
+)
+```
+
+#### `correlation.top_correlations(df, target='price', n=10)`
+Find features most correlated with a target variable.
+
+```python
+# Get top 10 features correlated with target
+top_features = correlation.top_correlations(df, target='price', n=10)
+print(top_features)
+```
+
+#### `correlation.remove_highly_correlated(df, threshold=0.95)`
+Remove multicollinear features.
+
+```python
+df_reduced, removed_cols = correlation.remove_highly_correlated(
+    df, threshold=0.95
+)
+print(f"Removed columns: {removed_cols}")
+```
+
+### Preprocessing Module
+
+#### `preprocessing.split_and_scale(X, y, test_size=0.2, scaler='standard')`
+Split data and apply scaling in one step.
+
+```python
+from dshelper import preprocessing
+
+# Standard scaling (default)
+X_train, X_test, y_train, y_test = preprocessing.split_and_scale(
+    X, y, test_size=0.2, scaler='standard', random_state=42
+)
+
+# MinMax scaling
+X_train, X_test, y_train, y_test = preprocessing.split_and_scale(
+    X, y, scaler='minmax'
+)
+
+# Robust scaling (good for outliers)
+X_train, X_test, y_train, y_test = preprocessing.split_and_scale(
+    X, y, scaler='robust'
+)
+```
+
+#### `preprocessing.encode_categorical(df, method='onehot')`
+Encode categorical variables easily.
+
+```python
+# One-hot encoding
+df_encoded = preprocessing.encode_categorical(
+    df, columns=['category', 'type'], method='onehot'
+)
+
+# Label encoding
+df_encoded = preprocessing.encode_categorical(
+    df, method='label'
+)
+```
+
+#### `preprocessing.handle_outliers(df, method='iqr', action='remove')`
+Detect and handle outliers.
+
+```python
+# Remove outliers using IQR method
+df_clean = preprocessing.handle_outliers(df, method='iqr', action='remove')
+
+# Clip outliers instead of removing
+df_clipped = preprocessing.handle_outliers(df, method='iqr', action='clip')
+
+# Flag outliers (adds boolean columns)
+df_flagged = preprocessing.handle_outliers(df, action='flag')
+```
+
+### Evaluation Module
+
+#### `evaluation.quick_eval(y_true, y_pred, task_type='auto')`
+Comprehensive model evaluation in one line.
+
+```python
+from dshelper import evaluation
+
+# Auto-detect classification or regression
+metrics = evaluation.quick_eval(y_test, y_pred)
+
+# Prints detailed metrics and shows visualizations:
+# - Classification: accuracy, precision, recall, F1, confusion matrix
+# - Regression: R², RMSE, MAE, residual plots
+```
+
+#### `evaluation.compare_models(results, metric='accuracy')`
+Compare multiple models side by side.
+
+```python
+results = {
+    'Logistic Regression': {'accuracy': 0.85, 'f1': 0.83, 'precision': 0.84},
+    'Random Forest': {'accuracy': 0.88, 'f1': 0.86, 'precision': 0.87},
+    'XGBoost': {'accuracy': 0.90, 'f1': 0.89, 'precision': 0.90}
+}
+
+comparison_df = evaluation.compare_models(results, metric='accuracy')
+```
+
+#### `evaluation.cross_val_summary(model, X, y, cv=5)`
+Easy cross-validation with visualization.
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+model = RandomForestClassifier()
+cv_results = evaluation.cross_val_summary(
+    model, X, y, cv=5, 
+    scoring=['accuracy', 'f1', 'precision']
+)
+```
+
+#### `evaluation.feature_importance_plot(model, feature_names)`
+Visualize feature importances for tree-based models.
+
+```python
+# After training a tree-based model
+importance_df = evaluation.feature_importance_plot(
+    model, feature_names=X_train.columns.tolist(), top_n=20
+)
+```
+
+## 🎯 Real-World Example
+
+Here's a complete workflow using DSHelper:
+
+```python
+import pandas as pd
+from dshelper import missing, correlation, preprocessing, evaluation
+from sklearn.ensemble import RandomForestClassifier
+
+# 1. Load and explore data
+df = pd.read_csv('titanic.csv')
+
+# 2. Check missing values
+missing_report = missing.analyze(df, show_plot=True)
+
+# 3. Handle missing values
+df_clean = missing.fill_missing(df, strategy='median', columns=['Age'])
+df_clean = missing.fill_missing(df_clean, strategy='mode', columns=['Embarked'])
+
+# 4. Check correlations
+correlation.heatmap(df_clean)
+top_features = correlation.top_correlations(df_clean, target='Survived', n=5)
+
+# 5. Encode categorical variables
+df_encoded = preprocessing.encode_categorical(
+    df_clean, 
+    columns=['Sex', 'Embarked'], 
+    method='onehot'
+)
+
+# 6. Prepare features and target
+X = df_encoded.drop('Survived', axis=1)
+y = df_encoded['Survived']
+
+# 7. Split and scale
+X_train, X_test, y_train, y_test = preprocessing.split_and_scale(
+    X, y, test_size=0.2, scaler='standard', stratify=True
+)
+
+# 8. Train model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# 9. Evaluate
+y_pred = model.predict(X_test)
+metrics = evaluation.quick_eval(y_test, y_pred)
+
+# 10. Cross-validation
+cv_results = evaluation.cross_val_summary(model, X_train, y_train, cv=5)
+
+# 11. Feature importance
+importance = evaluation.feature_importance_plot(model, X.columns.tolist())
+```
+
+## 🛠️ Requirements
+
+- Python >= 3.8
+- numpy >= 1.20.0
+- pandas >= 1.3.0
+- scikit-learn >= 1.0.0
+- matplotlib >= 3.3.0
+- seaborn >= 0.11.0
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📧 Contact
+
+Ayush Lokre - ayushlokre5@gmail.com
+
+Project Link: [https://github.com/ayushlokre/dshelper](https://github.com/ayushlokre/dshelper)
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ for the data science community
+- Inspired by the repetitive nature of data science workflows
+- Thanks to all contributors and users
+
+## 📊 Why DSHelper?
+
+**Before DSHelper:**
+```python
+# Multiple lines of repetitive code
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+```
+
+**With DSHelper:**
+```python
+# One clean line
+X_train, X_test, y_train, y_test = preprocessing.split_and_scale(X, y)
+```
+
+---
+
+**Happy Data Science! 🎉**
