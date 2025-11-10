@@ -1,0 +1,117 @@
+"""Tests for the code generator."""
+
+from chty.codegen import generate_python_code
+from chty.parser import QueryParameter
+
+
+def test_generate_simple_code():
+    query = "SELECT * FROM users WHERE id = {user_id:Int32}"
+    params = [QueryParameter("user_id", "Int32")]
+
+    code = generate_python_code(query, params, "Example")
+
+    assert "from typing import Any, Dict" in code
+    assert "class ExampleParams(Dict[str, Any]):" in code
+    assert "def __init__(self, *, user_id: int):" in code
+    assert 'QUERY = """SELECT * FROM users WHERE id = {user_id:Int32}"""' in code
+
+
+def test_generate_multiple_parameters():
+    query = "SELECT * WHERE age >= {min_age:Int32} AND name = {name:String}"
+    params = [
+        QueryParameter("min_age", "Int32"),
+        QueryParameter("name", "String"),
+    ]
+
+    code = generate_python_code(query, params, "MultiParam")
+
+    assert "class MultiParamParams(Dict[str, Any]):" in code
+    assert "def __init__(self, *, min_age: int, name: str):" in code
+
+
+def test_generate_with_date_imports():
+    query = "SELECT * WHERE created_at > {date:DateTime}"
+    params = [QueryParameter("date", "DateTime")]
+
+    code = generate_python_code(query, params, "DateQuery")
+
+    assert "from datetime import datetime" in code
+    assert "def __init__(self, *, date: datetime):" in code
+
+
+def test_generate_with_nullable():
+    query = "SELECT * WHERE score >= {min_score:Nullable(Float64)}"
+    params = [QueryParameter("min_score", "Nullable(Float64)")]
+
+    code = generate_python_code(query, params, "Nullable")
+
+    assert "def __init__(self, *, min_score: float | None):" in code
+
+
+def test_generate_with_array():
+    query = "SELECT * WHERE tags IN {tag_list:Array(String)}"
+    params = [QueryParameter("tag_list", "Array(String)")]
+
+    code = generate_python_code(query, params, "ArrayQuery")
+
+    assert "def __init__(self, *, tag_list: list[str]):" in code
+
+
+def test_generate_no_parameters():
+    query = "SELECT * FROM users"
+    params = []
+
+    code = generate_python_code(query, params, "NoParams")
+
+    assert "from typing import Any, Dict" in code
+    assert "class NoParamsParams(Dict[str, Any]):" not in code
+    assert 'QUERY = """SELECT * FROM users"""' in code
+
+
+def test_generate_with_result_schema():
+    query = "SELECT user_id, username FROM users WHERE id = {user_id:Int32}"
+    params = [QueryParameter("user_id", "Int32")]
+    result_schema = [("user_id", "Int64"), ("username", "String")]
+
+    code = generate_python_code(query, params, "UserQuery", result_schema)
+
+    assert "from typing import TypedDict" in code
+    assert "class UserQueryParams(Dict[str, Any]):" in code
+    assert "class UserQueryResult(TypedDict):" in code
+    assert "user_id: int" in code
+    assert "username: str" in code
+    assert "class UserQueryQuery:" in code
+    assert "def execute(self, parameters: UserQueryParams, **kwargs) -> list[UserQueryResult]:" in code
+    assert "def execute_df(self, parameters: UserQueryParams, **kwargs) -> list[UserQueryResult]:" in code
+    assert 'result.column_names' in code
+    assert 'df.to_dict("records")' in code
+
+
+def test_generate_with_result_schema_complex_types():
+    query = "SELECT created_at, tags FROM users"
+    params = []
+    result_schema = [("created_at", "DateTime"), ("tags", "Array(String)")]
+
+    code = generate_python_code(query, params, "ComplexQuery", result_schema)
+
+    assert "from typing import TypedDict" in code
+    assert "from datetime import datetime" in code
+    assert "class ComplexQueryResult(TypedDict):" in code
+    assert "created_at: datetime" in code
+    assert "tags: list[str]" in code
+    assert "class ComplexQueryQuery:" in code
+
+
+def test_generate_result_only_no_params():
+    query = "SELECT 1 AS num"
+    params = []
+    result_schema = [("num", "UInt8")]
+
+    code = generate_python_code(query, params, "SimpleResult", result_schema)
+
+    assert "from typing import TypedDict" in code
+    assert "class SimpleResultResult(TypedDict):" in code
+    assert "num: int" in code
+    assert "class SimpleResultParams" not in code
+    assert "class SimpleResultQuery:" in code
+
