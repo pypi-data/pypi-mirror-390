@@ -1,0 +1,54 @@
+Metadata-Version: 2.4
+Name: django-fixedassets-ve
+Version: 0.1.0
+Summary: Fixed assets register with SLM/WDV depreciation, revaluation, disposal and accounting integration for Django.
+Author-email: "Verified Enquiries / Tushar K." <support@verifiedenquiries.com>
+License: MIT
+Classifier: Framework :: Django
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=5.0
+Requires-Dist: djangorestframework>=3.15
+Requires-Dist: django-finacc>=0.1.0
+Dynamic: license-file
+
+## 📖 README (Quickstart excerpt)
+
+# django-fixedassets-ve
+
+## Install
+```
+pip install django-fixedassets-ve
+```
+## Settings
+```
+INSTALLED_APPS += ["rest_framework", "finacc", "fixedassets"]
+FIXEDASSETS = {"AUTO_POST": True}
+```
+## URLs
+```
+path("api/fa/", include("fixedassets.api.urls"))
+```
+## Create Asset & Post Acquisition
+```
+POST /api/fa/assets/
+{ "company":1, "category":1, "code":"FA-0002", "name":"Printer", "purchase_date":"2025-11-01", "currency":"INR", "cost":"30000.00" }
+
+POST /api/fa/acquisitions/
+{ "asset": 2, "date": "2025-11-01", "memo":"Capex" }
+```
+## Post Monthly Depreciation
+```
+POST /api/fa/depreciations/
+{ "schedule": 1, "date":"2025-11-30", "amount":"1500.00" }
+```
+## Revaluation / Impairment / Disposal
+```
+POST /api/fa/revaluations/  |  /impairments/  |  /disposals/
+```
+
+
+ 
