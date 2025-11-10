@@ -1,0 +1,194 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nlp2mcp"
+version = "0.5.0-beta"
+description = "Convert GAMS NLP models to MCP via KKT conditions"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    {name = "Jeffrey Horn", email = "jeffreydhorn@gmail.com"}
+]
+keywords = ["optimization", "nlp", "mcp", "gams", "kkt"]
+classifiers = [
+    # Development Status
+    "Development Status :: 4 - Beta",
+
+    # Intended Audience
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+
+    # Topic
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+
+    # Programming Language
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+
+    # Operating System
+    "Operating System :: OS Independent",
+
+    # Environment
+    "Environment :: Console",
+
+    # Natural Language
+    "Natural Language :: English",
+
+    # Typing
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "lark>=1.1.9",
+    "numpy>=1.24.0",  # For finite-difference validation and numeric operations
+    "click>=8.0.0",  # For command-line interface
+    "tomli>=2.0.0; python_version<'3.11'",  # TOML parser backport for Python < 3.11
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=1.3.0",
+    "sphinx-autodoc-typehints>=1.25.0",
+]
+
+[project.scripts]
+nlp2mcp = "src.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"src.gams" = ["*.lark"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312", "py313"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "B023",  # function does not bind loop variable (false positive in our case)
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+no_implicit_optional = false
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = false
+strict_equality = false
+# Allow some flexibility for dynamic code
+allow_untyped_calls = true
+allow_untyped_defs = true
+# Disable stricter checks that are too noisy for this codebase
+warn_return_any = false
+no_implicit_reexport = false
+
+[[tool.mypy.overrides]]
+module = "lark.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "numpy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "src.ir.parser"
+# Parser has lots of dynamic Lark tree manipulation
+disable_error_code = ["arg-type", "assignment", "return-value", "union-attr", "no-redef", "no-any-return"]
+
+[[tool.mypy.overrides]]
+module = "src.ir.normalize"
+# Normalize has some intentional type flexibility
+disable_error_code = ["return-value"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--import-mode=importlib",
+]
+markers = [
+    "unit: Fast unit tests with no I/O (deselect with '-m \"not unit\"')",
+    "integration: Cross-module integration tests (deselect with '-m \"not integration\"')",
+    "e2e: End-to-end pipeline tests (deselect with '-m \"not e2e\"')",
+    "validation: Mathematical validation tests (slower) (deselect with '-m \"not validation\"')",
+    "slow: Slow tests that take significant time (deselect with '-m \"not slow\"')",
+]
+
+[tool.nlp2mcp]
+# Default configuration for nlp2mcp CLI
+# These settings can be overridden by command-line flags
+
+# Output options
+model_name = "mcp_model"
+add_comments = true
+show_excluded_bounds = true
+
+# Verbosity level (0 = quiet, 1 = normal, 2 = verbose, 3 = very verbose)
+verbosity = 1
+
+# abs() function handling
+smooth_abs = false
+smooth_abs_epsilon = 1e-6
+
+# Scaling options: "none", "auto" (Curtis-Reid), or "byvar" (per-variable)
+scale = "none"
+
+# Diagnostics options
+print_stats = false
