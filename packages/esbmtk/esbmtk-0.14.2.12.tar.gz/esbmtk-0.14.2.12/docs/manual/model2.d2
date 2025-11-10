@@ -1,0 +1,75 @@
+geometry: Geometry Defintion {
+  direction: down
+  sb: SurfaceBoxRG {
+    rs: Species {
+      shape: sql_table
+      name: "PO4"
+      volume: "3E16 m**3"
+      concentration: "0 umol/kg"
+    }
+
+    sp: SpeciesProperties {
+      shape: sql_table
+      name: PO4
+      weight: 44.0095
+      display_as: umol
+    }
+  }
+
+  c: Species2Species {
+    shape: sql_table
+    source: SurfaceBoxRG
+    sink: DeebBoxRG
+    ctype: scale_by_concentration
+  }
+
+  s: Signal {
+    shape: sql_table
+    type: bell
+    duration: 100
+    magnitude: 3 Pg
+  }
+
+  db: DeepBoxRG {
+    rd: Species {
+      shape: sql_table
+      name: "PO4"
+      volume: "3E16 m**3"
+      concentration: "0 umol/kg"
+    }
+    sp: SpeciesProperties {
+      shape: sql_table
+      name: PO4
+      weight: 44.0095
+      display_as: umol
+    }
+  }
+
+  hypdb: Hypsometry {
+    shape: sql_table
+    z0: -200
+    z1: -6000
+    area
+    area_dz
+    volume
+  }
+  cs_db: Carbonate Chemistry {
+    shape: sql_table
+
+    pk1
+    pk2
+    pkB
+    pKW
+  }
+
+  sb -> c
+  c -> db
+
+  c.signal <-> s.signal
+
+  sb.rs.species <-> sb.sp.species
+  db.rd.species <-> db.sp.species
+
+  db <-> hypdb
+  db <-> cs_db
+}
