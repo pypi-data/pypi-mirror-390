@@ -1,0 +1,69 @@
+[build-system]
+requires = [
+    "setuptools>61",  # start of support for pyproject.toml/PEP 621. https://setuptools.pypa.io/en/stable/history.html#v61-0-0
+    "setuptools-scm",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]  # set version dynamically
+
+[tool.setuptools]
+include-package-data = false  # necessary for exclude to work
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "solposx"
+authors = [
+    {name = "Adam R. Jensen"},
+    {name = "Kevin S. Anderson"},
+    {name = "Ioannis Sifnaios"},
+    {email = "adam-r-j@hotmail.com"},
+]
+description = " solposx is a Python package for determining solar position and atmospheric refraction."
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["solar position algorithms", "solar energy", "photovoltaics"]
+license = "BSD-3-Clause"
+license-files = ["LICEN[CS]E*"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "pandas",
+    "pvlib",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+optional = ["skyfield>=1.51", "sg2"]
+test = ["pytest>=7", "pytest-cov", "packaging"]
+doc = [
+    "solposx[optional]",
+    "sphinx==8.2.3",
+    "myst-nb==1.1.2",
+    "sphinx-book-theme==1.1.4",
+    "pvlib==0.13.0",
+    "pandas==2.3.0",
+]
+all = ["solposx[optional,test,doc]"]
+
+[project.urls]
+Documentation = "https://solposx.readthedocs.io"
+Issues = "https://github.com/pvlib/solposx/issues"
+Repository = "https://github.com/pvlib/solposx.git"
+Changelog = "https://github.com/pvlib/solposx/blob/main/docs/source/whatsnew.md"
+
+[tool.pytest.ini_options]
+addopts = "--cov=solposx --cov-fail-under=100 --cov-report=term-missing"
+pythonpath = ["src"]
