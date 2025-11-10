@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Process PR comments one at a time for Claude Code."""
+
+import json
+import sys
+from pathlib import Path
+
+import typer
+
+app = typer.Typer()
+
+@app.command()
+def main(
+    jsonl: Path = typer.Option(..., help="Path to JSONL file with comments"),
+    state_file: Path = typer.Option(
+        Path(".comment_state.json"), help="State file to track progress"
+    ),
+):
+    """Process comments one at a time."""
+    # Load state
+    current_index = 0
+    if state_file.exists():
+        with state_file.open("r") as f:
+            state = json.load(f)
+            current_index = state.get("current_index", 0)
+
+    # Load comments
+    with jsonl.open("r") as f:
+        comments = [json.loads(line) for line in f]
+
+    if current_index >= len(comments):
+        print("All comments have been processed!")
+        sys.exit(0)
+
+    # Get current comment
+    current_comment = comments[current_index]
+
+    # Display comment to Claude
+    print(f"Comment {current_index + 1}/{len(comments)}")
+    print(f"Author: {current_comment['author']}")
+    print(f"Date: {current_comment['created_at']}")
+    if current_comment.get('path'):
+        print(f"File: {current_comment['path']}")
+        if current_comment.get('line'):
+            print(f"Line: {current_comment['line']}")
+    print(f"\nComment line {current_comment['line_num_in_comment']}/{current_comment['total_lines_in_comment']}:")
+    print(current_comment['text'])
+    print(f"\nURL: {current_comment['comment_url']}")
+
+    # Update state
+    state = {"current_index": current_index + 1}
+    with state_file.open("w") as f:
+        json.dump(state, f)
+
+if __name__ == "__main__":
+    app()
