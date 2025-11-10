@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metripy"
+version = "0.3.2"
+description = "A Python tool to generate multi project, multi language code metric reports"
+authors = [
+    {name = "Yannick Zimmermann", email = "yannick.zimmermann@proton.me"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = [
+    "code metrics",
+    "multi-language",
+    "code analysis",
+    "git metrics",
+    "code visualization",
+    "software quality",
+    "static analysis",
+    "repository insights",
+    "developer productivity",
+    "codebase health",
+    "technical debt",
+    "language-agnostic"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+
+dependencies = [
+    "lizard==1.18.0",
+    "GitPython==3.1.45",
+    "py-template-engine>=0.1.0",
+    "radon==6.0.1",
+    "requests==2.32.5",
+    "packaging==25.0",
+    "toml==0.10.2",
+    "tree-sitter==0.21.3",
+    "tree-sitter-languages==1.10.2",
+    "PyYAML==6.0.3"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov==7.0.0",
+    "pytest-mock==3.15.1",
+    "black>=22.0.0",
+    "flake8>=5.0.0",
+    "mypy>=0.991",
+    "poethepoet==0.37.0",
+    "isort==7.0.0"
+]
+
+[project.urls]
+Homepage = "https://zimmer-yan.github.io/metripy/"
+Repository = "https://github.com/zimmer-yan/metripy"
+Documentation = "https://zimmer-yan.github.io/metripy/"
+"Bug Tracker" = "https://github.com/zimmer-yan/metripy/issues"
+
+[project.scripts]
+metripy="metripy.metripy:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["metripy*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.poe.tasks]
+sort = "isort metripy tests"
+format = "black metripy tests"
+lint = "flake8 metripy/ tests/"
+ruffy = "ruff check metripy/ tests/"
+test = "pytest tests/"
+validate = "poe sort && poe format && poe lint && poe ruffy && poe test"
