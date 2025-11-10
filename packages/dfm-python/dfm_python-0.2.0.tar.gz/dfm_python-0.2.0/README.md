@@ -1,0 +1,603 @@
+# dfm-python: Dynamic Factor Models for Python
+
+[![PyPI version](https://img.shields.io/pypi/v/dfm-python.svg)](https://pypi.org/project/dfm-python/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+
+A Python implementation of **Dynamic Factor Models (DFM)** for nowcasting and forecasting high-dimensional time series. Implements clock-based synchronization and tent kernel aggregation for mixed-frequency data.
+
+## Features
+
+- **Mixed-frequency data**: Monthly, quarterly, semi-annual, annual (no daily/weekly)
+- **Clock-based framework**: All factors evolve at a common clock frequency
+- **Block structure**: Flexible factor organization (global, sector-specific)
+- **Robust missing data**: Spline interpolation and Kalman filter handling
+- **News decomposition**: Attribute forecast changes to data releases
+- **Generic design**: YAML configs or direct object creation, extensible via adapters
+
+## Installation
+
+```bash
+pip install dfm-python
+```
+
+**Requirements**: Python >= 3.12, numpy >= 1.24.0, pandas >= 2.0.0, scipy >= 1.10.0
+
+## Quick Start
+
+### Class-Based API (Recommended)
+
+The package is built around a `DFM` class that provides both core estimation (`fit()`) and convenience methods (`load_config()`, `load_data()`, `train()`, `predict()`, `plot()`).
+
+#### Direct Class Usage
+
+```python
+from dfm_python.dfm import DFM
+from dfm_python.config import DFMConfig, SeriesConfig, BlockConfig
+
+# Create config
+config = DFMConfig(
+    series=[SeriesConfig(frequency='m', transformation='lin', blocks=[1], series_id='s1')],
+    blocks={'Block_Global': BlockConfig(factors=1, clock='m')}
+)
+
+# Create model and fit
+model = DFM()
+result = model.fit(X, config, max_iter=100)
+factors = result.Z
+```
+
+#### Module-Level Convenience API (Recommended for Most Users)
+
+The package provides a singleton instance and convenient constructors for easy usage:
+
+#### 1. From YAML (Simplest)
+
+```python
+import dfm_python as dfm
+
+# Load from YAML file
+dfm.from_yaml('config/default.yaml')
+
+# Load data, train, predict, plot
+dfm.load_data('data/sample_data.csv', sample_start='2015-01-01', sample_end='2022-12-31')
+dfm.train(max_iter=5000)
+X_forecast, Z_forecast = dfm.predict(horizon=12)
+dfm.plot(kind='factor', factor_index=0, forecast_horizon=12, save_path='outputs/factor_forecast.png')
+```
+
+#### 2. From Spec CSV + Params (Ideal for CSV-based series definitions)
+
+```python
+import dfm_python as dfm
+from dfm_python.config import Params
+
+# Create Params object with main settings
+params = Params(
+    max_iter=5000,
+    threshold=1e-5,
+    regularization_scale=1e-5,
+    damping_factor=0.8
+)
+
+# Load from spec CSV (series definitions) + Params (main settings)
+dfm.from_spec('data/sample_spec.csv', params=params)
+
+# Or use defaults
+dfm.from_spec('data/sample_spec.csv')  # Uses Params() defaults
+
+# Load data, train, predict
+dfm.load_data('data/sample_data.csv')
+dfm.train()
+X_forecast, Z_forecast = dfm.predict(horizon=12)
+```
+
+#### 3. From Dictionary (Programmatic)
+
+```python
+import dfm_python as dfm
+
+config_dict = {
+    'clock': 'm',
+    'max_iter': 5000,
+    'blocks': {'Block_Global': {'factors': 1, 'clock': 'm'}},
+    'series': [{'series_id': 's1', 'frequency': 'm', 'transformation': 'lin', 'blocks': [0]}]
+}
+
+dfm.from_dict(config_dict)
+dfm.load_data('data/sample_data.csv')
+dfm.train()
+```
+
+#### Access Results
+
+```python
+# Access results (DFMResult)
+result = dfm.get_result()
+factors = result.Z          # (T × m) Smoothed factors
+loadings = result.C         # (N × m) Factor loadings
+smoothed = result.X_sm      # (T × N) Smoothed data
+```
+
+### Configuration Sources
+
+The package supports multiple configuration sources. Choose based on your needs:
+
+#### 1. Hydra Decorator (Recommended for Hydra users)
+
+Use the `@hydra.main` decorator for powerful configuration composition and CLI overrides:
+
+```python
+import hydra
+from hydra.utils import get_original_cwd
+from omegaconf import DictConfig
+import dfm_python as dfm
+from pathlib import Path
+
+@hydra.main(config_path="../config", config_name="default", version_base="1.3")
+def main(cfg: DictConfig) -> None:
+    # Access config values explicitly via cfg.*
+    print(f"max_iter: {cfg.max_iter}")
+    print(f"threshold: {cfg.threshold}")
+    print(f"blocks.Block_Global.factors: {cfg.blocks.Block_Global.factors}")
+    
+    # Load configuration
+    dfm.load_config(hydra=cfg)
+    
+    # Resolve paths relative to original working directory
+    original_cwd = Path(get_original_cwd())
+    data_path = original_cwd / "data" / "sample_data.csv"
+    
+    # Load data, train, predict
+    dfm.load_data(str(data_path), sample_start="2021-01-01", sample_end="2022-12-31")
+    dfm.train(max_iter=cfg.max_iter)  # Use cfg.max_iter explicitly
+    X_forecast, Z_forecast = dfm.predict(horizon=cfg.get('forecast_horizon', 12))
+
+if __name__ == "__main__":
+    main()
+```
+
+**CLI Overrides**:
+```bash
+# Override parameters
+python tutorial/hydra_tutorial.py max_iter=10 threshold=1e-4
+
+# Override block settings
+python tutorial/hydra_tutorial.py blocks.Block_Global.factors=2
+
+# Multiple overrides
+python tutorial/hydra_tutorial.py max_iter=10 damping_factor=0.9 regularization_scale=1e-6
+```
+
+See `tutorial/hydra_tutorial.py` for a complete example.
+
+#### 2. Spec CSV + Params (Ideal for CSV-based workflows)
+
+```python
+import dfm_python as dfm
+from dfm_python.config import Params
+
+# Create Params object with all exposed parameters
+params = Params(
+    max_iter=5000,
+    threshold=1e-5,
+    nan_method=2,
+    clock='m',
+    regularization_scale=1e-5,
+    damping_factor=0.8,
+    # ... all other parameters
+)
+
+# Load from spec CSV (series definitions) + Params (main settings)
+dfm.from_spec('data/sample_spec.csv', params=params)
+
+# Or use defaults
+dfm.from_spec('data/sample_spec.csv')  # Uses Params() defaults
+```
+
+The `Params` dataclass contains all global estimation parameters:
+- **Estimation**: `ar_lag`, `threshold`, `max_iter`, `nan_method`, `nan_k`, `clock`
+- **AR Clipping**: `clip_ar_coefficients`, `ar_clip_min`, `ar_clip_max`, `warn_on_ar_clip`
+- **Data Clipping**: `clip_data_values`, `data_clip_threshold`, `warn_on_data_clip`
+- **Regularization**: `use_regularization`, `regularization_scale`, `min_eigenvalue`, `max_eigenvalue`, `warn_on_regularization`
+- **Damped Updates**: `use_damped_updates`, `damping_factor`, `warn_on_damped_update`
+
+See `tutorial/basic_tutorial.py` for a complete example with all parameters exposed.
+
+#### 3. YAML File (Simplest)
+
+```python
+import dfm_python as dfm
+
+# Load from YAML file
+dfm.from_yaml('config/default.yaml')
+
+# Or use the generic load_config
+dfm.load_config(yaml='config/default.yaml')
+```
+
+#### 4. Dictionary (Programmatic)
+
+```python
+import dfm_python as dfm
+
+config_dict = {
+    'clock': 'm',
+    'max_iter': 5000,
+    'threshold': 1e-5,
+    'blocks': {'Block_Global': {'factors': 1, 'clock': 'm'}},
+    'series': [{'series_id': 's1', 'frequency': 'm', 'transformation': 'lin', 'blocks': [0]}]
+}
+
+dfm.from_dict(config_dict)
+```
+
+#### 5. Spec DataFrame (In-memory)
+
+```python
+import pandas as pd
+import dfm_python as dfm
+from dfm_python.config import Params
+
+# Load spec from DataFrame (useful when already in memory)
+spec_df = pd.read_csv('data/sample_spec.csv')
+params = Params(max_iter=100)
+
+dfm.from_spec_df(spec_df, params=params)
+```
+
+#### Functional API (Deprecated)
+
+The `dfm()` function is deprecated but still supported for backward compatibility:
+
+```python
+from dfm_python import dfm, load_config, load_data
+
+config = load_config('config.yaml')
+X, Time, _ = load_data('data.csv', config)
+result = dfm(X, config, max_iter=100)  # Deprecated: emits DeprecationWarning
+```
+
+**Note**: For new code, prefer:
+- `DFM().fit()` for direct class usage
+- `dfm.load_config().train()` for module-level convenience API
+
+#### Legacy Config Loading (Still Supported)
+
+All the original `load_config()` methods still work:
+
+```python
+import dfm_python as dfm
+
+# All these still work (backward compatible)
+dfm.load_config(yaml='config/default.yaml')
+dfm.load_config(mapping={...})
+dfm.load_config(spec='data/spec.csv')
+dfm.load_config(hydra=hydra_cfg)
+dfm.load_config(base='config/default.yaml', override='data/spec.csv')
+```
+
+#### ConfigSource Adapters (Advanced)
+
+```python
+from dfm_python.config_sources import make_config_source, YamlSource, DictSource, SpecCSVSource, HydraSource
+
+# Factory creates the right adapter based on input
+source = make_config_source('config/default.yaml')          # YAML
+source = make_config_source(mapping={'series': {...}})      # Dict
+source = make_config_source(spec='data/spec.csv')           # Spec CSV
+source = make_config_source(hydra=hydra_cfg)                # Hydra DictConfig
+config = source.load()                                      # -> DFMConfig
+```
+
+#### Merging Configurations
+
+Combine base config (YAML) with series from spec CSV:
+
+```python
+import dfm_python as dfm
+
+# Base config provides main settings, spec CSV provides series
+dfm.load_config(
+    base='config/default.yaml',
+    override='data/sample_spec.csv'
+)
+```
+
+### Low-Level API (Advanced)
+
+For more control, use the `DFM` class directly:
+
+```python
+from dfm_python.dfm import DFM
+from dfm_python import DFMConfig, SeriesConfig, load_data, BlockConfig
+
+# Create configuration programmatically
+config = DFMConfig(
+    series=[
+        SeriesConfig(
+            series_id='gdp_real',
+            series_name='Real GDP',
+            frequency='q',
+            transformation='pca',
+            category='National Accounts',
+            units='Index',
+            blocks=[1]  # Loads on first block (global)
+        )
+    ],
+    blocks={'Block_Global': BlockConfig(factors=1, clock='m')},
+    clock='m',
+    threshold=1e-5,
+    max_iter=5000
+)
+
+# Load data and estimate using DFM class
+X, Time, _ = load_data('data.csv', config)
+model = DFM()
+result = model.fit(X, config)  # Recommended: use DFM().fit()
+# Or use deprecated functional API:
+# result = dfm(X, config)  # Deprecated: emits DeprecationWarning
+```
+
+## Configuration
+
+### YAML Format
+
+```yaml
+dfm:
+  clock: "m"              # Clock frequency (base for all factors)
+  threshold: 1e-5         # EM convergence threshold
+  max_iter: 5000          # Maximum EM iterations
+  ar_lag: 1               # AR lag for factors
+
+series:
+  gdp_real:
+    series_name: "Real GDP"
+    frequency: "q"
+    transformation: "pca"
+    category: "National Accounts"
+    units: "Index"
+    blocks: [Global]
+  
+  consumption:
+    series_name: "Consumption"
+    frequency: "m"
+    transformation: "pch"
+    category: "Consumption"
+    units: "Index"
+    blocks: [Global]
+```
+
+### Key Parameters
+
+- **clock**: Base frequency for latent factors (typically "m" for monthly)
+- **threshold**: EM convergence criterion (default: 1e-5)
+- **max_iter**: Maximum EM iterations (default: 5000)
+- **ar_lag**: Autoregressive lag for factors (default: 1)
+
+### Numerical Stability
+
+All numerical stability techniques are configurable and transparent:
+
+```yaml
+dfm:
+  clip_ar_coefficients: true    # Ensure stationarity
+  clip_data_values: true         # Clip extreme outliers
+  use_regularization: true       # Prevent ill-conditioned matrices
+  regularization_scale: 1e-5     # Scale relative to matrix trace (default 1e-5)
+  use_damped_updates: true      # Prevent likelihood decreases
+```
+
+Warnings are logged when techniques are applied. All parameters can be disabled for research purposes.
+
+Note:
+- Default `regularization_scale` is 1e-5 across code and YAML.
+- You can override via Hydra CLI (see above).
+
+## Data Format
+
+### File-Based (CSV)
+
+Data file with series as columns and dates as rows:
+
+```csv
+Date,gdp_real,consumption,investment
+2000-01-01,,98.5,95.0
+2000-02-01,,98.7,95.2
+2000-03-01,100.5,99.0,95.5
+```
+
+**Requirements**:
+- First column: `Date` (YYYY-MM-DD format)
+- Column names: Must match `series_id` in configuration
+- Missing values: Empty cells or NaN
+- Mixed frequencies: Quarterly series only at quarter-end months
+
+**Frequency Support**:
+- **Supported**: Monthly (m), Quarterly (q), Semi-annual (sa), Annual (a)
+- **Not supported**: Daily (d), Weekly (w) - raises ValueError
+- All series must have frequency ≤ clock frequency
+
+### Database-Backed
+
+For production applications, implement adapters that return:
+- `X`: Transformed data matrix (T × N)
+- `Time`: Time index (pandas DatetimeIndex)
+- `Z`: Original untransformed data (T × N)
+
+## Usage Examples
+
+### Basic Estimation
+
+```python
+from dfm_python import load_config, load_data, dfm
+
+config = load_config('config.yaml')
+X, Time, _ = load_data('data.csv', config)
+result = dfm(X, config)
+
+# Extract common factor
+common_factor = result.Z[:, 0]
+
+# Model fit
+rmse = result.rmse
+```
+
+### News Decomposition
+
+```python
+from dfm_python import news_dfm
+
+# Estimate on old and new data
+result_old = dfm(X_old, config)
+result_new = dfm(X_new, config)
+
+# Decompose news
+y_old, y_new, singlenews, actual, forecast, weight, t_miss, v_miss, innov = news_dfm(
+    X_old, result_old, t_fcst=100, v_news=0
+)
+
+# Forecast update
+forecast_update = y_new - y_old
+```
+
+## API Reference
+
+### `load_config(configfile) -> DFMConfig`
+
+Load configuration from YAML file or return existing DFMConfig object.
+
+**Parameters**:
+- `configfile`: Path to YAML file (.yaml, .yml) or `DFMConfig` object
+
+**Returns**: `DFMConfig` object
+
+### `load_data(datafile, config, sample_start=None) -> Tuple[np.ndarray, pd.DatetimeIndex, np.ndarray]`
+
+Load and transform time series data.
+
+**Parameters**:
+- `datafile`: Path to data file (CSV supported)
+- `config`: `DFMConfig` object
+- `sample_start`: Optional start date (YYYY-MM-DD) to filter data
+
+**Returns**: `(X, Time, Z)` where:
+- `X`: Transformed data matrix (T × N)
+- `Time`: Time index (DatetimeIndex)
+- `Z`: Original untransformed data (T × N)
+
+### `DFM.fit(X, config, threshold=None, max_iter=None, ...) -> DFMResult`
+
+**Recommended**: Estimate Dynamic Factor Model using EM algorithm via the `DFM` class.
+
+```python
+from dfm_python.dfm import DFM
+model = DFM()
+result = model.fit(X, config, max_iter=100)
+```
+
+### `dfm(X, config, threshold=None, max_iter=None) -> DFMResult` (Deprecated)
+
+**Deprecated**: Use `DFM().fit()` instead. This function emits a `DeprecationWarning`.
+
+Estimate Dynamic Factor Model using EM algorithm.
+
+**Parameters**:
+- `X`: Data matrix (T × N) with possible missing values
+- `config`: `DFMConfig` object
+- `threshold`: Convergence threshold (default: from config)
+- `max_iter`: Maximum iterations (default: from config)
+
+**Returns**: `DFMResult` object
+
+### `DFMResult` Object
+
+Contains all estimation outputs:
+
+- **Factors**: `Z` (T × m), `C` (N × m)
+- **Parameters**: `A` (m × m), `Q` (m × m), `R` (N × N)
+- **Smoothed Data**: `X_sm` (T × N), `x_sm` (T × N)
+- **Initial Conditions**: `Z_0` (m,), `V_0` (m × m)
+- **Standardization**: `Mx` (N,), `Wx` (N,)
+- **Convergence**: `converged`, `num_iter`, `loglik`
+- **Model Fit**: `rmse`, `rmse_per_series`
+
+## Architecture
+
+**Core Modules**:
+- `config.py`: Configuration management
+- `data_loader.py`: Data loading and transformation
+- `dfm.py`: Core estimation (EM algorithm)
+- `kalman.py`: Kalman filter and smoother
+- `news.py`: News decomposition
+
+**Design Principles**:
+- Generic core (no application-specific code)
+- Flexible configuration (YAML or direct object creation)
+- Extensible via application-specific adapters
+- Robust error handling and numerical stability
+- Hydra-friendly: tutorial uses `@hydra.main` with `get_original_cwd()`; paths remain stable
+- High-level API: `dfm.predict()`, `dfm.plot()` for concise forecasting and visualization
+
+### Tutorials
+
+Two comprehensive tutorials demonstrate different approaches:
+
+1. **`tutorial/basic_tutorial.py`** - Spec CSV + Params approach
+   - No Hydra dependency
+   - Uses `Params` dataclass for main settings
+   - Spec CSV defines all series and block memberships
+   - All parameters exposed as CLI arguments
+   - Run: `python tutorial/basic_tutorial.py --spec data/sample_spec.csv --data data/sample_data.csv`
+
+2. **`tutorial/hydra_tutorial.py`** - Hydra decorator approach
+   - Uses `@hydra.main` decorator
+   - Access config via `cfg.*` (e.g., `cfg.max_iter`, `cfg.blocks.Block_Global.factors`)
+   - CLI overrides for experimentation
+   - Run: `python tutorial/hydra_tutorial.py max_iter=10 threshold=1e-4`
+
+Both tutorials demonstrate:
+- Configuration loading
+- Data loading with date windowing
+- Training with explicit parameters
+- Forecasting and visualization
+- Saving results
+
+See the tutorial files for complete examples with all features.
+
+## Troubleshooting
+
+**Convergence Issues**:
+- Increase `max_iter` (try 10000)
+- Relax `threshold` (try 1e-3)
+- Check data quality and missing data patterns
+
+**Dimension Mismatch**:
+- Ensure `series_id` in config matches data column names
+- Verify block structure consistency
+- Check frequency codes are valid
+
+**Numerical Instability**:
+- Monitor warnings for stability techniques
+- Adjust thresholds based on data characteristics
+- Investigate data quality if techniques frequently needed
+
+## License
+
+MIT License
+
+## Citation
+
+```bibtex
+@software{dfm-python,
+  title = {dfm-python: Dynamic Factor Models for Nowcasting and Forecasting},
+  author = {DFM Python Contributors},
+  year = {2025},
+  url = {https://pypi.org/project/dfm-python/}
+}
+```
+
+---
+
+**Package Status**: Stable  
+**PyPI**: https://pypi.org/project/dfm-python/  
+**Python**: 3.12+
