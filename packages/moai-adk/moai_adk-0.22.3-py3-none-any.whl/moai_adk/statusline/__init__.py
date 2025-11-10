@@ -1,0 +1,31 @@
+# type: ignore
+"""
+Statusline module for Claude Code status display
+
+@SPEC:CLAUDE-STATUSLINE-001
+Provides real-time status information display in Claude Code terminal
+"""
+
+__version__ = "0.1.0"
+
+from .alfred_detector import AlfredDetector, AlfredTask
+from .config import StatuslineConfig
+from .git_collector import GitCollector, GitInfo
+from .metrics_tracker import MetricsTracker
+from .renderer import StatuslineData, StatuslineRenderer
+from .update_checker import UpdateChecker, UpdateInfo
+from .version_reader import VersionReader
+
+__all__ = [
+    "StatuslineRenderer",
+    "StatuslineData",
+    "StatuslineConfig",
+    "GitCollector",
+    "GitInfo",
+    "MetricsTracker",
+    "AlfredDetector",
+    "AlfredTask",
+    "VersionReader",
+    "UpdateChecker",
+    "UpdateInfo",
+]
