@@ -1,0 +1,393 @@
+"""MCP Docker server entry point.
+
+This module provides the main entry point for running the MCP Docker server.
+"""
+
+import argparse
+import asyncio
+import json
+import os
+import signal
+from collections.abc import Awaitable, Callable, MutableMapping
+from pathlib import Path
+from typing import Any
+
+import uvicorn
+from mcp.server import Server
+from mcp.server.sse import SseServerTransport
+from mcp.server.stdio import stdio_server
+from mcp.types import Tool
+from starlette.applications import Starlette
+from starlette.routing import Mount
+
+from mcp_docker.config import Config
+from mcp_docker.server import MCPDockerServer
+from mcp_docker.utils.logger import get_logger, setup_logger
+from mcp_docker.version import __version__, get_full_version
+
+# Logging Constants
+LOG_BODY_PREVIEW_LENGTH = 300  # Characters to show in debug logs for HTTP bodies
+
+# Load configuration
+config = Config()
+
+# Setup logging to file
+# Use env var if set, otherwise default to current working directory
+log_path = os.getenv("MCP_DOCKER_LOG_PATH")
+log_file = Path(log_path) if log_path else Path("mcp_docker.log")
+setup_logger(config.server, log_file)
+
+logger = get_logger(__name__)
+full_version = get_full_version()
+logger.info("=" * 60)
+logger.info(f"MCP Docker Server v{full_version} Initializing")
+logger.info("=" * 60)
+logger.info(f"Package version: {__version__}")
+logger.info(f"Full version string: {full_version}")
+logger.info(f"Configuration: {config}")
+
+# Create Docker server wrapper
+docker_server = MCPDockerServer(config)
+
+# Create MCP server with version
+mcp_server = Server("mcp-docker", version=full_version)
+
+logger.info(f"Docker server initialized with {len(docker_server.tools)} tools")
+
+
+# Register list_tools handler
+@mcp_server.list_tools()  # type: ignore[misc, no-untyped-call]
+async def handle_list_tools() -> list[Tool]:
+    """List all available Docker tools."""
+    logger.debug("list_tools handler called")
+    tools = docker_server.list_tools()
+    logger.debug(f"Returning {len(tools)} tools")
+    # Convert to MCP Tool types
+    return [
+        Tool(name=tool["name"], description=tool["description"], inputSchema=tool["inputSchema"])
+        for tool in tools
+    ]
+
+
+# Register call_tool handler
+@mcp_server.call_tool()  # type: ignore[misc]
+async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[Any]:
+    """Execute a Docker tool.
+
+    Authentication can be provided via the special '_auth' argument:
+    {
+        "_auth": {
+            "api_key": "your-api-key",  # For API key auth
+            # OR
+            "ssh": {  # For SSH key auth
+                "client_id": "client-id",
+                "timestamp": "2025-11-04T12:00:00Z",
+                "nonce": "random-nonce",
+                "signature": "base64-signature"
+            }
+        },
+        "actual_arg1": "value1",  # Tool's actual arguments
+        "actual_arg2": "value2"
+    }
+    """
+    logger.debug(f"call_tool: {name}")
+
+    # Extract authentication data (if present) - must be done before logging
+    auth_data = arguments.pop("_auth", {})
+
+    # Validate auth_data is a dict to prevent AttributeError on malformed requests
+    if not isinstance(auth_data, dict):
+        logger.warning(f"Invalid _auth type: {type(auth_data).__name__}, expected dict")
+        auth_data = {}
+
+    # Safe to log arguments now that _auth has been removed (no credential leakage)
+    logger.debug(f"Arguments (auth redacted): {arguments}")
+
+    api_key = auth_data.get("api_key")
+    ssh_auth_data = auth_data.get("ssh")
+    ip_address = None  # Could be extracted from request context if available
+
+    # Call tool with authentication
+    result = await docker_server.call_tool(
+        name,
+        arguments,
+        api_key=api_key,
+        ip_address=ip_address,
+        ssh_auth_data=ssh_auth_data,
+    )
+
+    # Return result in MCP format (list of content items)
+    if result.get("success"):
+        logger.debug(f"Tool {name} executed successfully")
+        result_data = result.get("result", {})
+        return [{"type": "text", "text": json.dumps(result_data)}]
+
+    error_msg = result.get("error", "Unknown error")
+    logger.error(f"Tool {name} failed: {error_msg}")
+    return [{"type": "text", "text": f"Error: {error_msg}"}]
+
+
+# Register list_resources handler
+@mcp_server.list_resources()  # type: ignore[misc, no-untyped-call]
+async def handle_list_resources() -> list[dict[str, Any]]:
+    """List all available Docker resources."""
+    return docker_server.list_resources()
+
+
+# Register read_resource handler
+@mcp_server.read_resource()  # type: ignore[misc, no-untyped-call]
+async def handle_read_resource(uri: str) -> str:
+    """Read a Docker resource by URI."""
+    result = await docker_server.read_resource(uri)
+
+    # Return text content if available
+    if "text" in result:
+        return result["text"]  # type: ignore[no-any-return]
+    return str(result)
+
+
+# Register list_prompts handler
+@mcp_server.list_prompts()  # type: ignore[misc, no-untyped-call]
+async def handle_list_prompts() -> list[dict[str, Any]]:
+    """List all available Docker prompts."""
+    return docker_server.list_prompts()
+
+
+# Register get_prompt handler
+@mcp_server.get_prompt()  # type: ignore[misc, no-untyped-call]
+async def handle_get_prompt(name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Get a Docker prompt by name."""
+    args = arguments or {}
+    return await docker_server.get_prompt(name, args)
+
+
+logger.info("MCP server handlers registered")
+
+
+def _create_logging_wrappers(
+    receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
+    send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
+) -> tuple[
+    Callable[[], Awaitable[MutableMapping[str, Any]]],
+    Callable[[MutableMapping[str, Any]], Awaitable[None]],
+]:
+    """Create logging wrapper functions for SSE receive/send."""
+
+    async def log_receive() -> MutableMapping[str, Any]:
+        msg = await receive()
+        if msg.get("type") == "http.request" and msg.get("body"):
+            logger.debug(f"<<< HTTP body: {msg['body'][:LOG_BODY_PREVIEW_LENGTH]}")
+        return msg
+
+    async def log_send(msg: MutableMapping[str, Any]) -> None:
+        if msg.get("type") == "http.response.body" and msg.get("body"):
+            logger.debug(f">>> HTTP body: {msg['body'][:LOG_BODY_PREVIEW_LENGTH]}")
+        await send(msg)
+
+    return log_receive, log_send
+
+
+async def _handle_sse_connection(
+    sse: SseServerTransport,
+    scope: MutableMapping[str, Any],
+    log_receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
+    log_send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
+) -> None:
+    """Handle SSE GET requests with persistent connection."""
+    logger.debug("Creating persistent SSE connection")
+    try:
+        async with sse.connect_sse(scope, log_receive, log_send) as streams:
+            logger.debug("SSE connection established, running MCP server")
+            await mcp_server.run(streams[0], streams[1], mcp_server.create_initialization_options())
+            logger.debug("MCP server completed")
+    except asyncio.CancelledError:
+        logger.debug("SSE connection cancelled during shutdown")
+        raise  # Re-raise to properly propagate cancellation
+
+
+async def _handle_post_message(
+    sse: SseServerTransport,
+    scope: MutableMapping[str, Any],
+    log_receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
+    log_send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
+) -> None:
+    """Handle POST requests to /messages endpoint."""
+    logger.debug("Handling /messages POST")
+    try:
+        await sse.handle_post_message(scope, log_receive, log_send)
+        logger.debug("/messages POST handled")
+    except asyncio.CancelledError:
+        logger.debug("POST message handling cancelled during shutdown")
+        raise  # Re-raise to properly propagate cancellation
+
+
+async def _handle_404(
+    send: Callable[[MutableMapping[str, Any]], Awaitable[None]], method: str, path: str
+) -> None:
+    """Handle unrecognized requests with 404."""
+    logger.warning(f"Unhandled request: {method} {path}")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 404,
+            "headers": [[b"content-type", b"text/plain"]],
+        }
+    )
+    await send({"type": "http.response.body", "body": b"Not Found"})
+
+
+async def _monitor_shutdown(
+    server_task: asyncio.Task[None],
+    shutdown_task: asyncio.Task[Any],
+    server: uvicorn.Server,
+) -> None:
+    """Monitor for shutdown signal and handle graceful shutdown."""
+    # Wait for either server completion or shutdown signal
+    done, pending = await asyncio.wait(
+        {server_task, shutdown_task}, return_when=asyncio.FIRST_COMPLETED
+    )
+
+    # If shutdown was signaled, force server shutdown
+    if shutdown_task in done:
+        logger.info("Shutdown signal received, stopping server...")
+        server.should_exit = True
+
+        # Wait for graceful shutdown with timeout
+        try:
+            await asyncio.wait_for(server_task, timeout=5.0)
+        except TimeoutError:
+            logger.warning("Graceful shutdown timeout, forcing exit...")
+            # Cancel any remaining tasks
+            for task in pending:
+                task.cancel()
+
+
+async def run_stdio() -> None:
+    """Run the MCP server with stdio transport."""
+    logger.info("Starting MCP server with stdio transport")
+
+    # Initialize Docker server
+    await docker_server.start()
+
+    try:
+        # Run server with stdio transport
+        async with stdio_server() as (read_stream, write_stream):
+            await mcp_server.run(
+                read_stream, write_stream, mcp_server.create_initialization_options()
+            )
+    finally:
+        await docker_server.stop()
+        logger.info("MCP server shutdown complete")
+
+
+async def run_sse(host: str, port: int) -> None:
+    """Run the MCP server with SSE transport over HTTP."""
+    logger.info(f"Starting MCP server with SSE transport on {host}:{port}")
+
+    # Initialize Docker server
+    await docker_server.start()
+
+    # Shutdown event for graceful termination
+    shutdown_event = asyncio.Event()
+
+    def signal_handler(sig: int, frame: Any) -> None:  # noqa: ARG001
+        """Handle shutdown signals."""
+        logger.info(f"Received signal {sig}, initiating shutdown...")
+        shutdown_event.set()
+
+    # Install signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    try:
+        # Create SSE transport
+        sse = SseServerTransport("/messages")
+
+        async def sse_handler(
+            scope: MutableMapping[str, Any],
+            receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
+            send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
+        ) -> None:
+            """Handle both /sse (GET) and /messages (POST) through the SSE transport."""
+            path = scope.get("path", "")
+            method = scope.get("method", "")
+            logger.debug(f"Request: {method} {path}")
+
+            # Create logging wrappers
+            log_receive, log_send = _create_logging_wrappers(receive, send)
+
+            # Route based on path and method
+            if path.startswith("/sse") and method == "GET":
+                await _handle_sse_connection(sse, scope, log_receive, log_send)
+            elif path.startswith("/messages") and method == "POST":
+                await _handle_post_message(sse, scope, log_receive, log_send)
+            else:
+                await _handle_404(send, method, path)
+
+        # Mount handler at root
+        app = Starlette(
+            debug=True,
+            routes=[Mount("/", app=sse_handler)],
+        )
+
+        # Run server with timeout configuration
+        config_uvicorn = uvicorn.Config(
+            app,
+            host=host,
+            port=port,
+            log_level="info",
+            timeout_graceful_shutdown=5,  # 5 second timeout for graceful shutdown
+        )
+        server = uvicorn.Server(config_uvicorn)
+
+        logger.info(f"MCP server listening on http://{host}:{port}/sse")
+
+        # Run server with shutdown monitoring
+        server_task = asyncio.create_task(server.serve())
+        shutdown_task = asyncio.create_task(shutdown_event.wait())
+
+        # Monitor shutdown and handle gracefully
+        await _monitor_shutdown(server_task, shutdown_task, server)
+
+    finally:
+        await docker_server.stop()
+        logger.info("MCP server shutdown complete")
+
+
+def main() -> None:
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description="MCP Docker Server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse"],
+        default="stdio",
+        help="Transport type (default: stdio)",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind SSE server (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind SSE server (default: 8000)",
+    )
+
+    args = parser.parse_args()
+
+    try:
+        if args.transport == "stdio":
+            asyncio.run(run_stdio())
+        else:  # sse
+            asyncio.run(run_sse(args.host, args.port))
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal")
+    except Exception as e:
+        logger.exception(f"Server error: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    main()
