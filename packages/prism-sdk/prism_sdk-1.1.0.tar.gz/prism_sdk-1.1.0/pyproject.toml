@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prism-sdk"
+version = "1.1.0"
+description = "Official Python SDK for Prism Meta - AI-Powered Trust Verification API"
+readme = "README.md"
+license = "MIT"
+authors = [{name = "Prism Meta", email = "support@prismmeta.com"}]
+maintainers = [{name = "Prism Meta", email = "support@prismmeta.com"}]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["prism", "trust", "verification", "fact-checking", "ai", "api", "sdk"]
+requires-python = ">=3.8"
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.20.0",
+    "black>=22.0.0",
+    "isort>=5.0.0",
+    "mypy>=1.0.0",
+    "flake8>=5.0.0",
+]
+docs = [
+    "mkdocs>=1.4.0",
+    "mkdocs-material>=8.0.0",
+    "mkdocstrings[python]>=0.19.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/prismmeta/prism-sdk-python"
+Documentation = "https://docs.prismmeta.ai/sdk/python"
+Repository = "https://github.com/prismmeta/prism-sdk-python"
+"Bug Tracker" = "https://github.com/prismmeta/prism-sdk-python/issues"
+"API Reference" = "https://api.prismmeta.ai/docs"
+
+[tool.setuptools.packages.find]
+include = ["prism_sdk*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
