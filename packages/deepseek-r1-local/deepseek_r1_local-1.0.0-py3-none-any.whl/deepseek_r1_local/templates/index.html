@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek R1 - Local AI Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status {
+            padding: 10px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-info {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 15px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            white-space: pre-wrap;
+        }
+
+        .message.council .message-content {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #2c3e50;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid #667eea;
+            white-space: pre-wrap;
+        }
+
+        .input-container {
+            padding: 20px 30px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 25px;
+            padding: 5px 5px 5px 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #667eea;
+            background: white;
+        }
+
+        #messageInput {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            padding: 10px;
+            font-size: 15px;
+            font-family: inherit;
+        }
+
+        #sendButton {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 30px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #sendButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 15px;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            max-width: 70px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator span {
+            height: 10px;
+            width: 10px;
+            background: #667eea;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        .settings {
+            padding: 10px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+
+        .settings label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+        }
+
+        .settings input[type="range"] {
+            width: 100px;
+        }
+
+        .settings input[type="number"] {
+            width: 60px;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-size: 16px;
+        }
+
+        .welcome-message h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 DeepSeek R1 + 🏛️ Council</h1>
+            <p>Local AI Assistant with Council Deliberation - Running Offline</p>
+        </div>
+        
+        <div class="status" id="status">
+            🔴 Connecting to model...
+        </div>
+
+        <div class="settings">
+            <label>
+                Temperature:
+                <input type="range" id="temperature" min="0.0" max="2.0" step="0.1" value="0.2">
+                <span id="tempValue">0.2</span>
+                <span style="font-size: 10px; opacity: 0.7;">(< 0.3 = faster)</span>
+            </label>
+            <label>
+                Max Length:
+                <input type="number" id="maxLength" min="50" max="512" step="50" value="150">
+            </label>
+            <label>
+                <input type="checkbox" id="quickMode" checked>
+                Quick Mode (Faster)
+            </label>
+            <label style="border-left: 2px solid #ddd; padding-left: 20px; margin-left: 10px;">
+                <input type="checkbox" id="webSearch">
+                🌐 Web Search
+            </label>
+            <label style="border-left: 2px solid #ddd; padding-left: 20px; margin-left: 10px;">
+                <input type="checkbox" id="councilMode">
+                🏛️ Council Mode
+            </label>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-message">
+                <h2>Welcome to DeepSeek R1!</h2>
+                <p>This AI is running completely locally on your machine.</p>
+                <p>Start a conversation below.</p>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <div class="input-wrapper">
+                <input type="text" id="messageInput" placeholder="Type your message here..." autofocus>
+            </div>
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const statusDiv = document.getElementById('status');
+        const temperatureInput = document.getElementById('temperature');
+        const tempValue = document.getElementById('tempValue');
+        const maxLengthInput = document.getElementById('maxLength');
+        const quickModeInput = document.getElementById('quickMode');
+        const webSearchInput = document.getElementById('webSearch');
+        const councilModeInput = document.getElementById('councilMode');
+
+        let isProcessing = false;
+
+        // Update temperature display
+        temperatureInput.addEventListener('input', (e) => {
+            tempValue.textContent = e.target.value;
+        });
+
+        // Quick mode adjusts settings automatically
+        quickModeInput.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                maxLengthInput.value = 150;
+                temperatureInput.value = 0.7;
+                tempValue.textContent = '0.7';
+            }
+        });
+
+        // Check model status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                if (data.loaded) {
+                    statusDiv.innerHTML = `
+                        <span>🟢 Model loaded - Device: ${data.device}</span>
+                        <span class="status-info">Cache: ${data.cache_size} responses | Warmed up: ${data.warmed_up ? 'Yes' : 'No'}</span>
+                    `;
+                    statusDiv.className = 'status online';
+                } else {
+                    statusDiv.textContent = '🔴 Model not loaded';
+                    statusDiv.className = 'status';
+                }
+            } catch (error) {
+                statusDiv.textContent = '🔴 Connection error';
+                statusDiv.className = 'status';
+            }
+        }
+
+        // Add message to chat
+        function addMessage(content, isUser, isSearching = false, isCouncil = false) {
+            const welcomeMsg = chatContainer.querySelector('.welcome-message');
+            if (welcomeMsg) {
+                welcomeMsg.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : (isCouncil ? 'council' : 'assistant')}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            if (isUser) {
+                avatar.textContent = 'U';
+            } else if (isSearching) {
+                avatar.textContent = '🔍';
+            } else if (isCouncil) {
+                avatar.textContent = '🏛️';
+            } else {
+                avatar.textContent = 'AI';
+            }
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Handle markdown-style formatting for council messages
+            if (isCouncil && typeof content === 'string') {
+                contentDiv.innerHTML = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/---/g, '<hr style="margin: 15px 0; border: 0; border-top: 1px solid #ccc;">');
+            } else {
+                contentDiv.textContent = content;
+            }
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+            chatContainer.appendChild(messageDiv);
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return contentDiv;
+        }
+
+        // Show/hide typing indicator
+        function toggleTyping(show) {
+            let indicator = chatContainer.querySelector('.typing-indicator');
+            if (show && !indicator) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant';
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = 'AI';
+                
+                indicator = document.createElement('div');
+                indicator.className = 'typing-indicator active';
+                indicator.innerHTML = '<span></span><span></span><span></span>';
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(indicator);
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } else if (!show && indicator) {
+                indicator.closest('.message').remove();
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            if (isProcessing) return;
+            
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            isProcessing = true;
+            sendButton.disabled = true;
+            messageInput.value = '';
+            
+            const useWebSearch = webSearchInput.checked;
+            const useCouncilMode = councilModeInput.checked;
+            
+            addMessage(message, true);
+            
+            // Show appropriate indicator
+            if (useCouncilMode) {
+                const councilMsg = addMessage('🏛️ Convening the Council... This may take a minute as 5 council members deliberate...', false, false, true);
+                setTimeout(() => councilMsg.closest('.message').remove(), 3000);
+            } else if (useWebSearch) {
+                const searchMsg = addMessage('Searching the web...', false, true);
+                setTimeout(() => searchMsg.closest('.message').remove(), 2000);
+            }
+            
+            toggleTyping(true);
+            
+            try {
+                const maxLen = quickModeInput.checked ? 
+                    Math.min(parseInt(maxLengthInput.value), 200) : 
+                    parseInt(maxLengthInput.value);
+                
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        temperature: parseFloat(temperatureInput.value),
+                        max_length: maxLen,
+                        stream: false,
+                        web_search: useWebSearch,
+                        council_mode: useCouncilMode
+                    }),
+                });
+                
+                const data = await response.json();
+                toggleTyping(false);
+                
+                if (data.error) {
+                    addMessage(`Error: ${data.error}`, false);
+                } else {
+                    // Check if it's a council response
+                    const isCouncil = data.council_results !== undefined;
+                    addMessage(data.response, false, false, isCouncil);
+                }
+            } catch (error) {
+                toggleTyping(false);
+                addMessage(`Error: ${error.message}`, false);
+            } finally {
+                isProcessing = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Initialize
+        checkStatus();
+        setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>
