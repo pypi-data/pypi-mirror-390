@@ -1,0 +1,164 @@
+Metadata-Version: 2.4
+Name: symqnet-molopt
+Version: 3.0.21
+Summary: SymQNet Molecular Optimization via Hamiltonian Estimation
+Home-page: https://github.com/YTomar79/symqnet-molopt
+Author: YTomar79
+Author-email: yashm.tomar@gmail.com
+License: MIT
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: Environment :: Console
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch<3.0.0,>=2.8.0
+Requires-Dist: numpy<3.0.0,>=2.3.3
+Requires-Dist: qiskit<3.0.0,>=2.1.2
+Requires-Dist: openfermion>=1.7.0
+Requires-Dist: scipy<2.0.0,>=1.16.2
+Requires-Dist: click<9.0.0,>=8.3.0
+Requires-Dist: tqdm<5.0.0,>=4.67.1
+Requires-Dist: matplotlib<4.0.0,>=3.10.6
+Requires-Dist: seaborn<1.0.0,>=0.11.2
+Requires-Dist: torch-geometric<3.0.0,>=2.3.0
+Requires-Dist: pandas<3.0.0,>=2.0.0
+Requires-Dist: tensorboard<3.0.0,>=2.13.0
+Requires-Dist: gymnasium<2.0.0,>=1.2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov>=2.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Requires-Dist: isort>=5.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: sphinx>=4.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.0; extra == "docs"
+Requires-Dist: myst-parser>=0.17; extra == "docs"
+Provides-Extra: gpu
+Requires-Dist: torch>=1.12.0; extra == "gpu"
+Requires-Dist: torch-geometric>=2.2.0; extra == "gpu"
+Provides-Extra: analysis
+Requires-Dist: pandas>=1.4.0; extra == "analysis"
+Requires-Dist: seaborn>=0.11.0; extra == "analysis"
+Requires-Dist: scikit-learn>=1.1.0; extra == "analysis"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# SymQNet-MolOpt: Hamiltonian Parameter Estimation
+
+SymQNet-MolOpt provides efficient, uncertainty-aware estimation of Hamiltonian parameters for spin-system models and ultimately much more efficient molecular optimization.
+It is designed for sample-efficient optimization and reports confidence intervals for each parameter.
+
+---
+
+## Installation
+
+```bash
+pip install SymQNet-MolOpt
+```
+
+---
+
+## Usage
+
+### Core Command
+
+```bash
+SymQNet-MolOpt --hamiltonian input.json --output results.json
+```
+
+**Arguments:**
+
+* `--hamiltonian`: Path to a JSON Hamiltonian (OpenFermion-like format).
+* `--output`: File to save results (JSON).
+* `--shots`: Number of measurement shots (default auto-scales).
+* `--n-rollouts`: Number of independent rollouts (default: 5).
+* `--max-steps`: Max optimization steps per rollout (default: 50).
+
+---
+
+## Examples
+
+**Water Molecule (H₂O, 10 qubits)**
+
+```bash
+SymQNet-MolOpt --hamiltonian examples/H2O_10q.json --output h2o_results.json --shots 1024 --n-rollouts 5 --max-steps 50
+```
+
+**Ising Chain (12 qubits)**
+
+```bash
+SymQNet-MolOpt --hamiltonian examples/ising_12q.json --output ising_results.json --shots 1024
+```
+(You need to create your own JSON Hamiltonian.)
+
+---
+
+## Input Format
+
+Hamiltonians are specified in JSON:
+
+```json
+{
+  "format": "openfermion",
+  "system": "H2O",
+  "n_qubits": 10,
+  "pauli_terms": [
+    {"coefficient": -74.943, "pauli_string": "IIIIIIIIII"},
+    {"coefficient": 0.342, "pauli_string": "IIIIIIIIIZ"}
+  ]
+}
+```
+
+---
+
+## Output Format
+
+Results include estimated parameters with uncertainties:
+
+```json
+{
+  "symqnet_results": {
+    "coupling_parameters": [
+      {
+        "index": 0,
+        "mean": 0.2134,
+        "confidence_interval": [0.2089, 0.2179],
+        "uncertainty": 0.0045
+      }
+    ],
+    "field_parameters": [...],
+    "total_uncertainty": 0.0856
+  },
+  "hamiltonian_info": {
+    "system": "H2O",
+    "n_qubits": 10
+  }
+}
+```
+
+---
+
+## Requirements
+
+* Python 3.8+
+* PyTorch 1.12+
+* NumPy, SciPy, Click
+
+
