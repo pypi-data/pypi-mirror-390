@@ -1,0 +1,37 @@
+{
+  "input" : {
+    "left": {
+      "img": "tests/image/left_img.png",
+      "disp": [-60, 0]
+    },
+    "right": {
+      "img": "tests/image/right_img.png"
+    }
+  },
+  "pipeline": {
+    "matching_cost" : {
+        "matching_cost_method": "mc_cnn",
+        "subpix": 1,
+        "window_size": 11,
+        "model_path": "tests/weights/mc_cnn_fast_mb_weights.pt"
+    },
+    "aggregation" : {
+        "aggregation_method": "cbca"
+    },
+    "disparity": {
+      "disparity_method": "wta",
+      "invalid_disparity": "NaN"
+    },
+    "refinement": {
+        "refinement_method": "quadratic"
+    },
+   "filter" : {
+       "filter_method": "median",
+       "filter_size": 3
+    },
+    "validation" : {
+        "validation_method": "cross_checking_accurate",
+        "cross_checking_threshold": 1
+    }
+  }
+}
