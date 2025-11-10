@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="adw" version="1.0"/>
+  <object class="GtkPopoverMenu" id="hamburger">
+    <property name="menu-model">hamburger-menu</property>
+  </object>
+  <object class="GtkPopoverMenu" id="recent-files">
+  </object>
+  <object class="GtkPopoverMenu" id="alignment">
+    <property name="menu-model">alignment-menu</property>
+  </object>
+
+  <object class="AdwApplicationWindow" id="main-window">
+    <property name="default-width">1024</property>
+    <property name="default-height">640</property>
+    <property name="resizable">1</property>
+    <property name="content">
+      <object class="AdwToastOverlay" id="main-overlay">
+        <property name="child">
+          <object class="GtkPaned" id="left-pane">
+            <property name="orientation">horizontal</property>
+            <property name="position">220</property>
+            <property name="shrink-start-child">0</property>
+
+            <property name="start-child">
+              <!-- Model Browser and Toolbox pane -->
+              <object class="AdwToolbarView">
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <property name="show-title">0</property>
+                    <property name="show-end-title-buttons">0</property>
+                    <child>
+                      <object class="GtkMenuButton" id="select-modeling-language">
+                        <property name="focus-on-click">0</property>
+                        <property name="always-show-arrow">1</property>
+                        <property name="tooltip-text" translatable="yes">Change modeling profile</property>
+                        <child>
+                          <object class="GtkLabel" id="modeling-language-name" />
+                        </child>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkMenuButton" id="hamburger-menu-button">
+                        <property name="popover">hamburger</property>
+                        <property name="icon_name">open-menu-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Open application menu</property>
+                        <property name="primary">1</property>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="GtkMenuButton" id="diagram-types">
+                        <property name="icon_name">list-add-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">New diagram menu</property>
+                        <property name="always-show-arrow">1</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <property name="content">
+                  <object class="GtkPaned" id="top-left-pane">
+                    <property name="orientation">vertical</property>
+                    <property name="position">300</property>
+                    <child type="start">
+                      <object class="AdwBin" id="component:model_browser">
+                        <property name="hexpand">1</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">Model Browser</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="end">
+                      <object class="AdwBin" id="component:toolbox">
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">Toolbox</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </property>
+
+                <style>
+                  <class name="pseudo-sidebar-pane"/>
+                </style>
+
+              </object>
+            </property>
+
+            <property name="end-child">
+              <object class="AdwToolbarView">
+                <property name="top-bar-style">raised</property>
+                <child type="top">
+                  <object class="AdwHeaderBar">
+                    <property name="show-start-title-buttons">0</property>
+                    <property name="title-widget">
+                      <object class="GtkBox">
+                        <property name="orientation">vertical</property>
+                        <property name="valign">center</property>
+                        <child>
+                          <object class="GtkCenterBox">
+                            <property name="hexpand">true</property>
+                            <child type="start">
+                              <object class="GtkLabel" id="modified">
+                                <property name="halign">end</property>
+                                <property name="hexpand">true</property>
+                                <property name="label">•</property>
+                                <property name="margin-end">6</property>
+                                <property name="visible">false</property>
+                              </object>
+                            </child>
+                            <child type="center">
+                              <object class="GtkLabel" id="title">
+                                <property name="label">Gaphor</property>
+                                <property name="ellipsize">end</property>
+                                <property name="width-chars">3</property>
+                                <attributes>
+                                  <attribute name="weight" value="bold"/>
+                                </attributes>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="subtitle">
+                            <property name="label" translatable="yes">New model</property>
+                            <property name="ellipsize">middle</property>
+                            <style>
+                              <class name="subtitle"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+
+                    <child type="start">
+                      <object class="GtkButton">
+                        <property name="receives_default">1</property>
+                        <property name="tooltip_text" translatable="yes">Undo</property>
+                        <property name="action_name">text.undo</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon_name">edit-undo-symbolic</property>
+                          </object>
+                        </child>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child type="start">
+                      <object class="GtkButton">
+                        <property name="receives_default">1</property>
+                        <property name="tooltip_text" translatable="yes">Redo</property>
+                        <property name="action_name">text.redo</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon_name">edit-redo-symbolic</property>
+                          </object>
+                        </child>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+
+                    <child type="start">
+                      <object class="GtkMenuButton" id="alignment-button">
+                        <property name="icon-name">format-justify-center-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Align selected elements</property>
+                        <property name="popover">alignment</property>
+                      </object>
+                    </child>
+
+                    <child type="end">
+                      <object class="GtkToggleButton">
+                        <property name="action_name">win.show-editors</property>
+                        <property name="tooltip-text" translatable="yes">Toggle Property Editor</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon_name">sidebar-show-right-symbolic</property>
+                          </object>
+                        </child>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <property name="content">
+                  <object class="AdwOverlaySplitView" id="element-editor-overlay">
+                    <property name="sidebar-position">end</property>
+
+                    <!-- Diagrams pane -->
+                    <property name="content">
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="hexpand">1</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="hexpand">1</property>
+                            <property name="orientation">vertical</property>
+                            <child>
+                              <object class="AdwBin" id="component:model_changed">
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label">Model Changed</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwBin" id="component:diagrams">
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label">Diagrams</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+
+                    <!-- Property Editor pane -->
+                    <property name="sidebar">
+                      <object class="AdwBin" id="component:element_editor">
+                        <property name="hexpand-set">1</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">Element Editor</property>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+
+                  </object>
+                </property>
+              </object>
+            </property>
+
+          </object>
+        </property>
+      </object>
+    </property>
+  </object>
+
+  <menu id="hamburger-menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">New Model…</attribute>
+        <attribute name="action">app.new-window</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Open Model…</attribute>
+        <attribute name="action">app.file-open</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Save</attribute>
+        <attribute name="action">win.file-save</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Save As…</attribute>
+        <attribute name="action">win.file-save-as</attribute>
+      </item>
+      <item>
+        <link name="section" id="export-menu"/>
+      </item>
+    </section>
+    <section>
+      <item>
+        <link name="section" id="tools-menu"/>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Preferences…</attribute>
+        <attribute name="action">app.preferences</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Keyboard Shortcuts</attribute>
+        <attribute name="action">app.shortcuts</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">About Gaphor</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+    </section>
+  </menu>
+
+  <menu id='alignment-menu'>
+    <section>
+      <item>
+        <attribute name='label' translatable='yes'>Align Left</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">left</attribute>
+      </item>
+      <item>
+        <attribute name='label' translatable='yes'>Align Right</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">right</attribute>
+      </item>
+      <item>
+        <attribute name='label' translatable='yes'>Align Vertical Center</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">vertical-center</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name='label' translatable='yes'>Align Top</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">top</attribute>
+      </item>
+      <item>
+        <attribute name='label' translatable='yes'>Align Bottom</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">bottom</attribute>
+      </item>
+      <item>
+        <attribute name='label' translatable='yes'>Align Horizontal Center</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">horizontal-center</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name='label' translatable='yes'>Max Width</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">max-width</attribute>
+      </item>
+      <item>
+        <attribute name='label' translatable='yes'>Max Height</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">max-height</attribute>
+      </item>
+      <item>
+        <attribute name='label' translatable='yes'>Max Size</attribute>
+        <attribute name='action'>win.diagram-align</attribute>
+        <attribute name="target">max-size</attribute>
+      </item>
+    </section>
+  </menu>
+
+</interface>
