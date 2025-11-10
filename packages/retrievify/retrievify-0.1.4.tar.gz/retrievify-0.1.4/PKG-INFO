@@ -1,0 +1,94 @@
+Metadata-Version: 2.4
+Name: retrievify
+Version: 0.1.4
+Summary: Lightweight Retrieval-Augmented Generation (RAG) toolkit in 3 lines.
+Author-email: Meer Magia <meer.magia@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/<your-username>/retrievify
+Project-URL: Repository, https://github.com/<your-username>/retrievify
+Project-URL: Issues, https://github.com/<your-username>/retrievify/issues
+Project-URL: Documentation, https://github.com/<your-username>/retrievify#readme
+Keywords: rag,nlp,retrieval,embeddings
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.26
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: pypdf>=5.0.0
+Requires-Dist: typer>=0.12
+Requires-Dist: tqdm>=4.66
+Requires-Dist: rich>=13.7
+Provides-Extra: minilm
+Requires-Dist: sentence-transformers>=3.0; extra == "minilm"
+Provides-Extra: faiss
+Requires-Dist: faiss-cpu>=1.8.0; extra == "faiss"
+Provides-Extra: annoy
+Requires-Dist: annoy>=1.17.3; extra == "annoy"
+Provides-Extra: gen
+Requires-Dist: openai>=1.50.0; extra == "gen"
+Requires-Dist: transformers>=4.44; extra == "gen"
+Requires-Dist: torch>=2.2; extra == "gen"
+Dynamic: license-file
+
+# retrievify
+
+![PyPI](https://img.shields.io/pypi/v/retrievify)
+![Python](https://img.shields.io/pypi/pyversions/retrievify)
+![License](https://img.shields.io/github/license/MeerMagia/retrievify)
+![Downloads](https://img.shields.io/pypi/dm/retrievify)
+
+**Lightweight Retrieval-Augmented Generation (RAG) toolkit in 3 lines.**
+
+```python
+from retrievify import RAG
+rag = RAG().fit("docs/", patterns=["*.pdf","*.md","*.txt"])
+print(rag.ask("What are the core contributions?"))
+```
+
+## Why retrievify?
+- ⚡ Fast local embeddings (MiniLM) by default
+- 🧱 Smart chunking & FAISS/Annoy vector stores (Windows-friendly)
+- 🧩 Optional LLM generation hook (OpenAI/Ollama)
+- 🛠️ CLI for quick indexing and querying
+
+## Install
+```bash
+pip install retrievify
+# If FAISS is tricky on Windows, use Annoy:
+pip install annoy
+```
+
+## Quickstart
+```python
+from retrievify import RAG
+rag = RAG().fit("docs/")
+res = rag.ask("What are the key limitations?", k=5)
+print(res["evidence"][0])
+```
+
+## CLI
+```bash
+retrievify index ./docs --pattern "*.pdf,*.md"
+retrievify query ./docs -q "evaluation pipeline" -k 5 --generate
+```
+
+## LLM (optional)
+Set env var for OpenAI first:
+```powershell
+$env:OPENAI_API_KEY="sk-..."
+```
+Then:
+```python
+from retrievify import RAG
+rag = RAG({"generation": True, "llm_backend": "openai"}).fit("docs/")
+print(rag.ask("Summarize the paper")["answer"])
+```
+
+## Roadmap
+- Cross-encoder re-ranking
+- HTML/URL loaders & deduplication
+- Simple retrieval eval (Recall@k, MRR, NDCG)
