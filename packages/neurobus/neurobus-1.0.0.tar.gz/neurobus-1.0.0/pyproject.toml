@@ -1,0 +1,239 @@
+[project]
+name = "neurobus"
+version = "1.0.0"
+description = "The World's First Neuro-Semantic Event Bus for Cognitive AI Systems"
+authors = [{name = "Eshan Roy", email = "eshanized@proton.me"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["event-bus", "semantic-routing", "cognitive-ai", "llm", "vector-database", "distributed-systems"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Distributed Computing",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "aiofiles>=23.0.0",
+]
+
+[project.optional-dependencies]
+semantic = ["sentence-transformers>=2.2.0", "torch>=2.0.0", "numpy>=1.24.0"]
+qdrant = ["qdrant-client>=1.7.0"]
+lancedb = ["lancedb>=0.3.0", "pyarrow>=12.0.0"]
+memory = ["qdrant-client>=1.7.0", "lancedb>=0.3.0", "pyarrow>=12.0.0"]
+openai = ["openai>=1.12.0"]
+anthropic = ["anthropic>=0.18.0"]
+ollama = ["httpx>=0.25.0"]
+llm = ["openai>=1.12.0", "anthropic>=0.18.0", "httpx>=0.25.0"]
+distributed = ["redis>=5.0.0"]
+monitoring = ["prometheus-client>=0.19.0"]
+all = [
+    "sentence-transformers>=2.2.0",
+    "torch>=2.0.0",
+    "numpy>=1.24.0",
+    "qdrant-client>=1.7.0",
+    "lancedb>=0.3.0",
+    "pyarrow>=12.0.0",
+    "openai>=1.12.0",
+    "anthropic>=0.18.0",
+    "httpx>=0.25.0",
+    "redis>=5.0.0",
+    "prometheus-client>=0.19.0",
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "types-PyYAML",
+    "types-aiofiles",
+]
+
+[project.urls]
+Homepage = "https://github.com/eshanized/neurobus"
+Documentation = "https://neurobus.readthedocs.io"
+Repository = "https://github.com/eshanized/neurobus"
+"Bug Tracker" = "https://github.com/eshanized/neurobus/issues"
+Changelog = "https://github.com/eshanized/neurobus/blob/main/CHANGELOG.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+# Core dependencies only
+msgpack = "^1.0"
+pyyaml = "^6.0"
+pydantic = "^2.5"
+
+[tool.poetry.extras]
+semantic = ["sentence-transformers"]
+memory = ["qdrant-client", "lancedb", "numpy", "faiss-cpu"]
+llm = ["anthropic", "openai"]
+monitoring = ["prometheus-client", "opentelemetry-api", "opentelemetry-sdk"]
+all = [
+    "sentence-transformers",
+    "qdrant-client",
+    "lancedb",
+    "numpy",
+    "faiss-cpu",
+    "anthropic",
+    "openai",
+    "prometheus-client",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+]
+
+[tool.poetry.group.optional.dependencies]
+sentence-transformers = {version = "^2.2", optional = true}
+qdrant-client = {version = "^1.7", optional = true}
+lancedb = {version = "^0.3", optional = true}
+numpy = {version = "^1.24", optional = true}
+anthropic = {version = "^0.18", optional = true}
+openai = {version = "^1.12", optional = true}
+faiss-cpu = {version = "^1.7", optional = true}
+prometheus-client = {version = "^0.19", optional = true}
+opentelemetry-api = {version = "^1.21", optional = true}
+opentelemetry-sdk = {version = "^1.21", optional = true}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4"
+pytest-asyncio = "^0.21"
+pytest-cov = "^4.1"
+pytest-mock = "^3.12"
+pytest-benchmark = "^4.0"
+black = "^23.12"
+ruff = "^0.1"
+mypy = "^1.8"
+sphinx = "^7.2"
+sphinx-rtd-theme = "^2.0"
+pre-commit = "^3.6"
+
+[tool.poetry.scripts]
+neurobus = "neurobus.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (black handles this)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "B904",  # raise from - exception chaining (optional)
+    "B905",  # zip without strict parameter (Python 3.10+)
+    "B007",  # unused loop variable (underscore prefix handles this)
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "sentence_transformers.*",
+    "qdrant_client.*",
+    "lancedb.*",
+    "faiss.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=neurobus",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-branch",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "performance: Performance tests",
+    "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = ["neurobus"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+precision = 2
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "@abstract",
+]
