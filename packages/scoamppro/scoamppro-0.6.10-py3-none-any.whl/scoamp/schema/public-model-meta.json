@@ -1,0 +1,87 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "model crawler meta",
+    "description": "meta info for one model fetch from public website like huggingface",
+    "type": "object",
+    "properties": {
+        "schema_version": {
+            "description": "meta schema version",
+            "type": "string",
+            "enum": ["1.0-alpha"]
+        },
+        "modelname": {
+            "description": "model name",
+            "type": "string",
+            "minLength": 1
+        },
+        "owner": {
+            "description": "model owner, could be user/orgnization/empty",
+            "type": "string"
+        },
+        "url": {
+            "description": "git clone url",
+            "type": "string",
+            "minLength": 1
+        },
+        "downloads_last_month": {
+            "description": "download times in last month",
+            "type": "integer",
+            "minimum": 0
+        },
+        "likes": {
+            "description": "favorites in last month",
+            "type": ["integer", "string"],
+            "minimum": 0
+        },
+        "source": {
+            "description": "source site where model fetched",
+            "type": "string",
+            "enum": ["huggingface", "openmmlab"]
+        },
+        "tags": {
+            "description": "tags parsed directy from web/html of huggingface, refer to 'tagObjs' field",
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/tag"
+            }
+        }
+    },
+    "required": [
+        "schema_version",
+        "modelname",
+        "owner",
+        "url",
+        "downloads_last_month",
+        "likes",
+        "source"
+    ],
+    "$defs": {
+        "tag": {
+            "description": "model tag",
+            "type": "object",
+            "properties": {
+                "label": {
+                    "description": "tag display name",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "type": {
+                    "description": "tag type",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "subType": {
+                    "description": "tag sub type, optional",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "id": {
+                    "description": "tag display name",
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": ["label", "type"]
+        }
+    }
+}
