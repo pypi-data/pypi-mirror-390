@@ -1,0 +1,73 @@
+Metadata-Version: 2.4
+Name: powerwalk
+Version: 0.5.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Rust
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Filesystems
+License-File: LICENSE
+Summary: Fast parallel directory walking for Python, powered by Rust
+Keywords: filesystem,directory,walk,parallel,fast,gitignore
+Author: Peter Byfield
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown; charset=UTF-8; variant=GFM
+Project-URL: Homepage, https://peter554.github.io/powerwalk/
+Project-URL: Repository, https://github.com/Peter554/powerwalk
+Project-URL: Issues, https://github.com/Peter554/powerwalk/issues
+Project-URL: Documentation, https://peter554.github.io/powerwalk/
+
+# powerwalk
+
+[![PyPI](https://img.shields.io/pypi/v/powerwalk.svg)](https://pypi.org/project/powerwalk/)
+[![CI](https://github.com/Peter554/powerwalk/actions/workflows/check.yml/badge.svg)](https://github.com/Peter554/powerwalk/actions/workflows/check.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://peter554.github.io/powerwalk/)
+
+Fast parallel directory walking for Python, powered by Rust.
+
+- Find the repo [here](https://github.com/Peter554/powerwalk).
+- Read the docs [here](https://peter554.github.io/powerwalk/).
+
+## Features
+
+- 🚀 **Fast**: Uses the rust [ignore](https://crates.io/crates/ignore) crate for fast directory traversal.
+- ⚡ **Parallel**: Multi-threaded directory traversal.
+- 🎯 **Smart filtering**: Built-in support for `.gitignore`, `.ignore`, and glob patterns.
+- 🔒 **Type-safe**: Full type hints.
+
+## Installation
+
+```bash
+pip install powerwalk
+```
+
+## Quick Start
+
+```python
+import powerwalk
+
+# Find all Python files, respecting .gitignore
+for entry in powerwalk.walk(".", filter="**/*.py"):
+    if entry.is_file:
+        print(entry.path)
+
+# Custom configuration with filtering and exclusion
+for entry in powerwalk.walk(
+    ".",
+    filter=["**/*.yaml", "**/*.yml"],
+    exclude=["**/node_modules", "**/__pycache__"],
+    max_depth=3,
+    threads=4,
+):
+    print(entry.path_str, entry.is_dir)
+```
+
