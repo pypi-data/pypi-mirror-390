@@ -1,0 +1,46 @@
+Metadata-Version: 2.4
+Name: django-crm-ve
+Version: 0.1.0
+Summary: Lightweight CRM for Django with leads, opportunities, quotations, and one-click conversion to sales invoices.
+Author-email: "Verified Enquiries / Tushar K." <support@verifiedenquiries.com>
+License: MIT
+Classifier: Framework :: Django
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=5.0
+Requires-Dist: djangorestframework>=3.15
+Requires-Dist: django-sales>=0.2.0
+Dynamic: license-file
+
+# django-crm-ve
+
+## Install
+```
+pip install django-crm-ve
+```
+## Settings
+```
+INSTALLED_APPS += ["rest_framework", "finacc", "sales", "crm"]
+```
+## URLs
+```
+path("api/crm/", include("crm.api.urls"))
+```
+## Convert Lead → Contact + Opportunity
+```
+POST /api/crm/leads/
+{ "company": 1, "name": "Foo Corp", "email": "foo@example.com" }
+```
+## Create Quote
+```
+POST /api/crm/quotes/
+{ "company":1, "contact":1, "number":"Q-0001", "date":"2025-11-09", "currency":"INR",
+  "lines": [{"item":1, "qty":"1.0", "rate":"1000.00", "tax":1}] }
+```
+## Confirm Quote → Sales Invoice (via django-sales)
+```
+POST /api/crm/quotes/<id>/confirm/
+```
