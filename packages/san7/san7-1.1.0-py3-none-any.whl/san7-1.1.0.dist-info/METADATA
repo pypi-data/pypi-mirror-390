@@ -1,0 +1,1457 @@
+Metadata-Version: 2.4
+Name: san7
+Version: 1.1.0
+Summary: Advanced time-based expiration and protection system for Python applications
+Author: san
+License: MIT
+Project-URL: Homepage, https://t.me/ii00hh
+Keywords: expiration,time-based,security,protection,licensing
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Security
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: setuptools>=68.0.0
+Dynamic: license-file
+
+# s7
+
+Advanced time-based expiration and protection system for Python applications
+
+Version: 1.0.0  
+Developer: san  
+Contact: @ii00hh
+
+---
+
+## Installation
+
+```bash
+pip install s7
+```
+
+---
+
+## Basic Usage
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+s7.check_expiration()
+```
+
+```python
+import s7
+
+s7.set_expiration(2025, 6, 15, 14, 30, 0)
+s7.check_expiration()
+```
+
+```python
+from s7 import ExpireDate
+
+expire = ExpireDate()
+expire.set_date(2025, 12, 31, 23, 59, 59)
+expire.check()
+```
+
+---
+
+## Complete Examples
+
+### Simple Tool Protection
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+
+def main():
+    s7.check_expiration()
+    print("Tool is running...")
+    
+main()
+```
+
+### CLI Tool
+
+```python
+import s7
+import argparse
+
+s7.set_expiration(2025, 12, 31)
+
+def process_file(filename):
+    s7.check_expiration()
+    with open(filename, 'r') as f:
+        data = f.read()
+    return data
+
+def main():
+    s7.check_expiration()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', required=True)
+    args = parser.parse_args()
+    
+    result = process_file(args.input)
+    print(result)
+
+if __name__ == "__main__":
+    main()
+```
+
+### Web Application
+
+```python
+from flask import Flask
+import s7
+
+app = Flask(__name__)
+s7.set_expiration(2025, 12, 31)
+
+@app.before_request
+def check_validity():
+    s7.check_expiration()
+
+@app.route('/')
+def index():
+    return "Service Active"
+
+@app.route('/api/data')
+def get_data():
+    s7.check_expiration()
+    return {"status": "ok", "data": [1, 2, 3]}
+
+if __name__ == '__main__':
+    app.run()
+```
+
+### GUI Application
+
+```python
+import s7
+import tkinter as tk
+
+class App(tk.Tk):
+    def __init__(self):
+        s7.set_expiration(2025, 12, 31)
+        s7.check_expiration()
+        
+        super().__init__()
+        self.title("Protected App")
+        self.geometry("400x300")
+        
+        self.label = tk.Label(self, text="Application Running")
+        self.label.pack(pady=20)
+        
+        self.button = tk.Button(self, text="Execute", command=self.execute)
+        self.button.pack()
+        
+        self.after(1000, self.periodic_check)
+    
+    def execute(self):
+        s7.check_expiration()
+        self.label.config(text="Task Executed")
+    
+    def periodic_check(self):
+        s7.check_expiration()
+        self.after(1000, self.periodic_check)
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
+```
+
+### Data Processing Script
+
+```python
+import s7
+import pandas as pd
+
+s7.set_expiration(2025, 12, 31)
+
+def load_data(filepath):
+    s7.check_expiration()
+    return pd.read_csv(filepath)
+
+def process_data(df):
+    s7.check_expiration()
+    df['new_column'] = df['value'] * 2
+    return df
+
+def save_data(df, filepath):
+    s7.check_expiration()
+    df.to_csv(filepath, index=False)
+
+def main():
+    s7.check_expiration()
+    
+    data = load_data('input.csv')
+    processed = process_data(data)
+    save_data(processed, 'output.csv')
+    
+    print("Processing complete")
+
+if __name__ == "__main__":
+    main()
+```
+
+### API Client
+
+```python
+import s7
+import requests
+
+s7.set_expiration(2025, 12, 31)
+
+class APIClient:
+    def __init__(self, base_url):
+        s7.check_expiration()
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def get(self, endpoint):
+        s7.check_expiration()
+        response = self.session.get(f"{self.base_url}{endpoint}")
+        return response.json()
+    
+    def post(self, endpoint, data):
+        s7.check_expiration()
+        response = self.session.post(f"{self.base_url}{endpoint}", json=data)
+        return response.json()
+
+client = APIClient("https://api.example.com")
+data = client.get("/users")
+result = client.post("/process", {"key": "value"})
+```
+
+### Bot Application
+
+```python
+import s7
+import time
+
+s7.set_expiration(2025, 12, 31)
+
+class Bot:
+    def __init__(self):
+        s7.check_expiration()
+        self.running = True
+    
+    def start(self):
+        s7.check_expiration()
+        print("Bot started")
+        
+        while self.running:
+            s7.check_expiration()
+            self.process_messages()
+            time.sleep(1)
+    
+    def process_messages(self):
+        s7.check_expiration()
+        pass
+    
+    def stop(self):
+        s7.check_expiration()
+        self.running = False
+
+bot = Bot()
+bot.start()
+```
+
+### Automated Task
+
+```python
+import s7
+import schedule
+import time
+
+s7.set_expiration(2025, 12, 31)
+
+def job():
+    s7.check_expiration()
+    print("Executing scheduled task")
+
+schedule.every(10).minutes.do(job)
+schedule.every().hour.do(job)
+schedule.every().day.at("10:30").do(job)
+
+while True:
+    s7.check_expiration()
+    schedule.run_pending()
+    time.sleep(1)
+```
+
+### Database Tool
+
+```python
+import s7
+import sqlite3
+
+s7.set_expiration(2025, 12, 31)
+
+class Database:
+    def __init__(self, db_path):
+        s7.check_expiration()
+        self.conn = sqlite3.connect(db_path)
+        self.cursor = self.conn.cursor()
+    
+    def query(self, sql, params=()):
+        s7.check_expiration()
+        self.cursor.execute(sql, params)
+        return self.cursor.fetchall()
+    
+    def execute(self, sql, params=()):
+        s7.check_expiration()
+        self.cursor.execute(sql, params)
+        self.conn.commit()
+    
+    def close(self):
+        s7.check_expiration()
+        self.conn.close()
+
+db = Database('data.db')
+results = db.query("SELECT * FROM users WHERE id = ?", (1,))
+db.execute("INSERT INTO logs (message) VALUES (?)", ("Event logged",))
+db.close()
+```
+
+### File Monitor
+
+```python
+import s7
+import os
+import time
+
+s7.set_expiration(2025, 12, 31)
+
+class FileMonitor:
+    def __init__(self, directory):
+        s7.check_expiration()
+        self.directory = directory
+        self.files = {}
+    
+    def scan(self):
+        s7.check_expiration()
+        for filename in os.listdir(self.directory):
+            filepath = os.path.join(self.directory, filename)
+            mtime = os.path.getmtime(filepath)
+            
+            if filename not in self.files:
+                print(f"New file: {filename}")
+            elif self.files[filename] != mtime:
+                print(f"Modified: {filename}")
+            
+            self.files[filename] = mtime
+    
+    def monitor(self):
+        while True:
+            s7.check_expiration()
+            self.scan()
+            time.sleep(5)
+
+monitor = FileMonitor('/path/to/watch')
+monitor.monitor()
+```
+
+### API Server
+
+```python
+from fastapi import FastAPI
+import s7
+
+app = FastAPI()
+s7.set_expiration(2025, 12, 31)
+
+@app.middleware("http")
+async def check_expiration_middleware(request, call_next):
+    s7.check_expiration()
+    response = await call_next(request)
+    return response
+
+@app.get("/")
+def read_root():
+    s7.check_expiration()
+    return {"status": "running"}
+
+@app.get("/items/{item_id}")
+def read_item(item_id: int):
+    s7.check_expiration()
+    return {"item_id": item_id, "name": f"Item {item_id}"}
+
+@app.post("/process")
+def process_data(data: dict):
+    s7.check_expiration()
+    result = {"processed": True, "data": data}
+    return result
+```
+
+### Scraper
+
+```python
+import s7
+from bs4 import BeautifulSoup
+import requests
+
+s7.set_expiration(2025, 12, 31)
+
+class Scraper:
+    def __init__(self):
+        s7.check_expiration()
+        self.session = requests.Session()
+    
+    def fetch(self, url):
+        s7.check_expiration()
+        response = self.session.get(url)
+        return response.text
+    
+    def parse(self, html):
+        s7.check_expiration()
+        soup = BeautifulSoup(html, 'html.parser')
+        data = []
+        
+        for item in soup.find_all('div', class_='item'):
+            s7.check_expiration()
+            title = item.find('h2').text
+            data.append({'title': title})
+        
+        return data
+    
+    def scrape(self, url):
+        s7.check_expiration()
+        html = self.fetch(url)
+        data = self.parse(html)
+        return data
+
+scraper = Scraper()
+results = scraper.scrape("https://example.com")
+```
+
+### Background Worker
+
+```python
+import s7
+import threading
+import queue
+
+s7.set_expiration(2025, 12, 31)
+
+class Worker:
+    def __init__(self):
+        s7.check_expiration()
+        self.queue = queue.Queue()
+        self.running = True
+    
+    def add_task(self, task):
+        s7.check_expiration()
+        self.queue.put(task)
+    
+    def process(self):
+        while self.running:
+            s7.check_expiration()
+            try:
+                task = self.queue.get(timeout=1)
+                self.execute(task)
+                self.queue.task_done()
+            except queue.Empty:
+                continue
+    
+    def execute(self, task):
+        s7.check_expiration()
+        print(f"Executing: {task}")
+    
+    def start(self):
+        s7.check_expiration()
+        thread = threading.Thread(target=self.process)
+        thread.start()
+
+worker = Worker()
+worker.start()
+worker.add_task("Task 1")
+worker.add_task("Task 2")
+```
+
+### Image Processor
+
+```python
+import s7
+from PIL import Image
+import os
+
+s7.set_expiration(2025, 12, 31)
+
+class ImageProcessor:
+    def __init__(self, input_dir, output_dir):
+        s7.check_expiration()
+        self.input_dir = input_dir
+        self.output_dir = output_dir
+    
+    def resize(self, image_path, size=(800, 600)):
+        s7.check_expiration()
+        img = Image.open(image_path)
+        img = img.resize(size)
+        return img
+    
+    def process_all(self):
+        s7.check_expiration()
+        for filename in os.listdir(self.input_dir):
+            s7.check_expiration()
+            if filename.endswith(('.png', '.jpg', '.jpeg')):
+                input_path = os.path.join(self.input_dir, filename)
+                output_path = os.path.join(self.output_dir, filename)
+                
+                img = self.resize(input_path)
+                img.save(output_path)
+                print(f"Processed: {filename}")
+
+processor = ImageProcessor('input', 'output')
+processor.process_all()
+```
+
+### Email Tool
+
+```python
+import s7
+import smtplib
+from email.mime.text import MIMEText
+
+s7.set_expiration(2025, 12, 31)
+
+class EmailSender:
+    def __init__(self, smtp_server, port, username, password):
+        s7.check_expiration()
+        self.smtp_server = smtp_server
+        self.port = port
+        self.username = username
+        self.password = password
+    
+    def send(self, to, subject, body):
+        s7.check_expiration()
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = self.username
+        msg['To'] = to
+        
+        with smtplib.SMTP(self.smtp_server, self.port) as server:
+            server.starttls()
+            server.login(self.username, self.password)
+            server.send_message(msg)
+
+sender = EmailSender('smtp.gmail.com', 587, 'user@example.com', 'password')
+sender.send('recipient@example.com', 'Subject', 'Message body')
+```
+
+### Logger System
+
+```python
+import s7
+import logging
+from datetime import datetime
+
+s7.set_expiration(2025, 12, 31)
+
+class Logger:
+    def __init__(self, log_file):
+        s7.check_expiration()
+        self.log_file = log_file
+        logging.basicConfig(
+            filename=log_file,
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'
+        )
+    
+    def info(self, message):
+        s7.check_expiration()
+        logging.info(message)
+    
+    def error(self, message):
+        s7.check_expiration()
+        logging.error(message)
+    
+    def warning(self, message):
+        s7.check_expiration()
+        logging.warning(message)
+
+logger = Logger('app.log')
+logger.info("Application started")
+logger.error("Error occurred")
+logger.warning("Warning message")
+```
+
+### Cache System
+
+```python
+import s7
+import time
+import pickle
+
+s7.set_expiration(2025, 12, 31)
+
+class Cache:
+    def __init__(self, ttl=3600):
+        s7.check_expiration()
+        self.cache = {}
+        self.ttl = ttl
+    
+    def set(self, key, value):
+        s7.check_expiration()
+        self.cache[key] = {
+            'value': value,
+            'timestamp': time.time()
+        }
+    
+    def get(self, key):
+        s7.check_expiration()
+        if key not in self.cache:
+            return None
+        
+        item = self.cache[key]
+        if time.time() - item['timestamp'] > self.ttl:
+            del self.cache[key]
+            return None
+        
+        return item['value']
+    
+    def clear(self):
+        s7.check_expiration()
+        self.cache.clear()
+
+cache = Cache(ttl=300)
+cache.set('user:1', {'name': 'John', 'age': 30})
+user = cache.get('user:1')
+```
+
+### Config Manager
+
+```python
+import s7
+import json
+
+s7.set_expiration(2025, 12, 31)
+
+class Config:
+    def __init__(self, config_file):
+        s7.check_expiration()
+        self.config_file = config_file
+        self.data = {}
+        self.load()
+    
+    def load(self):
+        s7.check_expiration()
+        try:
+            with open(self.config_file, 'r') as f:
+                self.data = json.load(f)
+        except FileNotFoundError:
+            self.data = {}
+    
+    def save(self):
+        s7.check_expiration()
+        with open(self.config_file, 'w') as f:
+            json.dump(self.data, f, indent=2)
+    
+    def get(self, key, default=None):
+        s7.check_expiration()
+        return self.data.get(key, default)
+    
+    def set(self, key, value):
+        s7.check_expiration()
+        self.data[key] = value
+        self.save()
+
+config = Config('config.json')
+config.set('api_key', 'abc123')
+api_key = config.get('api_key')
+```
+
+### Report Generator
+
+```python
+import s7
+from datetime import datetime
+
+s7.set_expiration(2025, 12, 31)
+
+class ReportGenerator:
+    def __init__(self):
+        s7.check_expiration()
+        self.data = []
+    
+    def add_entry(self, entry):
+        s7.check_expiration()
+        self.data.append({
+            'timestamp': datetime.now().isoformat(),
+            'entry': entry
+        })
+    
+    def generate(self, output_file):
+        s7.check_expiration()
+        with open(output_file, 'w') as f:
+            f.write("REPORT\n")
+            f.write("=" * 50 + "\n\n")
+            
+            for item in self.data:
+                s7.check_expiration()
+                f.write(f"{item['timestamp']}: {item['entry']}\n")
+        
+        print(f"Report generated: {output_file}")
+
+report = ReportGenerator()
+report.add_entry("System started")
+report.add_entry("Processing complete")
+report.generate("report.txt")
+```
+
+### Notification System
+
+```python
+import s7
+import requests
+
+s7.set_expiration(2025, 12, 31)
+
+class Notifier:
+    def __init__(self, webhook_url):
+        s7.check_expiration()
+        self.webhook_url = webhook_url
+    
+    def send(self, message, level='info'):
+        s7.check_expiration()
+        payload = {
+            'text': message,
+            'level': level
+        }
+        response = requests.post(self.webhook_url, json=payload)
+        return response.status_code == 200
+    
+    def info(self, message):
+        s7.check_expiration()
+        self.send(message, 'info')
+    
+    def alert(self, message):
+        s7.check_expiration()
+        self.send(message, 'alert')
+
+notifier = Notifier('https://hooks.example.com/webhook')
+notifier.info("Task completed")
+notifier.alert("Error detected")
+```
+
+### Command Executor
+
+```python
+import s7
+import subprocess
+
+s7.set_expiration(2025, 12, 31)
+
+class CommandExecutor:
+    def __init__(self):
+        s7.check_expiration()
+        self.history = []
+    
+    def run(self, command):
+        s7.check_expiration()
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        self.history.append({
+            'command': command,
+            'returncode': result.returncode,
+            'stdout': result.stdout,
+            'stderr': result.stderr
+        })
+        
+        return result
+    
+    def get_history(self):
+        s7.check_expiration()
+        return self.history
+
+executor = CommandExecutor()
+result = executor.run('ls -la')
+print(result.stdout)
+```
+
+### Data Validator
+
+```python
+import s7
+import re
+
+s7.set_expiration(2025, 12, 31)
+
+class Validator:
+    def __init__(self):
+        s7.check_expiration()
+        pass
+    
+    def email(self, value):
+        s7.check_expiration()
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, value))
+    
+    def phone(self, value):
+        s7.check_expiration()
+        pattern = r'^\+?1?\d{9,15}$'
+        return bool(re.match(pattern, value))
+    
+    def url(self, value):
+        s7.check_expiration()
+        pattern = r'^https?://[^\s]+$'
+        return bool(re.match(pattern, value))
+    
+    def validate_dict(self, data, rules):
+        s7.check_expiration()
+        errors = {}
+        
+        for field, rule in rules.items():
+            s7.check_expiration()
+            if field not in data:
+                errors[field] = "Required"
+            elif rule == 'email' and not self.email(data[field]):
+                errors[field] = "Invalid email"
+        
+        return errors
+
+validator = Validator()
+print(validator.email("test@example.com"))
+print(validator.phone("+1234567890"))
+errors = validator.validate_dict(
+    {'email': 'invalid'},
+    {'email': 'email', 'phone': 'phone'}
+)
+```
+
+### Batch Processor
+
+```python
+import s7
+import time
+
+s7.set_expiration(2025, 12, 31)
+
+class BatchProcessor:
+    def __init__(self, batch_size=100):
+        s7.check_expiration()
+        self.batch_size = batch_size
+    
+    def process(self, items, process_func):
+        s7.check_expiration()
+        results = []
+        
+        for i in range(0, len(items), self.batch_size):
+            s7.check_expiration()
+            batch = items[i:i + self.batch_size]
+            
+            for item in batch:
+                s7.check_expiration()
+                result = process_func(item)
+                results.append(result)
+            
+            time.sleep(0.1)
+        
+        return results
+
+def process_item(item):
+    return item * 2
+
+processor = BatchProcessor(batch_size=50)
+items = list(range(1000))
+results = processor.process(items, process_item)
+```
+
+### State Machine
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+
+class StateMachine:
+    def __init__(self, initial_state):
+        s7.check_expiration()
+        self.state = initial_state
+        self.transitions = {}
+    
+    def add_transition(self, from_state, to_state, condition):
+        s7.check_expiration()
+        if from_state not in self.transitions:
+            self.transitions[from_state] = []
+        self.transitions[from_state].append((to_state, condition))
+    
+    def transition(self, event):
+        s7.check_expiration()
+        if self.state in self.transitions:
+            for to_state, condition in self.transitions[self.state]:
+                if condition(event):
+                    self.state = to_state
+                    return True
+        return False
+    
+    def get_state(self):
+        s7.check_expiration()
+        return self.state
+
+sm = StateMachine('idle')
+sm.add_transition('idle', 'running', lambda e: e == 'start')
+sm.add_transition('running', 'idle', lambda e: e == 'stop')
+sm.transition('start')
+print(sm.get_state())
+```
+
+### Task Queue
+
+```python
+import s7
+import queue
+import threading
+
+s7.set_expiration(2025, 12, 31)
+
+class TaskQueue:
+    def __init__(self, num_workers=4):
+        s7.check_expiration()
+        self.queue = queue.Queue()
+        self.workers = []
+        
+        for i in range(num_workers):
+            s7.check_expiration()
+            worker = threading.Thread(target=self.worker)
+            worker.daemon = True
+            worker.start()
+            self.workers.append(worker)
+    
+    def worker(self):
+        while True:
+            s7.check_expiration()
+            task = self.queue.get()
+            if task is None:
+                break
+            
+            func, args = task
+            func(*args)
+            self.queue.task_done()
+    
+    def add_task(self, func, *args):
+        s7.check_expiration()
+        self.queue.put((func, args))
+    
+    def wait(self):
+        s7.check_expiration()
+        self.queue.join()
+
+def process_task(task_id):
+    print(f"Processing task {task_id}")
+
+tq = TaskQueue(num_workers=2)
+for i in range(10):
+    tq.add_task(process_task, i)
+tq.wait()
+```
+
+### Plugin System
+
+```python
+import s7
+import importlib
+
+s7.set_expiration(2025, 12, 31)
+
+class PluginManager:
+    def __init__(self):
+        s7.check_expiration()
+        self.plugins = {}
+    
+    def load(self, plugin_name):
+        s7.check_expiration()
+        module = importlib.import_module(plugin_name)
+        plugin = module.Plugin()
+        self.plugins[plugin_name] = plugin
+        return plugin
+    
+    def execute(self, plugin_name, method, *args):
+        s7.check_expiration()
+        if plugin_name in self.plugins:
+            plugin = self.plugins[plugin_name]
+            return getattr(plugin, method)(*args)
+    
+    def list_plugins(self):
+        s7.check_expiration()
+        return list(self.plugins.keys())
+
+manager = PluginManager()
+```
+
+### Event System
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+
+class EventEmitter:
+    def __init__(self):
+        s7.check_expiration()
+        self.listeners = {}
+    
+    def on(self, event, callback):
+        s7.check_expiration()
+        if event not in self.listeners:
+            self.listeners[event] = []
+        self.listeners[event].append(callback)
+    
+    def emit(self, event, *args):
+        s7.check_expiration()
+        if event in self.listeners:
+            for callback in self.listeners[event]:
+                s7.check_expiration()
+                callback(*args)
+    
+    def off(self, event, callback):
+        s7.check_expiration()
+        if event in self.listeners:
+            self.listeners[event].remove(callback)
+
+emitter = EventEmitter()
+
+def on_data(data):
+    print(f"Received: {data}")
+
+emitter.on('data', on_data)
+emitter.emit('data', 'test')
+```
+
+---
+
+## Advanced Class Usage
+
+```python
+from s7 import ExpireDate
+
+expire = ExpireDate()
+expire.set_date(2025, 12, 31, 23, 59, 59)
+
+while True:
+    if not expire.check():
+        break
+    print("Running...")
+```
+
+```python
+from s7 import ExpireDate, ProtectionSystem
+
+expire = ExpireDate()
+expire.set_date(2026, 1, 1)
+
+protection = ProtectionSystem()
+
+for i in range(100):
+    expire.check()
+    print(f"Iteration {i}")
+```
+
+```python
+from s7 import TimeValidator
+
+validator = TimeValidator()
+
+if validator.validate_system_time():
+    timestamp = validator.get_secure_timestamp()
+    print(f"Secure timestamp: {timestamp}")
+```
+
+```python
+from s7.net import NetworkTimeValidator
+
+ntv = NetworkTimeValidator()
+network_time = ntv.get_network_time()
+local_time = int(time.time())
+
+if ntv.validate_local_time(local_time):
+    print("Time is valid")
+```
+
+```python
+from s7.mem import MemoryProtection
+
+mem = MemoryProtection()
+mem.protect('secret_key', 'my_secret_value')
+
+if mem.verify('secret_key'):
+    value = mem.get('secret_key')
+    print(f"Protected value: {value}")
+```
+
+---
+
+## Multiple Checks Pattern
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+
+def critical_operation():
+    s7.check_expiration()
+    
+    result = process_data()
+    s7.check_expiration()
+    
+    save_result(result)
+    s7.check_expiration()
+    
+    return result
+```
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+
+class Application:
+    def __init__(self):
+        s7.check_expiration()
+        self.data = []
+    
+    def add(self, item):
+        s7.check_expiration()
+        self.data.append(item)
+    
+    def process(self):
+        s7.check_expiration()
+        for item in self.data:
+            s7.check_expiration()
+            print(item)
+    
+    def save(self):
+        s7.check_expiration()
+        with open('data.txt', 'w') as f:
+            for item in self.data:
+                s7.check_expiration()
+                f.write(f"{item}\n")
+```
+
+---
+
+## Integration Patterns
+
+```python
+import s7
+from functools import wraps
+
+s7.set_expiration(2025, 12, 31)
+
+def protected(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        s7.check_expiration()
+        return func(*args, **kwargs)
+    return wrapper
+
+@protected
+def my_function():
+    print("Function executed")
+
+@protected
+def another_function(x, y):
+    return x + y
+```
+
+```python
+import s7
+
+s7.set_expiration(2025, 12, 31)
+
+class ProtectedClass:
+    def __init__(self):
+        s7.check_expiration()
+    
+    def __enter__(self):
+        s7.check_expiration()
+        return self
+    
+    def __exit__(self, *args):
+        s7.check_expiration()
+    
+    def execute(self):
+        s7.check_expiration()
+        print("Executing")
+
+with ProtectedClass() as pc:
+    pc.execute()
+```
+
+---
+
+## Complete Application Examples
+
+### Complete REST API
+
+```python
+from flask import Flask, request, jsonify
+import s7
+import sqlite3
+
+app = Flask(__name__)
+s7.set_expiration(2025, 12, 31)
+
+class Database:
+    def __init__(self):
+        s7.check_expiration()
+        self.conn = sqlite3.connect('app.db', check_same_thread=False)
+        self.init_db()
+    
+    def init_db(self):
+        s7.check_expiration()
+        self.conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                email TEXT
+            )
+        ''')
+        self.conn.commit()
+    
+    def get_all(self):
+        s7.check_expiration()
+        cursor = self.conn.execute('SELECT * FROM users')
+        return cursor.fetchall()
+    
+    def get_by_id(self, user_id):
+        s7.check_expiration()
+        cursor = self.conn.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        return cursor.fetchone()
+    
+    def create(self, name, email):
+        s7.check_expiration()
+        self.conn.execute('INSERT INTO users (name, email) VALUES (?, ?)', (name, email))
+        self.conn.commit()
+
+db = Database()
+
+@app.before_request
+def check_expiration_middleware():
+    s7.check_expiration()
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    s7.check_expiration()
+    users = db.get_all()
+    return jsonify({'users': users})
+
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    s7.check_expiration()
+    user = db.get_by_id(user_id)
+    if user:
+        return jsonify({'user': user})
+    return jsonify({'error': 'Not found'}), 404
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    s7.check_expiration()
+    data = request.json
+    db.create(data['name'], data['email'])
+    return jsonify({'status': 'created'}), 201
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+### Complete CLI Application
+
+```python
+import s7
+import click
+import json
+
+s7.set_expiration(2025, 12, 31)
+
+class TodoManager:
+    def __init__(self, filename='todos.json'):
+        s7.check_expiration()
+        self.filename = filename
+        self.todos = self.load()
+    
+    def load(self):
+        s7.check_expiration()
+        try:
+            with open(self.filename, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return []
+    
+    def save(self):
+        s7.check_expiration()
+        with open(self.filename, 'w') as f:
+            json.dump(self.todos, f, indent=2)
+    
+    def add(self, task):
+        s7.check_expiration()
+        self.todos.append({'task': task, 'done': False})
+        self.save()
+    
+    def list(self):
+        s7.check_expiration()
+        return self.todos
+    
+    def complete(self, index):
+        s7.check_expiration()
+        if 0 <= index < len(self.todos):
+            self.todos[index]['done'] = True
+            self.save()
+
+manager = TodoManager()
+
+@click.group()
+def cli():
+    s7.check_expiration()
+    pass
+
+@cli.command()
+@click.argument('task')
+def add(task):
+    s7.check_expiration()
+    manager.add(task)
+    click.echo(f'Added: {task}')
+
+@cli.command()
+def list():
+    s7.check_expiration()
+    todos = manager.list()
+    for i, todo in enumerate(todos):
+        status = '✓' if todo['done'] else ' '
+        click.echo(f'{i}. [{status}] {todo["task"]}')
+
+@cli.command()
+@click.argument('index', type=int)
+def done(index):
+    s7.check_expiration()
+    manager.complete(index)
+    click.echo(f'Completed task {index}')
+
+if __name__ == '__main__':
+    cli()
+```
+
+### Complete Service Application
+
+```python
+import s7
+import time
+import logging
+from threading import Thread
+
+s7.set_expiration(2025, 12, 31)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class Service:
+    def __init__(self):
+        s7.check_expiration()
+        self.running = False
+        self.threads = []
+    
+    def start(self):
+        s7.check_expiration()
+        logger.info("Starting service")
+        self.running = True
+        
+        self.threads.append(Thread(target=self.monitor_loop))
+        self.threads.append(Thread(target=self.worker_loop))
+        
+        for thread in self.threads:
+            thread.start()
+    
+    def stop(self):
+        s7.check_expiration()
+        logger.info("Stopping service")
+        self.running = False
+        
+        for thread in self.threads:
+            thread.join()
+    
+    def monitor_loop(self):
+        while self.running:
+            s7.check_expiration()
+            logger.info("Monitor tick")
+            time.sleep(10)
+    
+    def worker_loop(self):
+        while self.running:
+            s7.check_expiration()
+            self.process_task()
+            time.sleep(5)
+    
+    def process_task(self):
+        s7.check_expiration()
+        logger.info("Processing task")
+
+if __name__ == '__main__':
+    service = Service()
+    try:
+        service.start()
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        service.stop()
+```
+
+---
+
+## Package Information
+
+```python
+import s7
+
+print(s7.__version__)
+print(s7.__author__)
+print(s7.__telegram__)
+```
+
+```python
+from s7 import __all__
+
+print(__all__)
+```
+
+---
+
+## License
+
+MIT License
+
+Copyright (c) 2025 san
+
+Contact: @ii00hh on Telegram
+
+---
+
+## Build & Publish
+
+```bash
+pip install build twine
+python -m build
+twine check dist/*
+twine upload dist/*
+```
+
+---
