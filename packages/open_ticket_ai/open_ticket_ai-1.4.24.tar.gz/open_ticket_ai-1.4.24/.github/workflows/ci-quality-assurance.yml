@@ -1,0 +1,51 @@
+name: CI Quality Assurance
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  ci:
+    name: CI Quality Assurance
+    permissions:
+      contents: write
+      pull-requests: write
+      security-events: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - id: ruff_check
+        run: |
+          uv run ruff format --check src packages tests
+          uv run ruff check src packages tests
+
+      - id: mypy
+        run: uv run mypy src packages tests
+
+      - id: coverage
+        name: Generate pytest coverage report
+        run: |
+          uv run pytest -v -m "not e2e" --cov --cov-branch --cov-report=xml:coverage.xml
+
+      - id: sonar
+        name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
