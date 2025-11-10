@@ -1,0 +1,234 @@
+Metadata-Version: 2.4
+Name: redis-stream-logger
+Version: 0.1.2
+Summary: High-performance Redis Stream logging handler with Cython compilation
+Home-page: https://github.com/techmaju/logging
+Author: TechMaju
+Author-email: TechMaju <development@techmaju.com>
+License: MIT
+Project-URL: Homepage, https://github.com/techmaju/logging
+Keywords: redis,logging,stream,cython,performance
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Cython
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: redis>=4.0.0
+Provides-Extra: dev
+Requires-Dist: cython>=0.29; extra == "dev"
+Requires-Dist: wheel; extra == "dev"
+Requires-Dist: build; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Redis Stream Logger (Cython-compiled)
+
+High-performance Redis Stream logging handler compiled with Cython for production use.
+
+## Features
+
+✨ **Cython Compiled** — C-extension for 10-50x performance boost  
+⚡ **Non-blocking** — Short socket timeouts, best-effort delivery  
+📊 **Structured Logs** — JSON payloads with labels and context  
+🔄 **Stream-based** — Redis Streams for log ordering and consumer groups  
+🔁 **Optional Fallback** — File-based fallback on Redis failure  
+📈 **Metrics** — Prometheus-compatible metrics via loki_worker  
+
+## Installation
+
+### From Wheel (Pre-compiled, fastest)
+```bash
+pip install dist/redis_stream_logger-0.1.0-cp312-cp312-linux_x86_64.whl
+```
+
+### From Source
+```bash
+pip install dist/redis_stream_logger-0.1.0.tar.gz
+```
+
+### From Package Index
+```bash
+pip install redis-stream-logger
+```
+
+## Quick Start
+
+```python
+from redis_stream_logger import get_logger, RedisAppLogger
+
+# Create logger
+logger = RedisAppLogger(get_logger(
+    name="myapp",
+    redis_url="redis://localhost:6379/0",
+    default_labels={"app": "myapp", "env": "prod"}
+))
+
+# Log with labels and context
+logger.info(
+    "User login successful",
+    labels={"component": "auth", "action": "login"},
+    ctx={"user_id": 12345, "ip": "192.168.1.1"}
+)
+
+logger.error(
+    "Database connection failed",
+    labels={"component": "db"},
+    ctx={"error": "connection timeout", "retry_count": 3}
+)
+```
+
+## Log Format
+
+Logs are stored as compact JSON in Redis Stream:
+
+```json
+{
+  "ts": "1761796229212145492",
+  "level": "info",
+  "msg": "User login successful",
+  "labels": {
+    "app": "myapp",
+    "env": "prod",
+    "component": "auth",
+    "action": "login"
+  },
+  "ctx": {
+    "user_id": 12345,
+    "ip": "192.168.1.1"
+  }
+}
+```
+
+## API Reference
+
+### `get_logger(name, redis_url, default_labels, enable_fallback_file, level)`
+
+Configure and return a logger with RedisStreamHandler.
+
+**Parameters:**
+- `name` (str) — Logger name
+- `redis_url` (str) — Redis connection URL (default: `redis://localhost:6379/0`)
+- `default_labels` (dict) — Low-cardinality labels attached to all logs
+- `enable_fallback_file` (bool) — Enable file fallback on Redis failure
+- `fallback_path` (str) — Path to fallback log file
+- `level` (int) — Logging level (default: `logging.INFO`)
+
+**Returns:** `logging.Logger` with RedisStreamHandler
+
+### `RedisAppLogger(logger)`
+
+Thin wrapper to standardize passing labels and context.
+
+**Methods:**
+- `debug(msg, labels=None, ctx=None)`
+- `info(msg, labels=None, ctx=None)`
+- `warning(msg, labels=None, ctx=None)`
+- `error(msg, labels=None, ctx=None)`
+- `exception(msg, labels=None, ctx=None)` — Includes stack trace
+
+## Performance
+
+**Cython vs Pure Python:**
+- Compilation overhead: ~5ms first call
+- Per-call speedup: 10-50x faster JSON serialization
+- Memory: ~2.5MB compiled module
+
+**Recommended Settings:**
+- `BATCH_SIZE`: 1000 (per batch to Loki)
+- `FLUSH_INTERVAL_MS`: 250ms
+- `timeout_ms`: 5ms (non-blocking)
+
+## Integration with loki_worker
+
+The companion Go worker (`loki_worker`) reads from Redis Stream and pushes to Loki:
+
+```bash
+# Build worker
+cd loki_worker && go build -o loki_worker
+
+# Run with environment variables
+export REDIS_STREAM_KEY="logs:stream"
+export LOKI_URL="https://loki.example.com/loki/api/v1/push"
+export LOKI_BASIC_USER="admin"
+./loki_worker
+```
+
+Check health:
+```bash
+curl http://localhost:9090/readyz    # Readiness
+curl http://localhost:9090/metrics   # Prometheus metrics
+```
+
+## Building from Source
+
+### Requirements
+- Python 3.7+
+- Cython >= 0.29
+- GCC/Clang compiler
+
+### Build Steps
+
+```bash
+# Install build dependencies
+pip install -r requirements.txt
+pip install cython wheel build
+
+# Compile to C extension
+python setup.py build_ext --inplace
+
+# Build wheel (for your Python version)
+python -m build --wheel
+
+# Build source distribution
+python -m build --sdist
+```
+
+### Rebuild for Different Python Version
+
+```bash
+# Python 3.10
+/usr/bin/python3.10 setup.py build_ext --inplace --force
+/usr/bin/python3.10 -m build --wheel
+```
+
+## Testing
+
+```bash
+python quickstart.py
+python usage_examples.py
+```
+
+## Troubleshooting
+
+### "ModuleNotFoundError: No module named 'redis'"
+```bash
+pip install redis>=4.0.0
+```
+
+### Logs not reaching Redis
+- Check Redis connection: `redis-cli ping`
+- Check fallback log: `/var/log/app.log`
+- Monitor worker: `curl http://localhost:9090/metrics`
+
+### Performance Issues
+- Reduce `timeout_ms` for async scenarios
+- Increase `BATCH_SIZE` in loki_worker
+- Check Redis memory usage: `redis-cli info memory`
+
+## License
+
+MIT
+
+## Author
+
+TechMaju — development@techmaju.com
