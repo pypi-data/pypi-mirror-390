@@ -1,0 +1,176 @@
+[package]
+name = "hlx"
+version = "1.2.5"
+edition = "2021"
+authors = ["Bernie", "Buddy"]
+description = "Configuration language designed specifically for ml/ai/data systems"
+license = "MIT"
+repository = "https://github.com/cyber-boost/helix"
+keywords = ["configuration", "ai", "agents", "compiler", "parser"]
+categories = ["config", "parsing", "development-tools"]
+include = ["src/**/*", "src/dna/**/*", "src/bin/**/*", "src/dna/atp/**/*", "src/dna/bch/**/*", "src/dna/cmd/**/*", "src/dna/exp/**/*", "src/dna/ffi/**/*", "src/dna/hel/**/*", "src/dna/map/**/*", "src/dna/mds/**/*", "src/dna/ngs/**/*", "src/dna/ops/**/*", "src/dna/out/**/*", "README.md", "LICENSE", "Cargo.toml", "TREAT.md", "legal/**/*", "src/dna/ops/ulator.pest","hlx_test/**/*", "commands/**/*", "media/**/*", "CHANGE.LOG"]
+build = "build.rs"
+readme = "README.md"
+
+[lib]
+name = "helix"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "hlx"
+path = "src/bin/hlx.rs"
+required-features = ["cli", "compiler", "chrono"]
+
+
+[features]
+default = ["compiler", "cli", "chrono"]
+compiler = ["bincode", "lz4_flex", "crc32fast", "memmap2", "zstd", "flate2"]
+cli = ["clap", "clap_complete", "serde_yaml", "compiler", "colored", "indicatif", "notify", "dirs", "toml_edit", "tempfile", "reqwest", "sha2", "which", "chrono"]
+python = ["pyo3/extension-module"]
+js = ["napi"]
+csharp = ["bindgen"]
+php = ["ext-php-rs"]
+ruby = ["magnus"]
+full = ["compiler", "cli"]
+musl = ["bincode", "lz4_flex", "crc32fast", "memmap2", "cli", "compiler"]
+dirs = ["dep:dirs"]
+napi = ["dep:napi"]
+
+[dependencies]
+# Core dependencies (always needed)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+pest = "2.7"
+pest_derive = "2.7"
+
+# Migration dependencies (for TOML/YAML support)
+toml = "0.8"
+serde_yaml = { version = "0.9", optional = true }
+
+# Compiler dependencies (optional)
+bincode = { version = "1.3", optional = true }
+lz4_flex = { version = "0.11", optional = true }
+crc32fast = { version = "1.3", optional = true }
+memmap2 = { version = "0.9", optional = true }
+zstd = { version = "0.13", optional = true }
+flate2 = { version = "1.0", optional = true }
+md5 = "0.7"
+
+# CLI dependencies (optional)
+clap = { version = "4.5", features = ["derive", "env", "wrap_help"], optional = true }
+clap_complete = { version = "4.5", optional = true }
+colored = { version = "2.1", optional = true }
+indicatif = { version = "0.17", optional = true }
+notify = { version = "6.1", optional = true }
+
+# Project management dependencies
+toml_edit = { version = "0.22", optional = true }
+tempfile = { version = "3", optional = true }
+dirs = { version = "5", optional = true }
+# HTTP & Networking
+reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], default-features = false, optional = true }
+sha2 = { version = "0.10", optional = true }
+
+# Process management
+which = { version = "4.4", optional = true }
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"], optional = true }
+chrono-tz = "0.6"
+
+#CP
+once_cell = "1.19"
+
+# Random number generation for dataset processing
+rand = "0.8"
+
+# Async trait support for dataset processors
+async-trait = "0.1"
+
+# Async runtime and utilities
+tokio = { version = "1.0", features = ["full"] }
+
+# Regular expressions
+fancy-regex = "0.13"
+regex = "1.10"
+uuid = { version = "1.0", features = ["v4"] }
+
+# Logging
+log = "0.4"
+
+# Terminal UI
+ratatui = { version = "0.26", default-features = false, features = ["crossterm"] }
+crossterm = "0.27"
+
+# Parallel processing
+rayon = "1.8"
+
+# Directory walking
+walkdir = "2.4"
+
+# CPU detection
+num_cpus = "1.16"
+
+# SafeTensors format support
+safetensors = "0.4"
+
+# AMQP messaging support
+lapin = "2.3"
+futures-util = "0.3"
+
+# HuggingFace Hub integration
+hf-hub = "0.4.3"
+parquet = "56.2.0"
+arrow = { version = "56.2.0", features = ["chrono-tz", "ffi", "ipc_compression", "prettyprint"] }
+base64 = "0.22.1"
+urlencoding = "2.1"
+meval = "0.2"
+
+# PHP 
+ext-php-rs = { version = "0.15.1", optional = true }
+
+# Python bindings
+pyo3 = { version = "0.21", features = ["abi3-py38"], optional = true }
+
+# JavaScript bindings (napi-rs)
+napi = { version = "2.14", default-features = false, features = ["napi4", "tokio_rt"], optional = true }
+napi-derive = "2.14"
+io = "0.0.2"
+
+# C# bindings (bindgen) 
+bindgen = { version = "0.72.1", optional = true }
+
+# Ruby bindings (magnus)
+magnus = { version = "0.8.2", optional = true }
+
+# Development dependencies
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+pretty_assertions = "1.4"
+tempfile = "3.10"
+insta = "1.38"
+env_logger = "0.10"
+
+
+[[bench]]
+name = "parser_bench"
+harness = false
+path = "src/dna/bch/parser_bench.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.bench]
+inherits = "release"
+
+[profile.dev]
+opt-level = 0
+debug = true
+

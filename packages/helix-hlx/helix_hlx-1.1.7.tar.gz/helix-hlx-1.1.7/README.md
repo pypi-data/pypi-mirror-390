@@ -1,0 +1,882 @@
+# HLX - The Beautiful Configuration & Data Processing System
+
+[![Version](https://img.shields.io/badge/version-1.1.9-blue.svg)](https://github.com/helix/hlx)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**HLX** is a powerful, elegant configuration and data processing system built in Rust. It combines the simplicity of configuration files with the power of a full programming language, featuring 38+ built-in operators for data manipulation, encoding, hashing, mathematical operations, and more.
+
+## ✨ What Makes HLX Beautiful?
+
+### 🎯 **Elegant Syntax**
+```hlx
+project "MyAwesomeApp" :
+    version = "1.1.9"
+    environment = @env var=ENV default=development
+    api_key = @base64 input=my-secret-key operation=encode
+    timestamp = @timestamp
+    uuid = @uuid
+;
+
+agent "DataProcessor" :
+    name = "HLX Data Engine"
+    capabilities = ["processing", "encoding", "hashing"]
+    max_connections = @math operation=mul a=100 b=10
+    hash_algorithm = "sha256"
+;
+```
+
+### 🚀 **39+ Powerful Operators**
+
+#### **Basic Operations**
+- `@uuid` - Generate unique identifiers
+- `@timestamp` - Current Unix timestamps  
+- `@now` - ISO datetime strings
+- `@exec` - Execute shell commands and external programs
+
+#### **Data Processing**
+- `@base64` - Encode/decode Base64 data
+- `@json` - Parse/stringify JSON
+- `@url` - URL encoding/decoding
+- `@hash` - SHA256/MD5 hashing
+
+#### **String Manipulation**
+- `@string` - Transform, analyze, extract text
+- `@env` - Environment variable access
+- `@var` - Global variable management
+
+#### **Mathematical Operations**
+- `@math` - Arithmetic operations (add, sub, mul, div, pow)
+- `@calc` - Expression evaluation
+- `@min`, `@max`, `@avg`, `@sum` - Statistical functions
+
+#### **Control Flow**
+- `@if`, `@switch` - Conditional logic
+- `@and`, `@or`, `@not` - Logical operations
+
+#### **Web Integration**
+- `@session`, `@cookie` - Session management
+- `@param`, `@header` - HTTP context access
+
+### 🔧 **Easy Integration**
+
+# Set All Operators Example
+
+```rust
+//! HLX Set All Operators Example
+
+use helix::{Hlx, xlh, DnaValue as Value};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== HLX Set All Operators Example ===");
+    
+    let mut hlx = Hlx::new().await?;
+    
+    // Basic Operators (No Parameters)
+    println!("\n--- Setting Basic Operators ---");
+    
+    // @uuid - Generate random UUIDs (v4)
+    let uuid_result = xlh(&hlx, "@uuid", "").await;
+    if let Ok(Value::String(uuid)) = uuid_result {
+        hlx.set("basic", "uuid", Value::String(uuid.clone()));
+        println!("✅ UUID: {}", uuid);
+    }
+    
+    // @timestamp - Generate current Unix timestamps  
+    let timestamp_result = xlh(&hlx,"@timestamp", "").await;
+    if let Ok(Value::Number(timestamp)) = timestamp_result {
+        hlx.set("basic", "timestamp", Value::Number(timestamp));
+        println!("✅ Timestamp: {}", timestamp);
+    }
+    
+    // @now - Generate current date/time in ISO format
+    let now_result = xlh(&hlx,"@now", "").await;
+    if let Ok(Value::String(now)) = now_result {
+        hlx.set("basic", "now", Value::String(now.clone()));
+        println!("✅ Now: {}", now);
+    }
+    
+    // Variable and Environment Access
+    println!("\n--- Setting Variable & Environment Operators ---");
+    
+    // @var - Get/set global variables
+    let var_result = xlh(&hlx,"@var", "name=project_name, value=MyAwesomeProject").await;
+    if let Ok(Value::String(var)) = var_result {
+        hlx.set("variables", "project_name", Value::String(var.clone()));
+        println!("✅ Variable: {}", var);
+    }
+    
+    // @env - Read environment variables
+    let env_result = xlh(&hlx,"@env", "var=HOME").await;
+    if let Ok(Value::String(home)) = env_result {
+        hlx.set("environment", "home", Value::String(home.clone()));
+        println!("✅ Home directory: {}", home);
+    }
+    
+    // @exec - Execute shell commands
+    let exec_result = xlh(&hlx,"@exec", "command=git rev-parse HEAD 2>/dev/null || echo 'no-commit'").await;
+    if let Ok(Value::Object(obj)) = exec_result {
+        if let Some(Value::String(stdout)) = obj.get("stdout") {
+            if stdout != "no-commit" {
+                hlx.set("git", "commit", Value::String(stdout.clone()));
+                println!("✅ Git commit: {}", stdout);
+            }
+        }
+    }
+    
+    // Math and Calculations
+    println!("\n--- Setting Math Operators ---");
+    
+    // @math - Mathematical operations
+    let math_result = xlh(&hlx,"@math", "operation=add, a=5, b=3").await;
+    if let Ok(Value::Number(result)) = math_result {
+        hlx.set("math", "add_5_3", Value::Number(result));
+        println!("✅ Math (5+3): {}", result);
+    }
+    
+    // @calc - Expression evaluation
+    let calc_result = xlh(&hlx,"@calc", "expression=5+3").await;
+    if let Ok(Value::Number(result)) = calc_result {
+        hlx.set("math", "calc_5_3", Value::Number(result));
+        println!("✅ Calc (5+3): {}", result);
+    }
+    
+    // @min - Find minimum value
+    let min_result = xlh(&hlx,"@min", "{\"values\":[1,2,3,4,5]}").await;
+    if let Ok(Value::Object(obj)) = min_result {
+        if let Some(Value::Number(result)) = obj.get("min") {
+            hlx.set("math", "min_1_to_5", Value::Number(*result));
+            println!("✅ Min (1,2,3,4,5): {}", result);
+        }
+    }
+    
+    // @max - Find maximum value
+    let max_result = xlh(&hlx,"@max", "{\"values\":[1,2,3,4,5]}").await;
+    match max_result {
+        Ok(Value::Object(obj)) => {
+            if let Some(Value::Number(result)) = obj.get("max") {
+                hlx.set("math", "max_1_to_5", Value::Number(*result));
+                println!("✅ Max (1,2,3,4,5): {}", result);
+            }
+        }
+        Ok(value) => println!("❌ Max: Unexpected type: {:?}", value),
+        Err(e) => println!("❌ Max failed: {}", e),
+    }
+    
+    // @avg - Calculate average
+    let avg_result = xlh(&hlx,"@avg", "{\"values\":[1,2,3,4,5]}").await;
+    if let Ok(Value::Number(result)) = avg_result {
+        hlx.set("math", "avg_1_to_5", Value::Number(result));
+        println!("✅ Avg (1,2,3,4,5): {}", result);
+    }
+    
+    // @sum - Calculate sum
+    let sum_result = xlh(&hlx,"@sum", "{\"values\":[1,2,3,4,5]}").await;
+    if let Ok(Value::Number(result)) = sum_result {
+        hlx.set("math", "sum_1_to_5", Value::Number(result));
+        println!("✅ Sum (1,2,3,4,5): {}", result);
+    }
+    
+    // @round - Round numbers
+    let round_result = xlh(&hlx,"@round", "value=3.14159").await;
+    if let Ok(Value::Number(result)) = round_result {
+        hlx.set("math", "round_pi", Value::Number(result));
+        println!("✅ Round (3.14159): {}", result);
+    }
+    
+    // Date and Time
+    println!("\n--- Setting Date & Time Operators ---");
+    
+    // @date - Format dates
+    let date_result = xlh(&hlx,"@date", "format=%Y-%m-%d").await;
+    if let Ok(Value::String(result)) = date_result {
+        hlx.set("datetime", "date", Value::String(result.clone()));
+        println!("✅ Date: {}", result);
+    }
+    
+    // @time - Format times
+    let time_result = xlh(&hlx,"@time", "format=%H:%M:%S").await;
+    if let Ok(Value::String(result)) = time_result {
+        hlx.set("datetime", "time", Value::String(result.clone()));
+        println!("✅ Time: {}", result);
+    }
+    
+    // @format - Format values
+    let format_result = xlh(&hlx,"@format", "value=2024-01-01, format=%Y-%m-%d").await;
+    if let Ok(Value::String(result)) = format_result {
+        hlx.set("datetime", "formatted_date", Value::String(result.clone()));
+        println!("✅ Formatted Date: {}", result);
+    }
+    
+    // @timezone - Timezone operations
+    let timezone_result = xlh(&hlx,"@timezone", "zone=UTC").await;
+    if let Ok(Value::String(result)) = timezone_result {
+        hlx.set("datetime", "timezone", Value::String(result.clone()));
+        println!("✅ Timezone: {}", result);
+    }
+    
+    // Array and Collections
+    println!("\n--- Setting Array & Collection Operators ---");
+    
+    // @array - Array operations
+    let array_result = xlh(&hlx,"@array", "{\"operation\":\"create\",\"items\":[1,2,3]}").await;
+    match array_result {
+        Ok(Value::Array(result)) => {
+            hlx.set("collections", "array_1_2_3", Value::Array(result));
+            println!("✅ Array [1,2,3]: Created");
+        }
+        Ok(value) => println!("❌ Array: Unexpected type: {:?}", value),
+        Err(e) => println!("❌ Array failed: {}", e),
+    }
+    
+    // @map - Transform arrays
+    let map_result = xlh(&hlx,"@map", "{\"action\":\"transform\",\"array\":[1,2,3],\"function\":\"x*2\"}").await;
+    if let Ok(Value::Array(result)) = map_result {
+        hlx.set("collections", "mapped_array", Value::Array(result));
+        println!("✅ Map (x*2): Transformed");
+    }
+    
+    // @filter - Filter arrays
+    let filter_result = xlh(&hlx,"@filter", "{\"action\":\"filter\",\"array\":[1,2,3,4,5],\"condition\":\"x>2\"}").await;
+    if let Ok(Value::Array(result)) = filter_result {
+        hlx.set("collections", "filtered_array", Value::Array(result));
+        println!("✅ Filter (x>2): Filtered");
+    }
+    
+    // @sort - Sort arrays
+    let sort_result = xlh(&hlx,"@sort", "{\"action\":\"sort\",\"array\":[3,1,4,2]}").await;
+    if let Ok(Value::Array(result)) = sort_result {
+        hlx.set("collections", "sorted_array", Value::Array(result));
+        println!("✅ Sort: Sorted");
+    }
+    
+    // @join - Join arrays
+    let join_result = xlh(&hlx,"@join", "{\"action\":\"join\",\"array\":[\"a\",\"b\",\"c\"],\"separator\":\",\"}").await;
+    if let Ok(Value::String(result)) = join_result {
+        hlx.set("collections", "joined_array", Value::String(result.clone()));
+        println!("✅ Join: {}", result);
+    }
+    
+    // @split - Split strings
+    let split_result = xlh(&hlx,"@split", "{\"action\":\"split\",\"text\":\"a,b,c\",\"separator\":\",\"}").await;
+    if let Ok(Value::Array(result)) = split_result {
+        hlx.set("collections", "split_string", Value::Array(result));
+        println!("✅ Split: Split");
+    }
+    
+    // @length - Get length
+    let length_result = xlh(&hlx,"@length", "{\"value\":[1,2,3,4,5]}").await;
+    if let Ok(Value::Number(result)) = length_result {
+        hlx.set("collections", "array_length", Value::Number(result));
+        println!("✅ Length: {}", result);
+    }
+    
+    // Conditional and Logic
+    println!("\n--- Setting Conditional & Logic Operators ---");
+    
+    // @if - Conditional logic
+    let if_result = xlh(&hlx,"@if", "condition=true, then=yes, else=no").await;
+    if let Ok(Value::String(result)) = if_result {
+        hlx.set("logic", "if_true", Value::String(result.clone()));
+        println!("✅ If (true): {}", result);
+    }
+    
+    // @case - Pattern matching
+    let case_result = xlh(&hlx,"@case", "{\"value\":2,\"pattern\":[1,2,3]}").await;
+    if let Ok(Value::String(result)) = case_result {
+        hlx.set("logic", "case_2", Value::String(result.clone()));
+        println!("✅ Case (2): {}", result);
+    }
+    
+    // @default - Default values
+    let default_result = xlh(&hlx,"@default", "{\"value\":\"fallback\"}").await;
+    if let Ok(Value::String(result)) = default_result {
+        hlx.set("logic", "default_value", Value::String(result.clone()));
+        println!("✅ Default: {}", result);
+    }
+    
+    // @and - Logical AND
+    let and_result = xlh(&hlx,"@and", "{\"values\":[true,true,false]}").await;
+    if let Ok(Value::Bool(result)) = and_result {
+        hlx.set("logic", "and_true_true_false", Value::Bool(result));
+        println!("✅ And (true,true,false): {}", result);
+    }
+    
+    // @or - Logical OR
+    let or_result = xlh(&hlx,"@or", "{\"values\":[false,false,true]}").await;
+    if let Ok(Value::Bool(result)) = or_result {
+        hlx.set("logic", "or_false_false_true", Value::Bool(result));
+        println!("✅ Or (false,false,true): {}", result);
+    }
+    
+    // @not - Logical NOT
+    let not_result = xlh(&hlx,"@not", "{\"value\":true}").await;
+    if let Ok(Value::Bool(result)) = not_result {
+        hlx.set("logic", "not_true", Value::Bool(result));
+        println!("✅ Not (true): {}", result);
+    }
+    
+    // HTTP and Request Data
+    println!("\n--- Setting HTTP & Request Operators ---");
+    
+    // @session - Session data
+    let session_result = xlh(&hlx,"@session", "{\"action\":\"get\",\"key\":\"user_id\"}").await;
+    if let Ok(Value::String(result)) = session_result {
+        hlx.set("http", "session_user_id", Value::String(result.clone()));
+        println!("✅ Session: {}", result);
+    }
+    
+    // @cookie - Cookie data
+    let cookie_result = xlh(&hlx,"@cookie", "{\"action\":\"get\",\"name\":\"session\"}").await;
+    if let Ok(Value::String(result)) = cookie_result {
+        hlx.set("http", "cookie_session", Value::String(result.clone()));
+        println!("✅ Cookie: {}", result);
+    }
+    
+    // @param - URL parameters
+    let param_result = xlh(&hlx,"@param", "{\"action\":\"get\",\"name\":\"id\"}").await;
+    if let Ok(Value::String(result)) = param_result {
+        hlx.set("http", "param_id", Value::String(result.clone()));
+        println!("✅ Param: {}", result);
+    }
+    
+    // @query - Query parameters
+    let query_result = xlh(&hlx,"@query", "{\"action\":\"get\",\"name\":\"search\"}").await;
+    if let Ok(Value::String(result)) = query_result {
+        hlx.set("http", "query_search", Value::String(result.clone()));
+        println!("✅ Query: {}", result);
+    }
+    
+    // String Processing
+    println!("\n--- Setting String Processing Operators ---");
+    
+    // @string - String transformations
+    let string_result = xlh(&hlx,"@string", "{\"input\":\"hello\",\"operation\":\"upper\"}").await;
+    if let Ok(Value::String(result)) = string_result {
+        hlx.set("strings", "hello_upper", Value::String(result.clone()));
+        println!("✅ String (hello->upper): {}", result);
+    }
+    
+    // Data Encoding/Decoding
+    println!("\n--- Setting Data Encoding/Decoding Operators ---");
+    
+    // @base64 - Base64 encoding/decoding
+    let base64_result = xlh(&hlx,"@base64", "{\"input\":\"hello\",\"operation\":\"encode\"}").await;
+    if let Ok(Value::String(result)) = base64_result {
+        hlx.set("encoding", "base64_hello", Value::String(result.clone()));
+        println!("✅ Base64 (hello->encode): {}", result);
+    }
+    
+    // @hash - Hashing operations
+    let hash_result = xlh(&hlx,"@hash", "{\"input\":\"hello\",\"algorithm\":\"sha256\"}").await;
+    if let Ok(Value::String(result)) = hash_result {
+        hlx.set("encoding", "hash_hello_sha256", Value::String(result.clone()));
+        println!("✅ Hash (hello->sha256): {}", result);
+    }
+    
+    // @json - JSON operations
+    let json_result = xlh(&hlx,"@json", "{\"input\":\"{\\\"key\\\":\\\"value\\\"}\",\"operation\":\"parse\"}").await;
+    if let Ok(Value::Object(result)) = json_result {
+        hlx.set("encoding", "json_parsed", Value::Object(result));
+        println!("✅ JSON: Parsed");
+    }
+    
+    // @url - URL encoding/decoding
+    let url_result = xlh(&hlx,"@url", "{\"input\":\"https://example.com\",\"operation\":\"encode\"}").await;
+    if let Ok(Value::String(result)) = url_result {
+        hlx.set("encoding", "url_encoded", Value::String(result.clone()));
+        println!("✅ URL (encode): {}", result);
+    }
+    
+    // Switch operations
+    println!("\n--- Setting Switch Operations ---");
+    
+    // @switch - Switch/case operations
+    let switch_result = xlh(&hlx,"@switch", "{\"value\":2,\"cases\":[{\"match\":1,\"result\":\"one\"},{\"match\":2,\"result\":\"two\"}]}").await;
+    if let Ok(Value::String(result)) = switch_result {
+        hlx.set("control", "switch_2", Value::String(result.clone()));
+        println!("✅ Switch (2): {}", result);
+    }
+    hlx.file_path = Some(std::path::PathBuf::from("all-ops.hlx"));
+
+    hlx.save()?;
+    println!("✅ Saved to all-ops.hlx");
+    println!("\n=== HLX Set All Operators Example Complete ===");
+    Ok(())
+}
+
+```
+# Get All Values Example
+```rust
+//! HLX Get All Values Example
+
+use helix::{Hlx, DnaValue as Value};
+
+
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== HLX Get All Values Example ===");
+    
+    let mut hlx = Hlx::load("all-ops.hlx").await?;
+    
+    if let Some(Value::String(now)) = hlx.get("basic", "now") {
+        println!("✅ Now: {}", now);
+    } else {
+        println!("❌ Now: Not found");
+    }
+    
+    // Variable and Environment Access
+    println!("\n--- Getting Variable & Environment Operators ---");
+    
+    if let Some(Value::String(var)) = hlx.get("variables", "project_name") {
+        println!("✅ Variable: {}", var);
+    } else {
+        println!("❌ Variable: Not found");
+    }
+    
+    if let Some(Value::String(home)) = hlx.get("environment", "home") {
+        println!("✅ Home directory: {}", home);
+    } else {
+        println!("❌ Home directory: Not found");
+    }
+    
+    // Math and Calculations
+    println!("\n--- Getting Math Operators ---");
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "add_5_3") {
+        println!("✅ Math (5+3): {}", result);
+    } else {
+        println!("❌ Math (5+3): Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "calc_5_3") {
+        println!("✅ Calc (5+3): {}", result);
+    } else {
+        println!("❌ Calc (5+3): Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "min_1_to_5") {
+        println!("✅ Min (1,2,3,4,5): {}", result);
+    } else {
+        println!("❌ Min (1,2,3,4,5): Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "max_1_to_5") {
+        println!("✅ Max (1,2,3,4,5): {}", result);
+    } else {
+        println!("❌ Max (1,2,3,4,5): Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "avg_1_to_5") {
+        println!("✅ Avg (1,2,3,4,5): {}", result);
+    } else {
+        println!("❌ Avg (1,2,3,4,5): Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "sum_1_to_5") {
+        println!("✅ Sum (1,2,3,4,5): {}", result);
+    } else {
+        println!("❌ Sum (1,2,3,4,5): Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("math", "round_pi") {
+        println!("✅ Round (3.14159): {}", result);
+    } else {
+        println!("❌ Round (3.14159): Not found");
+    }
+    
+    // Date and Time
+    println!("\n--- Getting Date & Time Operators ---");
+    
+    if let Some(Value::String(result)) = hlx.get("datetime", "date") {
+        println!("✅ Date: {}", result);
+    } else {
+        println!("❌ Date: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("datetime", "time") {
+        println!("✅ Time: {}", result);
+    } else {
+        println!("❌ Time: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("datetime", "formatted_date") {
+        println!("✅ Formatted Date: {}", result);
+    } else {
+        println!("❌ Formatted Date: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("datetime", "timezone") {
+        println!("✅ Timezone: {}", result);
+    } else {
+        println!("❌ Timezone: Not found");
+    }
+    
+    // Array and Collections
+    println!("\n--- Getting Array & Collection Operators ---");
+    
+    if let Some(Value::Array(result)) = hlx.get("collections", "array_1_2_3") {
+        println!("✅ Array [1,2,3]: {:?}", result);
+    } else {
+        println!("❌ Array [1,2,3]: Not found");
+    }
+    
+    if let Some(Value::Array(result)) = hlx.get("collections", "mapped_array") {
+        println!("✅ Mapped Array: {:?}", result);
+    } else {
+        println!("❌ Mapped Array: Not found");
+    }
+    
+    if let Some(Value::Array(result)) = hlx.get("collections", "filtered_array") {
+        println!("✅ Filtered Array: {:?}", result);
+    } else {
+        println!("❌ Filtered Array: Not found");
+    }
+    
+    if let Some(Value::Array(result)) = hlx.get("collections", "sorted_array") {
+        println!("✅ Sorted Array: {:?}", result);
+    } else {
+        println!("❌ Sorted Array: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("collections", "joined_array") {
+        println!("✅ Joined Array: {}", result);
+    } else {
+        println!("❌ Joined Array: Not found");
+    }
+    
+    if let Some(Value::Array(result)) = hlx.get("collections", "split_string") {
+        println!("✅ Split String: {:?}", result);
+    } else {
+        println!("❌ Split String: Not found");
+    }
+    
+    if let Some(Value::Number(result)) = hlx.get("collections", "array_length") {
+        println!("✅ Array Length: {}", result);
+    } else {
+        println!("❌ Array Length: Not found");
+    }
+    
+    // Conditional and Logic
+    println!("\n--- Getting Conditional & Logic Operators ---");
+    
+    if let Some(Value::String(result)) = hlx.get("logic", "if_true") {
+        println!("✅ If (true): {}", result);
+    } else {
+        println!("❌ If (true): Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("logic", "case_2") {
+        println!("✅ Case (2): {}", result);
+    } else {
+        println!("❌ Case (2): Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("logic", "default_value") {
+        println!("✅ Default: {}", result);
+    } else {
+        println!("❌ Default: Not found");
+    }
+    
+    if let Some(Value::Bool(result)) = hlx.get("logic", "and_true_true_false") {
+        println!("✅ And (true,true,false): {}", result);
+    } else {
+        println!("❌ And (true,true,false): Not found");
+    }
+    
+    if let Some(Value::Bool(result)) = hlx.get("logic", "or_false_false_true") {
+        println!("✅ Or (false,false,true): {}", result);
+    } else {
+        println!("❌ Or (false,false,true): Not found");
+    }
+    
+    if let Some(Value::Bool(result)) = hlx.get("logic", "not_true") {
+        println!("✅ Not (true): {}", result);
+    } else {
+        println!("❌ Not (true): Not found");
+    }
+    
+    // HTTP and Request Data
+    println!("\n--- Getting HTTP & Request Operators ---");
+    
+    if let Some(Value::String(result)) = hlx.get("http", "session_user_id") {
+        println!("✅ Session: {}", result);
+    } else {
+        println!("❌ Session: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("http", "cookie_session") {
+        println!("✅ Cookie: {}", result);
+    } else {
+        println!("❌ Cookie: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("http", "param_id") {
+        println!("✅ Param: {}", result);
+    } else {
+        println!("❌ Param: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("http", "query_search") {
+        println!("✅ Query: {}", result);
+    } else {
+        println!("❌ Query: Not found");
+    }
+    
+    // String Processing
+    println!("\n--- Getting String Processing Operators ---");
+    
+    if let Some(Value::String(result)) = hlx.get("strings", "hello_upper") {
+        println!("✅ String (hello->upper): {}", result);
+    } else {
+        println!("❌ String (hello->upper): Not found");
+    }
+    
+    // Data Encoding/Decoding
+    println!("\n--- Getting Data Encoding/Decoding Operators ---");
+    
+    if let Some(Value::String(result)) = hlx.get("encoding", "base64_hello") {
+        println!("✅ Base64 (hello->encode): {}", result);
+    } else {
+        println!("❌ Base64 (hello->encode): Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("encoding", "hash_hello_sha256") {
+        println!("✅ Hash (hello->sha256): {}", result);
+    } else {
+        println!("❌ Hash (hello->sha256): Not found");
+    }
+    
+    if let Some(Value::Object(result)) = hlx.get("encoding", "json_parsed") {
+        println!("✅ JSON Parsed: {:?}", result);
+    } else {
+        println!("❌ JSON Parsed: Not found");
+    }
+    
+    if let Some(Value::String(result)) = hlx.get("encoding", "url_encoded") {
+        println!("✅ URL (encode): {}", result);
+    } else {
+        println!("❌ URL (encode): Not found");
+    }
+    
+    // Switch operations
+    println!("\n--- Getting Switch Operations ---");
+    
+    if let Some(Value::String(result)) = hlx.get("control", "switch_2") {
+        println!("✅ Switch (2): {}", result);
+    } else {
+        println!("❌ Switch (2): Not found");
+    }
+    
+    // Display all sections and keys
+    println!("\n--- All Available Sections and Keys ---");
+    
+    for (section_name, section_data) in &hlx.data {
+        println!("\n📁 Section: {}", section_name);
+        for (key_name, value) in section_data {
+            match value {
+                Value::String(s) => println!("  🔤 {} = \"{}\"", key_name, s),
+                Value::Number(n) => println!("  🔢 {} = {}", key_name, n),
+                Value::Bool(b) => println!("  ✅ {} = {}", key_name, b),
+                Value::Array(arr) => println!("  📋 {} = {:?}", key_name, arr),
+                Value::Object(obj) => println!("  📦 {} = {:?}", key_name, obj),
+                Value::Null => println!("  ❌ {} = null", key_name),
+                Value::Duration(d) => println!("  ⏱️ {} = {:?}", key_name, d),
+                Value::Reference(r) => println!("  🔗 {} = @{}", key_name, r),
+                Value::Identifier(i) => println!("  🏷️ {} = {}", key_name, i),
+            }
+        }
+    }
+    
+    // Generate updated HLX content
+    println!("\n--- Generating Updated HLX Content ---");
+    let content = hlx.make()?;
+    
+    // Save to get-all-results.hlx
+    std::fs::write("get-all-results.hlx", &content)?;
+    println!("✅ Saved to get-all-results.hlx");
+    
+    // Display the content
+    println!("\n--- Generated HLX Content ---");
+    println!("{}", content);
+    
+    println!("\n=== HLX Get All Values Example Complete ===");
+    Ok(())
+}
+
+```
+
+## 🎨 **Real-World Examples**
+
+### **Configuration Management**
+```hlx
+project "WebService" :
+    name = "HLX API Server"
+    version = "1.1.9"
+    port = @env var=PORT default=8080
+    database_url = @base64 input=postgresql://user:pass@localhost/db operation=encode
+    api_key_hash = @hash input=my-secret-key algorithm=sha256
+    startup_time = @timestamp
+    instance_id = @uuid
+;
+
+agent "Database" :
+    name = "PostgreSQL Connection Pool"
+    max_connections = @math operation=mul a=10 b=100
+    timeout_ms = @math operation=mul a=30 b=1000
+    cache_size = @math operation=pow a=2 b=10
+;
+```
+
+### **Data Processing Pipeline**
+```hlx
+workflow "DataPipeline" :
+    name = "ETL Processing"
+    input_format = "json"
+    output_format = "hlx"
+    
+    # Process incoming data
+    processed_data = @json input={"name":"John","age":30} operation=parse
+    name_upper = @string input=John operation=upper
+    age_hash = @hash input=30 algorithm=md5
+    
+    # Generate output
+    output_id = @uuid
+    processed_at = @now
+    data_hash = @hash input={"name":"JOHN","age":"30"} algorithm=sha256
+;
+```
+
+### **Counter & Statistics Management**
+```hlx
+context "Analytics" :
+    # Initialize counters
+    page_views = 0
+    user_registrations = 0
+    api_calls = 0
+    
+    # Increment counters (via hlx.increase())
+    # page_views = 1, 2, 3...
+    # user_registrations = 1, 2, 3...
+    # api_calls = 100, 150, 200...
+;
+
+context "Session" :
+    # Track session metrics
+    duration_minutes = 0.0
+    interactions = 0
+    errors = 0
+    
+    # Increment session data
+    # duration_minutes = 15.5, 23.75...
+    # interactions = 1, 2, 3...
+;
+```
+
+### **Security & Validation**
+```hlx
+context "Security" :
+    # Hash sensitive data
+    password_hash = @hash input=user_password algorithm=sha256
+    api_key_encoded = @base64 input=secret_api_key operation=encode
+    
+    # Validate input
+    is_valid_email = @string input=user@example.com operation=length
+    sanitized_input = @string input=user_input operation=trim
+    
+    # Generate secure tokens
+    session_token = @uuid
+    csrf_token = @hash input=session_data algorithm=sha256
+    timestamp = @timestamp
+;
+```
+
+## 🛠️ **Installation**
+
+### **From Source**
+```bash
+git clone https://github.com/helix/hlx.git
+cd hlx
+cargo build --release
+```
+
+### **Add to Your Project**
+```toml
+[dependencies]
+hlx = { path = "../hlx" }
+tokio = { version = "1.0", features = ["full"] }
+```
+
+## 📚 **Documentation**
+
+### **Operator Reference**
+- [Complete Operator List](hlx_test/examples/working_operators_summary.md)
+- [Parameter Formats](docs/operators.md)
+- [Best Practices](docs/best-practices.md)
+
+### **Examples**
+- [Basic Usage](hlx_test/examples/basic_set_get.rs)
+- [Increase Method](hlx_test/examples/hlx_increase_1017.rs)
+- [All Operators Demo](hlx_test/examples/set_all.rs) - Demonstrates all 38 operators
+- [Operator Examples](hlx_test/examples/)
+- [Advanced Patterns](docs/advanced-patterns.md)
+
+## 🎯 **Key Features**
+
+### **✅ What HLX Does Well**
+- **38 Working Operators** - Comprehensive data processing capabilities
+- **Increase Method** - Built-in counter increment functionality
+- **Type Safety** - Rust's type system ensures reliability
+- **Async Support** - Built for modern async/await patterns
+- **Extensible** - Easy to add custom operators
+- **Fast** - Rust performance with zero-cost abstractions
+- **Memory Safe** - No garbage collection overhead
+- **Cross-Platform** - Works on Linux, macOS, Windows
+
+### **🔧 Operator Categories**
+- **Basic**: UUID, timestamps, current time
+- **Data**: Base64, JSON, URL encoding/decoding
+- **Security**: SHA256/MD5 hashing, data integrity
+- **Math**: Arithmetic, statistical functions
+- **String**: Transform, analyze, extract text
+- **Logic**: Conditional operations, pattern matching
+- **Web**: Session, cookie, HTTP context
+- **Variables**: Global state, environment access
+
+## 🚀 **Performance**
+
+HLX is built for performance:
+- **Zero-cost abstractions** - Operator calls compile to efficient code
+- **Memory efficient** - No garbage collection, predictable memory usage
+- **Fast execution** - Rust's performance with async support
+- **Scalable** - Handles large configurations and data processing
+
+## 🤝 **Contributing**
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+### **Development Setup**
+```bash
+git clone https://github.com/helix/hlx.git
+cd hlx
+cargo test
+cargo run --example basic_set_get
+```
+
+## 📄 **License**
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 **Acknowledgments**
+
+- Built with ❤️ using Rust
+- Inspired by modern configuration management needs
+- Designed for developer happiness and system reliability
+
+---
+
+**HLX - Where Configuration Meets Power** 🚀
+
+*Transform your configuration files into powerful data processing pipelines with HLX's beautiful operator system.*
