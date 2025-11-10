@@ -1,0 +1,96 @@
+from PySide6.QtCore import Slot
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QFileDialog, QMainWindow, QTabWidget, QVBoxLayout, QWidget
+
+from lenlab.app.oscilloscope import OscilloscopeWidget
+
+from ..controller.lenlab import Lenlab
+from ..controller.report import Report
+from ..translate import tr
+from .bode import BodeWidget
+from .figure import LaunchpadWidget
+from .poster import PosterWidget
+from .programmer import ProgrammerWidget
+from .voltmeter import VoltmeterWidget
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, lenlab: Lenlab, report: Report, rules: bool = False):
+        super().__init__()
+        self.lenlab = lenlab
+        self.report = report
+
+        # widget
+        layout = QVBoxLayout()
+
+        self.status_poster = PosterWidget()
+        self.status_poster.button.setHidden(False)
+        self.status_poster.button.clicked.connect(self.lenlab.discovery.retry)
+        self.status_poster.setHidden(True)
+        layout.addWidget(self.status_poster)
+
+        self.tabs = [
+            LaunchpadWidget(),
+            ProgrammerWidget(lenlab.discovery),
+            VoltmeterWidget(lenlab),
+            osci := OscilloscopeWidget(lenlab),
+            bode := BodeWidget(lenlab),
+        ]
+
+        osci.bode.connect(bode.bode.on_bode)
+
+        tab_widget = QTabWidget()
+        for tab in self.tabs:
+            tab_widget.addTab(tab, str(tab.title))
+
+        layout.addWidget(tab_widget, 1)
+
+        widget = QWidget()
+        widget.setLayout(layout)
+
+        self.setCentralWidget(widget)
+
+        # menu
+        menu_bar = self.menuBar()
+
+        menu = menu_bar.addMenu("&Lenlab")
+
+        self.report_action = QAction(tr("Save Error Report", "Fehlerbericht speichern"), self)
+        self.report_action.triggered.connect(self.save_report)
+        menu.addAction(self.report_action)
+
+        if rules:
+            self.rules_action = QAction(tr("Install rules", "Regeln installieren"), self)
+            self.rules_action.triggered.connect(self.install_rules)
+            menu.addAction(self.rules_action)
+
+        menu.addSeparator()
+
+        action = QAction(tr("Close", "Beenden"), self)
+        action.triggered.connect(self.close)
+        menu.addAction(action)
+
+        # title
+        self.setWindowTitle("Lenlab")
+
+        # discovery
+        self.lenlab.discovery.error.connect(self.status_poster.set_error)
+        self.lenlab.discovery.ready.connect(self.status_poster.hide)
+
+    @Slot()
+    def save_report(self):
+        file_name, file_format = QFileDialog.getSaveFileName(
+            self,
+            tr("Save Error Report", "Fehlerbericht speichern"),
+            self.report.file_name,
+            self.report.file_format,
+        )
+        if file_name:
+            with open(file_name, "w", encoding="utf-8") as file:
+                self.report.save_as(file)
+
+    @Slot()
+    def install_rules(self):
+        from ..launchpad import rules
+
+        rules.install_rules()
