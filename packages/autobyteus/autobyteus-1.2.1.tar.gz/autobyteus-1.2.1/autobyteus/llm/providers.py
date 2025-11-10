@@ -1,0 +1,18 @@
+from enum import Enum
+
+class LLMProvider(Enum):
+    OPENAI = "OPENAI"
+    ANTHROPIC = "ANTHROPIC"
+    MISTRAL = "MISTRAL"
+    GROQ = "GROQ"
+    GEMINI = "GEMINI"
+    NVIDIA = "NVIDIA"
+    PERPLEXITY = "PERPLEXITY"
+    OLLAMA = "OLLAMA"
+    DEEPSEEK = "DEEPSEEK"
+    GROK = "GROK"
+    AUTOBYTEUS = "AUTOBYTEUS"
+    KIMI = "KIMI"
+    QWEN = "QWEN"
+    LMSTUDIO = "LMSTUDIO"
+    ZHIPU = "ZHIPU"
