@@ -1,0 +1,1328 @@
+"""Feature-based documentation generation methods."""
+
+from typing import List, Dict, Any
+from pathlib import Path
+from sourcescribe.api.base import LLMMessage
+from sourcescribe.utils.file_utils import write_file, create_directory
+
+
+class FeatureDocumentationMixin:
+    """Mixin for feature-based documentation generation."""
+    
+    def _generate_overview_section(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate Overview section with architecture and tech stack."""
+        self.logger.info("Generating Overview section")
+        
+        # Create overview directory
+        overview_dir = Path(self.config.output.path) / "overview"
+        create_directory(str(overview_dir))
+        
+        context = self._build_project_context(analyses)
+        system_prompt = self._get_system_prompt()
+        
+        # 1. Project Overview
+        overview_prompt = f"""Analyze this codebase and provide a high-level project overview:
+
+{context}
+
+Generate a comprehensive overview covering:
+1. **Project Purpose** - What problem does this solve?
+2. **Target Users** - Who is this for?
+3. **Key Value Propositions** - Why would someone use this?
+4. **Core Capabilities** - What can it do?
+
+Use clear, non-technical language. Format in Markdown with proper headings."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=overview_prompt)],
+            system_prompt=system_prompt
+        )
+        write_file(str(overview_dir / "index.md"), f"# Overview\n\n{response.content}", sanitize_mdx=True)
+        
+        # 2. Architecture Overview with diagram
+        module_map = self.analyzer.build_module_map(analyses)
+        modules = list(module_map.values())
+        
+        # Simplify diagram if too many modules (limit to 15 for readability)
+        diagram_modules = modules
+        if len(modules) > 15:
+            # Sort by number of functions/classes (most important first)
+            sorted_modules = sorted(
+                modules,
+                key=lambda m: len(m.get('functions', [])) + len(m.get('classes', [])),
+                reverse=True
+            )
+            diagram_modules = sorted_modules[:15]
+            self.logger.info(f"Simplified overview diagram from {len(modules)} to 15 modules")
+        
+        arch_diagram = self.diagram_generator.generate_architecture_diagram(diagram_modules, "System Architecture")
+        
+        arch_prompt = f"""Analyze this system architecture and explain:
+
+Modules: {len(modules)}
+{self._format_modules_for_prompt(modules)}
+
+Generate documentation covering:
+1. **High-Level Architecture** - How components work together
+2. **Key Components** - Main building blocks and their roles  
+3. **Data Flow** - How information moves through the system
+4. **Design Principles** - Architectural patterns used
+
+Create a mermaid sequence diagram showing a typical user workflow using VALID Mermaid syntax:
+
+Example format:
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant API
+    User->>Frontend: Opens app
+    Frontend->>API: Fetches data
+    API->>Frontend: Returns response
+    Frontend->>User: Displays content
+```
+
+Format in Markdown."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=arch_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        arch_content = f"""# Architecture Overview
+
+{response.content}
+
+## System Architecture Diagram
+
+{arch_diagram}
+"""
+        write_file(str(overview_dir / "architecture.md"), arch_content, sanitize_mdx=True)
+        
+        # 3. Technology Stack
+        tech_prompt = f"""Based on this codebase analysis, document the technology stack:
+
+{context}
+
+Create a comprehensive technology stack document with:
+1. **Programming Languages** - Primary and secondary languages
+2. **Frameworks & Libraries** - Key dependencies and why they're used
+3. **Development Tools** - Build tools, testing frameworks
+4. **Infrastructure** - Deployment, hosting, CI/CD
+5. **Third-Party Integrations** - External services and APIs
+
+Do not assume any technology/services that are not directly included within the repository.
+
+Format as a well-structured Markdown document."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=tech_prompt)],
+            system_prompt=system_prompt
+        )
+        write_file(str(overview_dir / "technology-stack.md"), f"# Technology Stack\n\n{response.content}", sanitize_mdx=True)
+        
+        self.logger.info("Overview section completed")
+    
+    def _generate_getting_started_section(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate Getting Started guides."""
+        self.logger.info("Generating Getting Started section")
+        
+        getting_started_dir = Path(self.config.output.path) / "getting-started"
+        create_directory(str(getting_started_dir))
+        
+        context = self._build_project_context(analyses)
+        system_prompt = self._get_system_prompt()
+        
+        # 1. Installation Guide with flowchart
+        install_prompt = f"""Create a comprehensive installation guide for this project:
+
+{context}
+
+Include:
+1. **Prerequisites** - System requirements, dependencies
+2. **Installation Steps** - Clear, numbered steps
+3. **Environment Setup** - Configuration, environment variables
+4. **Verification** - How to test the installation worked
+5. **Troubleshooting** - Common installation issues
+
+Create a mermaid flowchart showing the installation process.
+Include code blocks and commands. Format in Markdown."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=install_prompt)],
+            system_prompt=system_prompt
+        )
+        write_file(str(getting_started_dir / "installation.md"), f"# Installation\n\n{response.content}", sanitize_mdx=True)
+        
+        # 2. Quick Start Guide with sequence diagram
+        quickstart_prompt = f"""Create a quick start guide for developers who want to use or extend this code:
+
+{context}
+
+Create:
+1. **Understanding the Code** - Brief overview of what this code does and its key components
+2. **Extending the Code** - How developers would add new features or customize behavior
+3. **Next Steps** - What to implement or explore next
+
+Include a mermaid sequence diagram showing a typical usage flow or interaction pattern using VALID Mermaid syntax:
+
+Example:
+```mermaid
+sequenceDiagram
+    participant Developer
+    participant Module
+    participant Service
+    Developer->>Module: Calls function
+    Module->>Service: Processes request
+    Service->>Module: Returns result
+    Module->>Developer: Returns output
+```
+
+Use real code examples that make sense for this codebase (not generic "Hello World"). Format in Markdown."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=quickstart_prompt)],
+            system_prompt=system_prompt
+        )
+        write_file(str(getting_started_dir / "quick-start.md"), f"# Quick Start\n\n{response.content}", sanitize_mdx=True)
+        
+        # 3. Configuration Guide
+        config_prompt = f"""Document the configuration options for this project:
+
+{context}
+
+Cover:
+1. **Configuration Files** - Location and format
+2. **Configuration Options** - All available settings with descriptions
+3. **Environment Variables** - Required and optional
+4. **Examples** - Common configuration scenarios
+5. **Best Practices** - Recommended settings
+
+Format in Markdown with tables for options."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=config_prompt)],
+            system_prompt=system_prompt
+        )
+        write_file(str(getting_started_dir / "configuration.md"), f"# Configuration\n\n{response.content}", sanitize_mdx=True)
+        
+        self.logger.info("Getting Started section completed")
+    
+    def _generate_feature_sections(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate feature-based documentation sections with comprehensive topic coverage."""
+        self.logger.info("Generating feature sections")
+        
+        context = self._build_project_context(analyses)
+        system_prompt = self._get_system_prompt()
+        
+        features_dir = Path(self.config.output.path) / "features"
+        create_directory(str(features_dir))
+        
+        # Phase 1: Discover all topics in the codebase
+        discovery_prompt = f"""Analyze this codebase and identify ALL major topics that should be documented:
+
+{context}
+
+Identify topics by analyzing:
+- Core features and capabilities
+- Domain concepts and business logic  
+- Technical components and modules
+- Integration points and APIs
+- Data flows and processing pipelines
+- Configuration and setup requirements
+
+Output a JSON list of topics in this format:
+```json
+{{
+  "topics": [
+    {{"name": "Authentication", "filename": "authentication", "description": "User authentication and authorization"}},
+    {{"name": "Data Processing", "filename": "data-processing", "description": "How data is processed and transformed"}},
+    {{"name": "API Integration", "filename": "api-integration", "description": "External API connections and usage"}}
+  ]
+}}
+```
+
+Be comprehensive - identify 5-10 major topics that developers need to understand."""
+
+        discovery_response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=discovery_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        # Parse topics from response
+        topics = self._parse_topics_from_response(discovery_response.content)
+        self.logger.info(f"Discovered {len(topics)} topics to document")
+        
+        # Phase 2: Generate detailed documentation for each topic
+        for topic in topics:
+            topic_name = topic.get('name', 'Unknown')
+            filename = topic.get('filename', 'topic')
+            description = topic.get('description', '')
+            
+            self.logger.info(f"Generating documentation for: {topic_name}")
+            
+            topic_prompt = f"""Create comprehensive documentation for this topic: {topic_name}
+
+Context: {description}
+
+{context}
+
+STRUCTURE (following DeepWiki format):
+1. Start with 2-3 sentence summary of this topic
+2. Use ## for main sections and ### for subsections
+3. Keep paragraphs short (2-3 sentences) and focused
+4. Be concise - only include critical details
+
+Required sections:
+## Overview
+Brief explanation of what this topic covers and why it matters
+
+## How It Works  
+Detailed explanation with mermaid diagram (sequence/flowchart/state diagram as appropriate)
+
+## Key Components
+Main classes, functions, or modules involved (with GitHub links to source code)
+
+## Configuration
+Relevant settings, environment variables, or options (use tables)
+
+## Notes
+Additional context, caveats, or related topics
+
+Include mermaid diagrams and GitHub links throughout for citations."""
+
+            response = self.llm_provider.generate(
+                messages=[LLMMessage(role="user", content=topic_prompt)],
+                system_prompt=system_prompt
+            )
+            
+            write_file(str(features_dir / f"{filename}.md"), f"# {topic_name}\n\n{response.content}", sanitize_mdx=True)
+        
+        # Generate features index page
+        index_content = "# Features\n\n"
+        index_content += "This section covers all major features and capabilities of the system.\n\n"
+        index_content += "## Topics\n\n"
+        for topic in topics:
+            topic_name = topic.get('name', 'Unknown')
+            filename = topic.get('filename', 'topic')
+            description = topic.get('description', '')
+            index_content += f"- **[{topic_name}](./{filename})** - {description}\n"
+        
+        write_file(str(features_dir / "index.md"), index_content, sanitize_mdx=True)
+        
+        self.logger.info("Feature sections completed")
+    
+    def _parse_topics_from_response(self, response_content: str) -> List[Dict[str, str]]:
+        """Parse topics from LLM response, handling various formats."""
+        import json
+        import re
+        
+        try:
+            # Try to find JSON block in response
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', response_content, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group(1))
+                if 'topics' in data:
+                    return data['topics']
+            
+            # Try parsing the whole response as JSON
+            data = json.loads(response_content)
+            if 'topics' in data:
+                return data['topics']
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        
+        # Fallback: return default topics if parsing fails
+        self.logger.warning("Could not parse topics from LLM response, using defaults")
+        return [
+            {"name": "Core Features", "filename": "core-features", "description": "Main capabilities and features"},
+            {"name": "Architecture", "filename": "architecture-details", "description": "System design and components"},
+            {"name": "Usage Examples", "filename": "usage-examples", "description": "How to use the system"},
+        ]
+    
+    def _generate_architecture_section(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate detailed architecture documentation."""
+        self.logger.info("Generating Architecture section")
+        
+        arch_dir = Path(self.config.output.path) / "architecture"
+        create_directory(str(arch_dir))
+        
+        module_map = self.analyzer.build_module_map(analyses)
+        modules = list(module_map.values())
+        
+        # Simplify diagram if too many modules (limit to 15 for readability)
+        diagram_modules = modules
+        if len(modules) > 15:
+            # Sort by number of functions/classes (most important first)
+            sorted_modules = sorted(
+                modules,
+                key=lambda m: len(m.get('functions', [])) + len(m.get('classes', [])),
+                reverse=True
+            )
+            diagram_modules = sorted_modules[:15]
+            self.logger.info(f"Simplified architecture diagram from {len(modules)} to 15 modules")
+        
+        arch_diagram = self.diagram_generator.generate_architecture_diagram(diagram_modules, "System Architecture")
+        
+        system_prompt = self._get_system_prompt()
+        
+        # Component architecture with detailed diagrams
+        component_prompt = f"""Create detailed component architecture documentation:
+
+Modules: {len(modules)}
+{self._format_modules_for_prompt(modules)}
+
+Document:
+1. **Component Breakdown** - Each major component's responsibility
+2. **Communication Patterns** - How components interact (with sequence diagrams)
+3. **Data Models** - Key data structures (with class diagrams if applicable)
+4. **Design Patterns** - Patterns used and why
+5. **Extension Points** - How to extend the system
+
+Include multiple mermaid diagrams:
+- Component/module diagram
+- Sequence diagrams for key workflows
+- Class diagrams for important data models
+- State diagrams if stateful behavior exists
+
+Format in Markdown with extensive use of diagrams."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=component_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        arch_content = f"""# Component Architecture
+
+{response.content}
+
+## System Architecture Diagram
+
+{arch_diagram}
+"""
+        write_file(str(arch_dir / "components.md"), arch_content, sanitize_mdx=True)
+        
+        self.logger.info("Architecture section completed")
+    
+    def _generate_api_reference_section(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate API reference if applicable."""
+        self.logger.info("Generating API Reference section")
+        
+        endpoints = self.analyzer.extract_api_endpoints(analyses)
+        if not endpoints:
+            self.logger.info("No API endpoints found, skipping API reference")
+            return
+        
+        api_dir = Path(self.config.output.path) / "api-reference"
+        create_directory(str(api_dir))
+        
+        system_prompt = self._get_system_prompt()
+        api_prompt = f"""Document these API endpoints:
+
+{self._format_endpoints_for_prompt(endpoints)}
+
+Create comprehensive API documentation with:
+1. **Endpoint Overview** - Purpose and use cases
+2. **Request Format** - Parameters, headers, body
+3. **Response Format** - Success and error responses with examples
+4. **Examples** - cURL and code examples in multiple languages
+5. **Authentication** - Required auth mechanisms
+6. **Rate Limiting** - If applicable
+7. **Error Handling** - Common errors and how to handle them
+
+Include mermaid sequence diagrams showing:
+- Authentication flow
+- Typical API call flow
+- Error handling flow
+
+Format in Markdown with clear sections for each endpoint."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=api_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        write_file(str(api_dir / "endpoints.md"), f"# API Reference\n\n{response.content}", sanitize_mdx=True)
+        
+        self.logger.info("API Reference section completed")
+    
+    def _generate_deep_insights_section(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate comprehensive insights using Devin DeepWiki citation format."""
+        self.logger.info("Generating Deep Insights section with citations")
+        
+        context = self._build_project_context(analyses)
+        system_prompt = self._get_system_prompt()
+        
+        insights_dir = Path(self.config.output.path) / "insights"
+        create_directory(str(insights_dir))
+        
+        # Get repository name and GitHub base URL for citations
+        repo_name = "repository"
+        github_base = ""
+        if self.config.repository.github_url:
+            github_base = self.config.repository.github_url.rstrip('/')
+            # Extract repo name from GitHub URL
+            parts = github_base.split('/')
+            if len(parts) >= 2:
+                repo_name = f"{parts[-2]}/{parts[-1]}"
+        
+        # Deep analysis with markdown GitHub link citations
+        deep_analysis_prompt = f"""Analyze this codebase comprehensively and extract ALL important insights.
+
+{context}
+
+CRITICAL CITATION REQUIREMENTS:
+- Add a citation link after EVERY SINGLE SENTENCE and claim
+- Every sentence MUST END IN A CITATION
+- Format: [`path/file.py#L10-L12`]({github_base}/blob/main/path/file.py#L10-L12)
+- DON'T CITE ENTIRE FUNCTIONS - cite only function/class definition (max 3 lines)
+- Use MINIMUM lines needed to support each claim
+- Multiple citations use multiple markdown links
+- For single-line citations use #L10, for ranges use #L10-L12
+
+ANSWER STRUCTURE:
+1. Start with brief summary (2-3 sentences) of overall findings
+2. Use ## for main sections, ### for subsections
+3. Keep paragraphs short (2-3 sentences) and focused
+4. Use bullet points or numbered lists for multiple items
+5. Format code references with backticks
+6. Include "Notes" section at end
+7. Be extremely concise - only most important details
+
+TOPICS TO COVER (analyze ALL applicable areas):
+
+## System Architecture
+- High-level architecture and design patterns (microservices, monolith, serverless, etc.)
+- Service communication patterns and protocols
+- External integrations and third-party services
+- API design and contracts
+
+## Infrastructure and Deployment
+- Cloud infrastructure (AWS, GCP, Azure, etc.)
+- CI/CD pipelines and automation
+- Container orchestration (Docker, Kubernetes, EKS, etc.)
+- Environment configuration (dev, staging, production)
+- Infrastructure as Code and deployment processes
+
+## Backend Services/Components
+- Core services and their responsibilities
+- Authentication and authorization flows
+- Business logic and domain concepts
+- Data processing pipelines
+- Scheduled jobs and background processing
+- Inter-service communication
+- API gateway and routing logic
+
+## Data Layer
+- Database architecture and schema design
+- ORM/database access patterns
+- Data models and relationships
+- Migration strategies
+- Data persistence and caching
+- Event logging and audit trails
+
+## Frontend Application (if applicable)
+- Application structure and framework
+- State management approach
+- Routing and navigation
+- UI component architecture
+- Build and bundling configuration
+
+## Cross-Cutting Concerns
+- Authentication and security mechanisms
+- Error handling and logging strategies
+- Performance optimizations
+- Testing approaches and coverage
+- Configuration management
+- Monitoring and observability
+
+Example format with citations:
+"The authentication system uses JWT tokens for stateless auth [`auth/service.py#L15-L17`]({github_base}/blob/main/auth/service.py#L15-L17). Each token contains user ID and role information [`auth/jwt.py#L42-L44`]({github_base}/blob/main/auth/jwt.py#L42-L44)."
+
+IMPORTANT: Every sentence needs a citation link. Be thorough and comprehensive."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=deep_analysis_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        write_file(str(insights_dir / "deep-analysis.md"), f"# Deep Codebase Analysis\n\n{response.content}", sanitize_mdx=True)
+        
+        # Generate key patterns and practices document
+        patterns_prompt = f"""Identify and document all important patterns, practices, and conventions used in this codebase.
+
+{context}
+
+CRITICAL: Add a citation link after EVERY sentence. Where L10-L12 is line 10 through 12
+Format: [`path/file.py#L10-L12`]({github_base}/blob/main/path/file.py#L10-L12)
+
+Document ALL applicable patterns:
+
+## Architectural Patterns
+- Microservices/monolith/serverless architecture patterns (with citations)
+- Service communication patterns (REST, GraphQL, gRPC, message queues) (with citations)
+- API gateway and routing patterns (with citations)
+- Database access and connection pooling patterns (with citations)
+
+## Design Patterns
+- Object-oriented and functional design patterns used (with citations)
+- Dependency injection and inversion of control (with citations)
+- Factory, singleton, observer, and other GoF patterns (with citations)
+- Repository and service layer patterns (with citations)
+
+## Code Organization
+- Project structure and module organization (with citations)
+- Separation of concerns and layering (with citations)
+- Shared utilities and common packages (with citations)
+- Code reuse and DRY principles (with citations)
+
+## Naming Conventions  
+- File and directory naming patterns (with citations)
+- Function, class, and variable naming conventions (with citations)
+- API endpoint and route naming (with citations)
+- Database table and column naming (with citations)
+
+## Error Handling Patterns
+- Exception handling strategies (with citations)
+- Error response formatting (with citations)
+- Logging and error tracking (with citations)
+- Retry and fallback mechanisms (with citations)
+
+## Data Management Patterns
+- ORM usage and query patterns (with citations)
+- Migration and schema version control (with citations)
+- Transaction management (with citations)
+- Caching strategies (with citations)
+
+## Authentication and Authorization
+- Authentication flows and token management (with citations)
+- Role-based access control (RBAC) patterns (with citations)
+- OAuth/OIDC integration patterns (with citations)
+- Session and state management (with citations)
+
+## Testing Strategies
+- Unit, integration, and e2e testing approaches (with citations)
+- Mocking and test data strategies (with citations)
+- Test organization and naming (with citations)
+- Code coverage and quality gates (with citations)
+
+## Performance Patterns
+- Query optimization techniques (with citations)
+- Caching and memoization (with citations)
+- Async/parallel processing (with citations)
+- Resource pooling and connection management (with citations)
+
+## Deployment and DevOps Patterns
+- CI/CD pipeline patterns (with citations)
+- Environment configuration management (with citations)
+- Container and orchestration patterns (with citations)
+- Blue-green/canary deployment strategies (with citations)
+
+## Security Practices
+- Input validation and sanitization (with citations)
+- SQL injection and XSS prevention (with citations)
+- Secrets and credentials management (with citations)
+- Security headers and CORS configuration (with citations)
+
+## Notes
+Additional observations and anti-patterns to avoid (with citations)
+
+Be concise. Every claim needs a citation link."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=patterns_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        write_file(str(insights_dir / "patterns-and-practices.md"), f"# Patterns and Practices\n\n{response.content}", sanitize_mdx=True)
+        
+        # Generate critical paths document
+        critical_paths_prompt = f"""Document the critical code paths and workflows in this system.
+
+{context}
+
+CRITICAL: Add a citation link after EVERY sentence. Where L10-L12 is line 10 through 12
+Format: [`path/file.py#L10-L12`]({github_base}/blob/main/path/file.py#L10-L12)
+
+Identify and explain ALL critical paths:
+
+## Authentication and Authorization Flows
+- Login and signup workflows (with citations)
+- Password reset and 2FA flows (with citations)
+- Session management and token refresh (with citations)
+- Permission checking and role validation (with citations)
+
+## Core Business Workflows
+- Primary user journeys and transactions (with citations)
+- State transitions and lifecycle management (with citations)
+- Approval and validation workflows (with citations)
+- Payment and financial transaction flows (with citations)
+
+## Data Processing Pipelines  
+- Request/response flow through the system (with citations)
+- Data transformation and validation (with citations)
+- Background job processing (with citations)
+- Event streaming and real-time updates (with citations)
+
+## Service Communication Paths
+- API gateway routing and request forwarding (with citations)
+- Inter-service communication patterns (with citations)
+- Database query execution paths (with citations)
+- Caching and data retrieval flows (with citations)
+
+## Integration Points
+- Third-party API integrations (Auth0, Stripe, Firebase, etc.) (with citations)
+- External service authentication and authorization (with citations)
+- Webhook handling and callback processing (with citations)
+- Message queue and event bus integration (with citations)
+
+## Deployment and CI/CD Flows
+- Build and test pipeline execution (with citations)
+- Container image creation and push (with citations)
+- Deployment to environments (dev/staging/prod) (with citations)
+- Database migration execution (with citations)
+
+## Scheduled Jobs and Automation
+- Cron job execution and scheduling (with citations)
+- Automated cleanup and maintenance tasks (with citations)
+- Report generation and batch processing (with citations)
+- Monitoring and health check flows (with citations)
+
+## Error Handling and Recovery
+- Exception capture and error logging (with citations)
+- Retry mechanisms and circuit breakers (with citations)
+- Fallback strategies (with citations)
+- Alert and notification triggers (with citations)
+
+## Failure Scenarios
+- Database connection failures (with citations)
+- External service outages (with citations)
+- Transaction rollback scenarios (with citations)
+- Data consistency and race conditions (with citations)
+
+## Performance Bottlenecks
+- Database query performance issues (with citations)
+- N+1 query problems (with citations)
+- Memory and resource constraints (with citations)
+- Network latency and timeout issues (with citations)
+
+## Security-Critical Paths
+- Input validation and sanitization (with citations)
+- SQL injection and XSS prevention points (with citations)
+- CSRF protection mechanisms (with citations)
+- Rate limiting and DDoS protection (with citations)
+
+## Notes
+Other critical considerations and optimization opportunities (with citations)
+
+Include mermaid diagrams for complex flows. Every sentence needs a citation link."""
+
+        response = self.llm_provider.generate(
+            messages=[LLMMessage(role="user", content=critical_paths_prompt)],
+            system_prompt=system_prompt
+        )
+        
+        write_file(str(insights_dir / "critical-paths.md"), f"# Critical Paths and Workflows\n\n{response.content}", sanitize_mdx=True)
+        
+        # Generate insights index
+        index_content = f"""# Deep Insights
+
+Comprehensive analysis of the codebase with detailed citations to source code.
+
+## Available Insights
+
+- **[Deep Codebase Analysis](./deep-analysis)** - Comprehensive analysis of architecture, patterns, and key implementations
+- **[Patterns and Practices](./patterns-and-practices)** - Design patterns, conventions, and best practices used throughout
+- **[Critical Paths and Workflows](./critical-paths)** - Important code paths, data flows, and integration points
+
+## About Citations
+
+Every claim in these documents is backed by a citation linking directly to the source code on GitHub.
+
+**Citation Format:**
+```markdown
+[`file/path.py#L10-L12`](https://github.com/{repo_name}/blob/main/file/path.py#L10-L12)
+where L10-L12 is line 10 through 12
+```
+
+Click any citation to view the exact lines of code that support the claim. Citations typically point to:
+- Function or class definitions (not entire implementations)
+- The most relevant 1-5 lines of code
+- Specific configuration or important logic
+
+This allows you to verify every statement and explore the implementation details directly.
+"""
+        
+        write_file(str(insights_dir / "index.md"), index_content, sanitize_mdx=True)
+        
+        self.logger.info("Deep Insights section completed")
+    
+    def _generate_feature_index(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate main index for feature-based docs."""
+        self.logger.info("Generating documentation index")
+        
+        index_content = """# Documentation
+
+Welcome to the documentation! This documentation is organized by features and workflows rather than individual code files.
+
+## 📚 Documentation Structure
+
+### [Overview](./overview/)
+High-level understanding of the project
+- **[Project Overview](./overview/)** - What this project does and why
+- **[Architecture Overview](./overview/architecture)** - How the system works
+- **[Technology Stack](./overview/technology-stack)** - Technologies used
+
+### [Getting Started](./getting-started/installation)
+Everything you need to begin using the project
+- **[Installation](./getting-started/installation)** - Set up the project
+- **[Quick Start](./getting-started/quick-start)** - Get up and running in minutes
+- **[Configuration](./getting-started/configuration)** - Configure for your needs
+
+### [Features](./features/)
+Detailed documentation of each major feature and capability
+
+### [Architecture](./architecture/components)
+Deep dive into system design, components, and patterns
+
+### [Deep Insights](./insights/)
+Comprehensive codebase analysis with detailed source code citations
+- **[Deep Codebase Analysis](./insights/deep-analysis)** - Architecture, patterns, and implementations
+- **[Patterns and Practices](./insights/patterns-and-practices)** - Design patterns and conventions  
+- **[Critical Paths](./insights/critical-paths)** - Important workflows and integration points
+
+## 🚀 Quick Links
+
+- **First time here?** Start with [Getting Started → Installation](./getting-started/installation)
+- **Want to understand the system?** Read [Overview → Architecture](./overview/architecture)
+- **Looking for specific functionality?** Browse [Features](./features/)
+
+## 💡 Documentation Philosophy
+
+This documentation focuses on:
+- **Use cases and workflows** rather than individual files
+- **Visual diagrams** to explain complex concepts
+- **Practical examples** you can copy and adapt
+- **Progressive disclosure** from simple to advanced
+
+"""
+        
+        output_path = Path(self.config.output.path) / "README.md"
+        write_file(str(output_path), index_content, sanitize_mdx=True)
+        
+        self.logger.info("Documentation index completed")
+    
+    def _generate_docusaurus_sidebar(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate Docusaurus sidebar configuration automatically based on actual file structure."""
+        self.logger.info("Generating Docusaurus sidebar configuration")
+        
+        output_path = Path(self.config.output.path)
+        
+        # Find website root
+        website_root = None
+        current = output_path
+        for _ in range(5):  # Search up to 5 levels
+            current = current.parent
+            if (current / "package.json").exists() or (current / "docusaurus.config.ts").exists():
+                website_root = current
+                break
+        
+        if not website_root:
+            self.logger.warning("Could not find Docusaurus website root, skipping sidebar generation")
+            return
+        
+        # Determine the doc path prefix relative to website/docs
+        # If output_path is /path/to/website/docs, prefix is empty
+        # If output_path is /path/to/website/docs/api-reference, prefix is 'api-reference'
+        docs_dir = website_root / "docs"
+        try:
+            relative_to_docs = output_path.relative_to(docs_dir)
+            prefix = str(relative_to_docs) if str(relative_to_docs) != '.' else ''
+        except ValueError:
+            # output_path is not under website/docs
+            prefix = ''
+        
+        # Scan the output directory to build sidebar structure
+        sidebar_structure = self._scan_docs_structure(output_path, prefix)
+        
+        # Generate sidebar config
+        sidebar_items = self._build_sidebar_items(sidebar_structure)
+        
+        sidebar_config = f"""/**
+ * Creating a sidebar enables you to:
+ - create an ordered group of docs
+ - render a sidebar for each doc of that group
+ - provide next/previous navigation
+
+ The sidebars can be generated from the filesystem, or explicitly defined here.
+
+ Create as many sidebars as you want.
+ 
+ Auto-generated by SourceScribe
+ */
+
+import type {{SidebarsConfig}} from '@docusaurus/plugin-content-docs';
+
+const sidebars: SidebarsConfig = {{
+  tutorialSidebar: {sidebar_items},
+}};
+
+export default sidebars;
+"""
+        
+        sidebar_path = website_root / "sidebars.ts"
+        write_file(str(sidebar_path), sidebar_config)
+        self.logger.info(f"Generated Docusaurus sidebar at: {sidebar_path}")
+    
+    def _scan_docs_structure(self, docs_path: Path, prefix: str) -> Dict[str, Any]:
+        """Scan documentation directory and build structure."""
+        structure = {
+            'readme': None,
+            'categories': {}
+        }
+        
+        # Check for README
+        if (docs_path / "README.md").exists():
+            doc_id = f"{prefix}/README" if prefix else "README"
+            structure['readme'] = doc_id
+        
+        # Scan subdirectories
+        for item in sorted(docs_path.iterdir()):
+            if item.is_dir():
+                category_name = item.name
+                category_items = []
+                
+                # Scan files in this category
+                for doc_file in sorted(item.glob("*.md")):
+                    if doc_file.name == "README.md":
+                        continue  # Skip README in subdirs
+                    
+                    # Build doc ID without .md extension
+                    doc_name = doc_file.stem
+                    if prefix:
+                        doc_id = f"{prefix}/{category_name}/{doc_name}"
+                    else:
+                        doc_id = f"{category_name}/{doc_name}"
+                    
+                    category_items.append({
+                        'id': doc_id,
+                        'name': doc_name
+                    })
+                
+                if category_items:
+                    structure['categories'][category_name] = category_items
+        
+        return structure
+    
+    def _build_sidebar_items(self, structure: Dict[str, Any]) -> str:
+        """Build sidebar items JSON string from structure."""
+        items = []
+        
+        # Add README if exists
+        if structure['readme']:
+            items.append(f"""    {{
+      type: 'doc',
+      id: '{structure['readme']}',
+      label: 'Documentation Home',
+    }}""")
+        
+        # Define category order and labels
+        category_order = {
+            'overview': {'label': 'Overview', 'collapsed': False},
+            'getting-started': {'label': 'Getting Started', 'collapsed': False},
+            'features': {'label': 'Features', 'collapsed': False},
+            'architecture': {'label': 'Architecture', 'collapsed': False},
+            'api': {'label': 'API Reference', 'collapsed': True},
+            'guides': {'label': 'Guides', 'collapsed': False},
+        }
+        
+        # Build categories in order
+        for category_name in category_order.keys():
+            if category_name in structure['categories']:
+                category_info = category_order[category_name]
+                items.append(self._build_category_item(
+                    category_name,
+                    category_info['label'],
+                    structure['categories'][category_name],
+                    category_info['collapsed']
+                ))
+        
+        # Add remaining categories not in the predefined order
+        for category_name, category_items in structure['categories'].items():
+            if category_name not in category_order:
+                label = category_name.replace('-', ' ').replace('_', ' ').title()
+                items.append(self._build_category_item(
+                    category_name,
+                    label,
+                    category_items,
+                    False
+                ))
+        
+        return "[\n" + ",\n".join(items) + ",\n  ]"
+    
+    def _build_category_item(self, category_name: str, label: str, items: List[Dict[str, str]], collapsed: bool) -> str:
+        """Build a single category item for sidebar."""
+        # Define preferred order for common doc names
+        doc_order = ['index', 'installation', 'quick-start', 'configuration', 'architecture', 'technology-stack', 'components']
+        
+        # Sort items by preferred order, then alphabetically
+        def sort_key(item):
+            name = item['name']
+            if name in doc_order:
+                return (0, doc_order.index(name))
+            return (1, name)
+        
+        sorted_items = sorted(items, key=sort_key)
+        
+        # Build items list
+        item_ids = [f"        '{item['id']}'" for item in sorted_items]
+        items_str = ",\n".join(item_ids)
+        
+        return f"""    {{
+      type: 'category',
+      label: '{label}',
+      collapsed: {str(collapsed).lower()},
+      items: [
+{items_str}
+      ],
+    }}"""
+    
+    def _update_docusaurus_config(self, analyses: List[Dict[str, Any]]) -> None:
+        """Generate/update comprehensive Docusaurus configuration with AI-powered content."""
+        from sourcescribe.utils.github_utils import get_github_url_from_git
+        import re
+        
+        self.logger.info("Generating Docusaurus configuration")
+        
+        # Get GitHub URL
+        github_url = self.config.repository.github_url
+        if not github_url:
+            github_url = get_github_url_from_git(self.config.repository.path)
+        
+        if not github_url:
+            self.logger.warning("No GitHub URL found, using defaults for Docusaurus config")
+            org_name = "your-org"
+            repo_name = "your-repo"
+        else:
+            # Parse GitHub URL to get org and repo
+            try:
+                parts = github_url.rstrip('/').split('/')
+                org_name = parts[-2]
+                repo_name = parts[-1].replace('.git', '')
+            except (IndexError, AttributeError):
+                self.logger.warning(f"Could not parse GitHub URL: {github_url}")
+                org_name = "your-org"
+                repo_name = "your-repo"
+        
+        # Try to find existing docusaurus.config.ts or determine where to create it
+        output_path = Path(self.config.output.path)
+        website_root = None
+        current = output_path
+        
+        # First, search for existing config file
+        for _ in range(5):  # Search up to 5 levels
+            current = current.parent
+            config_file = current / "docusaurus.config.ts"
+            if config_file.exists():
+                website_root = current
+                self.logger.info(f"Found existing Docusaurus config at: {config_file}")
+                break
+        
+        # If not found, check if we're in a typical website structure
+        if not website_root:
+            # Check if output path contains 'website/docs' pattern
+            output_str = str(output_path)
+            if 'website' in output_str:
+                # Find the website directory
+                parts = output_path.parts
+                if 'website' in parts:
+                    website_idx = parts.index('website')
+                    website_root = Path(*parts[:website_idx + 1])
+                    self.logger.info(f"Detected website root at: {website_root}")
+            
+            # If still not found, look for common indicators (package.json with docusaurus)
+            if not website_root:
+                current = output_path
+                for _ in range(5):
+                    current = current.parent
+                    package_json = current / "package.json"
+                    if package_json.exists():
+                        try:
+                            import json
+                            with open(package_json, 'r') as f:
+                                pkg_data = json.load(f)
+                                # Check if it's a Docusaurus project
+                                if ('dependencies' in pkg_data and 
+                                    '@docusaurus/core' in pkg_data.get('dependencies', {})):
+                                    website_root = current
+                                    self.logger.info(f"Detected Docusaurus project at: {website_root}")
+                                    break
+                        except:
+                            pass
+            
+            # If still not found, default to parent of output path
+            if not website_root:
+                # Assume output is 'docs' or 'website/docs', create config in parent
+                if output_path.name == 'docs':
+                    website_root = output_path.parent
+                else:
+                    website_root = output_path.parent
+                self.logger.info(f"Creating Docusaurus config in: {website_root}")
+        
+        config_path = website_root / "docusaurus.config.ts"
+        
+        # Infer project title from repo name or README
+        title = self._infer_project_title(repo_name, analyses)
+        
+        # Generate tagline using AI
+        tagline = self._generate_tagline(analyses)
+        
+        # Generate the complete Docusaurus config
+        config_content = self._generate_docusaurus_config_content(
+            title=title,
+            tagline=tagline,
+            github_url=github_url if github_url else f"https://github.com/{org_name}/{repo_name}",
+            org_name=org_name,
+            repo_name=repo_name
+        )
+        
+        try:
+            config_exists = config_path.exists()
+            write_file(str(config_path), config_content)
+            
+            action = "Updated" if config_exists else "Created"
+            self.logger.info(f"{action} Docusaurus config at: {config_path}")
+            self.logger.info(f"  - Title: {title}")
+            self.logger.info(f"  - Tagline: {tagline}")
+            self.logger.info(f"  - Organization: {org_name}")
+            self.logger.info(f"  - Project: {repo_name}")
+        except Exception as e:
+            self.logger.error(f"Failed to create/update Docusaurus config: {e}")
+    
+    def _infer_project_title(self, repo_name: str, analyses: List[Dict[str, Any]]) -> str:
+        """Infer project title from repo name and analysis."""
+        # Check if there's a clear project name in README or package.json
+        repo_path = Path(self.config.repository.path)
+        
+        # Try package.json first
+        package_json = repo_path / "package.json"
+        if package_json.exists():
+            try:
+                import json
+                with open(package_json) as f:
+                    data = json.load(f)
+                    if 'name' in data and not data['name'].startswith('@'):
+                        return data['name'].replace('-', ' ').title()
+            except:
+                pass
+        
+        # Try pyproject.toml
+        pyproject = repo_path / "pyproject.toml"
+        if pyproject.exists():
+            try:
+                import re
+                with open(pyproject) as f:
+                    content = f.read()
+                    match = re.search(r'name\s*=\s*["\']([^"\']+)["\']', content)
+                    if match:
+                        return match.group(1).replace('-', ' ').title()
+            except:
+                pass
+        
+        # Fallback to formatted repo name
+        return repo_name.replace('-', ' ').replace('_', ' ').title()
+    
+    def _generate_tagline(self, analyses: List[Dict[str, Any]]) -> str:
+        """Generate a catchy tagline using AI."""
+        self.logger.info("Generating project tagline with AI")
+        
+        # Build context from analyses
+        context = self._build_project_context(analyses, max_files=5)
+        
+        prompt = f"""Based on this codebase analysis, generate a concise, catchy tagline (max 80 characters).
+
+{context}
+
+Requirements:
+- Under 80 characters
+- Clear and descriptive
+- Professional but engaging
+- No buzzwords or jargon
+- Focus on what the project does and who it's for
+
+Return ONLY the tagline text, nothing else."""
+
+        try:
+            messages = [
+                LLMMessage(role="system", content=self._get_system_prompt()),
+                LLMMessage(role="user", content=prompt)
+            ]
+            
+            response = self.llm_provider.generate(messages)
+            tagline = response.content.strip().strip('"').strip("'")
+            
+            # Validate length
+            if len(tagline) > 100:
+                tagline = tagline[:97] + "..."
+            
+            return tagline
+        except Exception as e:
+            self.logger.warning(f"Failed to generate tagline with AI: {e}")
+            return "Auto-generated documentation for your project"
+    
+    def _generate_docusaurus_config_content(
+        self,
+        title: str,
+        tagline: str,
+        github_url: str,
+        org_name: str,
+        repo_name: str
+    ) -> str:
+        """Generate complete Docusaurus configuration content."""
+        
+        # Determine if we're outputting to a subdirectory
+        output_path = Path(self.config.output.path)
+        website_root = output_path.parent.parent if 'docs' in str(output_path) else output_path.parent
+        
+        # Try to find if docs are in a subdirectory
+        docs_dir = website_root / "docs"
+        
+        config = f"""import {{themes as prismThemes}} from 'prism-react-renderer';
+import type {{Config}} from '@docusaurus/types';
+import type * as Preset from '@docusaurus/preset-classic';
+
+const config: Config = {{
+  title: '{title}',
+  tagline: '{tagline}',
+  favicon: 'img/favicon.ico',
+
+  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
+  future: {{
+    v4: true,
+  }},
+
+  // Set the production url of your site here
+  url: 'https://{org_name}.github.io',
+  // Set the /<baseUrl>/ pathname under which your site is served
+  baseUrl: '/{repo_name}/',
+
+  // GitHub pages deployment config
+  organizationName: '{org_name}',
+  projectName: '{repo_name}',
+
+  onBrokenLinks: 'warn',
+  onBrokenMarkdownLinks: 'warn',
+
+  i18n: {{
+    defaultLocale: 'en',
+    locales: ['en'],
+  }},
+
+  presets: [
+    [
+      'classic',
+      {{
+        docs: {{
+          sidebarPath: './sidebars.ts',
+          editUrl: '{github_url}/tree/main/website/',
+        }},
+        blog: false,
+        theme: {{
+          customCss: './src/css/custom.css',
+        }},
+      }} satisfies Preset.Options,
+    ],
+  ],
+
+  markdown: {{
+    mermaid: true,
+  }},
+  themes: ['@docusaurus/theme-mermaid'],
+
+  themeConfig: {{
+    mermaid: {{
+      theme: {{light: 'neutral', dark: 'dark'}},
+      options: {{
+        fontSize: 16,
+        nodeSpacing: 50,
+        rankSpacing: 50,
+        curve: 'basis',
+        padding: 15,
+      }},
+    }},
+    image: 'img/social-card.jpg',
+    colorMode: {{
+      respectPrefersColorScheme: true,
+    }},
+    navbar: {{
+      title: '{title}',
+      logo: {{
+        alt: '{title} Logo',
+        src: 'img/logo.svg',
+      }},
+      items: [
+        {{
+          type: 'docSidebar',
+          sidebarId: 'tutorialSidebar',
+          position: 'left',
+          label: 'Documentation',
+        }},
+        {{
+          href: '{github_url}',
+          label: 'GitHub',
+          position: 'right',
+        }},
+      ],
+    }},
+    footer: {{
+      style: 'dark',
+      links: [
+        {{
+          title: 'Documentation',
+          items: [
+            {{
+              label: 'Getting Started',
+              to: '/docs/getting-started/installation',
+            }},
+            {{
+              label: 'Overview',
+              to: '/docs/overview',
+            }},
+          ],
+        }},
+        {{
+          title: 'Community',
+          items: [
+            {{
+              label: 'GitHub',
+              href: '{github_url}',
+            }},
+            {{
+              label: 'Issues',
+              href: '{github_url}/issues',
+            }},
+          ],
+        }},
+        {{
+          title: 'More',
+          items: [
+            {{
+              label: 'Repository',
+              href: '{github_url}',
+            }},
+          ],
+        }},
+      ],
+      copyright: `Copyright © ${{new Date().getFullYear()}} {title}. Built with Docusaurus.`,
+    }},
+    prism: {{
+      theme: prismThemes.github,
+      darkTheme: prismThemes.dracula,
+      additionalLanguages: ['bash', 'json', 'python', 'typescript', 'javascript'],
+    }},
+  }} satisfies Preset.ThemeConfig,
+}};
+
+export default config;
+"""
+        return config
