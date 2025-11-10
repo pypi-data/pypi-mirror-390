@@ -1,0 +1,24 @@
+name: Update Docker Hub Description
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docker/README.md
+      - .github/workflows/publish_dockerhub-description.yml
+jobs:
+  dockerHubDescription:
+    runs-on: ubuntu-latest
+    environment: 
+      name: dockerhub
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Docker Hub Description
+      uses: peter-evans/dockerhub-description@v4.0.2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        repository: tillsteinbach/carconnectivity-mqtt
+        short-description: ${{ github.event.repository.description }}
+        readme-filepath: ./docker/README.md

@@ -1,0 +1,55 @@
+# syntax = docker/dockerfile:experimental
+# Here is the build image
+FROM ubuntu:24.04 as basebuilder
+
+ARG DEBIAN_FRONTEND="noninteractive"
+ENV TZ="Etc/UTC"
+
+RUN apt-get update && apt-get install --no-install-recommends -y git pkg-config gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+    apt-get install --no-install-recommends -y python3.12 python3.12-dev python3.12-venv python3-pip python3-wheel build-essential && \
+    apt-get install --no-install-recommends -y libpq-dev libffi-dev libssl-dev rustc cargo libjpeg-dev zlib1g-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM basebuilder as builder
+ARG VERSION
+
+RUN python3.12 -m venv /opt/venv
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+RUN pip3 install --no-cache-dir wheel
+
+RUN pip3 install --no-cache carconnectivity-plugin-mqtt[all]==${VERSION}
+
+FROM ubuntu:24.04 AS baserunner
+
+ARG DEBIAN_FRONTEND="noninteractive"
+
+RUN apt-get update && apt-get install --no-install-recommends -y locales-all gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+    apt-get install --no-install-recommends -y python3.12 python3.12-venv wget && \
+    apt-get install --no-install-recommends -y libpq5 libjpeg8 zlib1g && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM baserunner AS runner-image
+
+ARG DEBIAN_FRONTEND="noninteractive"
+
+ENV CONFIG_FILE="/carconnectivity.json"
+ENV ADDITIONAL_INSTALLS=
+ENV ADDITIONAL_PARAMETERS=
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+COPY --from=builder /opt/venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# make sure all messages always reach console
+ENV PYTHONUNBUFFERED=1
+
+SHELL ["/bin/sh", "-c"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD carconnectivity-mqtt ${CONFIG_FILE} --healthcheckfile /carconnectivity_healthy ${ADDITIONAL_PARAMETERS}
+
+HEALTHCHECK --interval=1m CMD [ -f /carconnectivity_healthy ] && test $(find /carconnectivity_healthy -mmin -2 -type f -exec grep -q "^healthy$" {} \; -print | wc -l) -eq 1 || exit 1
