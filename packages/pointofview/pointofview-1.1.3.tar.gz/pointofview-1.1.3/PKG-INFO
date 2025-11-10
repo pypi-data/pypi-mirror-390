@@ -1,0 +1,99 @@
+Metadata-Version: 2.4
+Name: pointofview
+Version: 1.1.3
+Summary: A Python package for determining a piece of text's point of view (first, second, third, or unknown).
+License-Expression: GPL-3.0-or-later
+License-File: LICENSE
+Keywords: point of view,text analysis,natural language processing
+Author: David L. Day
+Author-email: david@davidlday.com
+Requires-Python: >=3.9,<4.0
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Text Processing :: Linguistic
+Classifier: Typing :: Typed
+Requires-Dist: importlib-metadata (>=5.1,<7.0)
+Project-URL: Homepage, https://github.com/prosegrinder/python-pointofview
+Project-URL: Repository, https://github.com/prosegrinder/python-pointofview
+Description-Content-Type: text/markdown
+
+# pointofview
+
+[![Latest PyPI version](https://img.shields.io/pypi/v/pointofview.svg)](https://pypi.python.org/pypi/pointofview)
+[![Python Poetry CI](https://github.com/prosegrinder/python-pointofview/actions/workflows/python-ci.yml/badge.svg)](https://github.com/prosegrinder/python-pointofview/actions/workflows/python-ci.yml)
+
+A Python package for determining a piece of text's point of view (first, second,
+third, or unknown).
+
+## Installation
+
+`pointofview` is available on PyPI. Simply install it with `pip`:
+
+```bash
+pip install pointofview
+```
+
+You can also install it from source:
+
+```bash
+$ git clone https://github.com/prosegrinder/python-pointofview.git
+Cloning into 'python-pointofview'...
+...
+
+$ cd python-pointofview
+$ python setup.py install
+...
+```
+
+## Usage
+
+`pointofview` guesses a text's point of view by counting point of view pronouns.
+The main function `get_text_pov()` will return 'first', 'second', 'third', or
+null (Python's `None` object):
+
+```python
+>>> import pointofview
+>>> text = "I'm a piece of text written in first person! What are you?"
+>>> pointofview.get_text_pov(text)
+'first'
+```
+
+There are two other helper functions as well.
+
+`get_word_pov()` returns the point of view of a single word:
+
+```python
+>>> pointofview.get_word_pov("I")
+'first'
+>>> pointofview.get_word_pov("nope")
+None
+```
+
+`parse_pov_words()` returns a dict containing all first-, second-, and
+third-person point-of-view words:
+
+<!-- markdownlint-disable MD013 -->
+
+```python
+>>> text = """
+... When I try to analyze my own cravings, motives, actions and so forth, I surrender to a sort of retrospective imagination which feeds the analytic faculty with boundless alternatives and which causes each visualized route to fork and re-fork without end in the maddeningly complex prospect of my past.
+... """
+>>> pointofview.parse_pov_words(text)
+{'first': ['i', 'i'], 'second': [], 'third': []}
+```
+
+<!-- markdownlint-enable MD013 -->
+
