@@ -1,0 +1,369 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module fortrancore ! in 
+    interface 
+        subroutine procline(line) ! in :fortrancore:src/fortran/cli/nlsl.f90
+            use nlsnam
+            use stdio
+            use symdef
+            character*80 intent(in) :: line
+        end subroutine procline
+        subroutine fitl ! in :fortrancore:src/fortran/least_squares/fitl.f90
+            use expdat
+            use eprprm
+            use parcom
+            use stdio
+            use rnddbl
+            use lpnam
+            use timer
+            use iterat
+            use mspctr
+            use nlsnam
+            use lmcom
+            use errmsg
+            use nlsdim
+        end subroutine fitl
+        subroutine wrspc ! in :fortrancore:src/fortran/io_preprocessing/writr.f90
+            use nlsdim
+            use expdat
+            use parcom
+            use lmcom
+            use iterat
+            use nlsnam
+            use mspctr
+            use stdio
+        end subroutine wrspc
+        subroutine nlsinit ! in :fortrancore:src/fortran/cli/nlsl.f90
+            use expdat
+            use eprprm
+            use parcom
+            use basis
+            use stdio
+            use iterat
+            use tridag
+            use mspctr
+            use nlsnam
+            use lmcom
+            use nlsdim
+        end subroutine nlsinit
+        subroutine single_point(iflag) ! in :fortrancore:src/fortran/lfun.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use tridag
+            use mspctr
+            use ftwork
+            use parcom
+            use basis
+            use errmsg
+            use pidef
+            use stdio
+            use iterat
+            use rnddbl
+            integer intent(in) :: iflag
+        end subroutine single_point
+        subroutine lfun(m,n,x,fvec,fjac,ldfjac,iflag) ! in :fortrancore:src/fortran/lfun.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use tridag
+            use mspctr
+            use ftwork
+            use parcom
+            use basis
+            use errmsg
+            use pidef
+            use stdio
+            use iterat
+            use rnddbl
+            integer intent(in) :: m
+            integer intent(in) :: n
+            double precision intent(inout),dimension(n),depend(n) :: x
+            double precision intent(inout),dimension(m),depend(m) :: fvec
+            integer intent(in) :: ldfjac
+            integer intent(in) :: iflag
+            double precision intent(inout),dimension(ldfjac,mxjcol),depend(ldfjac) :: fjac
+        end subroutine lfun
+        subroutine xpack(x,n) ! in :fortrancore:src/fortran/least_squares/fitl.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use parcom
+            use rnddbl
+            integer intent(in) :: n
+            double precision intent(inout),dimension(n),depend(n) :: x
+        end subroutine xpack
+        subroutine setspc(isite,ise) ! in :fortrancore:src/fortran/io_preprocessing/setspc.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use parcom
+            use basis
+            use errmsg
+            use iterat
+            use rnddbl
+            use stdio
+            use pidef
+            integer intent(in) :: isite
+            integer intent(in) :: ise
+        end subroutine setspc
+        integer function ipfind(token,lth) ! in :fortrancore:src/fortran/core/ipsfind.f90
+            use nlsdim
+            use parcom
+            use eprprm
+            use lpnam
+            character*30 intent(in) :: token
+            integer intent(in) :: lth
+        end function ipfind
+        subroutine setprm(ixparm,ixsite,fval) ! in :fortrancore:src/fortran/cli/setprm.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use tridag
+            use parcom
+            use symdef
+            use stdio
+            integer intent(in) :: ixparm
+            integer intent(in) :: ixsite
+            double precision intent(in) :: fval
+        end subroutine setprm
+        subroutine addprm(ix,ix2,ibd,prmn,prmx,prsc,step,ident) ! in :fortrancore:src/fortran/cli/addprm.f90
+            use nlsdim
+            use parcom
+            integer intent(in) :: ix
+            integer intent(in) :: ix2
+            integer intent(in) :: ibd
+            double precision intent(in) :: prmn
+            double precision intent(in) :: prmx
+            double precision intent(in) :: prsc
+            double precision intent(in) :: step
+            character*9 intent(in) :: ident
+        end subroutine addprm
+        subroutine setipr(ixparm,ixsite,ival) ! in :fortrancore:src/fortran/cli/setprm.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use parcom
+            use tridag
+            use basis
+            use stdio
+            integer intent(in) :: ixparm
+            integer intent(in) :: ixsite
+            integer intent(in) :: ival
+        end subroutine setipr
+        subroutine rmvprm(ix,ix2,ident) ! in :fortrancore:src/fortran/cli/rmvprm.f90
+            use nlsdim
+            use parcom
+            use eprprm
+            use stdio
+            integer intent(in) :: ix
+            integer intent(in) :: ix2
+            character*30 intent(in) :: ident
+        end subroutine rmvprm
+        double precision function getprm(ixparm,ixsite) ! in :fortrancore:src/fortran/cli/setprm.f90
+            use nlsdim
+            use eprprm
+            use expdat
+            use tridag
+            use parcom
+            use symdef
+            use stdio
+            integer intent(in) :: ixparm
+            integer intent(in) :: ixsite
+        end function getprm
+        subroutine sscale(data,spct,wspct,ldspct,work,nsite,npt,ctol,noneg,iscal,sfac,resid) ! in :fortrancore:src/fortran/least_squares/sscale.f90
+            use nlsdim
+            double precision intent(inout),dimension(npt),depend(npt) :: data
+            double precision intent(inout),dimension(npt),depend(npt) :: work
+            double precision intent(inout),dimension(ldspct,nsite),depend(ldspct,nsite) :: spct
+            double precision intent(inout),dimension(ldspct,nsite),depend(ldspct,nsite) :: wspct
+            integer intent(in) :: ldspct
+            integer intent(in) :: nsite
+            integer intent(in) :: npt
+            double precision intent(in) :: ctol
+            integer intent(in) :: noneg
+            integer intent(inout),dimension(nsite),depend(nsite) :: iscal
+            double precision intent(inout),dimension(nsite),depend(nsite) :: sfac
+            double precision intent(inout),dimension(npt),depend(npt) :: resid
+        end subroutine sscale
+        module nlsdim ! in :fortrancore:src/fortran/core/nlsdim.f90
+            integer, parameter,optional :: niprm=24
+            integer, parameter,optional :: mxstep=2000
+            integer, parameter,optional :: mxdim=45000
+            integer, parameter,optional :: nvprm=35
+            integer, parameter,optional :: mxinp=4096
+            integer, parameter,optional :: mxsite=3
+            integer, parameter,optional,depend(mxsite,mxspc) :: mxtdm=12
+            integer, parameter,optional,depend(mxdim) :: mxdim1=45001
+            integer, parameter,optional,depend(mxspc,mxspt) :: mxpt=2048
+            integer, parameter,optional :: nsymtr=3
+            integer, parameter,optional,depend(mxstep,mxsite,mxspc) :: mxtdg=24000
+            integer, parameter,optional :: mxel=50000000
+            integer, parameter,optional :: nfprm=43
+            integer, parameter,optional :: nflmpr=4
+            integer, parameter,optional :: nilmpr=4
+            integer, parameter,optional :: mxsph=4
+            integer, parameter,optional :: mxspc=4
+            integer, parameter,optional,depend(mxsite,mxjcol) :: mxtv=25
+            integer, parameter,optional :: mxfile=4
+            integer, parameter,optional :: nsymbl=5
+            integer, parameter,optional :: nalias=12
+            integer, parameter,optional :: mxvar=10
+            integer, parameter,optional :: mxcmt=16
+            integer, parameter,optional :: mxmts=13
+            integer, parameter,optional,depend(mxsite,mxvar,mxspc) :: mxjcol=mxvar+mxsite+mxspc
+            integer, parameter,optional :: mxspt=512
+        end module nlsdim
+        module lmcom ! in :fortrancore:src/fortran/core/lmcom.f90
+            use nlsdim
+            double precision, save,dimension((mxtv),(mxtv)) :: tcov
+            double precision, save,dimension((mxjcol)) :: gnvec
+            double precision, save,dimension((mxjcol)) :: gradf
+            double precision, save,target,dimension(nflmpr) :: flmprm
+            double precision, save,dimension((mxjcol)) :: qtf
+            integer, save :: lmflag
+            integer, save,target,dimension(nilmpr) :: ilmprm
+            double precision, save,dimension((mxjcol),(mxjcol)) :: corr
+            integer, save, intent(inout) :: nprint
+            double precision, save,dimension((mxpt),(mxjcol)) :: fjac
+            double precision, save,dimension((mxjcol)) :: x
+            double precision, save,target,dimension((mxpt)) :: fvec
+            double precision, save,dimension((mxjcol)) :: diag
+            character*10, save,dimension(nflmpr) :: flmprm_name
+            character*10, save,dimension(nilmpr) :: ilmprm_name
+            subroutine lmcom_init ! in :fortrancore:src/fortran/core/lmcom.f90
+            end subroutine lmcom_init
+        end module lmcom
+        module parcom ! in :fortrancore:src/fortran/core/parcom.f90
+            use nlsdim
+            double precision, save,target,dimension(nfprm,mxsite) :: fparm
+            double precision, save,target,dimension(mxvar),intent(inout) :: prmax
+            double precision, save,target,dimension(mxvar),intent(inout) :: prmin
+            double precision, save,target,dimension(mxvar),intent(inout) :: prscl
+            double precision, save,target,dimension(mxvar),intent(inout) :: xfdstp
+            integer, save,target,dimension(niprm,mxsite) :: iparm
+            integer, save,dimension(nfprm,mxsite) :: ixx
+            integer, save,target,dimension(mxvar),intent(inout) :: ibnd
+            integer, save,target,dimension(mxvar),intent(inout) :: ixpr
+            integer, save,target,dimension(mxvar),intent(inout) :: ixst
+            integer, save :: nser
+            integer, save,intent(inout) :: nprm
+            integer, pointer, save, intent(inout) :: pnsite !f2py name: nsite
+            logical, save :: mtxclc
+            character*9, save,dimension(mxjcol) :: tag
+        end module parcom
+        module expdat ! in :fortrancore:src/fortran/core/expdat.f90
+            use nlsdim
+            double precision, save,target,dimension(mxpt) :: data
+            double precision, save,target,dimension(mxinp,3) :: spltmp
+            double precision, save,target,dimension(mxspc) :: rmsn
+            double precision, save,target,dimension(mxspc) :: sbi
+            double precision, save,target,dimension(mxspc) :: sdb
+            double precision, save,target,dimension(mxspc) :: srng
+            double precision, save,target,dimension(mxspc) :: shft
+            double precision, save,target,dimension(mxspc) :: sb0
+            double precision, save,target,dimension(mxspc) :: sphs
+            double precision, save,target,dimension(mxspc) :: spsi
+            double precision, save,target,dimension(mxspc) :: slb
+            double precision, save,target,dimension(mxspc) :: tmpshft
+            integer, save,target,dimension(mxspc) :: iform
+            integer, save,target,dimension(mxspc) :: ibase
+            integer, save,target,dimension(mxspc) :: nft
+            integer, save,target,dimension(mxspc) :: npts
+            integer, save,target,dimension(mxspc) :: ishft
+            integer, save,target,dimension(mxspc) :: idrv
+            integer, save,target,dimension(mxspc) :: ixsp
+            integer, save,target,dimension(mxspc) :: nrmlz
+            integer, save :: nspc
+            integer, save :: nwin
+            integer, save :: ndatot
+            integer, save :: ishglb
+            integer, save :: inform
+            integer, save :: bcmode
+            integer, save :: drmode
+            integer, save :: nspline
+            integer, save :: shftflg
+            integer, save :: normflg
+            integer, save :: written
+            character*30, save,dimension(mxspc) :: dataid
+            character*20, save,dimension(mxspc) :: wndoid
+        end module expdat
+        module iterat ! in :fortrancore:src/fortran/core/iterat.f90
+            integer, save :: iter
+            integer, save :: iwflag
+            double precision, save :: fnorm
+            double precision, save :: chisqr
+            double precision, save :: rdchsq
+            logical, save :: newitr
+            logical, save :: covarok
+            logical, save :: xreset
+        end module iterat
+        module stdio ! in :fortrancore:src/fortran/cli/stdio.f90
+            integer, parameter,optional :: lulog=4
+            integer, parameter,optional :: luttyi=5
+            integer, parameter,optional :: luttyo=6
+            integer, save :: lucmd
+            integer, save :: luecho
+            integer, save :: luout
+            integer, save :: hltcmd
+            integer, save :: hltfit
+            integer, save :: itrace
+            logical, save :: warn
+            logical, save :: exitprog
+        end module stdio
+        module eprprm ! in :eprprm:eprprm.f90
+            use parcom
+            use nlsdim
+            double precision, save,target,dimension(nfprm) :: fepr
+            character*10, save,dimension(nfprm) :: fepr_name
+            integer, save,target,dimension(niprm) :: iepr
+            character*10, save,dimension(niprm) :: iepr_name
+            integer, parameter,optional :: iphase=1
+            integer, parameter,optional :: igib0=2
+            integer, parameter,optional :: igib2=3
+            integer, parameter,optional :: iin2=1
+            integer, parameter,optional :: iipdf=2
+            integer, parameter,optional :: iist=3
+            integer, parameter,optional :: iml=4
+            integer, parameter,optional :: iwyy=5
+            integer, parameter,optional :: igyy=8
+            integer, parameter,optional :: iayy=11
+            integer, parameter,optional :: idy=14
+            integer, parameter,optional :: igamman=igaman
+            integer, parameter,optional :: ishiftr=ishift
+            subroutine prm_ptr_init ! in :eprprm:eprprm.f90:eprprm
+            end subroutine prm_ptr_init
+        end module eprprm
+        module lpnam ! in :fortrancore:src/fortran/core/lpnam.f90
+            use nlsdim
+            integer, parameter,optional :: parnam_strlen=6
+            integer, parameter,optional :: iprnam_strlen=6
+            integer, parameter,optional :: alias_strlen=6
+            integer, parameter,optional :: symstr_strlen=10
+            integer, parameter,optional :: symbol_strlen=10
+            character*6, save,dimension(nfprm) :: parnam
+            cf2py intent(in) parnam
+            character*6, save,dimension(niprm) :: iprnam
+            cf2py intent(in) iprnam
+            character*6, save,dimension(nalias) :: alias1
+            cf2py intent(in) alias1
+            character*6, save,dimension(nalias) :: alias2
+            cf2py intent(in) alias2
+            character*10, save,target,dimension(nsymtr) :: symstr
+            character*10, save,target,dimension(nsymbl) :: symbol
+            integer, save,target,dimension(nsymbl) :: symval
+        end module lpnam
+        module mspctr ! in :fortrancore:src/fortran/core/mspctr.f90
+            use nlsdim
+            integer, save,target,dimension((mxsite)) :: iscal
+            double precision, save,target,dimension((mxsite),(mxspc)) :: sfac
+            double precision, save,target,dimension((mxpt),(mxsite)) :: spectr
+            integer, save :: iscglb
+            double precision, save,target,dimension((mxpt),(mxsite)) :: wspec
+        end module mspctr
+    end interface 
+end python module fortrancore
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/
