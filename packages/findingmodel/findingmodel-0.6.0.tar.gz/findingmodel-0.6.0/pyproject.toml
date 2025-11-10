@@ -1,0 +1,115 @@
+[project]
+name = "findingmodel"
+version = "0.6.0"
+description = "Definition and tools for Open Imaging Finding Models"
+authors = [
+    { name = "Tarik Alkasab", email = "tarik@alkasab.org" },
+    { name = "Vijay Dawal", email = "vijaydawal@microsoft.com" },
+]
+requires-python = ">=3.11"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+keywords = [
+    "finding model",
+    "common data element",
+    "medical imaging",
+    "data model",
+    "radiology"
+]
+
+dependencies = [
+    "click>=8.1.8",
+    "jinja2>=3.1.6",
+    "openai>=1.76",
+    "platformdirs>=4.0.0",
+    "pooch>=1.8.0",
+    "pydantic[email]>=2.11.3",
+    "pydantic-settings>=2.9.1",
+    "rich>=13.9.4",
+    "prompt-toolkit>=3.0.48",
+    "loguru>=0.7.3",
+    "pydantic-ai-slim[openai,tavily,anthropic]>=0.3.2",
+    "tavily-python>=0.6.0",
+    "duckdb>=1.3.2",
+    "httpx>=0.28.0",
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+
+[project.urls]
+Homepage = "https://github.com/openimagingdata/findingmodel"
+Issues = "https://github.com/openimagingdata/findingmodel/issues"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.7.2",
+    "jupyter>=1.1.1",
+    "logfire>=1.0.0",  # OpenTelemetry observability platform
+    "pydantic-evals>=0.1.0",
+    "go-task-bin>=3.43.3",
+]
+
+[project.scripts]
+fm-tool = "findingmodel.cli:cli"
+findingmodel-mcp = "findingmodel.mcp_server:main"
+
+[build-system]
+requires = ["uv_build>=0.7.19,<0.8.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["__pycache__", ".venv", "dist"]
+preview = true
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = [
+    "B", # flake8-bugbear
+    "C", # flake8-comprehensions
+    "I", # isort
+    "ANN", # type annotations
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "RUF", # ruff
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"test/**/*.py" = ["ANN401"]  # Allow Any type in test files for mock functions
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["test"]
+pythonpath = ["."]
+markers = [
+    "callout: Marks test as calling on non-local services",
+]
+filterwarnings = [
+    # Filter out our own deprecation warnings from the tools module
+    "ignore:.*is deprecated, use.*instead:DeprecationWarning",
+    # Ignore pydantic-ai OpenAIModel deprecation warning
+    "ignore:`OpenAIModel` was renamed to `OpenAIChatModel`:DeprecationWarning",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_return_any = true
+# Only check file sin the src directory
+files = [
+    "src/findingmodel",
+]
