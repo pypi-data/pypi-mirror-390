@@ -1,0 +1,227 @@
+Metadata-Version: 2.4
+Name: ytapinvl
+Version: 1.1.2
+Summary: CLI resmi YT API by Nauval — cek role, harga, dan beli role via QRIS
+Author: M. Nauval Sayyid Abdillah
+License: MIT
+Project-URL: Homepage, https://ytdlpyton.nvlgroup.my.id
+Project-URL: Repository, https://github.com/nauvalunesa/ytapinvl
+Keywords: ytapi,qris,nauval,fastapi,midtrans
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.31.0
+Dynamic: license-file
+
+# 🎬 YT API CLI by Nauval (ytapinvl)
+
+CLI resmi untuk berinteraksi dengan **YT API by Nauval** —  
+cek informasi akun, lihat daftar harga role, dan beli role via QRIS langsung dari terminal.
+
+---
+
+## 🚀 Instalasi
+```bash
+pip install ytapinvl
+
+Atau update ke versi terbaru:
+
+pip install -U ytapinvl
+
+
+---
+
+⚙️ Konfigurasi Awal
+
+Atur nomor WhatsApp dan (opsional) API key:
+
+ytapinvl config --set-wa 6285177470790
+ytapinvl config --set-apikey nvlkey-123abc456
+
+> Semua konfigurasi disimpan di ~/.config/ytapinvl/config.json
+
+
+
+
+---
+
+🧠 Daftar Perintah Utama
+
+Perintah	Fungsi
+
+ytapinvl me	Cek informasi akun / role (via IP atau API key)
+ytapinvl harga	Lihat daftar harga role (interaktif)
+ytapinvl buy	Beli role via QRIS & auto cek status 8 menit
+ytapinvl config	Atur konfigurasi lokal
+
+
+
+---
+
+🔍 1. Cek Akun atau IP Publik
+
+🔹 Mode Otomatis
+
+ytapinvl me
+
+📤
+
+🤖 Mode otomatis (ambil IP publik) → https://ytdlpyton.nvlgroup.my.id/checkme
+{
+  "ip": "103.122.88.101",
+  "role": "petualang_gratis"
+}
+
+🔹 Mode IP Manual
+
+ytapinvl me --ip 103.122.55.10
+
+📤
+
+🌐 Mode IP publik → /checkme?ip=103.122.55.10
+{
+  "ip": "103.122.55.10",
+  "role": "masterpro",
+  "status": "active"
+}
+
+🔹 Mode API Key
+
+ytapinvl me --apikey nvlkey-abc123
+
+📤
+
+🔑 Mode API Key aktif → /checkme?ip=halo
+Header: X-API-Key: nvlkey-abc123
+{
+  "username": "Nauval",
+  "role": "strategiselit",
+  "quota": "unlimited",
+  "expire_in": "29 days"
+}
+
+
+---
+
+💰 2. Lihat Daftar Harga Role
+
+ytapinvl harga
+
+📤
+
+📦 Mengambil daftar harga role dari: https://ytdlpyton.nvlgroup.my.id/topup/roles
+
+💰 Daftar Role Tersedia:
+────────────────────────────
+1. petualang_gratis       Rp0   (- hari)
+2. masterpro              Rp20,000  (30 hari)
+3. strategiselit          Rp35,000  (30 hari)
+4. creatorplus            Rp50,000  (60 hari)
+
+🔹 Masukkan nama atau nomor role yang ingin dilihat detailnya: 2
+
+📋 Detail Role:
+────────────────────────────
+Nama    : masterpro
+Harga   : Rp20,000
+Durasi  : 30 hari
+Fitur   :
+   - Download unlimited
+   - Akses prioritas
+────────────────────────────
+
+
+---
+
+🪙 3. Beli Role via QRIS
+
+🔹 Mode IP Publik
+
+ytapinvl buy --role masterpro --wa 6285177470790 --ip 103.122.55.10
+
+📤
+
+🌐 Mode IP publik aktif — menggunakan IP: 103.122.55.10
+✅ Transaksi berhasil dibuat: PAY-MASTERPRO-001
+🔗 QRIS Link: https://app.midtrans.com/snap/v2/pay/PAY-MASTERPRO-001
+⏳ Menunggu pembayaran (cek setiap 30 detik hingga 8 menit)...
+
+🔹 Mode API Key
+
+ytapinvl buy --role strategiselit --wa 6285177470790 --apikey nvlkey-abc123
+
+📤
+
+🔑 Mode API Key aktif
+✅ Transaksi berhasil dibuat: PAY-STRATEGI-002
+🔗 QRIS Link: https://app.midtrans.com/snap/v2/pay/PAY-STRATEGI-002
+⏳ Menunggu pembayaran...
+
+🔹 Mode Otomatis (tanpa --ip / --apikey)
+
+ytapinvl buy --role masterpro --wa 6285177470790
+
+📤
+
+🌍 Auto detect IP dari /checkme: 103.122.88.101
+✅ Transaksi berhasil dibuat: PAY-MASTERPRO-003
+🔗 QRIS Link: ...
+⏳ Menunggu pembayaran...
+
+
+---
+
+📦 4. Atur Config Lokal
+
+ytapinvl config
+
+📤
+
+{
+  "base_url": "https://ytdlpyton.nvlgroup.my.id",
+  "wa": "6285177470790",
+  "last_ip": "103.122.88.101",
+  "apikey": "nvlkey-abc123"
+}
+
+
+---
+
+🔑 Mode IP vs API Key
+
+Mode	Query ip=	Header	Deskripsi
+
+IP Manual	IP publik kamu	❌	Gunakan alamat IP langsung
+API Key	halo	✅ X-API-Key	Gunakan API Key untuk akun premium
+Auto	IP hasil /checkme	❌	Sistem deteksi otomatis IP server
+
+
+
+---
+
+🧰 Lokasi File Config
+
+File	Lokasi
+
+Konfigurasi utama	~/.config/ytapinvl/config.json
+Riwayat transaksi	~/.config/ytapinvl/history.json
+
+
+
+---
+
+🧑‍💻 Tentang Developer
+
+M. Nauval Sayyid Abdillah
+Creator of YT API by Nauval
+📍 Universitas Negeri Surabaya — Data Science 
+🌐 https://ytdlpyton.nvlgroup.my.id
+
+
+---
+
+📜 Lisensi
+
+Proyek ini dilindungi di bawah lisensi MIT — silakan gunakan dan modifikasi dengan menyertakan atribusi.
+
+MIT License © 2025 M. Nauval Sayyid Abdillah
