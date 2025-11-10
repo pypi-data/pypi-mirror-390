@@ -1,0 +1,1 @@
+from cqp_tree.frontends.deptreepy.translator import translate_deptreepy
