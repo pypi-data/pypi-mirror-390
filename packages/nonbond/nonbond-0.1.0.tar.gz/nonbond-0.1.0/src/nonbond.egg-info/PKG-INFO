@@ -1,0 +1,99 @@
+Metadata-Version: 2.4
+Name: nonbond
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: ase>=3.26.0
+Requires-Dist: torch-pme>=0.3.2
+Requires-Dist: vesin-torch>=0.4.2
+
+# Nonbond
+
+**Nonbond** is an [ASE (Atomic Simulation Environment)](https://ase-lib.org/) calculator designed for computing **non-bonded interactions**.  
+Currently, it is primarily intended for use in specific contexts such as **GCMC simulations**, as it outputs only the **total energy** and **per-atom energies** (forces are not yet implemented).
+
+---
+
+## 🧩 Features
+
+- Lennard-Jones (LJ) potential energy calculations  
+- Efficient long-range Coulomb interaction algorithms  
+- Fast neighbor list construction using **PyTorch** and **vesin**  
+- **GPU acceleration** via PyTorch  
+
+---
+
+## 🧠 Requirements
+
+- Python ≥ 3.12  
+- ASE ≥ 3.26.0  
+- torch-pme ≥ 0.3.2  
+- vesin-torch ≥ 0.4.2  
+- PyTorch (latest stable version recommended)
+
+---
+
+## ⚙️ Installation
+
+Install via **pip**:
+
+```bash
+pip install nonbond
+```
+
+# 🚀 Example
+
+```python
+from ase import Atoms
+from nonbond import Nonbond
+import numpy as np
+
+# Define Lennard-Jones parameters for SPC/E water
+epsilon = {
+    'Ow': 0.15535,
+    'Hw': 0.0,
+}
+
+sigma = {
+    'Ow': 3.16600,
+    'Hw': 1.0,
+}
+
+# Create calculator
+calc = Nonbond(
+    epsilon=epsilon,
+    sigma=sigma,
+    rc=14.0,
+    charge_method='ewald',  # Options: 'direct', 'ewald', 'pme', 'p3m'
+    accuracy=1e-5
+)
+
+# Build an SPC/E water molecule
+atoms = Atoms(
+    'OH2',
+    positions=[
+        [0.00000, -0.06461, 0.00000],
+        [0.81649,  0.51275, 0.00000],
+        [-0.81649, 0.51275, 0.00000]
+    ],
+    cell=[40.0, 40.0, 40.0],
+    pbc=True
+)
+
+# Assign atom types and charges
+atoms.set_array('type', np.array(['Ow', 'Hw', 'Hw']))
+atoms.set_initial_charges([-0.8476, 0.4238, 0.4238])
+
+# Attach calculator and compute energy
+atoms.calc = calc
+energy = atoms.get_potential_energy()
+print(f"Potential energy: {energy:.6f} eV")
+```
+---
+
+# 📝 Notes
+
+- Only energy calculations are currently supported.
+- Force and stress tensor support will be added in future releases.
+
