@@ -1,0 +1,83 @@
+[project]
+name = "griptape-cloud-client"
+version = "0.1.1"
+description = "Python client for Griptape Cloud API"
+readme = "README.md"
+requires-python = ">=3.12.0, <3.13"
+dependencies = [
+  "attrs>=22.2.0",
+  "httpx>=0.28.1",
+  "PyYAML>=6.0.3",
+  "python-dateutil>=2.8.0",
+]
+
+[dependency-groups]
+dev = [
+  "mdformat>=0.7.22",
+  "pyright>=1.1.396",
+  "ruff>=0.11.0",
+  "typos>=1.30.2",
+  "openapi-python-client>=0.26.2",
+]
+test = ["pytest>=8.3.5"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+exclude = [".venv", "LICENSE", "griptape_cloud/griptape_cloud_client/**/*"]
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+exclude = ["griptape_cloud_client/**/*"]
+ignore = [
+  "TD002",   # Intentional
+  "FIX002",  # Intentional
+  "D101",    # Intentional
+  "D102",    # Intentional
+  "D107",    # Intentional
+  "ANN002",  # Intentional
+  "ANN003",  # Intentional
+  "ANN401",  # Intentional
+  "COM812",  # Intentional
+  "E501",    # TODO: https://github.com/griptape-ai/griptape-nodes/issues/834 
+  "D100",    # TODO: https://github.com/griptape-ai/griptape-nodes/issues/835 
+  "BLE001",  # TODO: https://github.com/griptape-ai/griptape-nodes/issues/839
+  "B026",    # TODO: https://github.com/griptape-ai/griptape-nodes/issues/836 
+  "SLF001",  # TODO :https://github.com/griptape-ai/griptape-nodes/issues/838 
+  "SIM108",  # Intentional
+  "SIM110",  # Intentional
+  "D105",    # Intentional
+  "N802",    # TODO: https://github.com/griptape-ai/griptape-nodes/issues/840
+  "TRY400",  # Intentional
+  "FBT003",  # Intentional
+  "RET504",  # Intentional
+  "PLC0415", # Intentional
+]
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+include = ["."]
+exclude = [
+  "griptape_cloud_client/**/*",
+  "griptape_cloud_client/generated/**/*",
+  ".venv",
+  "**/node_modules",
+  "**/__pycache__",
+  "**/.*",
+]
+pythonVersion = "3.12"
+reportIncompatibleMethodOverride = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
