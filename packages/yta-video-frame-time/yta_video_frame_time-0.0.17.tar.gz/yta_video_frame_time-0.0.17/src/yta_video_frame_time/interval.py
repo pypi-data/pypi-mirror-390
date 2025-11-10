@@ -1,0 +1,2045 @@
+"""
+TODO: This module is general so we should send it
+to another library related to time intervals and
+not specifically video frame times... Move it.
+"""
+from yta_video_frame_time.decorators import parameter_to_time_interval, parameter_to_new_time_interval
+from yta_video_frame_time.t_fraction import THandler
+from yta_validation.parameter import ParameterValidator
+from quicktions import Fraction
+from typing import Union
+
+
+Number = Union[int, float, Fraction]
+"""
+Custom type to represent numbers.
+"""
+TimeIntervalType = Union['NewTimeInterval', tuple[float, float]]
+"""
+The type we accept as time interval, that could be a
+tuple we transform into a time interval.
+"""
+
+"""
+TODO: Maybe we can add the possibility of having an
+`fps` value when initializing it to be able to force
+the time interval values to be multiple of `1/fps`.
+But this, if implemented, should be `TimeIntervalFPS`
+or similar, and inheritance from this one but forcing
+the values to be transformed according to that `1/fps`.
+"""
+class TimeInterval:
+    """
+    Class to represent a time interval, which is a tuple
+    of time moments representing the time range 
+    `[start, end)`.
+    """
+
+    @property
+    def duration(
+        self
+    ) -> float:
+        """
+        The `duration` of the time interval.
+        """
+        return self.end - self.start
+    
+    @property
+    def copy(
+        self
+    ) -> 'TimeInterval':
+        """
+        A copy of this instance.
+        """
+        return TimeInterval(
+            start = self.start,
+            end = self.end
+        )
+    
+    @property
+    def as_tuple(
+        self
+    ) -> tuple[float, float]:
+        """
+        The time interval but as a `(start, end)` tuple.
+        """
+        return (self.start, self.end)
+    
+    @property
+    def cutter(
+        self
+    ) -> 'TimeIntervalCutter':
+        """
+        Shortcut to the static class `TimeIntervalCutter` that
+        is capable of cutting time intervals.
+        """
+        return TimeIntervalCutter
+
+    def __init__(
+        self,
+        start: Number,
+        end: Number,
+    ):
+        """
+        The `end` value must be greater than the `start` value.
+        """
+        if start > end:
+            raise Exception('The `start` value provided is greater than the `end` value provided.')
+        
+        if start == end:
+            raise Exception('The `start` value provided is exactly the `end` value provided.')
+
+        self.start: float = start
+        """
+        The original `start` of the time segment.
+        """
+        self.end: float = end
+        """
+        The original `end` of the time segment.
+        """
+
+    # TODO: Is this that necessary (?)
+    def _validate_t(
+        self,
+        t: Number,
+        do_include_start: bool = False,
+        do_include_end: bool = False
+    ) -> None:
+        """
+        Validate that the provided `t` value is between the `start`
+        and the `end` parameters provided, including them or not
+        according to the boolean parameters provided.
+        """
+        ParameterValidator.validate_mandatory_number_between(
+            name = 't',
+            value = t,
+            lower_limit = self.start,
+            upper_limit = self.end,
+            do_include_lower_limit = do_include_start,
+            do_include_upper_limit = do_include_end
+        )
+
+    def cut(
+        self,
+        start: Number,
+        end: Number
+    ) -> tuple[Union['TimeInterval', None], Union['TimeInterval', None], Union['TimeInterval', None]]:
+        """
+        Cut a segment from the given `start` to the also provided
+        `end` time moments of this time interval instance.
+
+        This method will return a tuple of 3 elements including the
+        segments created by cutting this time interval in the order
+        they were generated, but also having the 4th element always
+        as the index of the one specifically requested by the user.
+        The tuple will include all the segments at the begining and
+        the rest will be None (unless the 4th one, which is the
+        index).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `start=3` and `end=4`
+        will generate `((2, 3), (3, 4), (4, 5), 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=4`
+        will generate `((2, 4), (4, 5), None, 0)`.
+        - A time interval of `[2, 5)` cut with `start=4` and `end=5`
+        will generate `((2, 4), (4, 5), None, 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=5`
+        will generate `((2, 5), None, None, 0)`.
+
+        As you can see, the result could be the same in different
+        situations, but it's up to you (and the specific method in
+        which you are calling to this one) to choose the tuple you
+        want to return.
+        """
+        return self.cutter.from_to(
+            time_interval = self,
+            start = start,
+            end = end
+        )
+    
+    def cutted(
+        self,
+        start: Number,
+        end: Number
+    ) -> 'TimeInterval':
+        """
+        Get this time interval instance but cutted from the `start`
+        to the `end` time moments provided.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        tuples = self.cut(
+            start = start,
+            end = end
+        )
+
+        return tuples[tuples[3]]
+    
+    def trim_start(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming this one's start the amount of seconds
+        provided as the `t_variation` parameter. The first tuple is
+        the remaining, and the second one is the new time interval
+        requested by the user.
+
+        This method will raise an exception if the new `start` value
+        becomes a value over the time interval `end` value or the
+        `limit`, that must be greater than the `start` and lower
+        than the time interval `end` value.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        return self.cutter.trim_start(
+            time_interval = self,
+            t_variation = t_variation,
+            limit = limit
+        )
+    
+    def trimmed_start(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> 'TimeInterval':
+        """
+        Get this time interval instance but trimmed from the `start`
+        the `t_variation` amount of seconds provided.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        return self.trim_start(
+            t_variation = t_variation,
+            limit = limit
+        )[1]
+    
+    def trim_end(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming this one's end the amount of seconds
+        provided as the `t_variation` parameter. The first tuple is
+        the one requested by the user, and the second one is the
+        remaining.
+
+        This method will raise an exception if the new `end` value
+        becomes a value under the time interval `start` value or
+        the `limit`, that must be greater than the `start` and lower
+        than the time interval `end` value.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        return self.cutter.trim_end(
+            time_interval = self,
+            t_variation = t_variation,
+            limit = limit
+        )
+    
+    def trimmed_end(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> 'TimeInterval':
+        """
+        Get this time interval instance but trimmed from the `end`
+        the `t_variation` amount of seconds provided.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        return self.trim_end(
+            t_variation = t_variation,
+            limit = limit
+        )[0]
+    
+    def split(
+        self,
+        t: Number
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Split the time interval at the provided `t` time moment
+        and get the 2 new time intervals as a result (as a tuple).
+
+        This method will raise an exception if the `t` value 
+        provided is a limit value (or above).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `t=3` will generate
+        `((2, 3), (3, 5))`.
+        - A time interval of `[2, 5)` cut with `t=4` will generate
+        `((2, 4), (4, 5))`.
+        - A time interval of `[2, 5)` cut with `t>=5` will raise
+        exception.
+        - A time interval of `[2, 5)` cut with `t<=2` will raise
+        exception.
+        """
+        return self.cutter.split(
+            time_interval = self,
+            t = t
+        )
+    
+    def splitted_left(
+        self,
+        t: Number
+    ) -> 'TimeInterval':
+        """
+        Split this time interval instance by the `t` time moment
+        provided and obtain the time interval from the left side,
+        which goes from this time interval `start` time moment to
+        the `t` provided.
+        """
+        return self.split(t)[0]
+    
+    def splitted_right(
+        self,
+        t: Number
+    ) -> 'TimeInterval':
+        """
+        Split this time interval instance by the `t` time moment
+        provided and obtain the time interval from the right side,
+        which goes from the `t` provided to the time interval `end`
+        time moment.
+        """
+        return self.split(t)[1]
+
+    # Other methods below
+    def is_t_included(
+        self,
+        t: float,
+        do_include_end: bool = False
+    ) -> bool:
+        """
+        Check if the `t` time moment provided is included in
+        this time interval, including the `end` only if the
+        `do_include_end` parameter is set as `True`.
+        """
+        return TimeIntervalUtils.a_includes_t(
+            t = t,
+            time_interval_a = self,
+            do_include_end = do_include_end
+        )
+    
+    def is_adjacent_to(
+        self,
+        time_interval: 'TimeInterval'
+    ) -> bool:
+        """
+        Check if the `time_interval` provided is adjacent
+        to this time interval, which means that the `end`
+        of one interval is also the `start` of the other
+        one.
+
+        (!) Giving the time intervals inverted will
+        provide the same result.
+
+        Example below:
+        - `a=[2, 5)` and `b=[5, 7)` => `True`
+        - `a=[5, 7)` and `b=[2, 5)` => `True`
+        - `a=[2, 5)` and `b=[3, 4)` => `False`
+        - `a=[2, 5)` and `b=[6, 8)` => `False`
+        """
+        return TimeIntervalUtils.a_is_adjacent_to_b(
+            time_interval_a = self,
+            time_interval_b = time_interval
+        )
+    
+    def do_contains_a(
+        self,
+        time_interval: 'TimeInterval'
+    ) -> bool:
+        """
+        Check if this time interval includes the `time_interval`
+        provided or not, which means that the `time_interval`
+        provided is fully contained (included) in this one.
+        """
+        return TimeIntervalUtils.a_contains_b(
+            time_interval_a = self,
+            time_interval_b = time_interval
+        )
+    
+    def is_contained_in(
+        self,
+        time_interval: 'TimeInterval'
+    ) -> bool:
+        """
+        Check if this time interval is fully contained in
+        the `time_interval` provided, which is a synonim
+        of being fully overlapped by that `time_interval`.
+        """
+        return TimeIntervalUtils.a_is_contained_in_b(
+            time_interval_a = self,
+            time_interval_b = time_interval
+        )
+    
+    def do_intersects_with(
+        self,
+        time_interval: 'TimeInterval'
+    ) -> bool:
+        """
+        Check if this time interval intersects with the one
+        provided as `time_interval`, which means that they
+        have at least a part in common.
+        """
+        return TimeIntervalUtils.a_intersects_with_b(
+            time_interval_a = self,
+            time_interval_b = time_interval
+        )
+    
+    def get_intersection_with_a(
+        self,
+        time_interval: 'TimeInterval'
+    ) -> Union['TimeInterval', None]:
+        """
+        Get the time interval that intersects this one and the
+        one provided as `time_interval`. The result can be `None`
+        if there is no intersection in between both.
+        """
+        return TimeIntervalUtils.get_intersection_of_a_and_b(
+            time_interval_a = self,
+            time_interval_b = time_interval
+        )
+    
+class TimeIntervalWithFps(TimeInterval):
+    """
+    Class to represent a time interval, which is a tuple
+    of time moments representing the time range 
+    `[start, end)`, but with a `fps` value set to round
+    all the time moments to values multiple of `1/fps`.
+
+    This class is very useful when handling video time
+    moments and time ranges.
+    """
+
+    @property
+    def copy(
+        self
+    ) -> 'TimeInterval':
+        """
+        A copy of this instance.
+        """
+        return TimeIntervalWithFps(
+            start = self.start,
+            end = self.end,
+            fps = self.fps
+        )
+
+    def __init__(
+        self,
+        start: Number,
+        end: Number,
+        fps: Number
+    ):
+        """
+        (!) The `start` and `end` values will be truncated 
+        according to the `fps` provided.
+
+        The `end` value must be greater than the `start` value.
+        """
+        ParameterValidator.validate_mandatory_positive_number('fps', fps, do_include_zero = False)
+
+        self.fps: float = fps
+        """
+        The `fps` for this time interval calculations.
+        """
+        self._t_handler = THandler(self.fps)
+        """
+        *For internal use only*
+
+        Shortcut to the `THandler` instance built with the `fps`
+        value provided when instantiating this instance.
+        """
+
+        super().__init__(
+            start = self._t_handler.t.truncated(start),
+            end = self._t_handler.t.truncated(end)
+        )
+
+    """
+    Apparently, the professional video editors use always
+    the `truncate` method to obtain the `start` of the
+    frame time interval always. So, why should I change it?
+    """
+    def _truncate(
+        self,
+        t: Number
+    ) -> float:
+        """
+        Get the truncated value of the `t` time moment provided,
+        which will be always the `start` of the time interval
+        delimited by the `t` and the `fps` of this instance.
+
+        Some examples below (with `fps=5`):
+        - `t=0.2` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.37` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.4` => `0.4` <=> `interval=[0.4, 0.6)`
+        - `t=0.87` => `0.8` <=> `interval=[0.8, 1.0)`
+        """
+        return self._t_handler.t.truncated(t)
+    
+    def _round(
+        self,
+        t: Number
+    ) -> float:
+        """
+        Get the rounded value of the `t` time moment provided,
+        which will be the `start` or the `end` (depending on which
+        one is closer to the `t` value) of the time interval
+        delimited by the `t` and the `fps` of this instance.
+
+        Some examples below (with `fps=5`):
+        - `t=0.2` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.29` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.31` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.37` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.4` => `0.4` <=> `interval=[0.4, 0.6)`
+        - `t=0.87` => `0.8` <=> `interval=[0.8, 1.0)`
+        """
+        return self._t_handler.t.rounded(t)
+    
+    def _round_up(
+        self,
+        t: Number
+    ) -> float:
+        """
+        Get the rounded up value of the `t` time moment provided,
+        which will be the `end` of the time interval (unless it
+        is exactly the `start` value of a time interval) delimited
+        by the `t` and the `fps` of this instance.
+
+        Some examples below (with `fps=5`):
+        - `t=0.2` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.29` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.31` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.37` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.4` => `0.4` <=> `interval=[0.4, 0.6)`
+        - `t=0.87` => `0.8` <=> `interval=[0.8, 1.0)`
+        """
+        return self._t_handler.t.rounded_up(t)
+    
+    def cut(
+        self,
+        start: Number,
+        end: Number
+    ) -> tuple[Union['TimeInterval', None], Union['TimeInterval', None], Union['TimeInterval', None]]:
+        """
+        Cut a segment from the given `start` to the also provided
+        `end` time moments of this time interval instance.
+
+        (!) The `start` and `end` values will be truncated to fit the
+        `start` value of  the time interval they belong to according
+        to the `fps` of this instance.
+
+        This method will return a tuple of 3 elements including the
+        segments created by cutting this time interval in the order
+        they were generated, but also having the 4th element always
+        as the index of the one specifically requested by the user.
+        The tuple will include all the segments at the begining and
+        the rest will be None (unless the 4th one, which is the
+        index).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `start=3` and `end=4`
+        will generate `((2, 3), (3, 4), (4, 5), 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=4`
+        will generate `((2, 4), (4, 5), None, 0)`.
+        - A time interval of `[2, 5)` cut with `start=4` and `end=5`
+        will generate `((2, 4), (4, 5), None, 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=5`
+        will generate `((2, 5), None, None, 0)`.
+
+        As you can see, the result could be the same in different
+        situations, but it's up to you (and the specific method in
+        which you are calling to this one) to choose the tuple you
+        want to return.
+        """
+        # TODO: maybe a 'decorator' to do this '_truncate' (?)
+        return super().cut(
+            start = self._truncate(start),
+            end = self._truncate(end)
+        )
+    
+    def cutted(
+        self,
+        start: Number,
+        end: Number
+    ) -> 'TimeInterval':
+        """
+        Get this time interval instance but cutted from the `start`
+        to the `end` time moments provided.
+
+        (!) The `start` and `end` values will be truncated to fit the
+        `start` value of  the time interval they belong to according
+        to the `fps` of this instance.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        # TODO: maybe a 'decorator' to do this '_truncate' (?)
+        return super().cutted(
+            start = self._truncate(start),
+            end = self._truncate(end)
+        )
+    
+    def trim_start(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming this one's start the amount of seconds
+        provided as the `t_variation` parameter. The first tuple is
+        the remaining, and the second one is the new time interval
+        requested by the user.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to.
+
+        This method will raise an exception if the new `start` value
+        becomes a value over the time interval `end` value or the
+        `limit`, that must be greater than the `start` and lower
+        than the time interval `end` value.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        return super().trim_start(
+            # TODO: Is this ok (?)
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t_variation = self._truncate(t_variation),
+            limit = limit
+        )
+    
+    def trimmed_start(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> 'TimeInterval':
+        """
+        Get this time interval instance but trimmed from the `start`
+        the `t_variation` amount of seconds provided.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        return super().trimmed_start(
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t_variation = self._truncate(t_variation),
+            limit = limit
+        )
+    
+    def trim_end(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming this one's end the amount of seconds
+        provided as the `t_variation` parameter. The first tuple is
+        the one requested by the user, and the second one is the
+        remaining.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to.
+
+        This method will raise an exception if the new `end` value
+        becomes a value under the time interval `start` value or
+        the `limit`, that must be greater than the `start` and lower
+        than the time interval `end` value.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        return super().trim_end(
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t_variation = self._truncate(t_variation),
+            limit = limit
+        )
+    
+    def trimmed_end(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> 'TimeInterval':
+        """
+        Get this time interval instance but trimmed from the `end`
+        the `t_variation` amount of seconds provided.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        return super().trimmed_end(
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t_variation = self._truncate(t_variation),
+            limit = limit
+        )
+    
+    def split(
+        self,
+        t: Number
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Split the time interval at the provided `t` time moment
+        and get the 2 new time intervals as a result (as a tuple).
+
+        (!) The `t` value provided will be transformed into a
+        multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to.
+
+        This method will raise an exception if the `t` value 
+        provided is a limit value (or above).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `t=3` will generate
+        `((2, 3), (3, 5))`.
+        - A time interval of `[2, 5)` cut with `t=4` will generate
+        `((2, 4), (4, 5))`.
+        - A time interval of `[2, 5)` cut with `t>=5` will raise
+        exception.
+        - A time interval of `[2, 5)` cut with `t<=2` will raise
+        exception.
+        """
+        return super().split(
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t = self._truncate(t)
+        )
+    
+    # The only thing that changes in 'splitted_left' and
+    # 'splitted_right' is the docummentation, but the rest
+    # is the same, so I don't overwrite it...
+
+
+class NewTimeInterval:
+    """
+    A time interval that has a memory of the original values
+    but can be modified and enshorted during its life time.
+
+    Class to represent a time interval, which is a tuple
+    of time moments representing the time range 
+    `[start, end)`.
+
+    TODO: This will replace the old two versions by making
+    the 'fps' parameter optional.
+    """
+
+    @property
+    def duration(
+        self
+    ) -> float:
+        """
+        The `duration` of the time interval.
+        """
+        return self.end - self.start
+
+    @property
+    def copy(
+        self
+    ) -> 'NewTimeInterval':
+        """
+        A copy of this instance.
+        """
+        time_interval = NewTimeInterval(
+            start = self.original_start,
+            end = self.original_end,
+            fps = self.fps
+        )
+        
+        time_interval.start = self.start
+        time_interval.end = self.end
+
+        return time_interval
+    
+    @property
+    def as_tuple(
+        self
+    ) -> tuple[float, float]:
+        """
+        The time interval but as a `(start, end)` tuple.
+        """
+        return (self.start, self.end)
+    
+    @property
+    def cutter(
+        self
+    ) -> 'TimeIntervalCutter':
+        """
+        Shortcut to the static class `TimeIntervalCutter` that
+        is capable of cutting time intervals.
+        """
+        return TimeIntervalCutter
+    
+    @property
+    def extender(
+        self
+    ) -> 'TimeIntervalExtender':
+        """
+        Shortcut to the static class `TimeIntervalExtender` that
+        is capable of extending time intervals.
+        """
+        return TimeIntervalExtender
+
+    def __init__(
+        self,
+        start: Number,
+        end: Number,
+        fps: Union[Number, None] = None
+    ):
+        """
+        The `end` value must be greater than the `start` value.
+
+        (!) If `fps` is provided, the `start` and `end` values
+        will be truncated according to the `fps` provided.
+        """
+        ParameterValidator.validate_positive_number('fps', fps, do_include_zero = False)
+
+        self.fps: Union[Number, None] = fps
+        """
+        The `fps` for this time interval calculations, if set.
+        """
+        self._t_handler: Union[THandler, None] = (
+            THandler(self.fps)
+            if self.fps is not None else
+            None
+        )
+        """
+        *For internal use only*
+
+        Shortcut to the `THandler` instance built with the `fps`
+        value provided when instantiating this instance, that
+        can be `None` if no `fps` are provided.
+        """
+
+        if start > end:
+            raise Exception('The `start` value provided is greater than the `end` value provided.')
+        
+        if start == end:
+            raise Exception('The `start` value provided is exactly the `end` value provided.')
+
+        self.original_start: float = (
+            self._t_handler.t.truncated(start)
+            if self.fps is not None else
+            start
+        )
+        """
+        The original `start` of the time interval.
+        """
+        self.original_end: float = (
+            self._t_handler.t.truncated(end)
+            if self.fps is not None else
+            end
+        )
+        """
+        The original `end` of the time interval.
+        """
+        self.start: float = self.original_start
+        """
+        The current `start` value of this time interval.
+        """
+        self.end: float = self.original_end
+        """
+        The current `end` value of this time interval.
+        """
+
+    """
+    Apparently, the professional video editors use always
+    the `truncate` method to obtain the `start` of the
+    frame time interval always. So, why should I change it?
+    """
+    def _truncate(
+        self,
+        t: Number
+    ) -> float:
+        """
+        Get the truncated value of the `t` time moment provided,
+        which will be always the `start` of the time interval
+        delimited by the `t` and the `fps` of this instance.
+
+        (!) The value will be truncated only if the `fps`
+        attribute is set.
+
+        Some examples below (with `fps=5`):
+        - `t=0.2` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.37` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.4` => `0.4` <=> `interval=[0.4, 0.6)`
+        - `t=0.87` => `0.8` <=> `interval=[0.8, 1.0)`
+        """
+        return (
+            self._t_handler.t.truncated(t)
+            if self.fps is not None else
+            t
+        )
+    
+    def _round(
+        self,
+        t: Number
+    ) -> float:
+        """
+        Get the rounded value of the `t` time moment provided,
+        which will be the `start` or the `end` (depending on which
+        one is closer to the `t` value) of the time interval
+        delimited by the `t` and the `fps` of this instance.
+
+        (!) The value will be rounded only if the `fps`
+        attribute is set.
+
+        Some examples below (with `fps=5`):
+        - `t=0.2` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.29` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.31` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.37` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.4` => `0.4` <=> `interval=[0.4, 0.6)`
+        - `t=0.87` => `0.8` <=> `interval=[0.8, 1.0)`
+        """
+        return (
+            self._t_handler.t.rounded(t)
+            if self.fps is not None else
+            t
+        )
+    
+    def _round_up(
+        self,
+        t: Number
+    ) -> float:
+        """
+        Get the rounded up value of the `t` time moment provided,
+        which will be the `end` of the time interval (unless it
+        is exactly the `start` value of a time interval) delimited
+        by the `t` and the `fps` of this instance.
+
+        (!) The value will be rounded up only if the `fps`
+        attribute is set.
+
+        Some examples below (with `fps=5`):
+        - `t=0.2` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.29` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.31` => `0.4` <=> `interval=[0.2, 0.4)`
+        - `t=0.37` => `0.2` <=> `interval=[0.2, 0.4)`
+        - `t=0.4` => `0.4` <=> `interval=[0.4, 0.6)`
+        - `t=0.87` => `0.8` <=> `interval=[0.8, 1.0)`
+        """
+        return (
+            self._t_handler.t.rounded_up(t)
+            if self.fps is not None else
+            t
+        )
+
+    def get_cuts(
+        self,
+        start: Number,
+        end: Number
+    ) -> tuple[Union['NewTimeInterval', None], Union['NewTimeInterval', None], Union['NewTimeInterval', None]]:
+        """
+        Cut a segment from the given `start` to the also provided
+        `end` time moments of this time interval instance and get
+        all the cuts.
+
+        This method will return a tuple of 3 elements including the
+        segments created by cutting this time interval in the order
+        they were generated, but also having the 4th element always
+        as the index of the one specifically requested by the user.
+        The tuple will include all the segments at the begining and
+        the rest will be None (unless the 4th one, which is the
+        index).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `start=3` and `end=4`
+        will generate `((2, 3), (3, 4), (4, 5), 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=4`
+        will generate `((2, 4), (4, 5), None, 0)`.
+        - A time interval of `[2, 5)` cut with `start=4` and `end=5`
+        will generate `((2, 4), (4, 5), None, 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=5`
+        will generate `((2, 5), None, None, 0)`.
+
+        As you can see, the result could be the same in different
+        situations, but it's up to you (and the specific method in
+        which you are calling to this one) to choose the tuple you
+        want to return.
+        """
+        # TODO: maybe a 'decorator' to do this '_truncate' (?)
+        return self.cutter.from_to(
+            time_interval = self,
+            start = self._truncate(start),
+            end = self._truncate(end)
+        )
+    
+    def get_cut(
+        self,
+        start: Number,
+        end: Number
+    ) -> 'NewTimeInterval':
+        """
+        Get this time interval instance but cutted from the `start`
+        to the `end` time moments provided.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        tuples = self.get_cuts(
+            start = start,
+            end = end
+        )
+
+        return tuples[tuples[3]]
+    
+    def cut(
+        self,
+        start: Number,
+        end: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one delimited by
+        the `start` and `end` time moments provided.
+
+        This method returns this same instance but modified.
+        """
+        cut = self.get_cut(
+            start = start,
+            end = end
+        )
+
+        self.start = cut.start
+        self.end = cut.end
+
+        return self
+    
+    # TODO: Rename, please
+    def get_trim_starts(
+        self,
+        t_variation: Number
+    ) -> tuple['NewTimeInterval', 'NewTimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming this one's start the amount of seconds
+        provided as the `t_variation` parameter. The first tuple is
+        the remaining, and the second one is the new time interval
+        requested by the user.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to, if the `fps` is set.
+
+        This method will raise an exception if the new `start` value
+        becomes a value over the time interval `end` value or the
+        `limit`, that must be greater than the `start` and lower
+        than the time interval `end` value.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        return self.cutter.trim_start(
+            time_interval = self,
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t_variation = self._truncate(t_variation)
+        )
+    
+    # TODO: Rename, please
+    def get_trim_start(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        Get this time interval instance but trimmed from the `start`
+        the `t_variation` amount of seconds provided.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to, if the `fps` is set.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        return self.get_trim_starts(
+            t_variation = t_variation
+        )[1]
+    
+    def _trim_start(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one in which
+        the `start` has been trimmed the `t_variation` provided
+        if the result respected the also given `limit`.
+
+        This method returns this same instance but modified.
+        """
+        cut = self.get_trim_start(
+            t_variation = t_variation
+        )
+
+        self.start = cut.start
+        self.end = cut.end
+
+        return self
+    
+    def get_trim_ends(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> tuple['NewTimeInterval', 'NewTimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming this one's end the amount of seconds
+        provided as the `t_variation` parameter. The first tuple is
+        the one requested by the user, and the second one is the
+        remaining.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to, if the `fps` is set.
+
+        This method will raise an exception if the new `end` value
+        becomes a value under the time interval `start` value or
+        the `limit`, that must be greater than the `start` and lower
+        than the time interval `end` value.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        ParameterValidator.validate_number_between('limit', limit, self.start, self.original_end)
+
+        return self.cutter.trim_end(
+            time_interval = self,
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t_variation = self._truncate(t_variation)
+        )
+    
+    # TODO: Rename, please
+    def get_trim_end(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        Get this time interval instance but trimmed from the `end`
+        the `t_variation` amount of seconds provided.
+
+        (!) The `t_variation` value provided will be transformed into
+        a multiple of `1/fps` of this instance, and truncated to fit
+        the `end` of the time interval the new segments will belong
+        to, if the `fps` is set.
+
+        (!) This method doesn't modify the original instance but
+        returns a new one.
+        """
+        return self.get_trim_ends(
+            t_variation = t_variation
+        )[0]
+    
+    def _trim_end(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one in which
+        the `end` has been trimmed the `t_variation` provided
+        if the result respected the also given `limit`.
+
+        This method returns this same instance but modified.
+        """
+        cut = self.get_trim_end(
+            t_variation = t_variation
+        )
+
+        self.start = cut.start
+        self.end = cut.end
+
+        return self
+    
+    def get_splits(
+        self,
+        t: Number
+    ) -> tuple['NewTimeInterval', 'NewTimeInterval']:
+        """
+        Split the time interval at the provided `t` time moment
+        and get the 2 new time intervals as a result (as a tuple).
+
+        (!) The `t` value provided will be transformed into a
+        multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to if the `fps` value is set.
+
+        This method will raise an exception if the `t` value 
+        provided is a limit value (or above).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `t=3` will generate
+        `((2, 3), (3, 5))`.
+        - A time interval of `[2, 5)` cut with `t=4` will generate
+        `((2, 4), (4, 5))`.
+        - A time interval of `[2, 5)` cut with `t>=5` will raise
+        exception.
+        - A time interval of `[2, 5)` cut with `t<=2` will raise
+        exception.
+        """
+        return self.cutter.split(
+            time_interval = self,
+            # TODO: maybe a 'decorator' to do this '_truncate' (?)
+            t = self._truncate(t)
+        )
+    
+    def split(
+        self,
+        t: Number
+    ) -> tuple['NewTimeInterval', 'NewTimeInterval']:
+        """
+        Split the time interval at the provided `t` time moment
+        and get the 2 new time intervals as a result (as a tuple),
+        that will be copies of this instance (with their original
+        `start` and `end` values) but the new ones according to 
+        the split result.
+
+        (!) The `t` value provided will be transformed into a
+        multiple of `1/fps` of this instance, and truncated to fit
+        the `start` of the time interval the new segments will belong
+        to if the `fps` value is set.
+
+        This method will raise an exception if the `t` value 
+        provided is a limit value (or above).
+        """
+        splits = self.get_splits(t)
+
+        split_left = self.copy
+        split_left.start = splits[0].start
+        split_left.end = splits[0].end
+
+        split_right = self.copy
+        split_right.start = splits[1].start
+        split_right.end = splits[1].end
+
+        return (
+            split_left, split_right
+        )
+    
+    def _extend_end(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one in which
+        the `end` has been extended the `t_variation` provided
+        if the result respected the also given `limit`.
+
+        This method returns this same instance but modified.
+        """
+        ParameterValidator.validate_mandatory_positive_number('t_variation', t_variation, do_include_zero = False)
+
+        extended = self.extender.extend_end(
+            time_interval = self,
+            t_variation = (
+                self._truncate(t_variation)
+                if self.fps is not None else
+                t_variation
+            )
+        )
+
+        # TODO: Is this above a bit useless (?)
+        self.end = extended.end
+
+        return self
+    
+    def _extend_start(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one in which
+        the `start` has been extended the `t_variation` provided
+        if the result respected the also given `limit`.
+
+        This method returns this same instance but modified.
+        """
+        ParameterValidator.validate_mandatory_positive_number('t_variation', t_variation, do_include_zero = False)
+
+        extended = self.extender.extend_start(
+            time_interval = self,
+            t_variation = (
+                self._truncate(t_variation)
+                if self.fps is not None else
+                t_variation
+            )
+        )
+
+        # TODO: Is this above a bit useless (?)
+        self.start = extended.start
+
+        return self
+    
+    def modify_start(
+        self,
+        t_variation: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Giving a negative `t_variation` value will make the
+        time interval longer, extending the `start` value.
+
+        Transform this time interval into a new one in which
+        the `start` has been extended or trimmed the
+        `t_variation` value provided if the result respects 
+        the also given `limit`.
+
+        The new `start` can never be lower than the original
+        (min) `start` value of this time interval instance.
+
+        This method returns this same instance but modified.
+        """
+        ParameterValidator.validate_mandatory_number(t_variation, t_variation, do_include_zero = False)
+
+        return (
+            self._trim_start(
+                t_variation = abs(t_variation)
+            )
+            if t_variation > 0 else
+            self._extend_start(
+                t_variation = abs(t_variation)
+            )
+        )
+    
+    def modify_start_to(
+        self,
+        start: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one in which
+        the `start` has been extended or trimmed until
+        reaching the new `start` parameter value provided (if
+        valid).
+
+        The new `start` can never be lower than the original
+        (min) `start` value of this time interval instance.
+
+        This method returns this same instance but modified.
+        """
+        ParameterValidator.validate_mandatory_number(start, start, do_include_zero = True)
+
+        if (
+            start >= self.original_start and
+            start < self.end and
+            start != self.start
+        ):
+            self.start = start
+
+        return self
+    
+    def modify_end(
+        self,
+        t_variation: Number,
+        limit: Union[Number, None] = None
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Giving a positive `t_variation` value will make the
+        time interval longer, extending the `end` value.
+
+        Transform this time interval into a new one in which
+        the `end` has been extended or trimmed the
+        `t_variation` value provided if the result respects 
+        the also given `limit`.
+
+        The new `end` can never be greater than the original
+        (min) `end` value of this time interval instance.
+
+        This method returns this same instance but modified.
+        """
+        ParameterValidator.validate_mandatory_number(t_variation, t_variation, do_include_zero = False)
+
+        return (
+            self._trim_end(
+                t_variation = abs(t_variation)
+            )
+            if t_variation < 0 else
+            self._extend_end(
+                t_variation = abs(t_variation)
+            )
+        )
+    
+    def modify_end_to(
+        self,
+        t: Number
+    ) -> 'NewTimeInterval':
+        """
+        (!) This method will modify this instance.
+
+        Transform this time interval into a new one in which
+        the `end` has been extended or trimmed until
+        reaching the new `t` parameter value provided (if
+        valid).
+
+        The new `end` can never be greater than the original
+        (min) `end` value of this time interval instance.
+
+        This method returns this same instance but modified.
+        """
+        ParameterValidator.validate_mandatory_number(t, t, do_include_zero = True)
+
+        if (
+            t <= self.original_end and
+            t > self.start and
+            t != self.end
+        ):
+            self.end = t
+
+        return self
+        
+    
+    # TODO: Implement 'extend' methods using the 'original'
+    # values
+        
+class TimeIntervalUtils:
+    """
+    Static class to wrap the utils related to time intervals.
+    """
+
+    @staticmethod
+    def a_includes_t(
+        t: float,
+        time_interval_a: 'TimeInterval',
+        do_include_end: bool = False
+    ) -> bool:
+        """
+        Check if the `t` time moment provided is included in
+        the `time_interval_a` given. The `time_interval_a.end`
+        is excluded unless the `do_include_end` parameter is
+        set as `True`.
+
+        A time interval is `[start, end)`, thats why the end is
+        excluded by default.
+        """
+        return (
+            time_interval_a.start <= t <= time_interval_a.end
+            if do_include_end else
+            time_interval_a.start <= t < time_interval_a.end
+        )
+    
+    @staticmethod
+    def a_is_adjacent_to_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval',
+    ) -> bool:
+        """
+        Check if the `time_interval_a` provided and the
+        also given `time_interval_b` are adjacent, which
+        means that the `end` of one interval is also the
+        `start` of the other one.
+
+        (!) Giving the time intervals inverted will
+        provide the same result.
+
+        Examples below:
+        - `a=[2, 5)` and `b=[5, 7)` => `True`
+        - `a=[5, 7)` and `b=[2, 5)` => `True`
+        - `a=[2, 5)` and `b=[3, 4)` => `False`
+        - `a=[2, 5)` and `b=[6, 8)` => `False`
+        """
+        return (
+            TimeIntervalUtils.a_is_inmediately_before_b(time_interval_a, time_interval_b) or
+            TimeIntervalUtils.a_is_inmediately_after_b(time_interval_a, time_interval_b)
+        )
+    
+    @staticmethod
+    def a_is_inmediately_before_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval',
+    ) -> bool:
+        """
+        Check if the `time_interval_a` provided is inmediately
+        before the also given `time_interval_b`, which means
+        that the `end` of the first one is also the `start` of
+        the second one.
+
+        Examples below:
+        - `a=[2, 5)` and `b=[5, 7)` => `True`
+        - `a=[5, 7)` and `b=[2, 5)` => `False`
+        - `a=[2, 5)` and `b=[3, 4)` => `False`
+        - `a=[2, 5)` and `b=[6, 8)` => `False`
+        """
+        return time_interval_a.end == time_interval_b.start
+    
+    @staticmethod
+    def a_is_inmediately_after_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval',
+    ) -> bool:
+        """
+        Check if the `time_interval_a` provided is inmediately
+        after the also given `time_interval_b`, which means
+        that the `start` of the first one is also the `end` of
+        the second one.
+
+        Examples below:
+        - `a=[2, 5)` and `b=[5, 7)` => `False`
+        - `a=[5, 7)` and `b=[2, 5)` => `True`
+        - `a=[2, 5)` and `b=[3, 4)` => `False`
+        - `a=[2, 5)` and `b=[6, 8)` => `False`
+        """
+        return time_interval_a.start == time_interval_b.end
+    
+    @staticmethod
+    def a_contains_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval'
+    ) -> bool:
+        """
+        Check if the `time_interval_a` time interval provided
+        includes the `time_interval_b` or not, which means that
+        the `time_interval_b` is fully contained in the first
+        one.
+
+        Examples below:
+        - `a=[2, 5)` and `b=[3, 4)` => `True`
+        - `a=[2, 5)` and `b=[2, 4)` => `True`
+        - `a=[2, 5)` and `b=[3, 6)` => `False`
+        - `a=[2, 5)` and `b=[6, 8)` => `False`
+        """
+        return (
+            time_interval_a.start <= time_interval_b.start and
+            time_interval_a.end >= time_interval_b.end
+        )
+    
+    @staticmethod
+    def a_is_contained_in_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval',
+    ) -> bool:
+        """
+        Check if the `time_interval_a` provided is fully
+        contained into the also provided `time_interval_b`.
+
+        Examples below:
+        - `a=[2, 5)` and `b=[1, 6)` => `True`
+        - `a=[2, 5)` and `b=[0, 9)` => `True`
+        - `a=[2, 5)` and `b=[2, 4)` => `False`
+        - `a=[2, 5)` and `b=[4, 8)` => `False`
+        - `a=[2, 5)` and `b=[7, 8)` => `False`
+        """
+        return TimeIntervalUtils.a_contains_b(
+            time_interval_a = time_interval_b,
+            time_interval_b = time_interval_a
+        )
+    
+    @staticmethod
+    def a_intersects_with_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval',
+    ) -> bool:
+        """
+        Check if the `time_interval_a` and the `time_interval_b`
+        provided has at least a part in common.
+
+        Examples below:
+        - `a=[2, 5)` and `b=[4, 6)` => `True`
+        - `a=[2, 5)` and `b=[1, 3)` => `True`
+        - `a=[2, 5)` and `b=[5, 6)` => `False`
+        - `a=[2, 5)` and `b=[7, 8)` => `False`
+        - `a=[2, 5)` and `b=[1, 2)` => `False`
+        """
+        return (
+            time_interval_b.start < time_interval_a.end and
+            time_interval_a.start < time_interval_b.end
+        )
+    
+    @staticmethod
+    def get_intersection_of_a_and_b(
+        time_interval_a: 'TimeInterval',
+        time_interval_b: 'TimeInterval'
+    ) -> Union['TimeInterval', None]:
+        """
+        Get the time interval that intersects the two time
+        intervals provided, that can be `None` if there is no
+        intersection in between both.
+        """
+        return (
+            None
+            if not TimeIntervalUtils.a_intersects_with_b(
+                time_interval_a = time_interval_a,
+                time_interval_b = time_interval_b
+            ) else
+            TimeInterval(
+                start = max(time_interval_a.start, time_interval_b.start),
+                end = min(time_interval_a.end, time_interval_b.end)
+            )
+        )
+
+class TimeIntervalCutter:
+    """
+    Class to wrap the functionality related to cutting
+    time intervals.
+    """
+
+    @staticmethod
+    # @parameter_to_time_interval('time_interval')
+    @parameter_to_new_time_interval('time_interval')
+    def trim_end_to(
+        time_interval: TimeIntervalType,
+        t: Number
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming the `time_interval` end to the `t`
+        time moment provided. The first tuple is the requested by
+        the user, and the second one is the remaining.
+
+        The `t` time moment provided must be a value between the
+        `start` and `end` of the `time_interval` provided.
+        """
+        _validate_new_time_interval_current_limits(time_interval, t)
+        
+        return (
+            TimeInterval(
+                start = time_interval.start,
+                end = t
+            ),
+            TimeInterval(
+                start = t,
+                end = time_interval.end
+            )
+        )
+    
+    @staticmethod
+    # @parameter_to_time_interval('time_interval')
+    @parameter_to_new_time_interval('time_interval')
+    def trim_end(
+        time_interval: TimeIntervalType,
+        t_variation: Number
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming the `time_interval` end the amount
+        of seconds provided as the `t_variation` parameter. The
+        first tuple is the requested by the user, and the second one
+        is the remaining.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        ParameterValidator.validate_mandatory_positive_number('t_variation', t_variation, do_include_zero = False)
+
+        return TimeIntervalCutter.trim_end_to(
+            time_interval = time_interval,
+            t = time_interval.end - t_variation
+        )
+    
+    @staticmethod
+    # @parameter_to_time_interval('time_interval')
+    @parameter_to_new_time_interval('time_interval')
+    def trim_start_to(
+        time_interval: TimeIntervalType,
+        t: Number
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming the `time_interval` start to the `t`
+        time moment provided. The first tuple is the remaining, and
+        the second one is the requested by the user.
+
+        The `t` time moment provided must be a value between the
+        `start` and `end` of the `time_interval` provided.
+        """
+        _validate_new_time_interval_current_limits(time_interval, t)
+        
+        return (
+            TimeInterval(
+                start = time_interval.start,
+                end = t
+            ),
+            TimeInterval(
+                start = t,
+                end = time_interval.end
+            )
+        )
+    
+    @staticmethod
+    # @parameter_to_time_interval('time_interval')
+    @parameter_to_new_time_interval('time_interval')
+    def trim_start(
+        time_interval: TimeIntervalType,
+        t_variation: Number
+    ) -> tuple['TimeInterval', 'TimeInterval']:
+        """
+        Get a tuple containing the 2 new `TimeInterval` instances
+        generated by trimming the `time_interval` start the amount
+        of seconds provided as the `t_variation` parameter. The
+        first tuple is the remaining, and the second one is the
+        new time interval requested by the user.
+
+        The `t_variation` must be a positive value, the amount of
+        seconds to be trimmed.
+        """
+        ParameterValidator.validate_mandatory_positive_number('t_variation', t_variation, do_include_zero = False)
+
+        return TimeIntervalCutter.trim_start_to(
+            time_interval = time_interval,
+            t = time_interval.start + t_variation
+        )
+    
+    @staticmethod
+    # @parameter_to_time_interval('time_interval')
+    @parameter_to_new_time_interval('time_interval')
+    def from_to(
+        time_interval: 'TimeInterval',
+        start: Number,
+        end: Number
+    ) -> tuple[Union['TimeInterval', None], Union['TimeInterval', None], Union['TimeInterval', None], int]:
+        """
+        Cut a segment from the given `start` to the also provided
+        `end` time moments of the `time_interval` passed as
+        parameter.
+
+        This method will return a tuple of 3 elements including the
+        segments created by cutting this time interval in the order
+        they were generated, but also having the 4th element always
+        as the index of the one specifically requested by the user.
+        The tuple will include all the segments at the begining and
+        the rest will be None (unless the 4th one, which is the
+        index).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `start=3` and `end=4`
+        will generate `((2, 3), (3, 4), (4, 5), 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=4`
+        will generate `((2, 4), (4, 5), None, 0)`.
+        - A time interval of `[2, 5)` cut with `start=4` and `end=5`
+        will generate `((2, 4), (4, 5), None, 1)`.
+        - A time interval of `[2, 5)` cut with `start=2` and `end=5`
+        will generate `((2, 5), None, None, 0)`.
+
+        As you can see, the result could be the same in different
+        situations, but it's up to you (and the specific method in
+        which you are calling to this one) to choose the tuple you
+        want to return.
+        """
+        _validate_new_time_interval_current_limits(time_interval, start)
+        _validate_new_time_interval_current_limits(time_interval, end)
+
+        return (
+            # TODO: What about this case, should we raise except (?)
+            (
+                time_interval.copy,
+                None,
+                None,
+                0
+            )
+            if (
+                start == time_interval.start and
+                end == time_interval.end
+            ) else
+            (
+                TimeInterval(
+                    start = time_interval.start,
+                    end = end
+                ),
+                TimeInterval(
+                    start = end,
+                    end = time_interval.end
+                ),
+                None,
+                0
+            )
+            if start == time_interval.start else
+            (
+                TimeInterval(
+                    start = time_interval.start,
+                    end = start
+                ),
+                TimeInterval(
+                    start = start,
+                    end = time_interval.end
+                ),
+                None,
+                1
+            )
+            if end == time_interval.end else
+            (
+                TimeInterval(
+                    start = time_interval.start,
+                    end = start
+                ),
+                TimeInterval(
+                    start = start,
+                    end = end
+                ),
+                TimeInterval(
+                    start = end,
+                    end = time_interval.end
+                ),
+                1
+            )
+        )
+    
+    @staticmethod
+    # @parameter_to_time_interval('time_interval')
+    @parameter_to_new_time_interval('time_interval')
+    def split(
+        time_interval: NewTimeInterval,
+        t: Number,
+    ) -> tuple[NewTimeInterval, NewTimeInterval]:
+        """
+        Split the interval at the provided `t` time moment and
+        get the 2 new time intervals as a result (as a tuple).
+
+        This method will raise an exception if the `t` value 
+        provided is a limit value (or above).
+
+        Examples below:
+        - A time interval of `[2, 5)` cut with `t=3` will generate
+        `((2, 3), (3, 5))`.
+        - A time interval of `[2, 5)` cut with `t=4` will generate
+        `((2, 4), (4, 5))`.
+        - A time interval of `[2, 5)` cut with `t>=5` will raise
+        exception.
+        - A time interval of `[2, 5)` cut with `t<=2` will raise
+        exception.
+        """
+        if (
+            t <= time_interval.start or
+            t >= time_interval.end
+        ):
+            raise Exception('The "t" value provided is not a valid value as it is a limit (or more than a limit).')
+        
+        return (
+            TimeInterval(
+                start = time_interval.start,
+                end = t
+            ),
+            TimeInterval(
+                start = t,
+                end = time_interval.end
+            )
+        )
+    
+# TODO: Mix this class with the cutter and make single
+# methods able to extend or cut based on if the variation
+# is positive or negative
+class TimeIntervalExtender:
+    """
+    Class to wrap the functionality related to extending
+    """
+
+    @staticmethod
+    @parameter_to_new_time_interval('time_interval')
+    def extend_end(
+        time_interval: 'NewTimeInterval',
+        t_variation: Number
+    ):
+        """
+        Extend the end of the given `time_interval` the `t_variation`
+        amount of seconds provided.
+        """
+        ParameterValidator.validate_mandatory_positive_number('t_variation', t_variation, do_include_zero = False)
+
+        return TimeIntervalExtender.extend_end_to(
+            time_interval = time_interval,
+            t = time_interval.end + t_variation
+        )
+    
+    @staticmethod
+    @parameter_to_new_time_interval('time_interval')
+    def extend_end_to(
+        time_interval: 'NewTimeInterval',
+        t: Number
+    ):
+        """
+        Extend the end of the given `time_interval` the to the `t`
+        time moment provided.
+        """
+        _validate_new_time_interval_original_limits(time_interval, t)
+        
+        if t < time_interval.end:
+            raise Exception('The "t" parameter provided is lower than the current time interval `end` and this method is to extend it.')
+        
+        return NewTimeInterval(
+            start = time_interval.start,
+            end = t,
+            fps = time_interval.fps
+        )
+    
+    @staticmethod
+    @parameter_to_new_time_interval('time_interval')
+    def extend_start(
+        time_interval: 'NewTimeInterval',
+        t_variation: Number
+    ):
+        """
+        Extend the start of the given `time_interval` the `t_variation`
+        amount of seconds provided if the new `start` is greater than
+        the `limit` provided and than the original (and min) `start`
+        value of the time interval.
+        """
+        ParameterValidator.validate_mandatory_positive_number('t_variation', t_variation, do_include_zero = False)
+
+        return TimeIntervalExtender.extend_start_to(
+            time_interval = time_interval,
+            t = time_interval.start - t_variation
+        )
+    
+    @staticmethod
+    @parameter_to_new_time_interval('time_interval')
+    def extend_start_to(
+        time_interval: 'NewTimeInterval',
+        t: Number
+    ):
+        """
+        Extend the start of the given `time_interval` the to the `t`
+        time moment provided.
+        """
+        _validate_new_time_interval_original_limits(time_interval, t)
+        
+        if t > time_interval.start:
+            raise Exception('The "t" parameter provided is greater than the current time interval `start` and this method is to extend it.')
+        
+        return NewTimeInterval(
+            start = t,
+            end = time_interval.end,
+            fps = time_interval.fps
+        )
+    
+def _validate_new_time_interval_original_limits(
+    time_interval: NewTimeInterval,
+    t: Number
+) -> None:
+    """
+    *For internal use only*
+
+    This method will raise an exception if the `t` time moment
+    parameter value provided is out of the `time_interval` 
+    original limits.
+
+    TODO: How and where to put this (?)
+    """
+    if (
+        t < time_interval.original_start or
+        t > time_interval.original_end
+    ):
+        raise Exception(f'The "t" parameter value provided ({str(float(t))}) is out of the time interval original limits (max and min) [{str(float(time_interval.original_start))}, {str(float(time_interval.original_end))}].')
+                        
+def _validate_new_time_interval_current_limits(
+    time_interval: NewTimeInterval,
+    t: Number
+) -> None:
+    """
+    *For internal use only*
+
+    This method will raise an exception if the `t` time moment
+    parameter value provided is out of the `time_interval` 
+    current limits (current `start` and `end`).
+
+    This method is useful when we are cutting or splitting the
+    time interval so the parameter value must be always within
+    the current time range.
+
+    TODO: How and where to put this (?)
+    """
+    if (
+        t < time_interval.start or
+        t > time_interval.end
+    ):
+        raise Exception(f'The "t" parameter value provided ({str(float(t))}) is out of the time interval current limits [{str(float(time_interval.start))}, {str(float(time_interval.end))}].')
+    
+    
+# TODO: Maybe add some 'extend' functionality
+        
+# # TODO: This method is interesting if we don't want only to
+# # trim but also to extend, so we can use the limits.
+# @staticmethod
+# def trim_end(
+#     time_interval: TimeIntervalType,
+#     t_variation: Number,
+#     lower_limit: Number = 0.0,
+#     upper_limit: Union[Number, None] = None,
+#     do_include_lower_limit: bool = True,
+#     do_include_upper_limit: bool = True
+# ) -> Union['TimeInterval', 'TimeInterval']:
+#     """
+#     Get a tuple containing the 2 new `TimeInterval` instances
+#     generated by trimming the `time_interval` provided from
+#     the `end` and at the `t` time moment provided. The first
+#     value is the remaining, and the second one is the requested
+#     by the user.
+
+#     This will raise an exception if the new `end` becomes a
+#     value under the `lower_limit` provided, above the 
+#     `upper_limit` given (if given) or even below the time
+#     interval `start` value. The limits will be included or not
+#     according to the boolean parameters.
+#     """
+#     new_end = time_interval.end + t_variation
+
+#     if new_end <= time_interval.start:
+#         raise Exception('The "t_variation" value provided makes the new end value be lower than the "start" value.')
+
+#     is_under_lower_limit = (
+#         new_end < lower_limit
+#         if do_include_lower_limit else
+#         new_end <= lower_limit
+#     )
+
+#     is_over_upper_limit = (
+#         upper_limit is None and
+#         (
+#             new_end > upper_limit
+#             if do_include_upper_limit else
+#             new_end >= upper_limit
+#         )
+#     )
+    
+#     if (
+#         is_under_lower_limit or
+#         is_over_upper_limit
+#     ):
+#         raise Exception('The "t_variation" value provided makes the new end value be out of the limits.')
+    
+#     return (
+#         TimeInterval(
+#             start = time_interval.start,
+#             end = new_end
+#         ),
+#         TimeInterval(
+#             start = new_end,
+#             end = time_interval.end
+#         )
+    #     )
+
