@@ -1,0 +1,180 @@
+Metadata-Version: 2.4
+Name: giskard-core
+Version: 0.1.0
+Summary: Core shared utilities and foundational components for the Giskard library ecosystem.
+Requires-Python: >=3.11
+Requires-Dist: pydantic<3,>=2.11.0
+Description-Content-Type: text/markdown
+
+# Giskard Core
+
+Core shared utilities and foundational components for the Giskard library ecosystem.
+
+This package provides minimal, essential building blocks that are shared across all Giskard packages, including discriminated unions, error handling, type definitions, configuration patterns, and serialization utilities.
+
+## Installation
+
+### Using uv (recommended)
+
+```bash
+uv add giskard-core
+```
+
+For development, install with dev dependencies:
+
+```bash
+uv add giskard-core --dev
+```
+
+### Using pip
+
+```bash
+pip install giskard-core
+```
+
+## Requirements
+
+- Python >= 3.11
+- pydantic >= 2.11.0, < 3
+
+## Features
+
+### Discriminated Unions
+
+A polymorphic type system with automatic serialization using a `kind` discriminator field. Subclasses are registered and resolved automatically during validation.
+
+#### Basic Usage
+
+```python
+from giskard.core import Discriminated, discriminated_base
+
+# Mark a base class as a discriminated union
+@discriminated_base
+class Animal(Discriminated):
+    name: str
+
+# Register concrete implementations
+@Animal.register("dog")
+class Dog(Animal):
+    breed: str
+
+@Animal.register("cat")
+class Cat(Animal):
+    lives: int = 9
+
+# Create instances
+dog = Dog(name="Buddy", breed="Labrador")
+assert dog.kind == "dog"
+
+# Serialize and deserialize
+serialized = dog.model_dump()
+# {"kind": "dog", "name": "Buddy", "breed": "Labrador"}
+
+# Deserialize back to the correct type
+animal = Animal.model_validate(serialized)
+assert isinstance(animal, Dog)
+assert animal.breed == "Labrador"
+```
+
+#### Advanced: Generic Types
+
+The discriminated union system works seamlessly with Pydantic's generic types:
+
+```python
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+@discriminated_base
+class Container(Discriminated, Generic[T]):
+    value: T
+
+@Container.register("string_container")
+class StringContainer(Container[str]):
+    pass
+
+@Container.register("int_container")
+class IntContainer(Container[int]):
+    pass
+```
+
+### Error Handling
+
+A minimal, serializable error representation for consistent error handling across the Giskard ecosystem.
+
+```python
+from giskard.core import Error
+
+# Create an error
+error = Error(message="Something went wrong")
+
+# String representation
+str(error)  # "ERROR: Something went wrong"
+
+# Serialize
+error.model_dump()  # {"message": "Something went wrong"}
+```
+
+## API Reference
+
+### `Discriminated`
+
+Base class for discriminated union types. Provides automatic serialization and deserialization based on a `kind` discriminator field.
+
+**Methods:**
+
+- `kind` (property): Returns the discriminator string for the class
+- `register(kind: str)`: Class method decorator to register a subclass
+- `model_validate()`: Overridden to automatically resolve the correct subclass
+
+### `discriminated_base`
+
+Decorator to mark a class as the base of a discriminated union. Use this on base classes that will have multiple concrete implementations.
+
+### `Error`
+
+A serializable error class with a `message` field.
+
+**Fields:**
+
+- `message: str`: The error message
+
+## Related Packages
+
+- **[giskard-agents](giskard-agents/)**: Orchestrates LLM completions and agents in parallel workflows
+- **[giskard-checks](giskard-checks/)**: Lightweight primitives to define and run checks against model interactions
+- **[lidar](lidar/)**: Probes LLM applications for security and safety issues
+
+## Development
+
+### Quick Setup
+
+For quick development setup, use the provided Makefile:
+
+```bash
+make setup  # Install deps + tools
+make help   # See all available commands
+```
+
+### Manual Setup
+
+Install the project dependencies:
+
+```bash
+uv sync
+```
+
+### Common Tasks
+
+```bash
+make test          # Run tests
+make lint          # Run linting
+make format        # Format code
+make check-format  # Check if code is formatted
+make check         # Run all checks (lint + format)
+make clean         # Clean build artifacts
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
