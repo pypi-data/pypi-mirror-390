@@ -1,0 +1,145 @@
+[project]
+name = "remotivelabs-broker"
+description = "RemotiveLabs Broker API"
+version = "0.10.0"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "Remotivelabs", email = "support@remotivelabs.com" }]
+keywords = ["automotive", "autotech", "networking", "CAN"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Manufacturing",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Communications",
+  "Topic :: Internet",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+requires-python = ">=3.10,<4.0"
+
+dependencies = [
+  "grpcio~=1.76.0",
+  "grpc-interceptor~=0.15.4",
+  "protobuf>=6.31.1,<7.0.0",
+]
+
+[project.urls]
+Homepage = "https://remotivelabs.com/"
+Documentation = "https://docs.remotivelabs.com/"
+
+[dependency-groups]
+dev = [
+  "poethepoet>=0.34.0",
+  "ruff>=0.11.10",
+  "mypy>=1.14.1",
+  "pytest>=8.3.3,<9",
+  "pytest-cov>=5.0.0,<6",
+  "pytest-asyncio>=0.24.0,<0.25",
+  "pytest-xdist[psutil]>=3.6.1,<4",
+  "pdoc>=15.0.1,<16",
+  "pytest-timeout>=2.3.1,<3",
+  "pytest-flakefinder>=1.1.0,<2",
+  "grpcio-tools~=1.76.0",
+  "types-grpcio~=1.0.0.20251009",
+  "types-protobuf~=6.32.1.20251105",
+  "loguru>=0.7.3,<0.8",
+  "aiostream>=0.6.4,<0.7",
+  "remotivelabs-broker-test-fixture",
+]
+
+[tool.poe.tasks]
+docs = { cmd = """pdoc remotivelabs \
+                       --docformat google \
+                       --favicon https://releases.remotivelabs.com/favicon.ico \
+                       --logo https://releases.remotivelabs.com/remotive-labs-logo-neg.png \
+                       -o dist/doc""" }
+format = [{ cmd = "ruff format ." }, { cmd = "ruff check --fix ." }]
+ruff = [{ cmd = "ruff check ." }, { cmd = "ruff format --check --diff ." }]
+mypy = [{ cmd = "mypy -p remotivelabs.broker -p tests -p misc" }]
+lint = ["ruff", "mypy"]
+publish = { cmd = "uv publish --dry-run" }
+generate = [
+  { cmd = "rm -rf src/remotivelabs/broker/_generated/" },
+  { cmd = "mkdir -p src/remotivelabs/broker/_generated/" },
+  { cmd = """python -m grpc_tools.protoc \
+        --proto_path=${POE_PWD}/../../protos/ \
+        --python_out=src/remotivelabs/broker/_generated \
+        --grpc_python_out=src/remotivelabs/broker/_generated \
+        --pyi_out=src/remotivelabs/broker/_generated \
+        ../../protos/*.proto \
+        ../../protos/google/api/*.proto""" },
+  { cmd = "python misc/fix_import_statements.py" },
+]
+test = { cmd = "pytest --timeout 30" }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+consider_namespace_packages = true
+testpaths = ["tests"]
+timeout_func_only = true
+
+[tool.ruff]
+line-length = 140
+exclude = ["src/remotivelabs/broker/_generated"]
+
+[tool.ruff.lint]
+select = [
+  "ARG",
+  "B034",
+  "C901",
+  "E",
+  "EXE",
+  "F",
+  "FA",
+  "I",
+  "N",
+  "UP032",
+  "RET",
+  "W",
+  "PL",
+]
+ignore = ['PLR2004']
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.10"
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src, tests, misc"
+packages = ["remotivelabs.broker", "tests", "misc"]
+# See https://mypy.readthedocs.io/en/stable/config_file.html
+disallow_untyped_calls = false
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+hide_error_codes = false
+
+[[tool.mypy.overrides]]
+module = ["remotivelabs.broker.client"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "remotivelabs.broker._generated.*"
+ignore_errors = true
+
+[tool.uv.build-backend]
+module-name = "remotivelabs.broker"
+
+[tool.uv.sources]
+remotivelabs-broker-test-fixture = { path = "../remotivelabs-broker-test-fixture", editable = true }
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"
