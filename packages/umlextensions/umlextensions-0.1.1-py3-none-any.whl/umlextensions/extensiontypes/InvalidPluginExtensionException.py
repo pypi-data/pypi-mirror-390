@@ -1,0 +1,3 @@
+
+class InvalidPluginExtensionException(Exception):
+    pass
