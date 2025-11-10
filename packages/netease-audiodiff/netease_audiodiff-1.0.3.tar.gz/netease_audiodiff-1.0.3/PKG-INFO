@@ -1,0 +1,91 @@
+Metadata-Version: 2.1
+Name: netease_audiodiff
+Version: 1.0.3
+Summary: With this Toolset and one audio cable you can simply built end2end audio test paltform base on mac,which means,Its very Lightweight，Easy to build and carry
+Home-page: https://g.hz.netease.com/hzpansongsheng/audio_diff/-/tree/feature/pypi
+Author:  PAN SONGSHENG
+Author-email: hzpansongsheng@corp.netease.com
+License: MIT
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+
+功能说明：
+    音频差异检测，用于检测两个音频之间的内容差异和局部音量差异。
+
+支持检测的问题类型：声音忽大忽小、丢帧、交叠、卡顿、冗余
+
+执行说明：
+功能入口audio_diff.py，默认使用python环境执行，若需要编译其它环境的可执行程序，请使用编译工具自行编译。下面是windows上程序执行示例。
+
+a安装方法：
+
+pip install AUDIODIFF
+
+运行命令：
+
+audio_diff.exe 参考音频路径 检测音频路径 --type 1 --config config.json --out result.json
+
+功能：
+
+--type 1=音频搜索, 2=音频内容差异对比 3=音频内容+音量对比
+
+配置参数
+
+输入配置参数文件config.json格式如下：
+
+{
+    // 全局参数
+    // 是否仅检测单通道
+    "CHECK_MONO": true,
+    
+    // 对齐参数
+    // 全局对齐使用的时长大小，单位（秒）
+    "GLOBAL_ALIGN_USE_DUR": 60,
+    // 对齐命中特征点阈值，单位（个数）
+    "ALIGNED_HIT_THRES": 500,
+
+    // 内容一致性参数
+    // 片段差异阈值松严尺度，越大越松
+    "BER_SEG_THRES": 0.35,
+    // 片段差异校验最小时长，单位（秒）
+    "MIN_SEG_DUR": 0.15,
+
+    // 音量一致性参数
+    // 相对音量差异阈值，单位（db）
+    "VOL_DB_DIFF_THRES": -16
+}
+
+输出结果
+
+输出结果文件字段说明：
+
+字段含义说明channel通道索引整数align_pos对齐位置（参考音频对齐到检测音频的位置）null：无法对齐，非null说明可以对齐单位：毫秒result检测结果msg差异说明diff_segs差异片段[参考音频位置，对比音频位置，持续时长]
+
+输出结果文件result.json格式如下：
+
+[
+    {
+        "channel": 0,
+        "align_pos": 0,
+        "result": [
+            {
+                "msg": "内容一致性存在差异",
+                "diff_segs": [
+                    [
+                        80000,
+                        80000,
+                        680
+                    ]
+                ]
+            }
+        ]
+    }
+]
+
+
