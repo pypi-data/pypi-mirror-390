@@ -1,0 +1,250 @@
+# Yield Curve Analysis Package
+
+A production-grade Python package for downloading U.S. Treasury yields from FRED (Federal Reserve Economic Data), fitting yield curve models (Cubic Spline and Nelson–Siegel–Svensson), and performing comprehensive yield curve analysis.
+
+## Project Purpose
+
+This package provides tools for:
+- **Data Loading**: Fetch real-time U.S. Treasury yield curve data from FRED (no API key required)
+- **Yield Curve Modeling**: Fit cubic spline and NSS models to observed yields
+- **Visualization**: Create publication-quality plots comparing models
+- **Metrics Calculation**: Compute slope, curvature, forward rates, and duration
+- **Research & Analysis**: Support quantitative finance and fixed income research
+
+## Installation Instructions
+
+### Option 1: Install from GitHub (Recommended)
+
+The easiest way for others to use your library:
+
+```bash
+pip install git+https://github.com/sinhaarya04/YieldCurve.git
+```
+
+This automatically installs all dependencies and makes the package available system-wide.
+
+### Option 2: Install Locally (Development)
+
+If someone downloads/clones your repository:
+
+```bash
+git clone https://github.com/sinhaarya04/YieldCurve.git
+cd YieldCurve/yieldcurve
+pip install -e .
+```
+
+### Option 3: Manual Installation
+
+If someone has the code locally:
+
+```bash
+# Install dependencies first
+pip install numpy scipy matplotlib requests
+
+# Then add to Python path or install
+cd yieldcurve
+pip install -e .
+```
+
+### Prerequisites
+
+- Python 3.7 or higher
+- pip package manager
+
+## Example Usage
+
+### Quick Start
+
+```python
+from yieldcurve import get_yield_curve, fit_spline, fit_nss, plot_yield_curves
+
+# Step 1: Load yields from FRED
+curve = get_yield_curve()
+print(curve)
+# Output: {'1M': 4.02, '3M': 3.93, '6M': 3.76, ...}
+
+# Step 2: Fit models
+spline_model = fit_spline(curve)
+nss_model = fit_nss(curve)
+
+# Step 3: Plot
+plot_yield_curves(curve, spline_model=spline_model, nss_model=nss_model)
+```
+
+### Advanced Usage
+
+```python
+from yieldcurve import CubicSplineYieldCurve, NSSYieldCurve
+from yieldcurve.utils.metrics import (
+    calculate_slope,
+    calculate_curvature,
+    calculate_forward_rates,
+    duration_approx
+)
+import numpy as np
+
+# Load and fit
+curve = get_yield_curve()
+spline = CubicSplineYieldCurve(curve)
+nss = NSSYieldCurve.fit(curve)
+
+# Evaluate at specific maturity
+yield_5y = spline(5.0)  # Yield at 5 years
+print(f"5-Year Yield: {yield_5y:.2f}%")
+
+# Calculate metrics
+slope = calculate_slope(curve, short_maturity="2Y", long_maturity="10Y")
+curvature = calculate_curvature(curve)
+
+# Compute forward rates
+grid = np.linspace(0.5, 30, 100)
+forwards = calculate_forward_rates(nss, grid)
+
+# Duration approximation
+dur_10y = duration_approx(nss, 10.0)
+print(f"10-Year Duration: {dur_10y:.2f} years")
+```
+
+### Full Demo
+
+See `examples/demo.ipynb` for a comprehensive walkthrough with all features.
+
+## How Spline & NSS Work
+
+### Cubic Spline Model
+
+The **Cubic Spline** model fits a piecewise cubic polynomial through the observed yield points. It provides:
+- **Smooth interpolation** between observed maturities
+- **Exact fit** to observed data points
+- **Natural boundary conditions** for stable extrapolation
+
+**Use Case**: When you need exact interpolation and smooth curves for visualization.
+
+### Nelson–Siegel–Svensson (NSS) Model
+
+The **NSS model** is a parametric yield curve model with 6 parameters:
+
+```
+y(t) = β₀ + β₁·[(1 - exp(-t/τ₁))/(t/τ₁)] 
+       + β₂·[((1 - exp(-t/τ₁))/(t/τ₁)) - exp(-t/τ₁)]
+       + β₃·[((1 - exp(-t/τ₂))/(t/τ₂)) - exp(-t/τ₂)]
+```
+
+Where:
+- **β₀**: Long-term level (asymptotic yield)
+- **β₁**: Short-term slope component
+- **β₂**: Medium-term curvature component
+- **β₃**: Additional curvature factor
+- **τ₁, τ₂**: Decay parameters controlling the shape
+
+**Use Case**: When you need a parsimonious parametric model for:
+- Forward rate calculations
+- Risk management
+- Yield curve forecasting
+- Academic research
+
+**Advantages**:
+- Smooth, well-behaved curves
+- Economically interpretable parameters
+- Good extrapolation properties
+- Industry standard in central banks
+
+## Package Structure
+
+```
+yieldcurve/
+├── __init__.py              # Public API
+├── loader/
+│   ├── __init__.py
+│   └── fred_loader.py       # FRED data fetching
+├── models/
+│   ├── __init__.py
+│   ├── spline.py            # Cubic spline model
+│   └── nss.py               # NSS model
+├── plots/
+│   ├── __init__.py
+│   └── plot_curve.py        # Visualization utilities
+├── utils/
+│   ├── __init__.py
+│   ├── conversions.py      # Maturity conversion helpers
+│   └── metrics.py          # Curve metrics (slope, curvature, etc.)
+├── examples/
+│   └── demo.ipynb          # Comprehensive demo notebook
+├── pyproject.toml          # Package configuration
+└── README.md               # This file
+```
+
+## API Reference
+
+### Main Functions
+
+- `get_yield_curve()`: Fetch current yield curve from FRED
+- `fit_spline(curve_dict)`: Fit cubic spline model
+- `fit_nss(curve_dict)`: Fit NSS model
+- `plot_yield_curves(...)`: Plot yield curves with models
+
+### Models
+
+- `CubicSplineYieldCurve`: Cubic spline yield curve model
+  - `model(maturity)`: Evaluate yield at given maturity (years)
+  - `generate_curve(num=200)`: Generate smooth curve for plotting
+  - `summary()`: Print model summary
+
+- `NSSYieldCurve`: Nelson–Siegel–Svensson model
+  - `NSSYieldCurve.fit(curve_dict)`: Fit model to data
+  - `model(maturity)`: Evaluate yield at given maturity (years)
+  - `generate_curve(min_t, max_t, num)`: Generate smooth curve
+  - `summary()`: Print fitted parameters
+
+### Utilities
+
+- `maturity_to_years(tag)`: Convert '3M', '10Y' → years
+- `years_to_maturity(years)`: Convert years → '3M', '10Y'
+- `sort_curve_dict(curve_dict)`: Sort curve by maturity
+- `calculate_slope(curve, short, long)`: Calculate yield curve slope
+- `calculate_curvature(curve, short, medium, long)`: Calculate curvature
+- `calculate_forward_rates(model, grid)`: Compute forward rates
+- `duration_approx(model, maturity)`: Approximate modified duration
+
+## Notes on FRED Data
+
+### Data Source
+
+This package fetches data from the **Federal Reserve Economic Data (FRED)** database, specifically the H.15 Selected Interest Rates series:
+- **Series IDs**: DGS1MO, DGS3MO, DGS6MO, DGS1, DGS2, DGS3, DGS5, DGS7, DGS10, DGS20, DGS30
+- **Frequency**: Daily
+- **No API Key Required**: Uses public CSV endpoints
+
+### Data Characteristics
+
+- **Maturities**: 1M, 3M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y
+- **Yield Type**: Constant maturity Treasury rates (par yields)
+- **Update Frequency**: Daily (business days)
+- **Historical Availability**: Data available from 1962 onwards
+
+### Limitations
+
+- Data is fetched from public CSV endpoints (may have rate limits)
+- Only U.S. Treasury yields are supported
+- Requires internet connection
+- Data may be delayed by 1 business day
+
+## Contributing
+
+This is a production-grade library following:
+- **PEP 8** code style
+- **Google-style** docstrings
+- **Type hints** throughout
+- **Clear error messages** and validation
+
+## License
+
+This package is provided as-is for educational and research purposes.
+
+## References
+
+1. **Nelson, C. R., & Siegel, A. F.** (1987). Parsimonious modeling of yield curves. *Journal of Business*, 60(4), 473-489.
+
+2. **Svensson, L. E.** (1994). Estimating and interpreting forward interest rates: Sweden 1992-1994. *NBER Working Paper*.
+
+3. **FRED Database**: https://fred.stlouisfed.org/
