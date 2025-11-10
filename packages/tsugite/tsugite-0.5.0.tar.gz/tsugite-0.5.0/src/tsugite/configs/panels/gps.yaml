@@ -1,0 +1,23 @@
+metadata:
+  version: 1.0
+  description: Nested GPS panel
+
+icon_url: "https://docs.raccoonlab.co/assets/img/t-view-bottom.bdcbed07.png"
+
+widgets:
+  - type: table
+    header:
+      time: "UTC Time, sec"
+      lat: "Latitude, °"
+      lon: "Longitude, °"
+      sats: "Sats"
+    rows:
+      - time:   {type: BoundLabel, topics: [dronecan.uavcan.equipment.gnss.Fix2::gnss_timestamp.usec], multiplier: 1e-6, precision: 0}
+        lat:    {type: BoundLabel, topics: [dronecan.uavcan.equipment.gnss.Fix2::latitude_deg_1e8], multiplier: 1e-8, precision: 7}
+        lon:    {type: BoundLabel, topics: [dronecan.uavcan.equipment.gnss.Fix2::longitude_deg_1e8], multiplier: 1e-8, precision: 7}
+        sats:   {type: BoundLabel, topics: [dronecan.uavcan.equipment.gnss.Fix2::sats_used]}
+  - type: GpsWidget
+    topic: dronecan.uavcan.equipment.gnss.Fix2
+    field_lat: latitude_deg_1e8
+    field_lon: longitude_deg_1e8
+    multiplier: 1e-8

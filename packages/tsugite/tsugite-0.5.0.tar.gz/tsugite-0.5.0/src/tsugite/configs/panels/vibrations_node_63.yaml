@@ -1,0 +1,80 @@
+metadata:
+  version: 1.0
+  description: Nested Vibrations panel
+
+widgets:
+  - type: table
+    header:
+      nope: "Nope"
+      update: "Bootloader"
+      save_all: "Parameters"
+      reboot: "Reboot"
+    rows:
+      - nope:         {type: ButtonWidget, text: "Noop",      action: noop,     node_id: 63}
+        update:       {type: ButtonWidget, text: "Upgrade",   action: upgrade,  node_id: 63}
+        save_all:     {type: ButtonWidget, text: "Save All",  action: save_all, node_id: 63}
+        reboot:       {type: ButtonWidget, text: "Reboot",    action: reboot,   node_id: 63}
+
+  - type: table
+    header:
+      id: "ID"
+      name: "Device Name"
+      version: "Firmware Version"
+      status: "Status"
+      uptime: "Uptime"
+      voltage_5v: "5V"
+      voltage_vin: "Vin"
+      temperature: "Temp."
+    rows:
+      - id:           {type: const_label, text: "63" }
+        name:         {type: const_label, text: "co.rl.mini" }
+        version:      {type: BoundLabel, info: "software_version", node_id: 63}
+        status:       {type: HealthLabel, node_id: 63}
+        uptime:       {type: BoundLabel, topics: [dronecan.uavcan.protocol.NodeStatus::uptime_sec, cyphal.uavcan.node.Heartbeat_1_0::uptime], node_id: 63}
+        voltage_5v:   {type: BoundLabel, topics: [dronecan.uavcan.equipment.power.CircuitStatus::voltage], node_id: 63}
+        voltage_vin:  {type: BoundLabel, topics: [dronecan.uavcan.equipment.power.CircuitStatus::voltage], node_id: 63}
+        temperature:  {type: BoundLabel, topics: [dronecan.uavcan.equipment.device.Temperature::temperature], node_id: 63}
+
+  - type: table
+    header:
+      timestamp: "Timestamp, usec"
+      metrics: "Vibration metrics"
+      dom_freq: "Dominant frequency"
+      dom_mag: "Dominant mag"
+      snr: "SNR"
+    rows:
+      - timestamp:    {type: BoundLabel, topics: [dronecan.uavcan.equipment.ahrs.RawIMU::timestamp.usec], node_id: 63}
+        metrics:      {type: BoundLabel, topics: [dronecan.uavcan.equipment.ahrs.RawIMU::integration_interval], node_id: 63}
+        dom_freq:     {type: BoundLabel, topics: ["dronecan.uavcan.equipment.ahrs.RawIMU::accelerometer_integral[0]"], node_id: 63}
+        dom_mag:      {type: BoundLabel, topics: ["dronecan.uavcan.equipment.ahrs.RawIMU::accelerometer_integral[1]"], node_id: 63}
+        snr:          {type: BoundLabel, topics: ["dronecan.uavcan.equipment.ahrs.RawIMU::accelerometer_integral[2]"], node_id: 63}
+
+  - type: table
+    header:
+      name: "Param Name"
+      value: "Param Value"
+      desc: "Description"
+    rows:
+      - name:   {type: "const_label", text: "imu.publishers"}
+        value:  {type: ParamWidget, param: "imu.publishers", node_id: 63}
+        desc:   {type: "const_label", text: "0 - Disabled, 15 - All publishers"}
+      - name:   {type: "const_label", text: "imu.data_source"}
+        value:  {type: ParamWidget, param: "imu.data_source", node_id: 63}
+        desc:   {type: "const_label", text: "0 - Disabled, 1 - Synthetic, 2 - FIFO, 4 - Registers"}
+      - name:   {type: "const_label", text: "imu.pub_frequency"}
+        value:  {type: ParamWidget, param: "imu.pub_frequency", node_id: 63}
+        desc:   {type: "const_label", text: "Frequency of IMU publisher [0-256 Hz]"}
+      - name:   {type: "const_label", text: "imu.synthetic_frequency"}
+        value:  {type: ParamWidget, param: "imu.synthetic_frequency", node_id: 63}
+        desc:   {type: "const_label", text: "Synthetic oscilation frequency [1-128 Hz]"}
+      - name:   {type: "const_label", text: "imu.synthetic_amplitude"}
+        value:  {type: ParamWidget, param: "imu.synthetic_amplitude", node_id: 63}
+        desc:   {type: "const_label", text: "Synthetic oscilation ampliture [1-1000]"}
+
+  - type: PlotWidget
+    topics: [dronecan.uavcan.equipment.ahrs.RawIMU]
+    fields: ["accelerometer_integral[0]", "accelerometer_integral[1]", "accelerometer_integral[2]"]
+    names: ["Dominant frequency, hz", "Dominant magnitude", "SNR"]
+    node_id: 63
+    window: 300
+    refresh_rate: 15
