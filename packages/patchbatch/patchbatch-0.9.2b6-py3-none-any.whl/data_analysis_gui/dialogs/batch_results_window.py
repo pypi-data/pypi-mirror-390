@@ -1,0 +1,1110 @@
+"""
+PatchBatch Electrophysiology Data Analysis Tool
+Author: Charles Kissell, Northeastern University
+License: MIT (see LICENSE file for details)
+
+Interactive batch analysis results viewer and export interface.
+
+This module provides a comprehensive window for viewing, selecting, and exporting
+batch electrophysiology analysis results. Users can interactively select file
+subsets, view color-coded plots with real-time updates, and export data in
+multiple formats including individual CSVs, IV summaries, and current density
+analyses.
+
+Classes:
+    - BatchResultsWindow: Main results viewer with file selection and export controls
+
+Features:
+    - Interactive file selection with real-time plot updates
+    - Color-coded trace visualization for easy file identification
+    - Multiple export formats (CSV, plots, IV summaries)
+    - Current density analysis integration
+    - Selective data export based on file selection
+    - Sortable results with intelligent numeric ordering
+"""
+
+from pathlib import Path
+import re
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QLabel, QSplitter,
+                             QApplication, QGroupBox)
+from PySide6.QtCore import Qt
+
+from data_analysis_gui.gui_services import FileDialogService, ClipboardService
+from data_analysis_gui.core.plot_formatter import PlotFormatter
+from data_analysis_gui.config.logging import get_logger
+
+from data_analysis_gui.dialogs.current_density_dialog import CurrentDensityDialog
+from data_analysis_gui.dialogs.current_density_results_window import CurrentDensityResultsWindow
+
+from data_analysis_gui.widgets.shared_widgets import DynamicBatchPlotWidget, BatchFileListWidget, FileSelectionState
+
+from data_analysis_gui.config.themes import (style_main_window, create_styled_button, style_group_box, get_selection_summary_color,
+                                            style_label,
+                                            )
+
+from data_analysis_gui.config.plot_style import add_zero_axis_lines
+
+from data_analysis_gui.services.summary_export import GeneralizedSummaryExporter
+
+logger = get_logger(__name__)
+
+
+class BatchResultsWindow(QMainWindow):
+    """
+    Window for displaying batch analysis results with file selection and export options.
+
+    Provides:
+        - File selection and summary.
+        - Interactive batch plot.
+        - Export controls for CSVs, plots, IV summary, and current density analysis.
+    """
+
+    def __init__(self, parent, batch_result, batch_service, data_service):
+        """
+        Initialize the BatchResultsWindow.
+
+        Args:
+            parent: Parent widget.
+            batch_result: Batch analysis result object.
+            batch_service: Service for batch operations.
+            data_service: Service for data export.
+        """
+        super().__init__(parent)
+
+        #self.setModal(True)
+
+        # Initialize selection state if not present
+        if batch_result.selected_files is None:
+            from dataclasses import replace
+
+            batch_result = replace(
+                batch_result,
+                selected_files={r.base_name for r in batch_result.successful_results},
+            )
+
+        self.batch_result = batch_result
+        self.batch_service = batch_service
+        self.data_service = data_service
+        
+        # Use parent's file dialog service if available for consistent directory memory
+        if hasattr(parent, 'file_dialog_service'):
+            self.file_dialog_service = parent.file_dialog_service
+        else:
+            # Fallback to new instance if parent doesn't have one
+            self.file_dialog_service = FileDialogService()
+
+        # Create selection state object
+        self.selection_state = FileSelectionState(self.batch_result.selected_files)
+
+        # Use PlotFormatter for consistent formatting
+        self.plot_formatter = PlotFormatter()
+
+        self.setWindowTitle("Batch Analysis Results")
+        screen = self.screen() or QApplication.primaryScreen()
+        avail = screen.availableGeometry()
+        self.resize(int(avail.width() * 0.9), int(avail.height() * 0.9))
+        fg = self.frameGeometry()
+        fg.moveCenter(avail.center())
+        self.move(fg.topLeft())
+        self.init_ui()
+
+        # Apply theme from themes.py
+        style_main_window(self)
+
+    def init_ui(self):
+        """
+        Initialize the user interface, including file list, plot, and export controls.
+        """
+        central = QWidget()
+        self.setCentralWidget(central)
+        main_layout = QVBoxLayout(central)
+
+        # Create splitter for file list and plot
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # Left panel: File list with controls
+        left_panel = self._create_file_list_panel()
+        splitter.addWidget(left_panel)
+
+        # Right panel: Plot
+        self.plot_widget = DynamicBatchPlotWidget()
+        
+        # Get plot labels - handle ramp IV batches with no parameters
+        if self._is_ramp_iv_batch():
+            # Extract current units from first successful result's export table
+            current_units = "pA"  # default
+            if self.batch_result.successful_results:
+                first_result = self.batch_result.successful_results[0]
+                if first_result.export_table and "headers" in first_result.export_table:
+                    # Headers look like: ["Voltage (mV)", "Current (pA)"]
+                    for header in first_result.export_table["headers"]:
+                        if "Current" in header and "(" in header:
+                            # Extract units from "Current (pA)" -> "pA"
+                            current_units = header.split("(")[1].split(")")[0]
+                            break
+            
+            plot_labels = {
+                "title": "Ramp IV Batch Analysis",
+                "x_label": "Voltage (mV)",
+                "y_label": f"Current ({current_units})"
+            }
+        else:
+            plot_labels = self.plot_formatter.get_plot_titles_and_labels(
+                "batch", params=self.batch_result.parameters
+            )
+        
+        self.plot_widget.initialize_plot(
+            x_label=plot_labels["x_label"],
+            y_label=plot_labels["y_label"],
+            title=plot_labels["title"],
+        )
+        splitter.addWidget(self.plot_widget)
+
+        # Set initial splitter sizes (30% list, 70% plot)
+        splitter.setSizes([360, 840])
+
+        main_layout.addWidget(splitter)
+
+        # Export controls at bottom
+        self._add_export_controls(main_layout)
+
+        # Populate and initial plot
+        self._populate_file_list()
+        self._update_plot()
+
+    def _create_file_list_panel(self) -> QWidget:
+        """
+        Create the file list panel with selection controls and summary.
+
+        Returns:
+            QWidget: Panel containing file list and controls.
+        """
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+
+        # Title
+        title = QLabel("Files:")
+        style_label(title, "subheading")
+        layout.addWidget(title)
+
+        # File list widget - use the shared widget
+        self.file_list = BatchFileListWidget(self.selection_state, show_cslow=False)
+        self.file_list.selection_changed.connect(self._on_selection_changed)
+        layout.addWidget(self.file_list)
+
+        # Selection controls
+        controls_layout = QHBoxLayout()
+        select_all_btn = create_styled_button("Select All", "secondary", panel)
+        select_none_btn = create_styled_button("Select None", "secondary", panel)
+
+        select_all_btn.clicked.connect(lambda: self.file_list.set_all_checked(True))
+        select_none_btn.clicked.connect(lambda: self.file_list.set_all_checked(False))
+
+        controls_layout.addWidget(select_all_btn)
+        controls_layout.addWidget(select_none_btn)
+        controls_layout.addStretch()
+        layout.addLayout(controls_layout)
+
+        # Summary label
+        self.summary_label = QLabel()
+        style_label(self.summary_label, "caption")
+        layout.addWidget(self.summary_label)
+
+        return panel
+
+    def _sort_results(self, results):
+        """
+        Sort batch results numerically by file name.
+
+        Args:
+            results: List of batch result objects.
+
+        Returns:
+            List: Sorted batch result objects.
+        """
+
+        def extract_number(file_name):
+            # Try to extract numbers on both sides of underscore (e.g., "250923_001")
+            # Returns tuple (date, experiment_num) for proper hierarchical sorting
+            match = re.search(r"(\d+)_(\d+)", file_name)
+            if match:
+                return (int(match.group(1)), int(match.group(2)))
+            
+            # Fallback: extract all numbers and return as tuple for multi-level sorting
+            numbers = re.findall(r"\d+", file_name)
+            if numbers:
+                return tuple(int(n) for n in numbers)
+            
+            # No numbers found
+            return (0,)
+
+        return sorted(results, key=lambda r: extract_number(r.base_name))
+
+    def _populate_file_list(self):
+        """
+        Populate the file list widget with sorted results and color mapping.
+        """
+        sorted_results = self._sort_results(self.batch_result.successful_results)
+
+        # Generate color mapping
+        color_mapping = self.plot_widget._generate_color_mapping(sorted_results)
+
+        # Clear and populate file list
+        self.file_list.setRowCount(0)
+
+        for result in sorted_results:
+            color = color_mapping[result.base_name]
+            self.file_list.add_file(result.base_name, color)
+
+    def _update_plot(self):
+        """
+        Update the plot to reflect selected files and current analysis parameters.
+        """
+        sorted_results = self._sort_results(self.batch_result.successful_results)
+
+        # Ramp IV batches don't use dual range
+        use_dual_range = False
+        if self.batch_result.parameters is not None:
+            use_dual_range = self.batch_result.parameters.use_dual_range
+
+        self.plot_widget.set_data(sorted_results, use_dual_range=use_dual_range)
+
+        self.plot_widget.update_visibility(self.selection_state.get_selected_files())
+
+        # Add prominent gridlines at x=0 and y=0
+        if self.plot_widget.ax is not None:
+            add_zero_axis_lines(self.plot_widget.ax)
+            self.plot_widget.canvas.draw_idle()  # Redraw to show the lines
+
+        self._update_summary()
+
+    def _on_selection_changed(self):
+        """
+        Handle changes in file selection and update plot and summary.
+        """
+        self.plot_widget.update_visibility(self.selection_state.get_selected_files())
+        self._update_summary()
+
+    def _update_summary(self):
+        """
+        Update the summary label to show the number of selected files.
+        """
+        selected = len(self.selection_state.get_selected_files())
+        total = len(self.batch_result.successful_results)
+
+        color = get_selection_summary_color(selected, total)
+
+        self.summary_label.setText(f"{selected} of {total} files selected")
+        self.summary_label.setStyleSheet(
+            f"color: {color}; font-weight: 500; font-style: normal;"
+        )
+
+    def _add_export_controls(self, layout):
+        """
+        Add export controls for CSVs, plots, IV summary, and current density analysis.
+
+        Args:
+            layout: The layout to which export controls are added.
+        """
+        export_group = QGroupBox("Export Options")
+        style_group_box(export_group)
+
+        button_layout = QHBoxLayout(export_group)
+
+        # Create buttons
+        export_csvs_btn = create_styled_button(
+            "Export Individual CSVs...", "primary", self
+        )
+        export_plot_btn = create_styled_button("Export Plot...", "secondary", self)
+        copy_filenames_btn = create_styled_button("Copy File Names", "secondary", self)
+
+        button_layout.addWidget(export_csvs_btn)
+        button_layout.addWidget(export_plot_btn)
+        button_layout.addWidget(copy_filenames_btn)
+        button_layout.addStretch()
+
+        # IV-specific exports if applicable
+        if self._is_iv_analysis():
+            export_iv_summary_btn = create_styled_button(
+                "Export IV Summary...", "primary", self
+            )
+            button_layout.addWidget(export_iv_summary_btn)
+            export_iv_summary_btn.clicked.connect(self._export_iv_summary)
+
+            current_density_btn = create_styled_button(
+                "Current Density Analysis...", "accent", self
+            )
+            copy_iv_summary_btn = create_styled_button(
+                "Copy IV Summary", "secondary", self
+            )
+            button_layout.addWidget(copy_iv_summary_btn)
+            copy_iv_summary_btn.clicked.connect(self._copy_iv_summary_to_clipboard)
+
+            button_layout.addWidget(current_density_btn)
+            current_density_btn.clicked.connect(self._open_current_density_analysis)
+
+        button_layout.addStretch()
+
+        layout.addWidget(export_group)
+
+        # Connect signals
+        export_csvs_btn.clicked.connect(self._export_individual_csvs)
+        export_plot_btn.clicked.connect(self._export_plot)
+        copy_filenames_btn.clicked.connect(self._copy_file_names_to_clipboard)
+
+    def _copy_file_names_to_clipboard(self):
+        """
+        Copy selected file names to clipboard as a column (one per line).
+        
+        Only copies unique file names in the order they appear in the file list,
+        respecting the current selection state.
+        """
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for copying.")
+            return
+
+        try:
+            # Extract unique file names in sorted order
+            file_names = [result.base_name for result in filtered_results]
+            
+            # Join with newlines to create a column
+            text = "\n".join(file_names)
+            
+            # Copy to clipboard
+            success = ClipboardService.copy_to_clipboard(text)
+
+            if success:
+                logger.info(f"Copied {len(file_names)} file names to clipboard")
+            else:
+                QMessageBox.warning(
+                    self, 
+                    "Copy Failed", 
+                    "Failed to copy file names to clipboard."
+                )
+
+        except Exception as e:
+            logger.error(f"Error copying file names: {e}", exc_info=True)
+            QMessageBox.critical(self, "Copy Error", f"Copy failed: {str(e)}")
+
+    def _copy_iv_summary_to_clipboard(self):
+        """
+        Copy IV summary data to clipboard as tab-separated values.
+        
+        Allows users to paste data directly into Excel, Prism, or other applications
+        without needing to save a CSV file first. Respects current file selection.
+        """
+        from data_analysis_gui.core.iv_analysis import (
+            IVAnalysisService,
+            IVSummaryExporter,
+        )
+
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for copying.")
+            return
+
+        try:
+            batch_data = {
+                r.base_name: {
+                    "x_values": r.x_data.tolist(),
+                    "y_values": r.y_data.tolist(),
+                    "x_values2": r.x_data2.tolist() if r.x_data2 is not None else None,
+                    "y_values2": r.y_data2.tolist() if r.y_data2 is not None else None,
+                }
+                for r in filtered_results
+            }
+
+            iv_data_r1, mapping, iv_data_r2 = IVAnalysisService.prepare_iv_data(
+                batch_data, self.batch_result.parameters
+            )
+
+            # Extract current units from parameters
+            current_units = "pA"  # default
+            if (
+                hasattr(self.batch_result.parameters, "channel_config")
+                and self.batch_result.parameters.channel_config
+            ):
+                current_units = self.batch_result.parameters.channel_config.get(
+                    "current_units", "pA"
+                )
+
+            selected_set = set(r.base_name for r in filtered_results)
+            export_table = IVSummaryExporter.prepare_summary_table(
+                iv_data_r1, mapping, selected_set, current_units
+            )
+
+            # Copy to clipboard
+            success = ClipboardService.copy_data_to_clipboard(export_table)
+
+            if success:
+                logger.info("IV summary copied to clipboard")
+
+        except Exception as e:
+            logger.error(f"Error copying IV summary: {e}", exc_info=True)
+            QMessageBox.critical(self, "Copy Error", f"Copy failed: {str(e)}")
+
+    def _is_ramp_iv_batch(self):
+        """
+        Check if this is a ramp IV batch analysis.
+        
+        Returns:
+            bool: True if ramp IV batch, False otherwise.
+        """
+        return getattr(self.batch_result, 'is_ramp_iv', False)
+
+    def _is_iv_analysis(self):
+        """
+        Check if the current analysis is an IV (current-voltage) analysis.
+        
+        Includes both standard IV analyses and ramp IV batches.
+
+        Returns:
+            bool: True if IV analysis, False otherwise.
+        """
+        # Check if this is a ramp IV batch first
+        if self._is_ramp_iv_batch():
+            return True
+        
+        # For standard batches, check parameters
+        params = self.batch_result.parameters
+        
+        # Ramp IV batches have None parameters, so need to check
+        if params is None:
+            return False
+        
+        return (
+            params.x_axis.channel == "Voltage"
+            and params.y_axis.channel == "Current"
+            and params.x_axis.measure in ["Average", "Peak"]
+            and params.y_axis.measure in ["Average", "Peak"]
+        )
+
+    def _is_gv_analysis(self):
+        """
+        Check if the current analysis is a GV (conductance-voltage) analysis.
+        
+        Returns:
+            bool: True if GV analysis, False otherwise.
+        """
+        params = self.batch_result.parameters
+        
+        if params is None:
+            return False
+        
+        # Check if conductance_config exists (required for conductance measure)
+        if params.conductance_config is None:
+            return False
+        
+        return (
+            params.x_axis.channel == "Voltage"
+            and params.x_axis.measure in ["Average", "Peak"]
+            and params.y_axis.measure == "Conductance"
+        )
+
+
+    def _add_export_controls(self, layout):
+        """
+        Add export controls for CSVs, plots, and analysis-specific summaries.
+        
+        Shows different summary export options based on analysis type:
+        - IV analysis: Shows IV-specific summary export
+        - GV analysis: Shows GV-specific summary export  
+        - Other analyses: Shows generalized summary export
+
+        Args:
+            layout: The layout to which export controls are added.
+        """
+        export_group = QGroupBox("Export Options")
+        style_group_box(export_group)
+
+        button_layout = QHBoxLayout(export_group)
+
+        # Create common buttons
+        export_csvs_btn = create_styled_button(
+            "Export Individual CSVs...", "primary", self
+        )
+        export_plot_btn = create_styled_button("Export Plot...", "secondary", self)
+        copy_filenames_btn = create_styled_button("Copy File Names", "secondary", self)
+
+        button_layout.addWidget(export_csvs_btn)
+        button_layout.addWidget(export_plot_btn)
+        button_layout.addWidget(copy_filenames_btn)
+        button_layout.addStretch()
+
+        # Determine analysis type and add appropriate controls
+        is_iv = self._is_iv_analysis()
+        is_gv = self._is_gv_analysis()
+        
+        if is_iv:
+            # IV-specific summary exports
+            export_iv_summary_btn = create_styled_button(
+                "Export IV Summary...", "primary", self
+            )
+            button_layout.addWidget(export_iv_summary_btn)
+            export_iv_summary_btn.clicked.connect(self._export_iv_summary)
+
+            copy_iv_summary_btn = create_styled_button(
+                "Copy IV Summary", "secondary", self
+            )
+            button_layout.addWidget(copy_iv_summary_btn)
+            copy_iv_summary_btn.clicked.connect(self._copy_iv_summary_to_clipboard)
+
+            current_density_btn = create_styled_button(
+                "Current Density Analysis...", "accent", self
+            )
+            button_layout.addWidget(current_density_btn)
+            current_density_btn.clicked.connect(self._open_current_density_analysis)
+            
+        elif is_gv:
+            # GV-specific summary exports
+            export_gv_summary_btn = create_styled_button(
+                "Export GV Summary...", "primary", self
+            )
+            button_layout.addWidget(export_gv_summary_btn)
+            export_gv_summary_btn.clicked.connect(self._export_gv_summary)
+
+            copy_gv_summary_btn = create_styled_button(
+                "Copy GV Summary", "secondary", self
+            )
+            button_layout.addWidget(copy_gv_summary_btn)
+            copy_gv_summary_btn.clicked.connect(self._copy_gv_summary_to_clipboard)
+
+            conductance_density_btn = create_styled_button(
+                "Conductance Density Analysis...", "accent", self
+            )
+            button_layout.addWidget(conductance_density_btn)
+            conductance_density_btn.clicked.connect(self._open_current_density_analysis)
+            
+        else:
+            # Generalized summary exports (for time-course and other analyses)
+            export_summary_btn = create_styled_button(
+                "Export Summary...", "primary", self
+            )
+            button_layout.addWidget(export_summary_btn)
+            export_summary_btn.clicked.connect(self._export_generalized_summary)
+
+            copy_summary_btn = create_styled_button(
+                "Copy Summary", "secondary", self
+            )
+            button_layout.addWidget(copy_summary_btn)
+            copy_summary_btn.clicked.connect(self._copy_generalized_summary_to_clipboard)
+
+        button_layout.addStretch()
+
+        layout.addWidget(export_group)
+
+        # Connect common signals
+        export_csvs_btn.clicked.connect(self._export_individual_csvs)
+        export_plot_btn.clicked.connect(self._export_plot)
+        copy_filenames_btn.clicked.connect(self._copy_file_names_to_clipboard)
+
+
+    def _export_gv_summary(self):
+        """
+        Export GV summary for selected files only.
+
+        Prompts user for export location and writes summary CSV.
+        """
+        from data_analysis_gui.core.iv_analysis import (
+            IVAnalysisService,
+            IVSummaryExporter,
+        )
+
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for export.")
+            return
+
+        batch_data = {
+            r.base_name: {
+                "x_values": r.x_data.tolist(),
+                "y_values": r.y_data.tolist(),
+                "x_values2": r.x_data2.tolist() if r.x_data2 is not None else None,
+                "y_values2": r.y_data2.tolist() if r.y_data2 is not None else None,
+            }
+            for r in filtered_results
+        }
+
+        iv_data_r1, mapping, iv_data_r2 = IVAnalysisService.prepare_iv_data(
+            batch_data, self.batch_result.parameters
+        )
+
+        # Extract conductance units from parameters
+        conductance_units = "nS"  # default
+        if (
+            hasattr(self.batch_result.parameters, "conductance_config")
+            and self.batch_result.parameters.conductance_config
+        ):
+            conductance_units = self.batch_result.parameters.conductance_config.units
+
+        # Generate filename
+        suggested_filename = "GV_Summary.csv"
+
+        file_path = self.file_dialog_service.get_export_path(
+            self, 
+            suggested_filename, 
+            file_types="CSV files (*.csv)",
+            dialog_type="export"
+        )
+
+        if file_path:
+            try:
+                selected_set = set(r.base_name for r in filtered_results)
+                # Pass conductance_units to prepare_summary_table
+                table = IVSummaryExporter.prepare_summary_table(
+                    iv_data_r1, mapping, selected_set, conductance_units
+                )
+
+                result = self.data_service.export_to_csv(table, file_path)
+
+                if result.success:
+                    QMessageBox.information(
+                        self,
+                        "Export Complete",
+                        f"Exported GV summary ({conductance_units}) with {len(filtered_results)} files",
+                    )
+                    
+                    # Trigger auto-save on parent to persist directory choice
+                    if hasattr(self.parent(), '_auto_save_settings'):
+                        try:
+                            self.parent()._auto_save_settings()
+                        except Exception as e:
+                            # Silent fail - don't show error for auto-save failures
+                            pass
+                else:
+                    QMessageBox.warning(self, "Export Failed", result.error_message)
+
+            except Exception as e:
+                logger.error(f"GV summary export failed: {e}", exc_info=True)
+                QMessageBox.critical(self, "Export Failed", str(e))
+
+
+    def _copy_gv_summary_to_clipboard(self):
+        """
+        Copy GV summary data to clipboard as tab-separated values.
+        
+        Allows users to paste data directly into Excel, Prism, or other applications
+        without needing to save a CSV file first. Respects current file selection.
+        """
+        from data_analysis_gui.core.iv_analysis import (
+            IVAnalysisService,
+            IVSummaryExporter,
+        )
+
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for copying.")
+            return
+
+        try:
+            batch_data = {
+                r.base_name: {
+                    "x_values": r.x_data.tolist(),
+                    "y_values": r.y_data.tolist(),
+                    "x_values2": r.x_data2.tolist() if r.x_data2 is not None else None,
+                    "y_values2": r.y_data2.tolist() if r.y_data2 is not None else None,
+                }
+                for r in filtered_results
+            }
+
+            iv_data_r1, mapping, iv_data_r2 = IVAnalysisService.prepare_iv_data(
+                batch_data, self.batch_result.parameters
+            )
+
+            # Extract conductance units from parameters
+            conductance_units = "nS"  # default
+            if (
+                hasattr(self.batch_result.parameters, "conductance_config")
+                and self.batch_result.parameters.conductance_config
+            ):
+                conductance_units = self.batch_result.parameters.conductance_config.units
+
+            selected_set = set(r.base_name for r in filtered_results)
+            export_table = IVSummaryExporter.prepare_summary_table(
+                iv_data_r1, mapping, selected_set, conductance_units
+            )
+
+            # Copy to clipboard
+            success = ClipboardService.copy_data_to_clipboard(export_table)
+
+            if success:
+                logger.info("GV summary copied to clipboard")
+            else:
+                QMessageBox.warning(
+                    self, 
+                    "Copy Failed", 
+                    "Failed to copy GV summary to clipboard."
+                )
+
+        except Exception as e:
+            logger.error(f"Error copying GV summary: {e}", exc_info=True)
+            QMessageBox.critical(self, "Copy Error", f"Copy failed: {str(e)}")
+
+
+    def _export_generalized_summary(self):
+        """
+        Export generalized summary for selected files.
+        
+        Uses two-column-per-file format suitable for any analysis parameter combination.
+        Prompts user for export location and writes summary CSV.
+        """
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for export.")
+            return
+
+        # Build batch data dictionary
+        batch_data = {
+            r.base_name: {
+                "x_values": r.x_data.tolist(),
+                "y_values": r.y_data.tolist(),
+            }
+            for r in filtered_results
+        }
+
+        # Extract current units from parameters
+        current_units = "pA"  # default
+        if (
+            hasattr(self.batch_result.parameters, "channel_config")
+            and self.batch_result.parameters.channel_config
+        ):
+            current_units = self.batch_result.parameters.channel_config.get(
+                "current_units", "pA"
+            )
+
+        # Prepare summary table
+        selected_set = set(r.base_name for r in filtered_results)
+        export_table = GeneralizedSummaryExporter.prepare_summary_table(
+            batch_data, 
+            self.batch_result.parameters, 
+            selected_set, 
+            current_units
+        )
+
+        if not export_table["data"].size:
+            QMessageBox.warning(self, "No Data", "No data available for export.")
+            return
+
+        # Generate filename
+        suggested_filename = "Summary.csv"
+
+        file_path = self.file_dialog_service.get_export_path(
+            self, 
+            suggested_filename, 
+            file_types="CSV files (*.csv)",
+            dialog_type="export"
+        )
+
+        if file_path:
+            try:
+                result = self.data_service.export_to_csv(export_table, file_path)
+
+                if result.success:
+                    QMessageBox.information(
+                        self,
+                        "Export Complete",
+                        f"Exported summary with {len(filtered_results)} files",
+                    )
+                    
+                    # Trigger auto-save on parent to persist directory choice
+                    if hasattr(self.parent(), '_auto_save_settings'):
+                        try:
+                            self.parent()._auto_save_settings()
+                        except Exception as e:
+                            # Silent fail - don't show error for auto-save failures
+                            pass
+                else:
+                    QMessageBox.warning(self, "Export Failed", result.error_message)
+
+            except Exception as e:
+                logger.error(f"Generalized summary export failed: {e}", exc_info=True)
+                QMessageBox.critical(self, "Export Failed", str(e))
+
+
+    def _copy_generalized_summary_to_clipboard(self):
+        """
+        Copy generalized summary data to clipboard as tab-separated values.
+        
+        Uses the two-column-per-file format suitable for any analysis.
+        Allows users to paste data directly into Excel, Prism, or other applications
+        without needing to save a CSV file first. Respects current file selection.
+        """
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for copying.")
+            return
+
+        try:
+            # Build batch data dictionary
+            batch_data = {
+                r.base_name: {
+                    "x_values": r.x_data.tolist(),
+                    "y_values": r.y_data.tolist(),
+                }
+                for r in filtered_results
+            }
+
+            # Extract current units from parameters
+            current_units = "pA"  # default
+            if (
+                hasattr(self.batch_result.parameters, "channel_config")
+                and self.batch_result.parameters.channel_config
+            ):
+                current_units = self.batch_result.parameters.channel_config.get(
+                    "current_units", "pA"
+                )
+
+            # Prepare summary table
+            selected_set = set(r.base_name for r in filtered_results)
+            export_table = GeneralizedSummaryExporter.prepare_summary_table(
+                batch_data,
+                self.batch_result.parameters,
+                selected_set,
+                current_units
+            )
+
+            if not export_table["data"].size:
+                QMessageBox.warning(self, "No Data", "No data available for copying.")
+                return
+
+            # Copy to clipboard
+            success = ClipboardService.copy_data_to_clipboard(export_table)
+
+            if success:
+                logger.info("Generalized summary copied to clipboard")
+            else:
+                QMessageBox.warning(
+                    self, 
+                    "Copy Failed", 
+                    "Failed to copy summary to clipboard."
+                )
+
+        except Exception as e:
+            logger.error(f"Error copying generalized summary: {e}", exc_info=True)
+            QMessageBox.critical(self, "Copy Error", f"Copy failed: {str(e)}")
+
+    def _get_filtered_results(self):
+        """
+        Get batch results filtered by current file selection.
+
+        Returns:
+            List: Filtered batch result objects.
+        """
+        selected_files = self.selection_state.get_selected_files()
+        filtered = [
+            r
+            for r in self.batch_result.successful_results
+            if r.base_name in selected_files
+        ]
+        return self._sort_results(filtered)
+
+    def _export_iv_summary(self):
+        """
+        Export IV summary for selected files only.
+
+        Prompts user for export location and writes summary CSV.
+        """
+        from data_analysis_gui.core.iv_analysis import (
+            IVAnalysisService,
+            IVSummaryExporter,
+        )
+
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for export.")
+            return
+
+        batch_data = {
+            r.base_name: {
+                "x_values": r.x_data.tolist(),
+                "y_values": r.y_data.tolist(),
+                "x_values2": r.x_data2.tolist() if r.x_data2 is not None else None,
+                "y_values2": r.y_data2.tolist() if r.y_data2 is not None else None,
+            }
+            for r in filtered_results
+        }
+
+        iv_data_r1, mapping, iv_data_r2 = IVAnalysisService.prepare_iv_data(
+            batch_data, self.batch_result.parameters
+        )
+
+        # Extract current units from parameters
+        current_units = "pA"  # default
+        if (
+            hasattr(self.batch_result.parameters, "channel_config")
+            and self.batch_result.parameters.channel_config
+        ):
+            current_units = self.batch_result.parameters.channel_config.get(
+                "current_units", "pA"
+            )
+
+        # Generate filename
+        suggested_filename = "IV_Summary.csv"
+
+        file_path = self.file_dialog_service.get_export_path(
+            self, 
+            suggested_filename, 
+            file_types="CSV files (*.csv)",
+            dialog_type="export"  # Unique dialog type for IV summaries
+        )
+
+        if file_path:
+            try:
+                selected_set = set(r.base_name for r in filtered_results)
+                # Pass current_units to prepare_summary_table
+                table = IVSummaryExporter.prepare_summary_table(
+                    iv_data_r1, mapping, selected_set, current_units
+                )
+
+                result = self.data_service.export_to_csv(table, file_path)
+
+                if result.success:
+                    QMessageBox.information(
+                        self,
+                        "Export Complete",
+                        f"Exported IV summary ({current_units}) with {len(filtered_results)} files",
+                    )
+                    
+                    # Trigger auto-save on parent to persist directory choice
+                    if hasattr(self.parent(), '_auto_save_settings'):
+                        try:
+                            self.parent()._auto_save_settings()
+                        except Exception as e:
+                            # Silent fail - don't show error for auto-save failures
+                            pass
+                else:
+                    QMessageBox.warning(self, "Export Failed", result.error_message)
+
+            except Exception as e:
+                logger.error(f"IV summary export failed: {e}", exc_info=True)
+                QMessageBox.critical(self, "Export Failed", str(e))
+
+    def _export_individual_csvs(self):
+        """
+        Export individual CSV files for selected batch results.
+
+        Prompts user for output directory and writes CSVs.
+        """
+        filtered_results = self._get_filtered_results()
+
+        if not filtered_results:
+            QMessageBox.warning(self, "No Data", "No files selected for export.")
+            return
+
+        output_dir = self.file_dialog_service.get_directory(
+            self, 
+            "Select Output Directory",
+            dialog_type="export"  # Unique dialog type for batch CSV exports
+        )
+
+        if output_dir:
+            try:
+                from dataclasses import replace
+
+                filtered_batch = replace(
+                    self.batch_result,
+                    successful_results=filtered_results,
+                    failed_results=[],
+                    selected_files=self.selection_state.get_selected_files(),
+                )
+
+                result = self.batch_service.export_results(filtered_batch, output_dir)
+
+                success_count = sum(1 for r in result.export_results if r.success)
+
+                QMessageBox.information(
+                    self,
+                    "Export Complete",
+                    f"Exported {success_count} files\nTotal: {result.total_records} records",
+                )
+                
+                # Trigger auto-save on parent to persist directory choice
+                if hasattr(self.parent(), '_auto_save_settings'):
+                    try:
+                        self.parent()._auto_save_settings()
+                    except Exception as e:
+                        # Silent fail - don't show error for auto-save failures
+                        pass
+
+            except Exception as e:
+                logger.error(f"Export failed: {e}", exc_info=True)
+                QMessageBox.critical(self, "Export Failed", str(e))
+
+    def _export_plot(self):
+        """
+        Export the current plot (with selected files only).
+
+        Prompts user for export location and saves plot image.
+        """
+        if not self.plot_widget.figure:
+            QMessageBox.warning(self, "No Plot", "No plot to export.")
+            return
+
+        file_path = self.file_dialog_service.get_export_path(
+            self,
+            "batch_plot.png",
+            file_types="PNG files (*.png);;PDF files (*.pdf);;SVG files (*.svg)",
+            dialog_type="export"  
+        )
+
+        if file_path:
+            try:
+                self.plot_widget.export_figure(file_path)
+                QMessageBox.information(
+                    self, "Export Complete", f"Plot saved to {Path(file_path).name}"
+                )
+                
+                # Trigger auto-save on parent to persist directory choice
+                if hasattr(self.parent(), '_auto_save_settings'):
+                    try:
+                        self.parent()._auto_save_settings()
+                    except Exception as e:
+                        # Silent fail - don't show error for auto-save failures
+                        pass
+                        
+            except Exception as e:
+                logger.error(f"Failed to export plot: {e}")
+                QMessageBox.critical(self, "Export Failed", str(e))
+
+    def _open_current_density_analysis(self):
+        """
+        Open the density analysis dialog for selected files.
+        
+        Opens Current Density dialog for IV analyses or Conductance Density dialog
+        for GV analyses. Launches dialog and, if completed, shows results window.
+        """
+        from dataclasses import replace
+
+        batch_with_selection = replace(
+            self.batch_result, selected_files=self.selection_state.get_selected_files()
+        )
+        
+        # Determine analysis type (treat ramp_iv the same as regular IV)
+        analysis_type = "GV" if self._is_gv_analysis() else "IV"
+
+        dialog = CurrentDensityDialog(self, batch_with_selection, analysis_type)
+
+        if dialog.exec_():
+            cslow_mapping = dialog.get_cslow_mapping()
+
+            if not cslow_mapping:
+                QMessageBox.warning(self, "No Data", "No capacitance values were entered.")
+                return
+
+            cd_window = CurrentDensityResultsWindow(
+                self,
+                batch_with_selection,
+                cslow_mapping,
+                self.data_service,
+                self.batch_service,
+                analysis_type,
+            )
+            cd_window.show()
