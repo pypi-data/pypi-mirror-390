@@ -1,0 +1,262 @@
+Metadata-Version: 2.4
+Name: qinum_xai
+Version: 0.1.7
+Summary: Explainable AI (XAI) and YOLO visualization + layer inspection utilities
+Home-page: https://qinum@dev.azure.com/qinum/RailAIxs/_git/Qinum_XAI
+Author: Shivam Gupta
+Author-email: s.gupta@qinum.com
+License: MIT
+Project-URL: Source, https://qinum@dev.azure.com/qinum/RailAIxs/_git/Qinum_XAI
+Project-URL: Tracker, https://qinum@dev.azure.com/qinum/RailAIxs/_git/Qinum_XAI
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch
+Requires-Dist: torchvision
+Requires-Dist: ultralytics
+Requires-Dist: grad-cam
+Requires-Dist: opencv-python
+Requires-Dist: numpy
+Requires-Dist: matplotlib
+Requires-Dist: tqdm
+Requires-Dist: scikit-image
+Requires-Dist: scikit-learn
+Requires-Dist: lime
+Requires-Dist: shap
+Requires-Dist: ttach
+Provides-Extra: dev
+Requires-Dist: build; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Dynamic: license-file
+
+# QINUM-XAI-YOLO
+
+Explainable AI Toolkit for Object Detection and Model Inspection
+
+**Overview**
+
+QINUM-XAI-YOLO extends existing class-activation-mapping (CAM) methods—originally limited to image-classification networks—to object-detection YOLO architectures.
+The toolkit also integrates SHAP and LIME explainers and provides model-inspection utilities to analyze the internal structure of YOLO networks.
+
+The library enables visual, interpretable inspection of model behavior at the feature-map and decision levels. It is intended for research, quality inspection, and safety analysis within perception systems.
+
+**Installation**
+
+Requirements:
+Python 3.9 ≤ version ≤ 3.13
+
+Install using pip:
+pip install qinum_xai
+
+
+or for development:
+
+git clone https://github.com/yourgithub/qinum_xai_yolo.git
+cd qinum_xai_yolo
+pip install -e .
+
+**Features**
+
+Unified explainability toolkit for object-detection models
+
+Integration of Grad-CAM family methods for YOLO Architecture
+
+Layer-inspection utility to explore and select feature-map indices
+
+Integrated LIME and SHAP explainers for object-level analysis
+
+Supported CAM Methods
+
+GradCAM, HiResCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, LayerCAM, FullGrad, EigenCAM, ShapleyCAM, and FinerCAM.
+
+**Usage Examples**
+
+1. Grad-CAM Visualization
+from qinum_xai import generate_cam_image
+
+generate_cam_image(
+    weights="weights/YOLOs.pt",
+    image_path="images/sample.jpg",
+    output_dir="outputs/gradcam/",
+    method="GradCAM",
+    class_id=0,
+    imgsz=640,
+    device="cuda",
+    layer_indices=[15],
+    eigen_smooth=False,
+    aug_smooth=False,
+    draw_boxes=True,
+    conf=0.5,
+)
+
+
+Generates a Grad-CAM (or any supported CAM variant) heatmap overlay for a YOLO detection and saves the visualization to the specified output directory.
+Supported CAM methods include GradCAM, GradCAMPlusPlus, HiResCAM, EigenCAM, and others defined in CAM_METHODS.
+
+2. Fused Multi-Layer CAM Visualization
+from qinum_xai import generate_cam_fused_classes
+
+generate_cam_fused_classes(
+    weights="weights/YOLOs.pt",
+    image_path="images/sample.jpg",
+    output_dir="outputs/fused/",
+    entries=[
+        {"class_id": 9, "method": "HiResCAM", "layer_indices": [15], "weight": 1.0},
+        {"class_id": 7, "method": "HiResCAM", "layer_indices": [18], "weight": 1.0},
+    ],
+    imgsz=640,
+    device="cuda",
+    eigen_smooth=False,
+    aug_smooth=False,
+    fuse="max",
+)
+
+
+Combines multiple CAM visualizations across layers or classes using a fusion operation ("max" or "sum"), emphasizing regions of strongest activation or joint importance.
+
+3. Inspect Model Layers
+from qinum_xai import inspect_yolo_blocks
+
+inspect_yolo_blocks("weights/YOLOs.pt")
+
+
+Example Output:
+
+idx  type          HxW       #Conv  hasConv
+0    Conv          640x640     1     True
+1    C2f           320x320     5     True
+2    C2f           160x160     5     True
+...
+Groups by spatial size:
+  80x80: indices [4, 15]
+  40x40: indices [12, 18]
+  20x20: indices [8, 21]
+
+
+Lists all model blocks by spatial resolution, enabling targeted CAM or explainability visualization on specific feature map scales (e.g., P3, P4, P5 in YOLO architectures).
+
+4. LIME Explainability for Object Detection
+from qinum_xai import lime
+
+lime(
+    images_dir="images/",
+    weights="weights/YOLOs.pt",
+    output_dir="outputs/lime/",
+    imgsz=640,
+    device="cuda",
+    max_side=1024,
+    iou_match_threshold=0.5,
+    max_detections_per_image=None,
+    num_samples=1000,
+    segmentation_num_segments=300,
+    segmentation_compactness=10.0,
+    segmentation_sigma=1.0,
+    positive_only=False,
+    num_features=10,
+    hide_rest=False,
+)
+
+
+Performs LIME (Local Interpretable Model-Agnostic Explanations) on YOLO detections, identifying superpixels that most influence each detection’s confidence score.
+Superpixel segmentation uses SLIC with configurable parameters for compactness, sigma, and the number of segments.
+
+5. SHAP Explainability for Object Detection
+from qinum_xai import SHAP
+
+SHAP(
+    images_dir="images/",
+    weights="weights/YOLOs.pt",
+    output_dir="outputs/shap/",
+    imgsz=640,
+    device="cuda",
+    max_side=1024,
+    nsamples=300,
+)
+
+
+Computes SHAP (SHapley Additive exPlanations) values via model perturbation, producing per-pixel feature importance visualizations that highlight areas contributing most to detection outcomes.
+**Example Workflow**
+
+Inspect layers with inspect_yolo_blocks() to choose meaningful layer indices.
+
+Generate single-layer or fused CAMs using generate_cam_image() or generate_cam_fused_classes().
+
+Compare heatmaps with LIME and SHAP visualizations for cross-validation of model interpretability.
+
+Use results for documentation, dataset auditing, or AI quality verification.
+
+**Dependencies**
+
+torch, torchvision
+
+ultralytics ≥ 8.0.0
+
+pytorch-grad-cam ≥ 1.4.8
+
+opencv-python, numpy, matplotlib
+
+scikit-image, scikit-learn
+
+lime, shap, ttach
+
+**Acknowledgments**
+
+This project builds upon the open-source work of Jacob Gildenblat and contributors from the PyTorch Grad-CAM library
+, originally developed for image-classification models.
+
+It extends that foundation to object-detection architectures (YOLO and similar), adds model-inspection functionality, and integrates SHAP and LIME explainers into a unified framework.
+
+@misc{jacobgilpytorchcam,
+  title={PyTorch library for CAM methods},
+  author={Jacob Gildenblat and contributors},
+  year={2021},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/jacobgil/pytorch-grad-cam}},
+}
+
+**Research References**
+
+Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization – Selvaraju et al., 2017
+
+Grad-CAM++: Improved Visual Explanations for Deep Convolutional Networks – Chattopadhyay et al., 2018
+
+HiResCAM – Draelos & Carin, 2020
+
+Score-CAM – Wang et al., 2020
+
+LayerCAM – Jiang et al., IEEE TIP 2021
+
+Ablation-CAM – Desai & Ramaswamy, WACV 2020
+
+Axiom-based Grad-CAM – Fu et al., 2020
+
+Eigen-CAM – Muhammad & Yeasin, 2020
+
+Full-Gradient Representation – Srinivas & Fleuret, 2019
+
+Deep Feature Factorization – Collins et al., 2018
+
+KPCA-CAM – Karmani et al., 2024
+
+CAMs as Shapley Value-based Explainers – Cai, 2025
+
+Finer-CAM – Zhang et al., 2025
+
+**License**
+
+This project is distributed under the MIT License.
+Copyright (c) 2025 Shivam Gupta.
