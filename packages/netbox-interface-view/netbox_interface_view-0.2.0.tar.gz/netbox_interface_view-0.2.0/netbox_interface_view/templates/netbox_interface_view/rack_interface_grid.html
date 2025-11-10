@@ -1,0 +1,227 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block title %}Rack Interface Grid - {{ rack.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Rack Interface Grid: {{ rack.name }}</h1>
+                <a href="{% url 'dcim:rack' pk=rack.pk %}" class="btn btn-secondary">
+                    <i class="mdi mdi-arrow-left"></i> Back to Rack
+                </a>
+            </div>
+
+            <!-- Interface Grid -->
+            <div class="interface-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                {% for interface in interfaces %}
+                <a href="{% url 'dcim:interface' pk=interface.id %}" target="_blank" class="grid-item-wrapper"
+                    style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit;">
+                    <!-- Device Name above this specific cell -->
+                    <div
+                        style="text-align: center; font-size: 0.75em; color: #495057; font-weight: 600; margin-bottom: 2px;">
+                        {{ interface.device_name }}
+                    </div>
+
+                    <!-- Interface Cell -->
+                    <div class="interface-cell interface-type-{{ interface.type }}"
+                        data-interface-id="{{ interface.id }}" data-interface-index="{{ forloop.counter0 }}"
+                        data-interface-name="{{ interface.name }}" data-interface-type="{{ interface.type }}"
+                        data-bs-toggle="tooltip" data-bs-html="true"
+                        title="<strong>{{ interface.name }}</strong><br>
+                                Type: {{ interface.type }}<br>
+                                {% if interface.untagged_vlan %}Untagged: VLAN {{ interface.untagged_vlan.vid }} ({{ interface.untagged_vlan.name }})<br>{% endif %}
+                                {% if interface.tagged_vlans %}Tagged: {% for vlan in interface.tagged_vlans %}VLAN {{ vlan.vid }}{% if not forloop.last %}, {% endif %}{% endfor %}<br>{% endif %}
+                                {% if interface.description %}{{ interface.description }}<br>{% endif %}
+                                Status: {% if interface.connected and interface.enabled %}Connected & Enabled{% elif not interface.enabled %}Disabled{% else %}Disconnected{% endif %}"
+                        style="
+                            border: 3px solid {{ interface.untagged_vlan.color|default:'#cccccc' }};
+                            padding: 3px;
+                            min-height: 85px;
+                            max-height: 85px;
+                            width: 100%;
+                            display: flex;
+                            flex-direction: column;
+                            position: relative;
+                            overflow: hidden;
+                            cursor: pointer;
+                         ">
+                        <!-- Connection Status Indicator (top-right corner) -->
+                        <div style="position: absolute; top: 2px; right: 2px;">
+                            {% if interface.connected and interface.enabled %}
+                            <span style="color: #28a745; font-size: 12px;">●</span>
+                            {% elif not interface.enabled %}
+                            <span style="color: #dc3545; font-size: 12px;">●</span>
+                            {% else %}
+                            <span style="color: #6c757d; font-size: 12px;">●</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Interface Name -->
+                        <div style="font-size: 0.8em; font-weight: bold; text-align: center; margin-top: 5px;">
+                            {{ interface.name }}
+                        </div>
+
+                        <!-- Tagged VLANs dots (bottom) -->
+                        {% if interface.tagged_vlans %}
+                        <div
+                            style="position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px;">
+                            {% for vlan in interface.tagged_vlans %}
+                            <span style="
+                                    width: 7px; 
+                                    height: 7px; 
+                                    border-radius: 50%; 
+                                    background-color: {{ vlan.color }};
+                                    display: inline-block;
+                                    border: 1px solid #333;
+                                "></span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .interface-cell {
+        transition: transform 0.1s, box-shadow 0.1s;
+        background-color: var(--tblr-bg-surface-tertiary);
+    }
+
+    .interface-cell-empty {
+        background-color: var(--tblr-bg-surface-tertiary);
+    }
+
+    html[data-theme="dark"] .interface-cell-empty {
+        border-color: #3a4249 !important;
+    }
+
+    .interface-cell:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        z-index: 10;
+    }
+
+    /* Interface Type Visual Differentiation via Border Styling */
+
+    /* Virtual interfaces - no border radius (sharp square corners) */
+    .interface-cell[data-interface-type*="virtual"],
+    .interface-cell[data-interface-type*="lag"],
+    .interface-cell[data-interface-type*="bridge"] {
+        border-radius: 0px !important;
+        border-style: dashed !important;
+    }
+
+    /* Ethernet (fixed) - blocky/square corners (minimal radius) */
+    .interface-cell[data-interface-type*="100base"],
+    .interface-cell[data-interface-type*="1000base"],
+    .interface-cell[data-interface-type*="2.5gbase"],
+    .interface-cell[data-interface-type*="5gbase"],
+    .interface-cell[data-interface-type*="10gbase"],
+    .interface-cell[data-interface-type*="25gbase"],
+    .interface-cell[data-interface-type*="40gbase"],
+    .interface-cell[data-interface-type*="100gbase"] {
+        border-radius: 2px !important;
+    }
+
+    /* Ethernet (modular) - rounded corners (SFP, QSFP, etc.) */
+    .interface-cell[data-interface-type*="sfp"],
+    .interface-cell[data-interface-type*="qsfp"],
+    .interface-cell[data-interface-type*="xfp"],
+    .interface-cell[data-interface-type*="cfp"],
+    .interface-cell[data-interface-type*="cx4"] {
+        border-radius: 6px !important;
+    }
+
+    /* Ethernet (backplane) - medium square corners */
+    .interface-cell[data-interface-type*="backplane"] {
+        border-radius: 1px !important;
+        border-width: 4px !important;
+    }
+
+    /* Wireless - pill shape (very rounded) */
+    .interface-cell[data-interface-type*="ieee802.11"],
+    .interface-cell[data-interface-type*="80211"] {
+        border-radius: 25px !important;
+    }
+
+    /* Cellular - octagon-like (medium-high radius) */
+    .interface-cell[data-interface-type*="gsm"],
+    .interface-cell[data-interface-type*="cdma"],
+    .interface-cell[data-interface-type*="lte"],
+    .interface-cell[data-interface-type*="5g"] {
+        border-radius: 8px !important;
+        clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+    }
+
+    /* SONET/SDH - diamond shape */
+    .interface-cell[data-interface-type*="sonet"],
+    .interface-cell[data-interface-type*="sdh"] {
+        border-radius: 0px !important;
+        transform: rotate(45deg);
+    }
+
+    .interface-cell[data-interface-type*="sonet"]>*,
+    .interface-cell[data-interface-type*="sdh"]>* {
+        transform: rotate(-45deg);
+    }
+
+    /* FibreChannel - rounded square */
+    .interface-cell[data-interface-type*="fibrechannel"],
+    .interface-cell[data-interface-type*="fc"] {
+        border-radius: 6px !important;
+        border-width: 4px !important;
+    }
+
+    /* Serial - sharp with double border effect */
+    .interface-cell[data-interface-type*="t1"],
+    .interface-cell[data-interface-type*="e1"],
+    .interface-cell[data-interface-type*="t3"],
+    .interface-cell[data-interface-type*="e3"],
+    .interface-cell[data-interface-type*="serial"] {
+        border-radius: 0px !important;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Stacking - medium rounded with thicker border */
+    .interface-cell[data-interface-type*="stackwise"],
+    .interface-cell[data-interface-type*="stack"] {
+        border-radius: 4px !important;
+        border-width: 5px !important;
+    }
+
+    /* InfiniBand - hexagon-like */
+    .interface-cell[data-interface-type*="infiniband"] {
+        border-radius: 3px !important;
+        clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    }
+
+    /* Coaxial - circular */
+    .interface-cell[data-interface-type*="coaxial"] {
+        border-radius: 50% !important;
+    }
+
+    /* PON - rounded rectangle */
+    .interface-cell[data-interface-type*="pon"],
+    .interface-cell[data-interface-type*="epon"],
+    .interface-cell[data-interface-type*="gpon"] {
+        border-radius: 10px !important;
+    }
+</style>
+
+<script>
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}
