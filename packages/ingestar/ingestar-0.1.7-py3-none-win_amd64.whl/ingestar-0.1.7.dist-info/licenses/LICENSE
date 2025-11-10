@@ -1,0 +1,7 @@
+Copyright (c) 2025 Jason Wong
+
+This software is proprietary and confidential.
+Unauthorized copying of this file, via any medium, is strictly prohibited.
+All rights reserved.
+
+This software and its source code may not be used, copied, modified, merged, published, distributed, sublicensed, or sold without prior written permission of the copyright holder.

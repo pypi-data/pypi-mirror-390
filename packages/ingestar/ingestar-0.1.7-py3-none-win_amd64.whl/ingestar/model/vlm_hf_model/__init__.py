@@ -1,0 +1,9 @@
+from transformers import AutoConfig, AutoImageProcessor, AutoModelForCausalLM
+
+from .configuration_ingestar import Ingestar2QwenConfig
+from .image_processing_ingestar import Ingestar2ImageProcessor
+from .modeling_ingestar import Ingestar2QwenForCausalLM
+
+AutoConfig.register(Ingestar2QwenConfig.model_type, Ingestar2QwenConfig)
+AutoModelForCausalLM.register(Ingestar2QwenConfig, Ingestar2QwenForCausalLM)
+AutoImageProcessor.register(Ingestar2QwenConfig, slow_image_processor_class=Ingestar2ImageProcessor)
