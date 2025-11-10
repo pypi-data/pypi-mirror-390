@@ -1,0 +1,1 @@
+This file is deprecated. Refer to and modify the AGENTS.md file.

@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ringg-bot/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '8765:8765'
+    volumes:
+      # Mount the entire source directory for hot reloading
+      - ./ringg-bot:/app/ringg-bot:cached
+    env_file:
+      - ./ringg-bot/.env
+    environment:
+      - ENVIRONMENT=development
+      - PYTHONUNBUFFERED=1
+    working_dir: /app/ringg-bot
+    command: uvicorn server:app --host 0.0.0.0 --port 8765 --reload --reload-dir /app/ringg-bot
