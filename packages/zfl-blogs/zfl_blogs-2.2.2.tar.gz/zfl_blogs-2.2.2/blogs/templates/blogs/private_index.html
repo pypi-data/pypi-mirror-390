@@ -1,0 +1,59 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+{% load mark %}
+
+{% block blogs-style %}
+<link rel="stylesheet" href="{% static 'blogs/css/index-style.css' %}">
+{% endblock blogs-style %}
+
+{% block content %}
+
+<!-- ナビバーを読み込み -->
+{% include 'blogs/include_navbar.html' %}
+
+<!-- 看板 -->
+<figure class="text-center" style="background-color: gainsboro;">
+  <blockquote class="blockquote">
+    <h1 class="display-2">非公開リスト {{ private_blog.count }}件</h1>
+  </blockquote>
+  <br>
+  <figcaption class="blockquote-footer">
+    非公開にしている記事のリストページです
+  </figcaption>
+</figure>
+<!-- 看板終了 -->
+
+<!-- コンテナ -->
+<div class="container-fluid">
+  <!-- グリッドシステム -->
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    <!-- 記事のリストカード -->
+    {% for blog in private_blog %}
+    <div class="col">
+      <a style="text-decoration:none;" href="{% url 'blogs:private_detail' blog.pk %}">
+	<div class="card border-0">
+	  {% if blog.thumbnail %}
+	  <img src="{{ blog.thumbnail.url }}" class="card-img-top" alt="...">
+	  {% elif blog.category.thumbnail %}
+	  <img src="{{ blog.category.thumbnail.url }}" class="card-img-top" alt="#">
+	  {% endif %}
+	  <div class="card-body">
+	    <h5 class="card-title">{{ blog.title }}</h5>
+	    <p class="card-text">{{ blog.text | markdown_to_html | striptags | truncatechars:'150' }}</p>
+	    <p><button type="button" class="btn btn-secondary btn-sm disabled" style="font-size:60%; background-color: {{ blog.category.color }}; color: white;">
+	      {{ blog.category.title }}
+	    </button></p>
+	    <p>更新日：{{ blog.updated_at | date:'Y/m/d' }}</p>
+	  </div>
+	</div>
+      </a>
+    </div>
+    {% endfor %}
+    <!-- 記事のリストカード終了 -->
+  </div>
+  <!-- グリッドシステム終 -->
+
+</div>
+<!-- コンテナ終 -->
+
+{% endblock %}

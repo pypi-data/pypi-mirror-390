@@ -1,0 +1,156 @@
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zfl-blogs"
+dynamic = ["version", "dependencies"]
+description = 'blogs on zfl'
+readme = "README.md"
+requires-python = ">=3.6"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "You are name", email = "example@gmail.com" },
+]
+classifiers = [
+  "Environment :: Web Environment",
+  "Framework :: Django :: 2.2",
+  "Intended Audience :: Developers",
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[project.urls]
+Documentation = "https://github.com/kenno-warise/zfl-blogs/blob/main/README.md"
+Issues = "https://github.com/kenno-warise/zfl-blogs/issues"
+Source = "https://github.com/kenno-warise/zfl-blogs"
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
+
+[tool.hatch.version]
+path = "blogs/__init__.py"
+
+# デフォルト環境の依存パッケージ
+[tool.hatch.envs.default]
+dependencies = ["coverage"]
+
+# デフォルト環境のスクリプト
+# hatch run runserver
+[tool.hatch.envs.default.scripts]
+makemigrations = "python3 manage.py makemigrations {args}"
+migrate = "python3 manage.py migrate"
+createsuperuser = "python3 manage.py createsuperuser"
+runserver = "python3 manage.py runserver"
+startapp = "python3 manage.py startapp {args}"
+shell = "python3 manage.py shell"
+test = "python3 manage.py test {args}"
+cov = "coverage run --include=blogs/* --omit=blogs/test*,blogs/__init__.py,blogs/migrations/* manage.py test {args}"
+cov-report = "coverage report -m"
+
+# pythonリンター
+[tool.hatch.envs.lint]
+detached = true
+dependencies = [
+  "black>=23.1.0",
+  "mypy>=1.0.0",
+  "ruff>=0.0.243",
+]
+[tool.hatch.envs.lint.scripts]
+typing = "mypy --check-untyped-defs --install-types --non-interactive {args:blogs}"
+style = [
+  "ruff check --fix {args:blogs}",
+  "black --check --diff {args:blogs}"
+]
+all = [
+  "style",
+  "typing",
+]
+
+[tool.mypy]
+exclude = [
+  "__init__.py",
+  "__pycache__",
+  "migrations",
+  "apps.py",  
+]
+
+[tool.black]
+exclude = """
+migrations
+"""
+target-version = ["py37"]
+line-length = 90
+skip-string-normalization = true
+
+[tool.ruff]
+exclude = [
+  "blogs/migrations",
+  "blogs/__init__.py",
+  "blogs/apps.py",
+  # 以下は次回行う
+  "blogs/admin.py",
+  "blogs/context.py",
+  "blogs/forms.py",
+  "blogs/management",
+  "blogs/models.py",
+  "blogs/templatetags",
+]
+target-version = "py37"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "ARG",
+  "B",
+  "C",
+  "DTZ",
+  "E",
+  "EM",
+  "F",
+  "FBT",
+  "I",
+  "ICN",
+  "ISC",
+  "N",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "Q",
+  "RUF",
+  "S",
+  "T",
+  "TID",
+  "UP",
+  "W",
+  "YTT",
+]
+ignore = [
+  # Allow non-abstract empty methods in abstract base classes
+  "B027",
+  # warning: `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible. Ignoring `one-blank-line-before-class`.
+  "D203",
+  # warning: `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible. Ignoring `multi-line-summary-second-line`.
+  "D212",
+  # The file is executable but no shebang is present
+  "EXE002",
+  # Allow boolean positional values in function calls, like `dict.get(... True)`
+  "FBT003",
+  # Ignore checks for possible passwords
+  "S105", "S106", "S107",
+  # Ignore complexity
+  "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+]
+
+# ビルド実行時に含めるファイルと含めないファイルの設定
+# 以下は配布用Djangoアプリに対しての設定
+[tool.hatch.build]
+include = ["blogs/*"]
+# exclude = ["blogs/migrations/*"]
+

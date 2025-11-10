@@ -1,0 +1,44 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+
+{% block blogs-style %}
+<link rel="stylesheet" href="{% static 'blogs/css/create-style.css' %}">
+<link rel="stylesheet" href="{% static 'blogs/css/markdown-style.css' %}">
+<link rel="stylesheet" href="{% static 'blogs/css/nnfx-dark.css' %}">
+{% endblock blogs-style %}
+
+{% block content %}
+
+<!-- コンテナ内　新規作成フォーム・マークダウンのコード -->
+<div class="blogs-title container">
+  <!-- マークダウン記法のリスト -->
+  {% include 'blogs/markdown_modal.html' %}
+  <!-- 新規作成フォーム -->
+  <form action="{% url 'blogs:new_blog' %}" method="POST">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="form-group">
+      <label for="{{ field.id }}">{{ field.label_tag }}</label>
+      {{ field }}
+    </div>
+    {% endfor %}
+    <div class="sticky-bottom">
+      <!-- ブログトップに戻るリンク -->
+      <a href="{% url 'blogs:index' %}">
+	<button type="button" class="btn btn-dark btn-smdisabled">Blogトップ</button>
+      </a>
+      <button type="submit" class="btn btn-primary btn-sm">投稿</button>
+    </div>
+  </form>
+  <!-- 新規作成フォーム終 -->
+
+  <!-- markdownxのプレビュー表示 -->
+  {{ form.media }}
+
+</div>
+
+<!-- シンタックスハイライト -->
+<script type="text/javascript" src="{% static 'blogs/js/highlight.js' %}"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+{% endblock %}
