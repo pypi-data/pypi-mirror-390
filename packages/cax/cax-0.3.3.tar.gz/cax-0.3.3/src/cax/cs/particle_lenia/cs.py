@@ -1,0 +1,182 @@
+"""Particle Lenia module.
+
+This module implements Particle Lenia, a particle-based variant of Lenia where discrete
+particles interact through continuous field potentials. Unlike grid-based Lenia, particles
+move freely in continuous space and experience forces derived from kernel and growth fields
+computed from neighboring particles.
+
+References:
+	[1] https://google-research.github.io/self-organising-systems/particle-lenia/
+
+"""
+
+from collections.abc import Callable
+from functools import partial
+
+import jax
+import jax.numpy as jnp
+from flax import nnx
+from jax import Array
+
+from cax.core import ComplexSystem, Input, State
+from cax.utils.render import clip_and_uint8
+
+from ..lenia.growth import exponential_growth_fn
+from .kernel import peak_kernel_fn
+from .perceive import ParticleLeniaPerceive
+from .rule import ParticleLeniaRuleParams
+from .update import ParticleLeniaUpdate
+
+
+class ParticleLenia(ComplexSystem):
+	"""Particle Lenia class."""
+
+	def __init__(
+		self,
+		num_spatial_dims: int,
+		*,
+		T: int,
+		kernel_fn: Callable = peak_kernel_fn,
+		growth_fn: Callable = exponential_growth_fn,
+		rule_params: ParticleLeniaRuleParams,
+	):
+		"""Initialize Particle Lenia.
+
+		Args:
+			num_spatial_dims: Number of spatial dimensions (e.g., 2 for 2D, 3 for 3D).
+				Determines the dimensionality of particle positions and field computations.
+			T: Time resolution controlling the temporal discretization. Higher values
+				produce smoother temporal dynamics with smaller update steps.
+			kernel_fn: Callable that computes pairwise kernel weights between particles
+				based on their distance. Takes rule parameters and returns kernel values.
+			growth_fn: Callable that maps kernel field values to growth field values.
+				Defines how particles respond to their local neighborhood density.
+			rule_params: Instance of ParticleLeniaRuleParams containing kernel and growth
+				parameters such as radii, peak positions, widths, and heights.
+
+		"""
+		self.num_spatial_dims = num_spatial_dims
+		self.perceive = ParticleLeniaPerceive(
+			num_spatial_dims=num_spatial_dims,
+			kernel_fn=kernel_fn,
+			growth_fn=growth_fn,
+			rule_params=rule_params,
+		)
+		self.update = ParticleLeniaUpdate(
+			T=T,
+		)
+
+	def _step(self, state: State, input: Input | None = None, *, sow: bool = False) -> State:
+		perception = self.perceive(state)
+		next_state = self.update(state, perception, input)
+
+		if sow:
+			self.sow(nnx.Intermediate, "state", next_state)
+
+		return next_state
+
+	@partial(nnx.jit, static_argnames=("resolution", "extent", "particle_radius", "type"))
+	def render(
+		self,
+		state: State,
+		*,
+		resolution: int = 512,
+		extent: float = 15.0,
+		particle_radius: float = 0.3,
+		type: str = "UG",  # Options: "particles", "UG", "E"
+	) -> Array:
+		"""Render state to RGB image.
+
+		Renders Particle Lenia state as particles optionally overlaid on field visualizations.
+		Particles appear as blue circles. The background can show kernel field (U), growth field
+		(G), or energy field (E) to visualize the underlying dynamics driving particle motion.
+		Field visualizations use color mapping to represent field intensities across space.
+
+		Args:
+			state: Array of shape (num_particles, num_spatial_dims) containing particle positions
+				in continuous space. Currently only 2D visualization is supported.
+			resolution: Size of the output image in pixels for both width and height.
+				Higher values produce smoother field gradients but increase computation cost.
+			extent: Half-width of the viewing area in coordinate space. The view spans from
+				-extent to +extent in each dimension. Adjust to zoom in or out on the particle
+				system.
+			particle_radius: Radius of each particle in coordinate space. Particles are drawn
+				as smooth circles with anti-aliased edges.
+			type: Visualization mode determining what fields to display:
+				"particles": Only show particles on white background (default).
+				"UG": Show particles overlaid on kernel (U) and growth (G) field visualization.
+				"E": Show particles overlaid on energy field visualization.
+
+		Returns:
+			RGB image with dtype uint8 and shape (resolution, resolution, 3), showing particles
+				and optionally the underlying field structure that drives their motion.
+
+		"""
+		assert self.num_spatial_dims == 2, "Particle Lenia only supports 2D visualization."
+
+		# Create a grid of coordinates
+		x = jnp.linspace(-extent, extent, resolution)
+		y = jnp.linspace(-extent, extent, resolution)
+		grid = jnp.stack(jnp.meshgrid(x, y), axis=-1)  # Shape: (resolution, resolution, 2)
+
+		# Reshape grid for computation
+		flat_grid = grid.reshape(-1, 2)
+
+		# Vectorize the field computation over all grid points
+		flat_E, flat_U, flat_G = jax.vmap(self.perceive.compute_fields, in_axes=(None, 0))(
+			state, flat_grid
+		)
+
+		# Reshape back to grid
+		E_field = flat_E.reshape(resolution, resolution)
+		U_field = flat_U.reshape(resolution, resolution)
+		G_field = flat_G.reshape(resolution, resolution)
+
+		# Helper functions for colormapping
+		def lerp(x: Array, a: Array, b: Array) -> Array:
+			return a * (1.0 - x) + b * x
+
+		def cmap_e(e: Array) -> Array:
+			stacked = jnp.stack([e, -e], -1).clip(0)
+			colors = jnp.array([[0.3, 1.0, 1.0], [1.0, 0.3, 1.0]], dtype=jnp.float32)
+			return 1.0 - jnp.matmul(stacked, colors)
+
+		def cmap_ug(u: Array, g: Array) -> Array:
+			vis = lerp(u[..., None], jnp.array([0.1, 0.1, 0.3]), jnp.array([0.2, 0.7, 1.0]))
+			return lerp(g[..., None], vis, jnp.array([1.17, 0.91, 0.13]))
+
+		# Calculate particle mask
+		distance_sq = jnp.sum(jnp.square(grid[:, :, None, :] - state[None, None, :, :]), axis=-1)
+		distance_sq_min = jnp.min(distance_sq, axis=-1)
+		particle_mask = jnp.clip(1.0 - distance_sq_min / (particle_radius**2), 0.0, 1.0)
+
+		# Normalize fields for visualization
+		_ = (E_field - jnp.min(E_field)) / (jnp.max(E_field) - jnp.min(E_field) + 1e-8)  # E_norm
+		U_norm = (U_field - jnp.min(U_field)) / (jnp.max(U_field) - jnp.min(U_field) + 1e-8)
+		G_norm = (G_field - jnp.min(G_field)) / (jnp.max(G_field) - jnp.min(G_field) + 1e-8)
+
+		# Create visualizations
+		vis_e = cmap_e(E_field)
+		vis_ug = cmap_ug(U_norm, G_norm)
+
+		# Apply particle mask
+		particle_mask = particle_mask[:, :, None]
+
+		# Create base particle visualization (blue particles on white background)
+		vis_particle = jnp.ones((resolution, resolution, 3))
+		vis_particle = (
+			vis_particle * (1.0 - particle_mask) + jnp.array([0.0, 0.0, 1.0]) * particle_mask
+		)
+
+		# Choose visualization based on type
+		if type == "UG":
+			# Blend particles with UG field
+			rgb = vis_ug * (1.0 - particle_mask * 0.7) + vis_particle * (particle_mask * 0.7)
+		elif type == "E":
+			# Blend particles with E field
+			rgb = vis_e * (1.0 - particle_mask * 0.7) + vis_particle * (particle_mask * 0.7)
+		else:  # "particles" (default)
+			# Just show particles
+			rgb = vis_particle
+
+		return clip_and_uint8(rgb)
