@@ -1,0 +1,78 @@
+Metadata-Version: 2.4
+Name: aiobbox
+Version: 0.3.0
+Summary: Async Python API wrapper for Bouygues Telecom routers
+Keywords: bbox,bouygues,router,api,async
+Author: Sweenu
+Author-email: Sweenu <contact@sweenu.xyz>
+License-Expression: Apache-2.0
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Home Automation
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Dist: aiohttp>=3.9.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Python: >=3.13
+Project-URL: Documentation, https://github.com/sweenu/aiobbox#readme
+Project-URL: Homepage, https://github.com/sweenu/aiobbox
+Project-URL: Issues, https://github.com/sweenu/aiobbox/issues
+Project-URL: Repository, https://github.com/sweenu/aiobbox
+Description-Content-Type: text/markdown
+
+[![codecov](https://codecov.io/github/sweenu/aiobbox/graph/badge.svg?token=K18JVQX6I4)](https://codecov.io/github/sweenu/aiobbox)
+
+# aiobbox
+
+Async Python API wrapper for Bouygues Telecom routers.
+
+Tested with model F@st5696b, firmware version 25.5.28.
+
+## Usage
+
+- Supports the following Bbox API endpoints:
+  - `/login` - Authentication
+  - `/device` - Device information
+  - `/hosts` - Connected devices
+  - `/wan/ip/stats` - WAN statistics
+
+```python
+import asyncio
+from aiobbox import BboxApi
+
+async def main():
+    async with BboxApi("your_password") as bbox:
+        # Get router's information
+        router = await bbox.get_router_info()
+        print(f"Router model: {router.modelname}")
+
+        # Get connected hosts
+        hosts = await bbox.get_hosts()
+        print(f"Connected hosts: {len(hosts)}")
+
+        # Get WAN statistics
+        wan_stats = await bbox.get_wan_ip_stats()
+        print(f"Download: {wan_stats.rx.bandwidth} Mbps")
+        print(f"Upload: {wan_stats.tx.bandwidth} Mbps")
+
+asyncio.run(main())
+```
+
+## Development
+
+```bash
+# Install dependencies and set up development environment
+uv sync --dev
+
+# Run tests
+uv run pytest
+
+# Run linting and formating
+uv run pre-commit run --all-files
+
+# Run integration tests
+BBOX_PASSWORD=your_password uv run pytest tests/integration.py -vvs --no-cov
+```
