@@ -1,0 +1,70 @@
+{% if name %}
+<p class="h5">{{ name }}</p>
+{% endif %}
+
+{% if not id %}
+    <table class="table table-sm {% if hoverable %} table-hover {% endif %}">
+        <tr>
+            {% if headers %}
+                {% for header in headers %}
+                    <th>{{ header }}</th>
+                {% endfor %}
+            {% endif %}
+        </tr>
+    {% for key, value in data.items() %}
+        <tr>
+            <th class="col-6">{{ key }}</th>
+            <td>{{ value }}</td>
+        </tr>
+    {% endfor %}
+    </table>
+
+{% elif id=='comparison' %}
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th style="width: 20%"></th>
+            {% if headers %}
+                {% for header in headers %}
+                    <th style="width: 20%; color: {{ config.colors.base_colors[loop.index0] }}">{{ header }}</th>
+                {% endfor %}
+            {% endif %}
+            </tr>
+        </thead>
+        {% for key, values in data.items() %}
+            <tr>
+                <th>{{ key }}</th>
+                {% for value in values %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
+
+{% elif id=='errors' or id == 'alerts' %}
+    <table class="table table-borderless table-hover">
+        <thead>
+            <tr>
+                {% if id=='errors' %}
+                <th class="text-danger">List of Errors</th>
+                {% elif id=='alerts' %}
+                <th class="text-primary">Alerts</th>
+                {% endif %}
+            </tr>
+            
+        </thead>
+        {% for value in data %}
+            <tr>
+                <td> {{ value }}</td>
+            </tr>
+        {% endfor %}
+
+    </table>
+
+
+{% else %}
+    <div class="table-overflow">
+        {{ data|safe }}
+    </div>
+
+{% endif %}
