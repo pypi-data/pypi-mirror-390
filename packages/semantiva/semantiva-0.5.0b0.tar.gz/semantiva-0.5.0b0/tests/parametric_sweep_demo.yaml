@@ -1,0 +1,27 @@
+# Parametric sweep demonstration
+# This shows the YAML format for parametric sweeps
+extensions: ["semantiva-examples"]
+
+pipeline:
+  nodes:
+    # Parametric sweep with configuration
+    - processor: FloatValueDataSource
+      derive:
+        parameter_sweep:
+          parameters:
+            # Complex expressions using the independent variable 't'
+            value: "2.0 * t"
+          variables:
+            t: { lo: -1, hi: 2, steps: 3 }
+          collection: FloatDataCollection
+          
+    # Process the generated collection
+    - processor: "slice:FloatCollectValueProbe:FloatDataCollection"
+      context_key: "sweep_results"
+    
+    # Aggregate results
+    - processor: "FloatCollectionSumOperation"
+    
+    # Store final result
+    - processor: "FloatBasicProbe"
+      context_key: "final_sum"
