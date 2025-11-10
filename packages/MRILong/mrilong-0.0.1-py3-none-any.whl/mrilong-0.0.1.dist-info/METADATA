@@ -1,0 +1,431 @@
+Metadata-Version: 2.4
+Name: MRILong
+Version: 0.0.1
+Summary: Longitudinal Analysis of Brain T1 MRI (3D) with Skull‑Strip and Tissue Segmentation
+Project-URL: Homepage, https://github.com/multires-cv-graphs/MRILong
+Project-URL: Issues, https://github.com/multires-cv-graphs/MRILong/issues
+Author-email: Kishore Kumar Tarafdar <kishorektarafdar@gmail.com>
+License-Expression: GPL-3.0-or-later
+License-File: LICENSE
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# MRILong — Longitudinal Analysis of Brain T1 MRI (3D) with Skull‑Strip and Tissue Segmentation
+
+<!-- [![PyPI Version](https://img.shields.io/pypi/v/MEDNet?label=PyPI&color=gold)](https://pypi.org/project/MRILong/)  -->
+<!-- [![PyPI Version](https://img.shields.io/pypi/pyversions/MEDNet)](https://pypi.org/project/MRILong/) -->
+[![TensorFlow Version](https://img.shields.io/badge/tensorflow-2.15--2.19-darkorange)](https://www.tensorflow.org/)
+[![Keras Version](https://img.shields.io/badge/keras-2--3-darkred)](https://keras.io/)
+[![MIT](https://img.shields.io/badge/license-GPLv3-deepgreen.svg?style=flat)](https://github.com/kkt-ee/MRILong/LICENSE)
+
+<!-- [![CUDA Version](https://img.shields.io/badge/cuda-12.5.1-green)](https://developer.nvidia.com/cuda-toolkit) -->
+
+MRILong is a CPU‑only TensorFlow pipeline that:
+- skull‑strips a 3D brain MRI, then
+- segments GM/WM/CSF, and
+- saves NIfTI outputs, PNG snapshots, and cm³ metrics.
+
+Run the pipeline on a single NIfTI volume (optional) or across multiple timepoints per patient (longitudinal). The chosen model architecture and checkpoints are defined in the JSON configuration file meta.json.
+
+
+
+> IMPORTANT — Detailed installation and workflow below
+>
+> Read the sections below before installing: first prepare a working directory and a `meta.json`, then install in step 4. If you already know the pipeline and just need to install quickly, run:
+>
+> Quick install:
+> - If TensorFlow 2.x is already installed: `pip install MRILong`
+>
+> - Or if TensorFlow 2.x is NOT installed: `pip install tensorflow==2.* MRILong`
+>
+> Or [jump to 4. Install](#4-install)
+
+
+
+
+
+</br></br>
+
+## Overview of the Longitudinal Analysis Pipeline
+
+MRILong can run in two modes:
+- Longitudinal mode: process multiple timepoints per patient by adding `--longitudinal` to the CLI and configuring the `longitudinal.*` keys in meta.json.
+- (Optional) Single‑volume mode: process one NIfTI without any special flags. Set `phase1_test_data_optional.input` in meta.json.
+
+In longitudinal mode, MRILong performs the following steps:
+
+1) Discover patients
+   - Use `longitudinal.patients_glob` (one folder per patient).
+
+2) Collect and order timepoints
+   - Use `longitudinal.inputs_glob` to find volumes per patient (each “timepoint” is a NIfTI file).
+   - Order by `by_name`, `by_mtime`, or via `longitudinal.order_regex`.
+
+3) Standardize each timepoint volume
+   - Load NIfTI in RAS orientation.
+   - Optionally apply crop, registration, and/or equalization (as configured).
+
+4) Stage 1 — Skull stripping
+   - Predict a binary brain mask.
+
+5) Stage 2 — Tissue segmentation
+   - Predict GM/WM/CSF labels.
+
+6) Save outputs per timepoint
+   - NIfTI: `<base>_ssmask.nii.gz`, `<base>_seg.nii.gz`.
+   - PNG snapshots for quick visual audit.
+
+7) Compute metrics per timepoint
+   - cm³/mm³ volumes; write CSV/JSON summaries.
+
+8) Compute longitudinal deltas
+   - Consecutive and vs‑baseline deltas; save a summary plot.
+
+9) Record provenance
+   - Write `provenance.csv` (zooms, registration/equalization flags, etc.).
+
+All behavior is driven by `meta.json`. See the full example below, then create your data folders and update meta paths accordingly.
+
+</br></br>
+
+**Important — Step 1 to 5 given below are step-by-step istallation instructions to setup a pipeline for logitudinal analysis of T1 MRI volumes using MRILong.**
+
+</br>
+
+
+
+## Step 1. Make a Working Directory + Meta File
+
+Create a clean folder for your run and an empty meta file. You will paste the meta JSON shown below into this file.
+
+```bash
+mkdir -p myrun
+printf '{}' > myrun/meta.json  # create an empty meta file
+```
+
+You will paste the full meta example into `myrun/meta.json` in the next section.
+
+Example layout (readable tree):
+```
+myrun/
+|-- meta.json
+|-- saved.ckpt/
+|   |-- ss.keras
+|   `-- seg.keras
+|-- inputs_single/
+|   `-- subject01_T1w.nii.gz
+|-- inputs_long/
+|   `-- Anita/
+|       |-- anita_1.nii
+|       |-- anita_3.nii
+|       `-- anita_5.nii
+|-- reference_vols/               # optional (if you use ibsr_ref/nfbs_ref)
+|   |-- IBSR_01_ana_strip.nii.gz
+|   `-- sub-A00039431_ses-NFB3_T1w.nii.gz
+`-- outputs/                      # created/filled by MRILong
+```
+
+
+
+### Meta: Full Example (working‑dir paths)
+
+Copy‑paste the following into `myrun/meta.json`. It is adapted to the `myrun/` layout; adjust paths as needed. Fields marked “optional” can be omitted for a minimal run.
+
+```json
+{
+  "models": {
+    "ss": {
+      "type": "uwavevitnet",
+      "checkpoint": "saved.ckpt/ss.keras",
+      "n_classes": 2,
+      "loss": "focal",
+      "wave": "haar"
+    },
+    "seg": {
+      "type": "uwavevitnet",
+      "checkpoint": "saved.ckpt/seg.keras",
+      "n_classes": 4,
+      "loss": "focal",
+      "wave": "haar"
+    }
+  },
+  "phase1_test_data_optional": {
+    "input": "inputs_single/subject01_T1w.nii.gz",
+    "gt_mask": "inputs_single/subject01_brainmask.nii.gz",
+    "gt_seg": "inputs_single/subject01_seg.nii.gz"
+  },
+  "infer": {
+    "patch_size_ss": 256,
+    "patch_size_seg": 64,
+    "overlap": 32,
+    "use_gpu": false
+  },
+  "preproc": {
+    "zscore": true,
+    "equalize": false,
+    "clip": [0.5, 99.5],
+    "ibsr_ref": "reference_vols/IBSR_01_ana_strip.nii.gz",
+    "nfbs_ref": "reference_vols/sub-A00039431_ses-NFB3_T1w.nii.gz",
+    "seg_scale_to_255": true,
+    "seg_win_lo": 1.0,
+    "seg_win_hi": 99.0
+  },
+  "output_dir": "outputs",
+  "env": {
+    "MEDNET_WVIT_EMBED": 64,
+    "MEDNET_WVIT_DEPTH": 1,
+    "MEDNET_WVIT_HEADS": 2,
+    "MEDNET_WVIT_KEYDIM": 8,
+    "MEDNET_WVIT_LEVELS": 1,
+    "MEDNET_WVIT_TOKENS": 2048,
+    "MEDNET_WVIT_PREPOOL": 1,
+    "MEDNET_FDST_J_BOTT": 2,
+    "MEDNET_FDST_L1_BOTT": 4,
+    "MEDNET_VIT_EMBED": 64,
+    "MEDNET_VIT_HEADS": 2
+  },
+  "longitudinal": {
+    "patients_glob": "inputs_long/*",
+    "inputs_glob": "*.nii",
+    "order": "by_name",
+    "resume": true
+  },
+  "registration": {
+    "enable": false,
+    "reference": "first"
+  }
+}
+```
+
+### Description of meta fields 
+
+Summary of meta keys and their intent. Defaults reflect typical values in this repo; many are optional and only used in longitudinal mode.
+
+#### Models
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `models.ss.type` | string | `uwavevitnet` | Skull‑strip model architecture key (see Supported Models). |
+| `models.ss.checkpoint` | path | — | Path to TF `.keras` weights for skull‑strip. Required. |
+| `models.ss.n_classes` | int | 2 | Number of classes (2 = background/brain). |
+| `models.ss.loss` | string | `focal` | Loss used when compiling the model (class weights auto‑applied for focal). |
+| `models.ss.wave` | string | `haar` | Wavelet family for WaveViT‑backed models (if applicable). |
+| `models.seg.type` | string | `uwavevitnet` | Tissue segmentation architecture key. |
+| `models.seg.checkpoint` | path | — | Path to TF `.keras` weights for segmentation. Required. |
+| `models.seg.n_classes` | int | 4 | Number of classes (GM/WM/CSF/background). |
+| `models.seg.loss` | string | `focal` | Loss used when compiling. |
+| `models.seg.wave` | string | `haar` | Wavelet family (if applicable). |
+
+#### Single‑Volume I/O (For optional sanity check)
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `phase1_test_data_optional.input` | path or dir | — | NIfTI file or directory with `.nii/.nii.gz`. If dir, the CLI picks an appropriate file. Required for single‑volume runs. |
+| `phase1_test_data_optional.gt_mask` | path | optional | Reference brain mask; used only for PNG comparisons/metrics. |
+| `phase1_test_data_optional.gt_seg` | path | optional | Reference tissue labels; used only for PNG comparisons/metrics. |
+
+#### Inference
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `infer.patch_size_ss` | int | 256 | Patch size for skull‑strip. If your volumes are 256³, this runs as a single patch. |
+| `infer.patch_size_seg` | int | 64 | Patch size for segmentation (uses sliding‑window if < 256). |
+| `infer.overlap` | int | 32 | Overlap in voxels for sliding‑window tiling. |
+| `infer.use_gpu` | bool | false | Currently ignored; the package forces CPU for determinism. |
+
+#### Preprocessing
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `preproc.zscore` | bool | true | Apply z‑score normalization (per volume). |
+| `preproc.equalize` | bool or string | false | Intensity equalization mode; `false`/`"none"`, or advanced modes like `"clahe3d"`, `"hist_match3d"` (mainly in longitudinal). |
+| `preproc.clip` | [low, high] percentiles | [0.5, 99.5] | Percentile clipping before z‑score. |
+| `preproc.ibsr_ref` | path | optional | IBSR SS training dataset's reference NIfTI for registration/hist‑matching in longitudinal workflows. |
+| `preproc.nfbs_ref` | path | optional | NFBS dataset's reference NIfTI volume for preprocessing unlabelled NIfTI volumes before skull-stripping. |
+| `preproc.seg_scale_to_255` | bool | true | In longitudinal AIIMS path: scale skull‑stripped brain to [0,255] using brain percentiles before segmentation. |
+| `preproc.seg_win_lo` | float | 1.0 | Lower percentile for the above scaling window. |
+| `preproc.seg_win_hi` | float | 99.0 | Upper percentile for the above scaling window. |
+
+#### Longitudinal
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `longitudinal.patients_glob` | glob | — | Required for longitudinal; points to patient folders (e.g., `inputs_long/*`). |
+| `longitudinal.inputs_glob` | glob | `*.nii` | Pattern for timepoint files inside each patient folder. Falls back to any NIfTI. |
+| `longitudinal.order` | string | `by_name` | Ordering of timepoints: `by_name` or `by_mtime`. See `order_regex` below. |
+| `longitudinal.order_regex` | regex | optional | If provided, numeric capture group defines ordering key from filenames. |
+| `longitudinal.resume` | bool | true | Skip timepoints that already have outputs. |
+
+#### Registration
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `registration.enable` | bool | false | Enable simple rigid registration between timepoints or to a reference. |
+| `registration.reference` | string | `first` | Baseline reference when registration is enabled (e.g., `first`). |
+
+#### Environment knobs (advanced)
+
+These control MEDNet backbone sizing and are applied as environment variables before model creation. Most users can leave them as provided.
+
+| Key | Affects | Meaning |
+|---|---|---|
+| `MEDNET_WVIT_EMBED`, `MEDNET_WVIT_HEADS`, `MEDNET_WVIT_KEYDIM`, `MEDNET_WVIT_LEVELS`, `MEDNET_WVIT_TOKENS`, `MEDNET_WVIT_PREPOOL` | Wavelet‑ViT | Embedding size, attention heads, key dim, levels, token budget, and pre‑pooling flags. |
+| `MEDNET_FDST_J_BOTT`, `MEDNET_FDST_L1_BOTT` | FDST bottlenecks | Decomposition level J and band count L1 for FDST‑based models. |
+| `MEDNET_VIT_EMBED`, `MEDNET_VIT_HEADS` | ViT | Embedding size and heads for ViT‑backed models. |
+
+### Meta → Filesystem Mapping (quick)
+
+- `models.*.checkpoint` → your weight files, e.g., `myrun/saved.ckpt/ss.keras`, `myrun/saved.ckpt/seg.keras`.
+- `phase1_test_data_optional.input` → a single NIfTI or a folder with `.nii/.nii.gz` for single‑volume runs.
+- `longitudinal.patients_glob` → glob of per‑patient folders (each containing multiple timepoints).
+- `output_dir` → where MRILong writes results; each run gets a timestamped subfolder.
+
+
+</br></br>
+
+## Step 2. Put Your Data and Weights
+
+Now that you understand the pipeline and have a meta file, create the subfolders and place your data and checkpoints. Then update `myrun/meta.json` so its paths point to these files/folders.
+
+```bash
+mkdir -p myrun/{inputs_long,inputs_single,saved.ckpt,outputs}
+```
+
+Place inputs and weights:
+- Single‑volume: put a `.nii`/`.nii.gz` file in `myrun/inputs_single/` (or use an absolute path elsewhere) and set `phase1_test_data_optional.input` accordingly.
+- Longitudinal: create one subfolder per patient under `myrun/inputs_long/`, each with multiple timepoints; set `longitudinal.patients_glob` to `inputs_long/*`.
+- Checkpoints: place your `.keras` weight files in `myrun/saved.ckpt/` and set `models.*.checkpoint` accordingly.
+
+
+
+</br>
+
+## Step 3. Install MRILong
+
+Pick one of the following.
+
+- From PyPI (if published):
+  ```bash
+  python3 -m venv .venv && source .venv/bin/activate
+  pip install --upgrade pip
+  pip install tensorflow==2.*
+  pip install MRILong
+  ```
+
+- From Git (editable dev install):
+  ```bash
+  python3 -m venv .venv && source .venv/bin/activate
+  pip install --upgrade pip
+  pip install tensorflow==2.*
+  pip install -e .
+  ```
+
+Notes
+- Python ≥ 3.9. GPU is intentionally disabled; runs on CPU.
+- For reproducibility, keep TensorFlow on 2.x.
+
+</br></br>
+
+## Step 4. Run MRILong for the longitudinal analysis of the test MRI volumes
+
+Change into the working directory and run one of the following.
+
+- Single volume:
+  ```bash
+  cd myrun
+  python -m mrilong.cli --meta meta.json --webview
+  ```
+
+- Longitudinal (each patient folder is processed in order):
+  ```bash
+  cd myrun
+  python -m mrilong.cli --meta meta.json --longitudinal
+  ```
+
+CLI options
+- `--meta` path to JSON/YAML meta (JSON recommended).
+- `--webapp`/`--webview` opens a lightweight viewer (best effort).
+- `--longitudinal` switches to the multi‑timepoint workflow.
+
+</br></br>
+
+## Step 5. Check outputs of longitudinal analysis
+
+Every run creates a timestamped subfolder under `output_dir`, for example `outputs/Nov9_output_174413/`.
+
+Single volume (per input):
+- `<base>_ssmask.nii.gz` — skull‑strip mask (binary)
+- `<base>_seg.nii.gz` — GM/WM/CSF labels
+- `<base>_metrics.json` — `{ segmentation_cm3, skullstrip_cm3 }`
+- PNG quick‑looks: input, overlays, and (if provided) comparisons to GT
+
+Longitudinal (per patient):
+- Same NIfTI/PNG artifacts per timepoint
+- `metrics_per_timepoint_cm3.csv/json`, `metrics_per_timepoint_mm3.csv/json`
+- `deltas_consecutive_*.csv`, `deltas_vs_baseline_*.csv`
+- `provenance.csv`, `longitudinal_summary.png`
+
+</br></br>
+
+## A note on the supported segmentation models (set `type` in the meta)
+
+The MEDNet model factory recognizes these keys (some require optional MEDNet modules):
+
+| type (meta) | Architecture | Description |
+|---|---|---|
+| `uwavevitnet` (default) | UNetWaveViT3D | UNet3D with 3D Wavelet‑ViT bottleneck (deterministic) |
+| `uiirwavevitnet` | UIIRDFIIWaveViTNet3D | UNet3D with IIR DF‑II convs + Wavelet‑ViT |
+| `uiir` | UIIRDFIINet3D | UNet3D using IIR3D layers |
+| `U` | UNet3D | Standard 3D U‑Net |
+| `uvit` | UNet3DViT | U‑Net with Vision Transformer bottleneck |
+| `uattn` | UNet3Dattention | U‑Net with attention gates |
+| `udwtattn` | UNet3Ddwtattn | U‑Net with DWT self‑attention |
+| `ufdstvitnet` | UFDSTViTNet3D | UNet with FDST‑native ViT (deterministic) |
+| `cvunet` | CVAEUNet3D | U‑Net with CVAE bottleneck |
+| `cvuwavevitnet` | CVUWaveViTNet3D | U‑Net with WaveViT CVAE bottleneck |
+| `cvufdstvitnet` | CVUFDSTViTNet3D | U‑Net with FDSTViT CVAE bottleneck |
+| `shearmednet` | FDSTUNet3D | UNet3D with shearlet features |
+| `shearmedfdstvitnet` | ShearMEDFDSTViTNet3D | ShearMED U‑Net with FDST‑ViT (no VAE) |
+| `cvshearmednet` | CVShearMEDNet3D | ShearMED U‑Net with CVAE |
+| `cvshearmedwavevitnet` | CVShearMEDWaveViTNet3D | ShearMED U‑Net with WaveViT VAE |
+| `G` | G3D | G3D baseline |
+| `gvit` | G3DViT | G3D with ViT bottleneck |
+| `gattn` | G3Dattention | G3D with attention gates |
+| `glifting` | G3DLifting | G3D with lifting + DWT attention |
+| `gminimal` | G3D_minimal | Minimal DWT3D/IDWT3D baseline |
+| `giirwavevit` | G3DIIRWaveViT | G3D with wavelet‑native ViT + IIR |
+
+Defaults
+- Skull‑strip: `n_classes: 2`. Segmentation: `n_classes: 4`. Loss: `"focal"` (class weights applied automatically).
+
+</br></br>
+
+## How It Works (short)
+
+- NIfTI is loaded in RAS orientation and intensity‑normalized (clip + z‑score).
+- For non‑256³ inputs, sliding‑window tiling with overlap is used.
+- CUDA is disabled by default for deterministic CPU execution.
+
+</br></br>
+
+## FAQ
+
+- “Where do I put my weights?”
+  In any folder; reference them in the meta. If you keep the working‑dir pattern above, use `saved.ckpt/<file>.keras`.
+
+- “Can I point `input` to a directory?”
+  Yes. The CLI picks the first `.nii/.nii.gz` (prefers raw `_ana` when skull‑strip is enabled).
+
+- “Do I need ground truth?”
+  No. If provided, PNG comparisons will be generated.
+
+
+## License
+
+GPL‑3.0‑or‑later. See `LICENSE`.
+
+If you use MRILong in academic work, please cite this repository and the underlying MEDNet architectures.
