@@ -1,0 +1,136 @@
+Metadata-Version: 2.4
+Name: tpdp-pydantic-v2
+Version: 1.0.0
+Summary: The Pipeline Design Pattern realization in python.
+Project-URL: Homepage, https://github.com/boyu8266/tpdp
+Project-URL: Documentation, https://denisart.github.io/tpdp
+Project-URL: Source, https://github.com/boyu8266/tpdp
+Author-email: "Denis A. Artyushin" <artyushinden@gmail.com>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: pipeline
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: MacOS X
+Classifier: Framework :: Pydantic
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.10
+Requires-Dist: pydantic<3.0,>=2.0
+Provides-Extra: dev
+Requires-Dist: black; extra == 'dev'
+Requires-Dist: mypy; extra == 'dev'
+Requires-Dist: ruff; extra == 'dev'
+Requires-Dist: wheel; extra == 'dev'
+Provides-Extra: docs
+Requires-Dist: sphinx; extra == 'docs'
+Requires-Dist: sphinx-argparse; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme; extra == 'docs'
+Requires-Dist: sphinxcontrib-github; extra == 'docs'
+Provides-Extra: test
+Requires-Dist: pytest; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest-mock; extra == 'test'
+Description-Content-Type: text/markdown
+
+# The Pipeline Design Pattern
+
+**tpdp** it is the Pipeline Design Pattern realization in Python.
+
+## Quickstart
+
+Install with pip
+
+```bash
+pip install tpdp
+```
+
+and creating your first pipeline
+
+```python
+from tpdp import Pipeline, State, Step
+
+class SimpleState(State):
+    pipeline_name: str
+    step_1_count: int = 0
+    step_2_count: int = 0
+
+init_state = SimpleState(pipeline_name="simple_pipeline")
+
+pipeline = Pipeline(name="simple_pipeline")
+
+class Step1(Step):
+    def run(self, state: SimpleState, **kwargs) -> SimpleState:
+        state.step_1_count += 1
+        self.logger.info("step_1_count increased by 1")
+        return state
+
+class Step2(Step):
+    def run(self, state: SimpleState, **kwargs) -> SimpleState:
+        state.step_2_count += 1
+        self.logger.info("step_2_count increased by 1")
+        return state
+
+step_1 = Step1(step_name="step_1")
+step_2 = Step2(step_name="step_2")
+
+pipeline.registry_step(step_1)
+pipeline.registry_step(step_2)
+pipeline.registry_step(step_1)
+pipeline.registry_step(step_2)
+pipeline.registry_step(step_1)
+pipeline.registry_step(step_2)
+pipeline.registry_step(step_1)
+
+result = pipeline.run(init_state=init_state)
+final_state = pipeline.get_state()
+
+print(f"final_state.step_1_count = {final_state.step_1_count}")
+print(f"final_state.step_2_count = {final_state.step_2_count}")
+```
+
+You will see the following logs
+
+```bash
+[...: INFO] Pipeline: Step registered: step_name="step_1"
+[...: INFO] Pipeline: Step registered: step_name="step_2"
+[...: INFO] Pipeline: Step registered: step_name="step_1"
+[...: INFO] Pipeline: Step registered: step_name="step_2"
+[...: INFO] Pipeline: Step registered: step_name="step_1"
+[...: INFO] Pipeline: Step registered: step_name="step_2"
+[...: INFO] Pipeline: Step registered: step_name="step_1"
+[...: INFO] Pipeline: Pipeline start: pipeline_name="simple_pipeline", start_at="..."
+[...: INFO] Pipeline: Step start: step_name="step_1"
+[...: INFO] Step1: step_1_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_1", step_duration="0.000024"
+[...: INFO] Pipeline: Step start: step_name="step_2"
+[...: INFO] Step2: step_2_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_2", step_duration="0.000020"
+[...: INFO] Pipeline: Step start: step_name="step_1"
+[...: INFO] Step1: step_1_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_1", step_duration="0.000016"
+[...: INFO] Pipeline: Step start: step_name="step_2"
+[...: INFO] Step2: step_2_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_2", step_duration="0.000016"
+[...: INFO] Pipeline: Step start: step_name="step_1"
+[...: INFO] Step1: step_1_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_1", step_duration="0.000016"
+[...: INFO] Pipeline: Step start: step_name="step_2"
+[...: INFO] Step2: step_2_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_2", step_duration="0.000016"
+[...: INFO] Pipeline: Step start: step_name="step_1"
+[...: INFO] Step1: step_1_count increased by 1
+[...: INFO] Pipeline: Step finish: step_name="step_1", step_duration="0.000023"
+[...: INFO] Pipeline: Pipeline finish: pipeline_name="simple_pipeline", finish_at="...", duration="0.0005033016204833984"
+final_state.step_1_count = 4
+final_state.step_2_count = 3
+```
