@@ -1,0 +1,71 @@
+# .github/workflows/auto-version-bump.yml
+
+name: Auto Version Bump
+
+# Disabled - Releases are now manual via GitHub releases
+# on:
+#   push:
+#     branches:
+#       - main
+
+on:
+  workflow_dispatch:  # Only allow manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Bump version
+        run: |
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            poetry version patch
+            VERSION=$(poetry version --short)
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            git add pyproject.toml
+            git commit -m "v$VERSION"
+            git checkout -b v$VERSION
+            git push origin v$VERSION
+            git checkout main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.PAT }}
+          branch: v${{ env.VERSION }}
+          title: "[Automated] Version: ${{ env.VERSION }}"
+          body: |
+            This pull request was automatically generated as part of the versioning workflow.
+
+            **Summary of Changes:**
+            - Version updated to: `${{ env.VERSION }}`
+            - This PR includes updates to package versions, ensuring all dependencies and configurations reflect the new release.
+            - Automated process to maintain code consistency and versioning standards.
+
+            **Manual Steps Required:**
+            1. Review and merge this PR to main
+            2. Create a new GitHub release with tag `v${{ env.VERSION }}` to trigger PyPI publication
+
+            **Note:** Releases are now manual and require creating a GitHub release draft and publishing it.

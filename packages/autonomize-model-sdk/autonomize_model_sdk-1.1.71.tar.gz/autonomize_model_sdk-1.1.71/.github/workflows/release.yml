@@ -1,0 +1,72 @@
+# .github/workflows/release.yml
+#
+# This workflow is triggered when a GitHub release is published.
+#
+# Manual Release Process:
+# 1. Update version in pyproject.toml (locally or via PR)
+# 2. Merge changes to main branch
+# 3. Create a new GitHub release draft with tag matching the version (e.g., v1.1.40)
+# 4. Publish the release - this triggers the workflow
+# 5. Workflow builds, publishes to PyPI, and uploads assets to GitHub release
+
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Install dependencies
+        run: |
+          poetry install
+
+      - name: Build the package
+        run: |
+          poetry build
+
+      - name: Verify version matches tag
+        run: |
+          POETRY_VERSION=v$(poetry version -s)
+          TAG_VERSION=${{ github.event.release.tag_name }}
+          echo "Poetry version: $POETRY_VERSION"
+          echo "GitHub tag: $TAG_VERSION"
+          if [ "$POETRY_VERSION" != "$TAG_VERSION" ]; then
+            echo "Version mismatch! Poetry version ($POETRY_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+
+      - name: Publish to PyPI
+        run: |
+          poetry publish --username __token__ --password ${{ secrets.PYPI_API_TOKEN }}
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Upload release assets
+        run: |
+          VERSION=$(poetry version -s)
+          echo "Uploading assets for version $VERSION"
+          gh release upload ${{ github.event.release.tag_name }} dist/* --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
