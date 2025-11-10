@@ -1,0 +1,141 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "todowrite_cli"
+dynamic = ["version"]
+description = "CLI interface for ToDoWrite - A tool for managing complex software projects"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "D Deryl Downey", email = "dderyldowney@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: System :: Shells",
+]
+keywords = ["todo", "task", "project", "management", "cli", "goals", "tasks", "concepts", "commands"]
+dependencies = [
+    "todowrite>=0.2.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+        "pre-commit>=3.0.0",
+    "ruff>=0.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dderyldowney/todowrite"
+Repository = "https://github.com/dderyldowney/todowrite.git"
+Documentation = "https://github.com/dderyldowney/todowrite/blob/main/README.md"
+"Bug Tracker" = "https://github.com/dderyldowney/todowrite/issues"
+
+[tool.hatch.version]
+path = "../VERSION"
+pattern = "^(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"
+
+[project.scripts]
+todowrite = "todowrite_cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/todowrite_cli"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/todowrite_cli"]
+
+# Ruff configuration (linting + formatting + imports + security)
+[tool.ruff]
+line-length = 79  # Standard Python line length
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "RUF", # Ruff-specific rules
+    "S",   # flake8-bandit (security)
+    "SIM", # flake8-simplify
+    "ARG", # flake8-unused-arguments
+    "TCH", # type-checking
+    "ANN", # type annotations
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # Use of assert detected
+    "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S105",    # Possible hardcoded password
+    "S106",    # Possible hardcoded password
+    "S607",    # Starting a process with a shell: possible security issue
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "S301",    # pickle can execute arbitrary code
+]
+"src/todowrite_cli/*" = [
+    "T20",     # flake8-print (CLI needs print)
+    "ANN",     # type annotations (CLI can be more flexible)
+]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+skip-magic-trailing-comma = false
+
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=src/todowrite_cli",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+    "-v",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/todowrite_cli"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+]
