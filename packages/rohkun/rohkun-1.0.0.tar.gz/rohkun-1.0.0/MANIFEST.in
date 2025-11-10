@@ -1,0 +1,42 @@
+# Include necessary files for CLI package
+include README.md
+include LICENSE
+include pyproject.toml
+include cli/requirements.txt
+
+# Include CLI commands
+recursive-include cli *.py
+
+# Include processor tracking module (needed for local snapshots)
+recursive-include server/processor/tracking *.py
+
+# Include shared module (needed for data models)
+recursive-include server/shared *.py
+
+# Exclude server-side code (be very explicit)
+prune server/backend
+prune frontend
+prune tests
+prune docs
+prune .git
+prune __pycache__
+
+# Exclude specific server.processor modules we don't need
+prune server/processor/analysis
+prune server/processor/analyzers
+prune server/processor/ast_analyzer
+prune server/processor/backend
+prune server/processor/connections
+prune server/processor/frontend
+prune server/processor/functions
+prune server/processor/logging
+prune server/processor/reporting
+prune server/processor/utils
+
+# Exclude cache and build files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude *.egg-info
+
