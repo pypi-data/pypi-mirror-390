@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "erdo"
+dynamic = ["version"]
+description = "Python SDK for building workflow automation agents with Erdo"
+readme = "README.md"
+license = {text = "Proprietary"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Erdo AI", email = "hello@erdo.ai"},
+]
+keywords = ["workflow", "automation", "agents", "ai", "data"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.0.0",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+erdo = "erdo.cli_entry:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+    "types-requests>=2.31.0",
+    "types-PyYAML>=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://erdo.ai"
+Documentation = "https://docs.erdo.ai"
+Repository = "https://github.com/erdoai/erdo-python-sdk"
+Issues = "https://github.com/erdoai/erdo-python-sdk/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["erdo"]
+
+[tool.hatch.build]
+include = [
+    "erdo/**/*.py",
+]
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>.*)"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+exclude = ["erdo/_generated/", "erdo/__init__.py"]
+
+[tool.flake8]
+max-line-length = 120
+ignore = "E501,W503,E203,E704"
+exclude = "erdo/_generated/"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=erdo --cov-report=term-missing"
