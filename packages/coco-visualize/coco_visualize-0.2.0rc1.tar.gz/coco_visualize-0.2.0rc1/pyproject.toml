@@ -1,0 +1,93 @@
+[build-system]
+requires = [
+    "hatchling",
+    "versioningit",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "coco-visualize"
+authors = [
+  {name = "Dimo Brockhoff", email = "dimo.brockhoff@inria.fr" },
+  {name = "Nikolaus Hansen", email = "nikolaus.hansen@inria.fr" },
+  {name = "Olaf Mersmann", email = "olafm@p-value.net"},
+  {name = "Tea Tušar", email = "tea.tusar@ijs.si" },
+]
+description = 'Standalone COCO visualization toolbox'
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "BSD-3-Clause"}
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+  "numpy >= 2.0",
+  "polars >= 0.20",
+  "matplotlib >= 3.7",
+  "scipy >= 1.14.0"
+]
+dynamic = ["version"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+docstring-code-line-length = 80
+
+[tool.ruff.lint]
+ignore = ["F821"]
+
+[tool.pytest]
+log_cli = true
+addopts = ["--doctest-modules"]
+
+[tool.pyright]
+reportAny = false
+reportDeprecated = false
+reportUnusedCallResult = false
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.hatch.build]
+artifacts = ["src/cocoviz/_version.py"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cocoviz"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+]
+exclude = ["/.gitignore"]
+
+[tool.versioningit.write]
+file = "src/cocoviz/_version.py"
+
+[dependency-groups]
+dev = [
+    "cocopp>=2.8.0",
+    "jupyterlab>=4.4.10",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.3",
+]
+
+[project.urls]
+Homepage = "https://coco-platform.org/"
+Issues = "https://github.com/numbbo/coco-visualize/issues"
+
+[project.optional-dependencies]
+parquet = [
+    "pyarrow>=22.0.0",
+]
