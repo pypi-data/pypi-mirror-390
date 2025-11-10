@@ -1,0 +1,85 @@
+[project]
+name = "robotframework-find-unused"
+version = "0.2.0"
+description = "Find unused parts of your Robot Framework project"
+readme = "./README.md"
+authors = [{ name = "Sander van Beek" }]
+license = "./LICENSE"
+classifiers = [
+    "Framework :: Robot Framework",
+    "Framework :: Robot Framework :: Tool",
+    "Development Status :: 4 - Beta",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "click (>=8.1.7,<9.0.0)",
+    "robotframework (>=6.1.1)",
+    "robotframework-robocop (>=6.0.0)",
+]
+
+[tool.poetry.group.dev.dependencies]
+ruff = ">=0.9.1,<0.10.0"
+pytest = ">=8.3.4,<9.0.0"
+
+[project.urls]
+Homepage = "https://github.com/Lakitna/robotframework-find-unused"
+Repository = "https://github.com/Lakitna/robotframework-find-unused"
+
+[project.scripts]
+robotunused = "robotframework_find_unused.cli:cli"
+
+[tool.poetry]
+requires-poetry = ">=2.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+norecursedirs = ['robot', 'src']
+python_files = '*.py'
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "FIX", # flake8-fixme. Superseeded by TD
+
+    # Ruleset: flake8-annotations
+    "ANN201",
+
+    # Ruleset: pydocstyle
+    # Docstring presence
+    "D100",
+    # "D101",
+    # "D102",
+    # "D103",
+    # "D104",
+    # "D105",
+    # "D106",
+    "D107", # Prefer class docstring over __init__ docstring
+    # Docstring contents
+    "D200",
+    "D203",
+    "D212", # conflicts with D213
+    "D400",
+    "D415",
+
+    # Ruleset: tryceratops
+    "TRY003",
+
+    # Ruleset: flake8-todos
+    "TD002", # Use issue code instead
+
+    # Ruleset: perflint
+    "PERF401", # Readability > micro performance
+]
+
+[tool.ruff.lint.per-file-ignores]
+"find_unused/cli.py" = ["PLR0913", "FBT001", "D213", "D301"]
+"test/atest/**" = ['D101', 'D102', 'INP001']
+"test/utest/**" = ['D101', 'D102', 'INP001']
