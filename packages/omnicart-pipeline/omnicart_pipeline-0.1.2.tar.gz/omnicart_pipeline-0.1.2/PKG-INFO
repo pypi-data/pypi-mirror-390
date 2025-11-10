@@ -1,0 +1,107 @@
+Metadata-Version: 2.4
+Name: omnicart-pipeline
+Version: 0.1.2
+Summary: A simple API wrapper
+Author: king-obobo
+Author-email: oboboebuka1@gmail.com
+Requires-Python: >=3.11
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: pandas (>=2.3.3,<3.0.0)
+Requires-Dist: requests (>=2.32.5,<3.0.0)
+Description-Content-Type: text/markdown
+
+# Order Pipeline Project
+
+## Overview
+The **Order Pipeline Project** is a Python-based data processing and analysis system designed to retrieve, enrich, analyze, and export product and user data. This project leverages API data, Pandas for data manipulation, and JSON for output storage. It is structured to simulate an end-to-end analytics pipeline.
+
+The primary goal of this project is to demonstrate a clean, modular approach to data processing, suitable for testing and extension.
+
+---
+
+## Features
+
+1. **Data Retrieval**  
+   Fetches products and users from APIs using `APIClient`. The APIClient implements a pagination logic that makes on request to the `/products` api and stores the data. This data is now used to simulate pagination using slicing vai the limits
+
+2. **Data Enrichment**  
+   Converts API responses into Pandas DataFrames and merges them on user IDs to enrich product data with seller information, including username, email, and name. Calculates total revenue for each product.
+
+3. **Data Analysis**  
+   Performs key metrics calculations such as total products per seller, total revenue, and average price per seller.
+
+4. **Exporting**  
+   Exports analysis results into JSON files for easy storage and sharing.
+
+5. **Configuration Management**  
+   Centralized configuration file handling using `ConfigManager` to manage project settings.
+
+---
+
+## Pipeline Workflow
+
+The pipeline follows a modular, step-by-step process to fetch, enrich, analyze, and export data.
+```
+ConfigManager : Loads the configuration from the `popeline.cfg` file
+│
+▼
+APIClient
+│
+▼
+Fetch Products & Users. Uses the configuration settings loaded in be the configmanager
+│
+▼
+DataEnricher
+├─ Convert products to DataFrame
+├─ Convert users to DataFrame
+├─ Merge products & users on user ID
+└─ Calculate revenue per product
+│
+▼
+Analyzer
+├─ Total products per seller
+├─ Total revenue per seller
+├─ Average price per seller
+└─ Generate analysis dictionary
+│
+▼
+Exporter
+└─ Export analysis results to JSON
+```
+**Step-by-Step Description:**
+
+* APIClient: Fetches product and user data from the API.
+
+* DataEnricher: Converts raw JSON to DataFrames, merges datasets on user ID, and calculates revenue for each product.
+
+* Analyzer: Computes key metrics for reporting.
+
+* Exporter: Saves the results into a JSON file for further use.
+
+
+## Installation
+
+1. Create a virtual environment and activate it
+```
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+```
+2. Install the dependencies required
+```
+pip install pandas requests
+```
+4. Install the package
+```
+pip install <name of package>
+```
+
+## Usage
+In the activated environment and at the root folder, type in `omnicart-pipeline`:
+```
+omnicart-pipeline
+```
