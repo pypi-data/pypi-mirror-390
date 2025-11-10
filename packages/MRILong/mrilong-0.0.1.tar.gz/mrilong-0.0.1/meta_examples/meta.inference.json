@@ -1,0 +1,65 @@
+{
+  "models": {
+    "ss": {
+      "type": "uwavevitnet",
+      "checkpoint": "saved.ckpt/unnamed_ss_nfbs_uwavevitnet_haar_2class_focalloss.keras",
+      "n_classes": 2,
+      "loss": "focal",
+      "wave": "haar"
+    },
+    "seg": {
+      "type": "uwavevitnet",
+      "checkpoint": "saved.ckpt/unnamed_uwavevitnet_haar_4class_focalloss.keras",
+      "n_classes": 4,
+      "loss": "focal",
+      "wave": "haar"
+    }
+  },
+  "phase1_test_data_optional": {
+    "input": "/home/kkt/DATASETS.port/IBSR_nifti_stripped/IBSR_01/IBSR_01_ana.nii.gz",
+    "gt_mask": "/home/kkt/DATASETS.port/IBSR_nifti_stripped/IBSR_01/IBSR_01_ana_brainmask.nii.gz",
+    "gt_seg": "/home/kkt/DATASETS.port/IBSR_nifti_stripped/IBSR_01/IBSR_01_segTRI_fill_ana.nii.gz"
+  },
+  "infer": {
+    "patch_size_ss": 256,
+    "patch_size_seg": 64,
+    "overlap": 32,
+    "use_gpu": false
+  },
+  "preproc": {
+    "zscore": true,
+    "equalize": false,
+    "clip": [0.5, 99.5],
+    "ibsr_ref": "/home/kkt/DATASETS.port/IBSR_nifti_stripped/IBSR_01/IBSR_01_ana_strip.nii.gz",
+    "nfbs_ref": "/home/kkt/src/LongitudinalAnalysisAIIMS.pypi/reference_vols/sub-A00039431_ses-NFB3_T1w.nii.gz",
+    "seg_scale_to_255": true,
+    "seg_win_lo": 1.0,
+    "seg_win_hi": 99.0
+    
+  },
+  "output_dir": "outputs",
+  "env": {
+    "MEDNET_WVIT_EMBED": 64,
+    "MEDNET_WVIT_DEPTH": 1,
+    "MEDNET_WVIT_HEADS": 2,
+    "MEDNET_WVIT_KEYDIM": 8,
+    "MEDNET_WVIT_LEVELS": 1,
+    "MEDNET_WVIT_TOKENS": 2048,
+    "MEDNET_WVIT_PREPOOL": 1,
+
+    "MEDNET_FDST_J_BOTT": 2,
+    "MEDNET_FDST_L1_BOTT": 4,
+    "MEDNET_VIT_EMBED": 64,
+    "MEDNET_VIT_HEADS": 2
+  },
+  "longitudinal": {
+    "patients_glob": "longitudinal_data/*",
+    "inputs_glob": "*.nii",
+    "order": "by_name",
+    "resume": false
+  },
+  "registration": {
+    "enable": false,
+    "reference": "first"
+  }
+}
