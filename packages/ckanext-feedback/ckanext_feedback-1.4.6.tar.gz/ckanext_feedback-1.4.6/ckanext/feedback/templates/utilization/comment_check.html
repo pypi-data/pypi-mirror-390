@@ -1,0 +1,98 @@
+{% if h.is_enabled_utilizations() %}
+
+  {% extends "page.html" %}
+
+  {% block styles %}
+    {{ super() }}
+    {% asset 'feedback/feedback-details-css' %}
+  {% endblock %}
+
+  {% block breadcrumb_content %}
+    <li class="inactive"><a href="{{ h.url_for('utilization.search') }}">{{ _('Utilization') }}</a></li>
+    <li class="active"><a href="{{ h.url_for('utilization.details', utilization_id=utilization_id) }}">{{ _('Details') }}</a></li>
+  {% endblock %}
+
+  {% block title %}{{ _('Comment on Utilization') }} - {{ utilization.title }} - {{ utilization.package_name }} - {{ utilization.resource_name }} - CKAN{% endblock %}
+
+  {% block primary %}
+    <div class="module-content">
+      <input type="hidden" id="current-type" name="current-type" value="confirm">
+      <div>
+        <h1 class="p-2">{{ _('Check comment content') }}</h1>
+        <br>
+        <p class="wrap-text">{{ _('Would you like to post a comment with the following content?') }}</p>
+        <br>
+        <hr class="divider">
+        <h4>
+          {% for category in categories %}
+            {% if category.name == selected_category %}
+              <span>
+                {{ h.create_category_icon(category.value) | safe }}
+                {{ _(category.value) }}
+              </span>
+            {% endif %}
+          {% endfor %}
+        </h4>
+        <div class="wrap-text comment-container">
+          <span class="multiple-line" >{{ content }}</span>
+        </div>
+        {% if attached_image_filename %}
+          <div>
+            <a href="{{ h.url_for('utilization.check_attached_image', utilization_id=utilization_id, attached_image_filename=attached_image_filename) }}" target="_blank">
+              <img src="{{ h.url_for('utilization.check_attached_image', utilization_id=utilization_id, attached_image_filename=attached_image_filename) }}" alt="{{ _('Attached Image') }}" class="attached-image">
+            </a>
+          </div>
+        {% endif %}
+        <hr class="divider">
+        <form name="comment_form" action="{{ h.url_for('utilization.create_comment', utilization_id=utilization_id ) }}" method="post">
+          <div style="display: flex; flex-direction: column; align-items: stretch;">
+            <div class="select-button ml-2" style="display: flex; justify-content: center;">
+              <input type="hidden" name="category" value="{{ selected_category }}">
+              <input type="hidden" id="input-comment" name="comment-content" value="{{ content }}">
+              <input type="hidden" name="comment-suggested" value="True">
+              <input type="hidden" name="comment-checked" value="True">
+              {% if attached_image_filename %}
+              <input type="hidden" name="attached_image_filename" value="{{ attached_image_filename }}">
+              {% endif %}
+            </div>
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-default" type="button" onclick="window.history.back();">
+                <i class="fa-solid fa-chevron-left"></i>
+                {{ _('Previous') }}
+              </button>
+              {% if h.is_base_public_folder_bs3() %}
+              <button class="btn btn-primary ms-2 right-aligned" id="comment-button">
+                <i class="fa-solid fa-paper-plane"></i>
+                {{ _('Send') }}
+              </button>
+              {% else%}
+              <button class="btn btn-primary ms-2" id="comment-button">
+                <i class="fa-solid fa-paper-plane"></i>
+                {{ _('Send') }}
+              </button>
+              {% endif%}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endblock -%}
+
+  {% block secondary %}{% endblock %}
+
+  {%- block scripts %}
+    {{ super() }}
+    {% asset 'feedback/feedback-comment-js' %}
+    {% asset 'feedback/feedback-moral_check_log-js' %}
+    {% if h.is_enabled_feedback_recaptcha() %}
+      <script src="https://www.google.com/recaptcha/api.js?render={{ h.get_feedback_recaptcha_publickey() }}"></script>
+      <script>
+        const feedbackRecaptchaTargetForm = 'comment_form'
+        const feedbackRecaptchaAction = 'utilization_comment_check'
+        const feedbackRecaptchaPublickey = '{{ h.get_feedback_recaptcha_publickey() }}'
+      </script>
+      {% asset 'feedback/feedback-recaptcha-js'%}
+    {% endif %}
+  {% endblock -%}
+
+{% endif %}
