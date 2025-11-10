@@ -1,0 +1,218 @@
+# https://peps.python.org/pep-0517/
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+# https://hatch.pypa.io/latest/config/metadata/
+[tool.hatch.version]
+source = "vcs"
+
+# read more about configuring hatch at:
+# https://hatch.pypa.io/latest/config/build/
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+
+# https://peps.python.org/pep-0621/
+[project]
+name = "app-model"
+description = "Generic application schema implemented in python"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSD 3-Clause License" }
+authors = [{ email = "talley.lambert@gmail.com" }, { name = "Talley Lambert" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Desktop Environment",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: User Interfaces",
+]
+dynamic = ["version"]
+dependencies = [
+    "psygnal>=0.10",
+    "pydantic>=2.8",
+    "in-n-out>=0.1.5",
+    "typing_extensions>=4.12",
+]
+
+[project.urls]
+homepage = "https://github.com/pyapp-kit/app-model"
+repository = "https://github.com/pyapp-kit/app-model"
+
+[project.optional-dependencies]
+qt = ["qtpy>=2.4.0", "superqt[iconify]>=0.7.2"]
+pyqt5 = [
+    "app-model[qt]",
+    "PyQt5>=5.15.10",
+    "pyqt5-qt5==5.15.2; sys_platform == 'win32'",
+    "pyqt5-qt5>=5.15.4; sys_platform != 'win32'",
+]
+pyqt6 = ["app-model[qt]", "PyQt6>=6.4.0", "pyqt6-qt6>=6.4.0"]
+pyside2 = ["app-model[qt]", "PySide2>=5.15.2.1"]
+pyside6 = ["app-model[qt]", "PySide6>=6.6.0"]
+
+# https://peps.python.org/pep-0735/
+# setup with `uv sync` or `pip install -e . --group dev`
+[dependency-groups]
+test = ["pytest>=7.0", "pytest-cov >=6.1"]
+test-qt = [
+    { include-group = "test" },
+    "app-model[qt]",
+    "pytest-qt >=4.3.0; python_version > '3.10'",
+    "pytest-qt ==4.4.0; python_version <= '3.10'",
+    "fonticon-fontawesome6 >=6.4.0",
+]
+dev = [
+    { include-group = "test-qt" },
+    "ruff>=0.8.3",
+    "ipython>=8.18.0",
+    "mypy>=1.13.0",
+    "pdbpp>=0.11.6; sys_platform != 'win32'",
+    "pre-commit-uv>=4",
+    # "pyqt6>=6.8.0",
+    "rich>=13.9.4",
+    "pyright>=1.1.402",
+]
+docs = [
+    "griffe-fieldz>=0.1.0",
+    "griffe==0.36.9",
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-literate-nav>=0.6.2",
+    "mkdocs-macros-plugin==1.0.5",
+    "mkdocs-material==9.4.1",
+    "mkdocs==1.5.3",
+    "mkdocstrings-python==1.7.3",
+    "mkdocstrings==0.23.0",
+    "typing_extensions>=4.11",
+]
+
+[tool.uv.sources]
+app-model = { workspace = true }
+
+# https://docs.astral.sh/ruff
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+src = ["src", "tests"]
+fix = true
+# unsafe-fixes = true
+
+[tool.ruff.lint]
+pydocstyle = { convention = "numpy" }
+select = [
+    "E",    # style errors
+    "W",    # style warnings
+    "F",    # flakes
+    "D",    # pydocstyle
+    "D417", # Missing argument descriptions in Docstrings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "C4",   # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "A001", # flake8-builtins
+    "ANN",  # flake8-annotations
+    "RUF",  # ruff-specific rules
+    "TC",   # flake8-type-checking
+    "TID",  # flake8-tidy-imports
+]
+ignore = [
+    "D401",   # First line should be in imperative mood (remove to opt in)
+    "ANN401", # Disallow typing.Any
+]
+
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["D", "E501", "ANN"]
+"demo/*" = ["D"]
+"docs/*" = ["D"]
+"src/app_model/_registries.py" = ["D10"]
+"src/app_model/context/_expressions.py" = ["D10"]
+"src/app_model/types/_keys/*" = ["E501"]
+
+# https://docs.astral.sh/ruff/formatter/
+[tool.ruff.format]
+docstring-code-format = true
+
+# https://docs.pytest.org/
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = ["--color=yes"]
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    "ignore:Enum value:DeprecationWarning:superqt",
+    "ignore:Failed to disconnect::pytestqt",
+]
+
+# https://mypy.readthedocs.io/en/stable/config_file.html
+[tool.mypy]
+files = "src/**/*.py"
+strict = true
+disallow_any_generics = false
+disallow_subclassing_any = false
+show_error_codes = true
+pretty = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "docs.*"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["qtpy.*"]
+implicit_reexport = true
+
+[tool.pyright]
+include = ["src", "demo"]
+reportArgumentType = "none" # hard with pydantic casting
+venvPath = "."
+
+# https://coverage.readthedocs.io/
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@overload",
+    "except ImportError",
+    "raise AssertionError",
+    "\\.\\.\\.",
+    "raise NotImplementedError()",
+    "pass",
+]
+
+[tool.coverage.run]
+source = ["app_model"]
+
+[tool.coverage.paths]
+source = ["src/", "*/app-model/app-model/src", "*/site-packages/"]
+
+[tool.check-manifest]
+ignore = [
+    ".github_changelog_generator",
+    ".pre-commit-config.yaml",
+    "tests/**/*",
+    "codecov.yml",
+    "demo/**/*",
+    "docs/**/*",
+    ".readthedocs.yaml",
+    "mkdocs.yml",
+    "CHANGELOG.md",
+    ".ruff_cache/**/*",
+]
+
+# https://github.com/crate-ci/typos/blob/master/docs/reference.md
+[tool.typos.default]
+extend-ignore-identifiers-re = ["to_string_ser_schema"]
