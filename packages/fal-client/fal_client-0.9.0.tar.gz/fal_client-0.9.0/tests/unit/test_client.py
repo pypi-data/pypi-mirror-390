@@ -1,0 +1,447 @@
+import pytest
+import httpx
+import asyncio
+from unittest.mock import Mock, patch, AsyncMock
+
+from fal_client.client import (
+    Queued,
+    InProgress,
+    Completed,
+    _BaseRequestHandle,
+    SyncClient,
+    AsyncClient,
+    SyncRequestHandle,
+    AsyncRequestHandle,
+)
+
+
+@pytest.mark.parametrize(
+    "data, result, raised",
+    [
+        (
+            {"status": "IN_QUEUE", "queue_position": 123},
+            Queued(position=123),
+            False,
+        ),
+        (
+            {"status": "IN_PROGRESS", "logs": [{"msg": "foo"}, {"msg": "bar"}]},
+            InProgress(logs=[{"msg": "foo"}, {"msg": "bar"}]),
+            False,
+        ),
+        (
+            {"status": "COMPLETED", "logs": [{"msg": "foo"}, {"msg": "bar"}]},
+            Completed(logs=[{"msg": "foo"}, {"msg": "bar"}], metrics={}),
+            False,
+        ),
+        (
+            {
+                "status": "COMPLETED",
+                "logs": [{"msg": "foo"}, {"msg": "bar"}],
+                "metrics": {"m1": "v1", "m2": "v2"},
+            },
+            Completed(
+                logs=[{"msg": "foo"}, {"msg": "bar"}], metrics={"m1": "v1", "m2": "v2"}
+            ),
+            False,
+        ),
+        (
+            {"status": "FOO"},
+            ValueError,
+            True,
+        ),
+    ],
+)
+def test_parse_status(data, result, raised):
+    handle = _BaseRequestHandle("foo", "bar", "baz", "qux")
+
+    if raised:
+        with pytest.raises(result):
+            handle._parse_status(data)
+    else:
+        assert handle._parse_status(data) == result
+
+
+def test_sync_client_run_with_headers():
+    """Test that custom headers are passed through in run()"""
+    with patch("fal_client.client._maybe_retry_request") as mock_request:
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_request.return_value = mock_response
+
+        client = SyncClient(key="test-key")
+        custom_headers = {"X-Custom-Header": "test-value", "X-Trace-Id": "123"}
+
+        result = client.run(
+            "test-app",
+            {"input": "data"},
+            headers=custom_headers,
+        )
+
+        assert result == {"result": "success"}
+        # Verify headers were passed to the request
+        call_kwargs = mock_request.call_args[1]
+        assert "headers" in call_kwargs
+        assert call_kwargs["headers"]["X-Custom-Header"] == "test-value"
+        assert call_kwargs["headers"]["X-Trace-Id"] == "123"
+
+
+def test_sync_client_run_with_headers_and_hint():
+    """Test that custom headers are merged with hint header"""
+    with patch("fal_client.client._maybe_retry_request") as mock_request:
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_request.return_value = mock_response
+
+        client = SyncClient(key="test-key")
+        custom_headers = {"X-Custom-Header": "test-value"}
+
+        client.run(
+            "test-app",
+            {"input": "data"},
+            hint="lora:a",
+            headers=custom_headers,
+        )
+
+        # Verify both hint and custom headers are present
+        call_kwargs = mock_request.call_args[1]
+        assert "headers" in call_kwargs
+        assert call_kwargs["headers"]["X-Fal-Runner-Hint"] == "lora:a"
+        assert call_kwargs["headers"]["X-Custom-Header"] == "test-value"
+
+
+def test_sync_client_submit_with_headers():
+    """Test that custom headers are passed through in submit()"""
+    with patch("fal_client.client._maybe_retry_request") as mock_request:
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "request_id": "req-123",
+            "response_url": "http://response",
+            "status_url": "http://status",
+            "cancel_url": "http://cancel",
+        }
+        mock_request.return_value = mock_response
+
+        client = SyncClient(key="test-key")
+        custom_headers = {"X-Request-Id": "abc-123"}
+
+        handle = client.submit(
+            "test-app",
+            {"input": "data"},
+            headers=custom_headers,
+        )
+
+        assert handle.request_id == "req-123"
+        # Verify headers were passed to the request
+        call_kwargs = mock_request.call_args[1]
+        assert "headers" in call_kwargs
+        assert call_kwargs["headers"]["X-Request-Id"] == "abc-123"
+
+
+def test_sync_client_submit_with_headers_and_priority():
+    """Test that custom headers are merged with priority header"""
+    with patch("fal_client.client._maybe_retry_request") as mock_request:
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "request_id": "req-123",
+            "response_url": "http://response",
+            "status_url": "http://status",
+            "cancel_url": "http://cancel",
+        }
+        mock_request.return_value = mock_response
+
+        client = SyncClient(key="test-key")
+        custom_headers = {"X-Custom": "value"}
+
+        client.submit(
+            "test-app",
+            {"input": "data"},
+            priority="low",
+            headers=custom_headers,
+        )
+
+        # Verify both priority and custom headers are present
+        call_kwargs = mock_request.call_args[1]
+        assert "headers" in call_kwargs
+        assert call_kwargs["headers"]["X-Fal-Queue-Priority"] == "low"
+        assert call_kwargs["headers"]["X-Custom"] == "value"
+
+
+def test_sync_client_subscribe_with_headers():
+    """Test that custom headers are passed through in subscribe()"""
+    with patch("fal_client.client._maybe_retry_request") as mock_request:
+        # Mock submit response
+        submit_response = Mock()
+        submit_response.json.return_value = {
+            "request_id": "req-123",
+            "response_url": "http://response",
+            "status_url": "http://status",
+            "cancel_url": "http://cancel",
+        }
+
+        # Mock status response
+        status_response = Mock()
+        status_response.json.return_value = {
+            "status": "COMPLETED",
+            "logs": [],
+        }
+
+        # Mock result response
+        result_response = Mock()
+        result_response.json.return_value = {"result": "done"}
+
+        mock_request.side_effect = [submit_response, status_response, result_response]
+
+        client = SyncClient(key="test-key")
+        custom_headers = {"X-Trace-Id": "trace-123"}
+
+        result = client.subscribe(
+            "test-app",
+            {"input": "data"},
+            headers=custom_headers,
+        )
+
+        assert result == {"result": "done"}
+        # Verify headers were passed to the submit request (first call)
+        first_call_kwargs = mock_request.call_args_list[0][1]
+        assert "headers" in first_call_kwargs
+        assert first_call_kwargs["headers"]["X-Trace-Id"] == "trace-123"
+
+
+@pytest.mark.asyncio
+async def test_async_client_run_with_headers():
+    """Test that custom headers are passed through in async run()"""
+    with patch(
+        "fal_client.client._async_maybe_retry_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_response = Mock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_request.return_value = mock_response
+
+        client = AsyncClient(key="test-key")
+        custom_headers = {"X-Custom-Header": "test-value", "X-Trace-Id": "123"}
+
+        result = await client.run(
+            "test-app",
+            {"input": "data"},
+            headers=custom_headers,
+        )
+
+        assert result == {"result": "success"}
+        # Verify headers were passed to the request
+        call_kwargs = mock_request.call_args[1]
+        assert "headers" in call_kwargs
+        assert call_kwargs["headers"]["X-Custom-Header"] == "test-value"
+        assert call_kwargs["headers"]["X-Trace-Id"] == "123"
+
+
+@pytest.mark.asyncio
+async def test_async_client_submit_with_headers():
+    """Test that custom headers are passed through in async submit()"""
+    with patch(
+        "fal_client.client._async_maybe_retry_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "request_id": "req-456",
+            "response_url": "http://response",
+            "status_url": "http://status",
+            "cancel_url": "http://cancel",
+        }
+        mock_request.return_value = mock_response
+
+        client = AsyncClient(key="test-key")
+        custom_headers = {"X-Request-Id": "xyz-789"}
+
+        handle = await client.submit(
+            "test-app",
+            {"input": "data"},
+            headers=custom_headers,
+        )
+
+        assert handle.request_id == "req-456"
+        # Verify headers were passed to the request
+        call_kwargs = mock_request.call_args[1]
+        assert "headers" in call_kwargs
+        assert call_kwargs["headers"]["X-Request-Id"] == "xyz-789"
+
+
+@pytest.mark.asyncio
+async def test_async_client_subscribe_with_headers():
+    """Test that custom headers are passed through in async subscribe()"""
+    with patch(
+        "fal_client.client._async_maybe_retry_request", new_callable=AsyncMock
+    ) as mock_request:
+        # Mock submit response
+        submit_response = Mock()
+        submit_response.json.return_value = {
+            "request_id": "req-789",
+            "response_url": "http://response",
+            "status_url": "http://status",
+            "cancel_url": "http://cancel",
+        }
+
+        # Mock status response
+        status_response = Mock()
+        status_response.json.return_value = {
+            "status": "COMPLETED",
+            "logs": [],
+        }
+
+        # Mock result response
+        result_response = Mock()
+        result_response.json.return_value = {"result": "async_done"}
+
+        mock_request.side_effect = [submit_response, status_response, result_response]
+
+        client = AsyncClient(key="test-key")
+        custom_headers = {"X-Correlation-Id": "corr-456"}
+
+        result = await client.subscribe(
+            "test-app",
+            {"input": "data"},
+            headers=custom_headers,
+        )
+
+        assert result == {"result": "async_done"}
+        # Verify headers were passed to the submit request (first call)
+        first_call_kwargs = mock_request.call_args_list[0][1]
+        assert "headers" in first_call_kwargs
+        assert first_call_kwargs["headers"]["X-Correlation-Id"] == "corr-456"
+
+
+def test_sync_handle_retries_500(monkeypatch):
+    """Condensed sync test: status, get, and cancel retry on 500."""
+    import fal_client.client as client_mod
+
+    monkeypatch.setattr(client_mod, "MAX_ATTEMPTS", 3)
+    monkeypatch.setattr(client_mod, "BASE_DELAY", 0.0)
+    monkeypatch.setattr(client_mod, "MAX_DELAY", 0.0)
+
+    client = httpx.Client()
+    handle = SyncRequestHandle(
+        request_id="r-sync",
+        response_url="http://resp",
+        status_url="http://status",
+        cancel_url="http://cancel",
+        client=client,
+    )
+
+    # Mock iter_events to skip waiting
+    def _iter_events(self, with_logs: bool = False, interval: float = 0.1):
+        return iter([Completed(logs=[], metrics={})])
+
+    monkeypatch.setattr(SyncRequestHandle, "iter_events", _iter_events, raising=True)
+
+    # Prepare sequence:
+    # 1) status: 500 -> 200(COMPLETED)
+    # 2) get:    500 -> 200({"ok": true})
+    # 3) cancel: 500 -> 200()
+    req_status = httpx.Request("GET", "http://status")
+    status_500 = httpx.Response(500, request=req_status)
+    status_ok = httpx.Response(
+        200,
+        content=b'{"status": "COMPLETED", "logs": [], "metrics": {}}',
+        headers={"Content-Type": "application/json"},
+        request=req_status,
+    )
+
+    req_get = httpx.Request("GET", "http://resp")
+    get_500 = httpx.Response(500, request=req_get)
+    get_ok = httpx.Response(
+        200,
+        content=b'{"ok": true}',
+        headers={"Content-Type": "application/json"},
+        request=req_get,
+    )
+
+    req_put = httpx.Request("PUT", "http://cancel")
+    cancel_500 = httpx.Response(500, request=req_put)
+    cancel_ok = httpx.Response(200, request=req_put)
+
+    client.request = Mock(
+        side_effect=[status_500, status_ok, get_500, get_ok, cancel_500, cancel_ok]
+    )
+
+    # Status
+    status = handle.status(with_logs=False)
+    assert isinstance(status, Completed)
+
+    # Get
+    result = handle.get()
+    assert result == {"ok": True}
+
+    # Cancel
+    handle.cancel()
+
+    # 2 per operation
+    assert client.request.call_count == 6
+
+
+@pytest.mark.asyncio
+async def test_async_handle_retries_500(monkeypatch):
+    """Condensed async test: status, get, and cancel retry on 500."""
+    import fal_client.client as client_mod
+
+    monkeypatch.setattr(client_mod, "MAX_ATTEMPTS", 3)
+    monkeypatch.setattr(client_mod, "BASE_DELAY", 0.0)
+    monkeypatch.setattr(client_mod, "MAX_DELAY", 0.0)
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+
+    client = httpx.AsyncClient()
+    handle = AsyncRequestHandle(
+        request_id="r-async",
+        response_url="http://resp",
+        status_url="http://status",
+        cancel_url="http://cancel",
+        client=client,
+    )
+
+    # Mock iter_events to skip waiting
+    async def _iter_events(self, with_logs: bool = False, interval: float = 0.1):
+        yield Completed(logs=[], metrics={})
+
+    monkeypatch.setattr(AsyncRequestHandle, "iter_events", _iter_events, raising=True)
+
+    # Prepare sequence:
+    # 1) status: 500 -> 200(COMPLETED)
+    # 2) get:    500 -> 200({"ok": true})
+    # 3) cancel: 500 -> 200()
+    req_status = httpx.Request("GET", "http://status")
+    status_500 = httpx.Response(500, request=req_status)
+    status_ok = httpx.Response(
+        200,
+        content=b'{"status": "COMPLETED", "logs": [], "metrics": {}}',
+        headers={"Content-Type": "application/json"},
+        request=req_status,
+    )
+
+    req_get = httpx.Request("GET", "http://resp")
+    get_500 = httpx.Response(500, request=req_get)
+    get_ok = httpx.Response(
+        200,
+        content=b'{"ok": true}',
+        headers={"Content-Type": "application/json"},
+        request=req_get,
+    )
+
+    req_put = httpx.Request("PUT", "http://cancel")
+    cancel_500 = httpx.Response(500, request=req_put)
+    cancel_ok = httpx.Response(200, request=req_put)
+
+    client.request = AsyncMock(
+        side_effect=[status_500, status_ok, get_500, get_ok, cancel_500, cancel_ok]
+    )
+
+    # Status
+    status = await handle.status(with_logs=False)
+    assert isinstance(status, Completed)
+
+    # Get
+    result = await handle.get()
+    assert result == {"ok": True}
+
+    # Cancel
+    await handle.cancel()
+
+    # 2 per operation
+    assert client.request.await_count == 6
