@@ -1,0 +1,779 @@
+Metadata-Version: 2.4
+Name: rayel-rpa-executor
+Version: 0.0.5.0.4
+Summary: a high performance distributed task scheduler and retry management center
+Author: laizezhong
+Author-email: 914660773@qq.com
+Keywords: distributed,task-scheduler,job-scheduler,retry-management
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.7.4
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: aiohttp>=3.10.9
+Requires-Dist: protobuf>=5.27.2
+Requires-Dist: grpcio>=1.66.2
+Requires-Dist: GitPython>=3.1.0
+Requires-Dist: playwright>=1.55.0
+Provides-Extra: dev
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Requires-Dist: grpcio-tools>=1.66.2; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: keywords
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+<p align="center">
+  <a href="https://snailjob.opensnail.com">
+   <img alt="snail-job-Logo" src="doc/images/favicon.svg" width="200px">
+  </a>
+</p>
+
+<p align="center">
+    🎭 基于 SnailJob 的通用 Playwright 自动化任务执行器
+</p>
+
+<p align="center">
+  <a href="#快速开始">快速开始</a> •
+  <a href="#需求开发指南">需求开发</a> •
+  <a href="#部署指南">部署指南</a> •
+  <a href="#常见问题">常见问题</a>
+</p>
+
+---
+
+# Playwright Executor
+
+基于 [SnailJob](https://gitee.com/aizuda/snail-job) 的通用 Playwright 自动化任务执行器，专为执行存储在 GitLab 中的 Playwright 项目而设计。
+
+## 核心特性
+
+- ✅ **自动代码拉取**: 从 GitLab 自动克隆/更新代码仓库
+- ✅ **环境隔离**: 每个业务独立的虚拟环境，避免依赖冲突
+- ✅ **智能依赖管理**: 基于 MD5 校验，仅在依赖变化时重新安装
+- ✅ **实时日志**: 执行日志实时上报到 SnailJob 服务器
+- ✅ **任务控制**: 支持任务中断和超时控制
+- ✅ **Docker 部署**: 生产环境就绪，支持 Docker Compose 一键部署
+
+## 工作原理
+
+```
+SnailJob 调度任务
+    ↓
+Playwright Executor 接收任务
+    ↓
+Git Manager: 拉取代码 (clone/pull)
+    ↓
+Env Manager: 按业务逻辑文件夹创建独立虚拟环境 + 安装依赖 (MD5校验)
+    ↓
+Script Runner: 动态导入 main.py
+    ↓
+调用 run(extra_params) 方法
+    ↓
+监控执行 (超时/中断检测)
+    ↓
+返回结果到 SnailJob
+```
+
+---
+
+# 快速开始
+
+## 前置条件
+
+- Python 3.10+
+- GitLab 仓库访问权限
+- SnailJob 服务器
+
+## 方式一：Docker Compose 部署（推荐）
+
+```bash
+# 1. 配置环境变量
+cp env.example .env
+# 编辑 .env，填入 GIT_TOKEN 和 SNAIL_SERVER_HOST
+
+# 2. 部署执行器
+./deploy.sh docker-compose
+
+# 3. 查看日志
+docker-compose logs -f
+```
+
+## 方式二：本地开发部署
+
+```bash
+# 1. 克隆项目
+git clone https://gitee.com/opensnail/snail-job-python.git
+cd snail-job-python
+
+# 2. 配置环境变量
+cp env.example .env
+# 编辑 .env 文件
+
+# 3. 安装依赖
+pip install -r requirements.txt
+
+# 4. 启动执行器
+python main.py
+```
+
+## 方式三：使用部署脚本
+
+```bash
+# 本地部署
+./deploy.sh local
+
+# Docker 部署
+./deploy.sh docker
+
+# Docker Compose 部署
+./deploy.sh docker-compose
+```
+
+---
+
+# 环境配置
+
+## 环境变量说明
+
+### 必需配置
+
+| 环境变量 | 说明 | 示例 | 备注 |
+|---------|------|------|------|
+| `GIT_REPO_URL` | Git 仓库地址 | `https://gitlab.com/org/project.git`<br>或 `git@github.com:org/project.git` | 支持 HTTPS 和 SSH 两种格式 |
+| `GIT_TOKEN` | Git 访问令牌 | `glpat-xxxxxxxxxxxx` | **仅 HTTPS 方式需要**，SSH 方式不需要 |
+| `SNAIL_SERVER_HOST` | SnailJob 服务器地址 | `192.168.1.100` | - |
+| `SNAIL_SERVER_PORT` | SnailJob 服务器端口 | `1788` | - |
+
+### 可选配置
+
+| 环境变量 | 说明 | 默认值 |
+|---------|------|--------|
+| `SNAIL_NAMESPACE` | 命名空间 | `default` |
+| `SNAIL_GROUP_NAME` | 组名 | `playwright_group` |
+| `SNAIL_APP_NAME` | 应用名 | `playwright_executor` |
+| `SNAIL_HOST_IP` | 客户端 IP | 自动获取 |
+| `SNAIL_HOST_PORT` | 客户端端口 | `1633` |
+| `LOG_ENV` | 日志环境 | `remote` |
+
+## 配置示例
+
+创建 `.env` 文件：
+
+```bash
+# Git 配置（必需）
+GIT_REPO_URL=https://gitlab.com/your-org/playwright-project.git
+GIT_TOKEN=glpat-xxxxxxxxxxxx
+
+# SnailJob 服务端配置（必需）
+SNAIL_SERVER_HOST=192.168.1.100
+SNAIL_SERVER_PORT=1788
+
+# SnailJob 客户端配置（可选）
+SNAIL_NAMESPACE=default
+SNAIL_GROUP_NAME=playwright_group
+```
+
+## Git 仓库访问方式
+
+执行器支持两种方式访问 Git 仓库：**SSH**（推荐）和 **HTTPS**。
+
+### 方式一：SSH 方式（推荐）⭐
+
+**优势**：
+- ✅ 不受 GitHub/GitLab 限流影响
+- ✅ 连接更稳定，性能更好
+- ✅ 无需在 URL 中嵌入 token，更安全
+- ✅ 支持 GitHub 和 GitLab（包括自建 GitLab）
+
+**配置步骤**：
+
+1. **生成 SSH key**（如果还没有）：
+   ```bash
+   ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+   ```
+
+2. **将公钥添加到 GitHub/GitLab**：
+   ```bash
+   # 复制公钥内容
+   cat ~/.ssh/id_rsa.pub
+   ```
+   - **GitHub**: Settings → SSH and GPG keys → New SSH key
+   - **GitLab**: Settings → SSH Keys → Add SSH Key
+
+3. **修改 `.env` 文件**，使用 SSH URL：
+   ```bash
+   # GitHub SSH URL
+   GIT_REPO_URL=git@github.com:laizezhong/rpa-projects.git
+   
+   # 或 GitLab SSH URL
+   # GIT_REPO_URL=git@gitlab.com:zezhong.lai/rpa-projects.git
+   
+   # 或自建 GitLab SSH URL
+   # GIT_REPO_URL=git@gitlab.yeepay.com:zezhong.lai/rpa-projects.git
+   
+   # 注意：使用 SSH 时不需要 GIT_TOKEN
+   ```
+
+4. **确保 SSH key 文件存在**：
+   ```bash
+   # 检查文件是否存在
+   ls -la ~/.ssh/id_rsa
+   
+   # 如果不存在，请先生成 SSH key
+   ```
+
+5. **重启容器**：
+   ```bash
+   docker-compose down
+   docker-compose up -d
+   ```
+
+**注意事项**：
+- 确保宿主机 `~/.ssh/id_rsa` 文件存在且已添加到 GitHub/GitLab
+- Docker Compose 会自动挂载 `~/.ssh/id_rsa` 到容器中
+- 对于自建 GitLab，如果首次连接，可能需要手动添加 known_hosts
+
+### 方式二：HTTPS 方式
+
+**适用场景**：
+- 临时使用或测试环境
+- 无法配置 SSH key 的环境
+
+**配置步骤**：
+
+1. **获取 Git Token**：
+   - **GitHub**: Settings → Developer settings → Personal access tokens → Generate new token
+   - **GitLab**: Settings → Access Tokens → Create personal access token
+
+2. **修改 `.env` 文件**：
+   ```bash
+   # GitHub HTTPS URL
+   GIT_REPO_URL=https://github.com/laizezhong/rpa-projects.git
+   GIT_TOKEN=github_pat_XXXX
+   
+   # 或 GitLab HTTPS URL
+   # GIT_REPO_URL=https://gitlab.yeepay.com/zezhong.lai/rpa-projects.git
+   # GIT_TOKEN=glpat-XXXX
+   ```
+
+**注意事项**：
+- ⚠️ HTTPS 方式可能遇到限流问题（特别是频繁 clone/pull 时）
+- 如果遇到 `GnuTLS recv error (-110)` 等错误，建议切换到 SSH 方式
+
+---
+
+# 业务开发指南
+
+## GitLab 项目结构
+
+RPA项目的 GitLab 仓库需要按照以下结构组织：
+
+```
+your-playwright-project/
+├── requirements.txt          # 根目录通用依赖（可选）
+└── app/
+    └── services/             # RPA业务逻辑父目录（固定路径）
+        ├── demo_service/ # 业务子文件夹（配置时只需写 demo_service）
+        │   ├── main.py       # 必需：包含 run() 方法
+        │   ├── requirements.txt # 可选：业务特定依赖
+        │   └── config.json   # 可选：业务配置
+        └── other_service/    # 配置时只需写 other_service
+            └── main.py
+```
+
+## 编写业务脚本
+
+### 1. 固定的 run() 方法签名（必需）
+
+每个业务的 `main.py` 必须实现以下方法：
+
+```python
+import snailjob as sj
+
+def run(extra_params: dict = None) -> int:
+    """
+    执行器的入口方法（必需）
+    
+    Args:
+        extra_params: 从 SnailJob 任务参数传递的额外参数字典
+        
+    Returns:
+        int: 返回码
+            - 0: 执行成功
+            - 非0: 执行失败
+    """
+    try:
+        # 1. 从 extra_params 获取参数
+        target_url = extra_params.get("target_url", "https://example.com") if extra_params else "https://example.com"
+        
+        # 2. 使用 sj.SnailLog.AUTO 记录日志（自动适配本地/远程）
+        sj.SnailLog.AUTO.info(f"开始执行任务，目标URL: {target_url}")
+        
+        # 3. 执行业务逻辑
+        result = your_business_logic(target_url)
+        
+        # 4. 记录成功日志
+        sj.SnailLog.AUTO.info(f"任务执行成功: {result}")
+        
+        return 0
+        
+    except Exception as e:
+        # 5. 记录错误日志
+        sj.SnailLog.AUTO.error(f"任务执行失败: {str(e)}")
+        
+        import traceback
+        sj.SnailLog.AUTO.error(traceback.format_exc())
+        
+        return 1
+```
+
+### 2. 使用 Playwright
+
+```python
+import snailjob as sj
+from playwright.sync_api import sync_playwright
+
+def run(extra_params: dict = None) -> int:
+    try:
+        target_url = extra_params.get("target_url", "https://example.com") if extra_params else "https://example.com"
+        sj.SnailLog.AUTO.info(f"开始访问: {target_url}")
+        
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            page.goto(target_url)
+            title = page.title()
+            sj.SnailLog.AUTO.info(f"页面标题: {title}")
+            
+            browser.close()
+        
+        sj.SnailLog.AUTO.info("执行完成")
+        return 0
+        
+    except Exception as e:
+        sj.SnailLog.AUTO.error(f"执行失败: {str(e)}")
+        import traceback
+        sj.SnailLog.AUTO.error(traceback.format_exc())
+        return 1
+```
+
+### 3. 导入通用工具类
+
+```python
+# 直接导入即可，执行器会自动添加项目根目录到 sys.path
+from common.utils import some_util_function
+from common.db_client import DatabaseClient
+
+def run(extra_params: dict = None) -> int:
+    result = some_util_function()
+    db = DatabaseClient()
+    # ...
+    return 0
+```
+
+### 4. 本地调试
+
+```python
+if __name__ == "__main__":
+    # 本地测试
+    test_params = {
+        "target_url": "https://example.com"
+    }
+    exit_code = run(extra_params=test_params)
+    print(f"执行结果: {exit_code}")
+```
+
+## 日志使用
+
+### 使用 SnailLog.AUTO（推荐）⭐
+
+**推荐使用 `sj.SnailLog.AUTO`，自动适配本地测试和远程执行！**
+
+```python
+import snailjob as sj
+
+def run(extra_params: dict = None) -> int:
+    # 使用 AUTO 日志，无需关心运行环境
+    sj.SnailLog.AUTO.info("开始执行")
+    sj.SnailLog.AUTO.warning("警告信息")
+    sj.SnailLog.AUTO.error("错误信息")
+    return 0
+```
+
+**工作原理**：
+- **本地测试**（直接运行 `python main.py`）：自动使用本地日志
+- **远程执行**（SnailJob 调度）：自动上报到 SnailJob 服务器
+
+### 手动指定日志类型（可选）
+
+```python
+# 仅本地日志（不上报）
+sj.SnailLog.LOCAL.info("本地日志")
+
+# 远程日志（会上报到 SnailJob）
+sj.SnailLog.REMOTE.info("远程日志")
+```
+
+## 依赖管理
+
+### snailjob 包（自动安装）
+
+**重要**: `snailjob` 包会**自动安装**到每个业务的虚拟环境中！
+
+- ✅ 无需在 `requirements.txt` 中添加 `snail-job-python`
+- ✅ 所有业务脚本可以直接 `import snailjob as sj`
+- ✅ 使用的版本与执行器保持一致
+
+### 根目录依赖
+
+项目根目录的 `requirements.txt` 应该只包含通用依赖：
+
+```txt
+# 根目录 requirements.txt
+playwright==1.55.0
+requests==2.31.0
+# 注意：不需要添加 snail-job-python，会自动安装
+```
+
+### 业务特定依赖
+
+如果业务有特定的依赖，创建业务逻辑文件夹下的 `requirements.txt`：
+
+```txt
+# app/services/demo_service/requirements.txt
+beautifulsoup4==4.12.0
+pandas==2.0.0
+# 注意：不需要添加 snail-job-python，会自动安装
+```
+
+执行器会自动检测并安装（基于 MD5 校验，仅在变化时安装）。
+
+### 依赖安装顺序
+
+1. **snailjob 包**（自动安装，从 PyPI）
+2. 根目录 `requirements.txt`（如果存在）
+3. 业务目录 `requirements.txt`（如果存在）
+
+---
+
+# 在 SnailJob 中创建任务
+
+## 创建步骤
+
+1. 登录 SnailJob 管理后台
+2. 创建新的定时任务
+3. **执行器类型**选择：`Python`
+4. **执行器名称**填入：`PlaywrightExecutor`
+5. 配置任务参数
+
+## 任务参数配置
+
+### 基本参数
+
+```json
+{
+  "service_folder": "demo_service"
+}
+```
+
+**注意**: `service_folder` 只需要写子文件夹名称（如 `demo_service`），系统会自动拼接父目录 `app/services/`，最终路径为 `app/services/demo_service`。
+
+### 完整参数示例
+
+```json
+{
+  "service_folder": "demo_service",
+  "branch": "main",
+  "script_timeout": 1800,
+  "extra_params": {
+    "target_url": "https://example.com",
+    "env": "production",
+    "config": {
+      "headless": true,
+      "timeout": 30
+    }
+  }
+}
+```
+
+### 参数说明
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `service_folder` | string | ✅ | - | 业务逻辑子文件夹名称（只需写子文件夹名，如：`demo_service`）<br>系统会自动拼接父目录 `app/services/` |
+| `branch` | string | ❌ | main | Git 分支 |
+| `workspace_root` | string | ❌ | /workspace | 工作目录 |
+| `script_timeout` | int | ❌ | 1800 | 脚本超时（秒） |
+| `extra_params` | object | ❌ | {} | 传递给 run() 的参数 |
+
+**注意**: 
+- `service_folder` 只需要写子文件夹名称（如 `demo_service`），系统会自动拼接为 `app/services/demo_service`
+- Git 仓库地址通过环境变量 `GIT_REPO_URL` 配置，不在任务参数中传递
+
+---
+
+# 部署指南
+
+## 本地部署
+
+### 安装依赖
+
+```bash
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+```
+
+### 启动执行器
+
+```bash
+python main.py
+```
+
+## Docker 部署
+
+### 构建镜像
+
+```bash
+docker build -t snail-job-playwright:latest .
+```
+
+### 运行容器
+
+```bash
+docker run -d \
+  --name snail-job-playwright \
+  --restart unless-stopped \
+  -e GIT_TOKEN="${GIT_TOKEN}" \
+  -e SNAIL_SERVER_HOST="${SNAIL_SERVER_HOST}" \
+  -e GIT_REPO_URL="${GIT_REPO_URL}" \
+  -v rpa-workspace:/workspace \
+  snail-job-playwright:latest
+```
+
+### 查看日志
+
+```bash
+docker logs -f snail-job-playwright
+```
+
+## Docker Compose 部署（推荐）
+
+### 启动服务
+
+```bash
+docker-compose up -d
+```
+
+### 查看日志
+
+```bash
+docker-compose logs -f
+```
+
+### 停止服务
+
+```bash
+docker-compose down
+```
+
+### 重启服务
+
+```bash
+docker-compose restart
+```
+
+---
+
+# 常见问题
+
+## GitLab 相关
+
+### Q: GitLab 代码拉取失败？
+
+**A**: 检查以下几点：
+- 检查 `GIT_TOKEN` 是否正确（HTTPS 方式）
+- 确认 GitLab 仓库权限（至少需要 `read_repository` 权限）
+- 检查 `GIT_REPO_URL` 格式是否正确
+- 检查网络连接
+- **如果使用 HTTPS 方式遇到限流，建议切换到 SSH 方式**
+
+### Q: 如何获取 GitLab Token？
+
+**A**: 
+1. 登录 GitLab
+2. 进入 Settings → Access Tokens
+3. 创建 Personal Access Token
+4. 勾选 `read_repository` 权限
+5. 复制生成的 Token
+
+### Q: 遇到 `GnuTLS recv error (-110)` 错误？
+
+**A**: 这是 GitHub/GitLab HTTPS 限流导致的连接中断问题。**强烈建议切换到 SSH 方式**：
+1. 生成 SSH key：`ssh-keygen -t rsa -b 4096`
+2. 将公钥添加到 GitHub/GitLab
+3. 修改 `GIT_REPO_URL` 为 SSH 格式：`git@github.com:user/repo.git`
+4. 重启容器
+
+### Q: SSH 方式配置后仍然失败？
+
+**A**: 检查以下几点：
+- 确认 `~/.ssh/id_rsa` 文件存在
+- 确认 SSH key 已添加到 GitHub/GitLab
+- 检查 Docker Compose 中是否正确挂载了 SSH key
+- 查看容器日志确认 SSH key 权限是否正确（应为 600）
+- 对于自建 GitLab，可能需要手动添加 known_hosts
+
+## 依赖相关
+
+### Q: 依赖安装失败？
+
+**A**: 
+- 查看 SnailJob 日志中的详细错误信息
+- 检查 `requirements.txt` 格式是否正确
+- 确认 PyPI 镜像源可访问
+- 尝试使用其他镜像源
+
+### Q: 如何使用私有 PyPI 源？
+
+**A**: 在业务的 `requirements.txt` 中指定：
+
+```txt
+--index-url https://your-pypi-server.com/simple/
+--trusted-host your-pypi-server.com
+
+your-package==1.0.0
+```
+
+## 执行相关
+
+### Q: 任务执行超时？
+
+**A**: 
+- 调整 SnailJob 任务超时时间
+- 在任务参数中设置 `script_timeout` 增加超时时间
+- 检查 Playwright 脚本是否有长时间等待
+- 考虑拆分为多个小任务
+
+### Q: 虚拟环境创建失败？
+
+**A**: 
+- 确认磁盘空间充足
+- 检查 Python 版本 (需要 3.10+)
+- 查看详细错误日志
+- 检查文件系统权限
+
+### Q: main.py 中未找到 run() 方法？
+
+**A**: 
+- 确保 `main.py` 中定义了 `run(extra_params: dict = None) -> int`
+- 检查方法签名是否正确
+- 确认文件编码为 UTF-8
+
+## Playwright 相关
+
+### Q: 浏览器启动失败？
+
+**A**: 
+- 确认已安装 Playwright 浏览器：`playwright install chromium`
+- Docker 环境确认镜像中已包含浏览器依赖
+- 检查系统依赖是否完整
+
+### Q: 如何处理文件上传/下载？
+
+**A**: 
+```python
+# 文件上传
+file_path = Path(__file__).parent / "data.csv"
+page.set_input_files("input[type='file']", str(file_path))
+
+# 文件下载
+with page.expect_download() as download_info:
+    page.click("a#download-link")
+download = download_info.value
+download.save_as("/path/to/save/file")
+```
+
+## 日志相关
+
+### Q: 日志没有上报到 SnailJob？
+
+**A**: 
+- 确认使用的是 `sj.SnailLog.AUTO` 或 `sj.SnailLog.REMOTE`
+- 检查 SnailJob 服务器连接是否正常
+- 查看执行器日志中是否有上报错误
+
+### Q: 如何查看完整日志？
+
+**A**: 
+- **SnailJob 后台**: 查看任务执行日志
+- **Docker**: `docker-compose logs -f`
+- **本地**: 日志输出到控制台
+
+---
+
+# 最佳实践
+
+## 代码规范
+
+1. ✅ **错误处理**: 总是捕获异常并记录详细日志
+2. ✅ **参数验证**: 在 `run()` 方法开始时验证必需参数
+3. ✅ **资源清理**: 确保浏览器等资源正确关闭
+4. ✅ **日志详细**: 记录关键步骤，便于问题排查
+
+## 性能优化
+
+1. ✅ **幂等性**: 脚本应该支持重复执行而不产生副作用
+2. ✅ **超时控制**: 为长时间操作设置合理的超时时间
+3. ✅ **依赖缓存**: 利用 MD5 缓存机制，避免重复安装依赖
+4. ✅ **浏览器复用**: 考虑在多次操作中复用浏览器实例
+
+## 安全建议
+
+1. ✅ 不要将 `.env` 文件提交到代码仓库
+2. ✅ GitLab Token 使用最小权限（`read_repository`）
+3. ✅ 定期轮换 Token
+4. ✅ 生产环境使用 Docker Secrets 或 K8s Secrets
+5. ✅ 敏感信息不要记录到日志中
+
+## 项目组织
+
+1. ✅ 将通用工具类放在 `common/` 目录
+2. ✅ 使用语义化版本管理依赖
+3. ✅ 为长时间任务添加进度提示
+4. ✅ 定期清理工作目录中的旧数据
+
+---
+
+# 技术栈
+
+- **Python 3.10+**: 主要开发语言
+- **SnailJob**: 分布式任务调度平台
+- **Playwright**: 浏览器自动化框架
+- **GitPython**: Git 仓库管理
+- **Docker**: 容器化部署
+
+---
+
+# 相关链接
+
+- [SnailJob 官网](https://snailjob.opensnail.com)
+- [SnailJob 仓库](https://gitee.com/aizuda/snail-job)
+- [Playwright 文档](https://playwright.dev/python/)
