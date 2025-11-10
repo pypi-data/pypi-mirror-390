@@ -1,0 +1,138 @@
+<div align="center">
+
+# 🧠 ZAI Core  
+### *v0.2.3 — Networked Intelligence Update*
+
+![PyPI](https://img.shields.io/pypi/v/zaicore?label=PyPI%20Version&style=for-the-badge&color=blue)
+![Python](https://img.shields.io/badge/python-3.8%2B-green?style=for-the-badge)
+![Downloads](https://static.pepy.tech/badge/zaicore?style=for-the-badge)
+![License](https://img.shields.io/github/license/muhammadzaidanf/ZAI-Core?style=for-the-badge)
+![Made in Indonesia](https://img.shields.io/badge/Made%20in-Indonesia-red?style=for-the-badge)
+
+</div>
+
+---
+
+## 🧩 Overview
+**ZAI Core v0.2.3** brings the **Networked Intelligence Update** — connecting local AI memory with remote cloud systems.  
+Now ZAI Core can **sync memory online**, **load plugins**, and **merge offline knowledge with live data**.
+
+> “From thinking… to connecting.”
+
+---
+
+## ⚙️ New in v0.2.3
+- 🌐 **Remote Memory Sync** — link AI memory to an online API endpoint.  
+- 🔌 **Plugin System** — integrate tools like `websearch` or external APIs.  
+- 💬 **Hybrid Chat Mode** — use local + remote knowledge in conversation.  
+- 🧠 **Diagnostics Command** — view AI status and sync info in CLI.  
+- 🔧 **Improved Reasoning Engine** — better matching and context recognition.  
+
+---
+
+## 🧱 Folder Structure
+```text
+./ZAI-Core/
+│
+├── ./zaicore/
+│   ├── ./__init__.py
+│   ├── ./__main__.py
+│   ├── ./core.py              # Main brain (offline + remote memory)
+│   ├── ./reasoning.py         # Contextual recall logic
+│   ├── ./network.py           # Handles API sync for remote memory
+│   ├── ./plugins/             # Plugin directory
+│   │   ├── ./__init__.py
+│   │   └── ./websearch_connector.py
+│   └── ./utils/
+│       ├── ./__init__.py
+│       └── ./data_handler.py
+│
+├── ./setup.py
+├── ./README.md
+└── ./LICENSE
+```
+
+---
+
+## 💻 Installation
+```bash
+pip install zaicore
+```
+
+---
+
+## ⚡ Quick Start
+### Local Mode
+```python
+from zaicore import ZAICore
+
+ai = ZAICore()
+ai.learn("mission", "to build adaptive AI frameworks")
+ai.recall("mission")
+```
+
+### Remote Mode
+```python
+ai = ZAICore(remote_mode=True, remote_url="https://example.com/zai_core_api")
+ai.learn("language", "Python")
+```
+
+Output:
+```
+🌐 Loading remote memory ...
+⬇️  Remote memory downloaded.
+🧠 ZAI Core v0.2.3 initialized — Networked Intelligence Online.
+[Learning] language → Python
+🌐 Memory synced remotely.
+```
+
+---
+
+## 🧠 CLI Usage
+Run directly from terminal:
+```bash
+python -m zaicore --remote
+```
+
+Example session:
+```
+🚀 ZAI Core CLI v0.2.3 — Networked Intelligence Mode
+🧠 > learn motto = explore beyond limits
+🌐 Memory synced remotely.
+🧠 > status
+ZAI Core v0.2.3 | Remote: True | Entries: 1
+```
+
+---
+
+## 🧩 Development Roadmap
+| Version | Feature | Status |
+|----------|----------|--------|
+| **v0.1.0** | Basic Learn & Recall | ✅ Released |
+| **v0.2.1** | Persistent Brain | ✅ Released |
+| **v0.2.2** | Cognitive Layer | ✅ Released |
+| **v0.2.3** | Networked Intelligence | 🧠 Active |
+| **v0.3.0** | Plugin API + Cloud Dashboard | 🔜 Planned |
+
+---
+
+## 🧑‍💻 Author
+**Muhammad Zaidan Faiz**  
+💼 [LinkedIn](https://www.linkedin.com/in/mzaidanfaiz/)  
+🌍 [GitHub](https://github.com/muhammadzaidanf)  
+📧 [muhammadzaidanfaiz8@gmail.com](mailto:muhammadzaidanfaiz8@gmail.com)
+
+---
+
+## 📄 License
+Released under the **MIT License** — free to learn, modify, and expand.
+
+---
+
+<div align="center">
+
+⭐ *ZAI Core — The brain that connects.*  
+<br>
+💬 *“Don’t just build AI. Build something that learns and grows beyond limits.”*
+
+</div>
