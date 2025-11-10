@@ -1,0 +1,179 @@
+Metadata-Version: 2.4
+Name: tonina
+Version: 0.1.0
+Summary: Multi-agent bioinformatics analysis system with comprehensive capabilities
+License-Expression: GPL-3.0
+Project-URL: Homepage, https://github.com/ToyokoLabs/tonina
+Project-URL: Repository, https://github.com/ToyokoLabs/tonina
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: gffutils>=0.13
+Requires-Dist: strands-agents[anthropic,gemini,ollama,openai]>=1.10.0
+Requires-Dist: strands-agents-tools>=0.2.9
+Requires-Dist: biopython>=1.85
+Requires-Dist: python-dotenv>=1.0.0
+
+# Tonina - Multi-Agent Bioinformatics Analysis System
+
+Tonina is a comprehensive multi-agent bioinformatics analysis system that extends the capabilities of gffutilsAI to handle multiple types of biological data through specialized AI agents.
+
+## Features
+
+### Multi-Agent Architecture
+- **GFF Agent**: Complete GFF file analysis (ported from gffutilsAI)
+- **Sequence Agent**: FASTA sequence analysis and manipulation
+- **Proteomics Agent**: Protein structure and functional analysis
+- **Phylogenetics Agent**: Evolutionary analysis and tree operations
+- **General Agent**: Cross-format utilities and file operations
+
+### Intelligent Query Routing
+Tonina automatically routes your queries to the appropriate specialized agent based on:
+- File types (.gff, .fasta, .pdb, etc.)
+- Query content and keywords
+- Domain-specific terminology
+
+### Multi-LLM Support
+- **Local Models**: Ollama (llama3.1, codellama, etc.)
+- **Cloud Models**: OpenAI GPT-4, Anthropic Claude, Google Gemini
+- **Flexible Configuration**: Easy switching between providers
+
+## Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd tonina
+
+# Install dependencies
+pip install -e .
+
+# Or using uv (recommended)
+uv pip install -e .
+```
+
+## Configuration
+
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` with your API keys:
+```bash
+# For cloud models (optional)
+OPENAI_API_KEY=your_key_here
+ANTHROPIC_API_KEY=your_key_here
+GOOGLE_API_KEY=your_key_here
+```
+
+## Usage
+
+### Basic Commands
+
+```bash
+# Interactive mode with local model
+tonina --model llama3.1 --server local
+
+# Single query
+tonina --query "What genes are in chromosome 1?" --model gpt-4o
+
+# Batch processing
+tonina --batch queries.txt --model claude-3-5-sonnet-latest
+
+# Specific provider
+tonina --anthropic --model claude-3-5-sonnet-latest
+tonina --gemini --model gemini-2.0-flash-exp
+tonina --openai --model gpt-4o
+```
+
+### Agent-Specific Examples
+
+#### GFF Analysis
+```bash
+tonina "Find all genes in chromosome 1 between positions 1000-5000"
+tonina "Calculate feature statistics for my GFF file"
+tonina "Export all membrane proteins to CSV"
+```
+
+#### Sequence Analysis
+```bash
+tonina "Analyze this FASTA file for ORFs"
+tonina "Calculate GC content for all sequences"
+tonina "Find motifs in this protein sequence"
+```
+
+#### Multi-Agent Workflows
+```bash
+tonina "Extract genes from GFF, get their sequences, and analyze domains"
+# This automatically coordinates: GFF Agent → Sequence Agent → Proteomics Agent
+```
+
+## Agent Capabilities
+
+### GFF Agent (31 tools)
+- Coordinate-based queries and region analysis
+- Feature statistics and length distributions
+- Attribute searches and GO function analysis
+- Intergenic region identification
+- Comprehensive export capabilities
+
+### Sequence Agent (15+ tools)
+- FASTA file parsing and validation
+- Sequence composition analysis
+- ORF finding and translation
+- Motif searching and pattern matching
+- Multiple sequence alignment
+
+### Proteomics Agent (15+ tools)
+- Protein structure analysis (PDB files)
+- Domain prediction and annotation
+- Functional classification
+- Comparative protein analysis
+
+### Phylogenetics Agent (10+ tools)
+- Phylogenetic tree parsing
+- Evolutionary distance calculations
+- Species comparison
+- Ortholog identification
+
+### General Agent (10+ tools)
+- Cross-format file operations
+- Data integration workflows
+- Format conversion utilities
+- Batch processing tools
+
+## Development
+
+### Adding New Agents
+
+1. Create agent directory: `src/tonina/agents/new_agent/`
+2. Implement tools with `@tool` decorator
+3. Create agent class extending `BaseAgent`
+4. Register in `AgentManager`
+
+### Adding New Tools
+
+```python
+from strands import tool
+
+@tool
+def my_analysis_tool(input_file: str, parameter: str) -> dict:
+    \"\"\"Tool description for AI understanding\"\"\"
+    # Implementation
+    return {"result": "analysis_output"}
+```
+
+## License
+
+GPL-3.0 License - see LICENSE file for details.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## Support
+
+For issues and questions, please use the GitHub issue tracker.
