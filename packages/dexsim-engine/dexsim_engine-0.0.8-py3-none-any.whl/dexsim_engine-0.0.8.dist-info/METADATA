@@ -1,0 +1,355 @@
+Metadata-Version: 2.1
+Name: dexsim-engine
+Version: 0.0.8
+Summary: DexData Python Lib is the SDK to download data asserts from dexforce data asserts management platform.
+Home-page: 
+Author: dexforce
+Author-email: contact@dexforce.com
+Classifier: Programming Language :: Python :: 3
+Description-Content-Type: text/markdown
+Requires-Dist: minio (==7.2.3)
+Requires-Dist: py7zr (==0.20.8)
+Requires-Dist: tqdm (==4.65.0)
+Requires-Dist: s3fs (==0.4.2)
+Requires-Dist: requests (==2.31.0)
+
+# DexData
+
+<div align="center">
+    <p align="center">
+        <a href="" rel="noopener">
+            <img width=600px height=500px src="assets/images/topo.png" alt="Dexforce data asserts management platform topo">
+        </a>
+    </p>
+    <h3 align="center">Dexforce data asserts management platform topo</h3>
+</div>
+
+
+DexData Python Lib is the SDK to download data asserts from dexforce data asserts management platform.
+
+## MinIO Store System
+- [MinIO](http://192.168.3.43:9099/browser)
+- [NAS](http://192.168.3.120:5000/)
+
+## Supported data asserts
+Currently, dexdata support the ablility to manipulate the following data asserts:
+- resource
+  - 3Dmodel
+    - ABC
+    - Objaverse
+    - CAD
+- dataset
+  - shadow
+  - standard
+  - stereo
+
+## pip install
+```shell
+pip install --no-cache-dir --index-url http://rjyfb:123456@69.235.177.182:10801/simple/ dexdata --trusted-host 69.235.177.182
+```
+
+## API documents
+### 1. Check dexdata version
+```
+import dexdata
+print(dexdata.__version__)
+```
+```
+0.0.5
+```
+### 2. ABC API
+#### 2.1 下载uids
+```
+from dexdata.resource.d3model import abc
+
+uids = abc.load_uids()
+len(uids), type(uids)
+```
+```
+(7699, list)
+```
+#### 2.2 下载数据
+```
+from dexdata.resource.d3model import abc
+
+objects = abc.load_objects(
+    uids=uids[:5],
+    download_processes=3
+)
+
+objects
+```
+```
+{
+    "e0b59ee702bd5ffd8756f91b995415f2": "C:\\Users\\Administrator\\dexdata\\ds\\.abc\\v1\\abcs\\00039968\\00039968_48152e51a1c24690bad750a1_trimesh_001.obj",
+    "05327d5294d85830b00c483668a4221d": "C:\\Users\\Administrator\\dexdata\\ds\\.abc\\v1\\abcs\\00039969\\00039969_3ce43082a5fb4f478e471dad_trimesh_000.obj",
+    "aad0f3f6031e5d8cbb5c1f36a8f046e4": "C:\\Users\\Administrator\\dexdata\\ds\\.abc\\v1\\abcs\\00039970\\00039970_3ce43082a5fb4f478e471dad_trimesh_001.obj",
+    "f436d56e13f55a4aa6e6881818854988": "C:\\Users\\Administrator\\dexdata\\ds\\.abc\\v1\\abcs\\00039971\\00039971_3ce43082a5fb4f478e471dad_trimesh_002.obj",
+    "194a08ef267057628f815ad2dc02ac90": "C:\\Users\\Administrator\\dexdata\\ds\\.abc\\v1\\abcs\\00039972\\00039972_3ce43082a5fb4f478e471dad_trimesh_003.obj"
+}
+```
+#### 2.3 获取本地已缓存数据
+```
+from dexdata.resource.d3model import abc
+
+cached_objects = abc.get_local_objects()
+
+cached_objects
+```
+```
+{
+    "e0b59ee702bd5ffd8756f91b995415f2": "C:\\Users\\Administrator\\.abc\\v1\\abcs\\00039968\\00039968_48152e51a1c24690bad750a1_trimesh_001.obj",
+    "05327d5294d85830b00c483668a4221d": "C:\\Users\\Administrator\\.abc\\v1\\abcs\\00039969\\00039969_3ce43082a5fb4f478e471dad_trimesh_000.obj",
+    "aad0f3f6031e5d8cbb5c1f36a8f046e4": "C:\\Users\\Administrator\\.abc\\v1\\abcs\\00039970\\00039970_3ce43082a5fb4f478e471dad_trimesh_001.obj",
+    "f436d56e13f55a4aa6e6881818854988": "C:\\Users\\Administrator\\.abc\\v1\\abcs\\00039971\\00039971_3ce43082a5fb4f478e471dad_trimesh_002.obj",
+    "194a08ef267057628f815ad2dc02ac90": "C:\\Users\\Administrator\\.abc\\v1\\abcs\\00039972\\00039972_3ce43082a5fb4f478e471dad_trimesh_003.obj",
+}
+```
+
+### 3. Objaverse API
+#### 3.1 下载uids
+```
+from dexdata.resource.d3model import objaverse
+
+uids = objaverse.load_uids()
+len(uids), type(uids)
+```
+```
+(100000, list)
+```
+#### 3.2 下载数据
+```
+from dexdata.resource.d3model import objaverse
+
+objects = objaverse.load_objects(
+    uids=uids[:5],
+    download_processes=2
+)
+
+objects
+```
+```
+{
+    "7d6a14874eed48c2b720f0d1adfe6dd9": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\7d6a14874eed48c2b720f0d1adfe6dd9.glb",
+    "8ff7f1f2465347cd8b80c9b206c2781e": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\8ff7f1f2465347cd8b80c9b206c2781e.glb",
+    "21d5f90dbc9f4f229b0faa7b56b67f3e": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\21d5f90dbc9f4f229b0faa7b56b67f3e.glb",
+    "8476c4170df24cf5bbe6967222d1a42d": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\8476c4170df24cf5bbe6967222d1a42d.glb",
+    "139331da744542009f146018fd0e05f4": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\139331da744542009f146018fd0e05f4.glb"
+}
+```
+#### 3.3 获取本地已缓存数据
+```
+from dexdata.resource.d3model import objaverse
+
+cached_objects = objaverse.get_local_objects()
+
+cached_objects
+```
+```
+{
+    "7d6a14874eed48c2b720f0d1adfe6dd9": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\7d6a14874eed48c2b720f0d1adfe6dd9.glb",
+    "8ff7f1f2465347cd8b80c9b206c2781e": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\8ff7f1f2465347cd8b80c9b206c2781e.glb",
+    "21d5f90dbc9f4f229b0faa7b56b67f3e": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\21d5f90dbc9f4f229b0faa7b56b67f3e.glb",
+    "8476c4170df24cf5bbe6967222d1a42d": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\8476c4170df24cf5bbe6967222d1a42d.glb",
+    "139331da744542009f146018fd0e05f4": "C:\\Users\\Administrator\\dexdata\\ds\\.objaverse\\hf-objaverse-v1\\glbs\\000-023\\139331da744542009f146018fd0e05f4.glb"
+}
+```
+### 4. Shadow API
+影子模式数据集API
+#### 4.1 获取当前所有影子模式数据集名称
+```
+from dexdata.dataset import shadow
+shadow.load_project_names()
+```
+```
+[{'sack-real': {'type': 'raw'}}, {'shadow-benchmark-carton-01': {'type': 'prepared'}}, {'shadow-benchmark-carton-01-train': {'type': 'prepared'}}, {'shadow-benchmark-carton-01-val': {'type': 'prepared'}}, {'shadow-benchmark-carton-02': {'type': 'prepared'}}, {'shadow-benchmark-carton-02-train': {'type': 'prepared'}}, {'shadow-benchmark-carton-02-val': {'type': 'prepared'}}, {'shadow-benchmark-sack-01': {'type': 'prepared'}}, {'shadow-benchmark-sack-01-train': {'type': 'prepared'}}, {'shadow-benchmark-sack-01-val': {'type': 'prepared'}}, {'shadow-benchmark-sack-02': {'type': 'prepared'}}, {'shadow-benchmark-sack-02-train': {'type': 'prepared'}}, {'shadow-benchmark-sack-02-val': {'type': 'prepared'}}, {'理想麻袋': {'type': 'raw'}}, {'莱州晨隆麻袋': {'type': 'raw'}}, {'隆控黑色箱子': {'type': 'raw'}}]
+```
+#### 4.2 获取指定名称的数据集并保存到本地
+```
+from dexdata.dataset import shadow
+
+local_path = shadow.get_data_project('sack-real','/home/dex/lihan/dexdata-test')
+local_path
+```
+```
+'/home/dex/lihan/dexdata-test/sack-real'
+```
+#### 4.3 获取指定名称的数据集并保存到本地（默认地址为$HOME/dexdata/ds/.shadow/v1/）
+```
+from dexdata.dataset import shadow
+
+local_path = shadow.get_data_project('sack-real')
+local_path
+```
+```
+'/home/dex/dexdata/ds/.shadow/v1/sack-real'
+```
+### 5. Standard API
+#### 5.1 获取当前所有standard数据集名称
+```
+from dexdata.dataset import standard
+standard.load_project_names()
+```
+```
+[{'chain_link': {'type': 'prepared'}}, {'chain_link_real': {'type': 'prepared'}}, {'wire_harness': {'type': 'prepared'}}, {'wire_harness_real': {'type': 'prepared'}}]
+```
+#### 5.2 获取指定名称的数据集并保存到本地
+```
+from dexdata.dataset import standard
+
+local_path = standard.get_data_project('chain_link_real','/home/dex/lihan/dexdata-test')
+local_path
+```
+```
+'/home/dex/lihan/dexdata-test/chain_link_real'
+```
+#### 5.3 获取指定名称的数据集并保存到本地（默认地址为$HOME/dexdata/ds/.standard/v1/）
+```
+from dexdata.dataset import standard
+
+local_path = standard.get_data_project('chain_link_real')
+local_path
+```
+```
+'/home/dex/dexdata/ds/.standard/v1/chain_link_real'
+```
+### 6. Dataset API（dexdata.dataset模块接口）
+#### 6.1 获取除影子模式数据外其他所有数据集的名称和类型列表
+```
+from dexdata import dataset
+
+dataset.load_all_project_names()
+```
+```
+[{'chain_link': {'type': 'prepared'}}, {'chain_link_real': {'type': 'prepared'}}, {'wire_harness': {'type': 'prepared'}}, {'wire_harness_real': {'type': 'prepared'}}]
+```
+#### 6.2 根据项目名称获取对应的数据集并保存到指定的本地路径
+```
+from dexdata import dataset
+
+local_path = dataset.get_data_project('chain_link_real','/home/dex/lihan/dexdata-test')
+local_path
+```
+```
+'/home/dex/lihan/dexdata-test/chain_link_real'
+```
+#### 6.3 获取指定名称的数据集并保存到本地（默认地址为$HOME/dexdata/ds/.xxx/v1/）
+```
+from dexdata import dataset
+
+local_path = dataset.get_data_project('chain_link_real')
+local_path
+```
+```
+'/home/dex/dexdata/ds/.standard/v1/chain_link_real'
+```
+### 7. CAD API
+#### 7.1 获取所有的CAD名称列表
+```
+from dexdata.resource.d3model import cad
+
+cad.load_cad_names()
+```
+```
+['model_20240419220912409', 'plastic_container', 'mixedai_cube', 'model_001']
+```
+#### 7.2 根据CAD名称获取对应的CAD并保存到指定的本地路径
+```
+from dexdata.resource.d3model import cad
+
+local_path = cad.load_cad('model_001','/home/dex/lihan/dexdata-test')
+local_path
+```
+```
+'/home/dex/lihan/dexdata-test/model_001'
+```
+#### 7.3 获取指定名称的CAD并保存到本地（默认地址为$HOME/dexdata/rs/d3model/.cad/v1/）
+```
+from dexdata.resource.d3model import cad
+
+local_path = cad.load_cad('model_001')
+local_path
+```
+```
+'/root/dexdata/rs/d3model/.cad/v1/model_001'
+```
+### 8. 双目数据集 Stereo API
+#### 8.1 获取所有数据集名称列表
+```
+from dexdata.dataset import stereo
+
+stereo.load_project_names()
+```
+```
+['unlabel/scene_000001', 'unlabel/scene_000002', 'unlabel/scene_000003', 'unlabel/scene_000004', 'unlabel/scene_000005', 'unlabel/scene_000006', 'unlabel/scene_000007', 'unlabel/scene_000008', 'unlabel/scene_000009', 'unlabel/scene_000010', 'unlabel/scene_000011', 'unlabel/scene_000012']
+```
+#### 8.2 根据数据集名称获取对应的数据集并保存到指定的本地路径
+```
+from dexdata.dataset import stereo
+
+local_path = stereo.get_data_project('unlabel/scene_000012', False, 'E:\\data') # 其中False表示本地存在同名数据集时跳过下载
+local_path
+```
+```
+'E:\\data\\unlabel/scene_000012'
+```
+#### 8.3 根据数据集名称获取对应的数据集并保存到默认的本地路径（默认地址为$HOME/dexdata/ds/.stereo/v1/）
+```
+from dexdata.dataset import stereo
+
+local_path = stereo.get_data_project('unlabel/scene_000012', True) # 其中True表示本地存在同名数据集时覆盖（先删除再下载）
+local_path
+```
+```
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000012'
+```
+#### 8.4 下载所有数据集并保存到指定的本地路径
+```
+from dexdata.dataset import stereo
+
+local_path = stereo.get_all_data_projects(overwrite=True, save_path='E:\\data') # 其中True表示本地存在同名数据集时覆盖（先删除再下载）
+local_path
+```
+```
+[
+'E:\\data\\unlabel/scene_000001', 
+'E:\\data\\unlabel/scene_000002', 
+'E:\\data\\unlabel/scene_000003', 
+'E:\\data\\unlabel/scene_000004', 
+'E:\\data\\unlabel/scene_000005', 
+'E:\\data\\unlabel/scene_000006', 
+'E:\\data\\unlabel/scene_000007', 
+'E:\\data\\unlabel/scene_000008', 
+'E:\\data\\unlabel/scene_000009', 
+'E:\\data\\unlabel/scene_000010', 
+'E:\\data\\unlabel/scene_000011', 
+'E:\\data\\unlabel/scene_000012'
+]
+```
+#### 8.5 下载所有数据集并保存到默认的本地路径（默认路径为$HOME/dexdata/ds/.stereo/v1/）
+```
+from dexdata.dataset import stereo
+
+local_path = stereo.get_all_data_projects(overwrite=True) # 其中True表示本地存在同名数据集时覆盖（先删除再下载）
+local_path
+```
+```
+[
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000001', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000002', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000003', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000004', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000005', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000006', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000007', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000008', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000009', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000010', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000011', 
+'C:\\Users\\Administrator\\dexdata\\ds\\.stereo\\v1\\unlabel/scene_000012'
+]
+```
+## Design documents
+[数据资产管理平台设计文档](https://dexforce.feishu.cn/wiki/RNfFwQuiBidT6akuLz6cUB8Cnzd)
+
+
