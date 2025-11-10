@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mat3ra-prode"
+dynamic = ["version"]
+description = "PROperty DEfinitions"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Exabyte Inc.", email = "info@mat3ra.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "black",
+    "ruff",
+    "isort",
+]
+tests = [
+    "coverage[toml]>=5.3",
+    "pytest",
+    "pytest-cov",
+]
+all = [
+    "mat3ra-prode[dev]",
+    "mat3ra-prode[tests]",
+]
+
+[tool.setuptools_scm]
+git_describe_command = "git describe --tags --long"
+
+[tool.setuptools.packages.find]
+where = ["src/py"]
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | dist
+  | .eggs
+  | .git
+  | .venv
+  | build
+)/
+'''
+
+[tool.ruff]
+extend-exclude = [
+    "src/js",
+    "tests/fixtures"
+]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src/py",
+]
+testpaths = [
+    "tests/py"
+]
+
