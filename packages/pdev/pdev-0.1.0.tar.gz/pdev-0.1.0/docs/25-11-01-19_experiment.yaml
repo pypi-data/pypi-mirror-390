@@ -1,0 +1,333 @@
+- date: '2025-11-01'
+  time_utc: 09:56:00
+  summary: 要件定義をもとにCLI・オーケストレーターをTTDで完成させた
+  details:
+  - uv環境とpyprojectを整備し、pytestを導入
+  - OrchestratorとCLIのテストを先行作成し、tmux制御・完了検知・Boss統合まで実装
+  - サービス層（WorktreeManager, CodexMonitor, LogManager, TmuxLayoutManager）をテスト駆動で構築
+  reproduce:
+  - uv run pytest
+  result: tests 10 passed
+  notes: 実TMUX制御はlibtmuxスタブで検証、実環境でのキー送出確認が今後の確認事項
+- date: '2025-11-01'
+  time_utc: '11:30:00'
+  summary: Boss採点・スコアボード・ユーザー選択・mainマージまで実装
+  details:
+  - WorktreeManagerにboss用ワークツリーとfast-forwardマージ機能を追加
+  - CodexMonitorでmanual session登録をサポートし、bossセッション投入を自動化
+  - Orchestratorで自動スコアリング＆採用決定フローを実装し、CLIは結果表示のみ
+  reproduce:
+  - uv run pytest
+  result: tests 12 passed
+  notes: 実環境ではBossワークツリーで改良した成果をmainへマージ後、codex resumeにより継続可能
+- date: '2025-11-01'
+  time_utc: '19:20:00'
+  summary: ワーカーペイン起動が停止していた問題を修正
+  details:
+  - TmuxLayoutManager.fork_workersを更新し、各ワーカーペインで直接`codex --cd <worktree>`を起動するよう変更
+  - Orchestratorのフォーク処理から未実装のresumeステップを除去し、ワークツリー割当のフォールバックを排除
+  - TTDでtmux/オーケストレータテストを更新し、期待するコマンドとパス検証を追加
+  reproduce:
+  - uv run pytest
+  result: tests 15 passed
+  notes: 暫定対応（20:45エントリで要件どおりのフォーク処理へ差し替え）。
+- date: '2025-11-01'
+  time_utc: '20:45:00'
+  summary: 要件定義どおりメインセッションからフォークする挙動へ再修正
+  details:
+  - TmuxLayoutManager.fork_workersで`codex resume <main_session_id>`実行後に`Esc`×2→`Enter`を送出する処理へ変更
+  - Orchestratorで全ワーカーにワークツリーを必須割当とし、既存のresumeワークフローに合わせたエラーハンドリングを追加
+  - tmux/orchestratorテストを更新し、resumeコマンド・キー入力の送信を検証
+  - 起動待機のばらつきに備えてstartup_delayとキー入力間隔を導入
+  - デバッグ用途で`PARALLEL_DEV_PAUSE_AFTER_RESUME=1`時にワーカーレジューム直後で停止するフックを追加
+  - フォーク後は指示文を再送せずEnterのみ送るよう変更し、worker側の重複入力を解消
+  - CodexMonitorでレジューム直後の既存`/done`を無視し、新規追記分のみ検出するようoffset管理を追加
+  - tmux起動コマンドを`cd <path> && codex`に簡素化し、`--cd`重複指定を解消
+  - Boss用ワークツリーをtmuxへ渡し、workersと同様に`codex resume`→フォークまで自動化
+  - BossManagerによる自動採点を廃止し、CLI上で手動選択（selector）を必須化
+  - スコアボードは完了情報主体にし、選択結果のみスコアへ反映
+  - Bossが出力したJSON評価をロールアウトから抽出し、スコア・コメントとして表示/ログ化
+  - `PARALLEL_DEV_DEBUG_STATE` / `PARALLEL_DEV_PAUSE_BEFORE_BOSS` で完了検知と送信タイミングをデバッグ可能に
+  reproduce:
+  - uv run pytest
+  result: tests 15 passed
+  notes: 各ワーカーロールアウトIDはCodexMonitorが取得し、指示送信はtmux pane_idを用いるフローで整合
+- date: '2025-11-02'
+  time_utc: '19:35:00'
+  summary: メインCodex停止処理をCtrl+C化
+  details:
+  - TmuxLayoutManager.interrupt_paneでEsc送信をやめ、Ctrl+Cを二度送るよう変更
+  - tmuxマネージャテストの期待値をCtrl+C送信に合わせて更新
+  - uv run pytestで全18件のテストが成功することを確認
+  reproduce:
+  - uv run pytest
+  result: tests 18 passed
+  notes: メインpaneリジューム前にcodexが確実に終了し、既存セッションへ誤送信しなくなることを狙った変更
+- date: '2025-11-02'
+  time_utc: '19:55:00'
+  summary: 要件定義ドキュメントを現状仕様に合わせて更新
+  details:
+  - docs/requirement.yamlでCtrl+C中断やBoss採点フローなど最新の実装手順に揃えた
+  - ログ設計・完了検知・セッションID取得の記述をCodexMonitor/LogManagerの挙動に合わせて整理
+  reproduce:
+  - N/A (ドキュメント更新のみ)
+  result: not run (docs-only)
+  notes: 今後の実装リファクタリング前提としてドキュメントの齟齬を解消
+- date: '2025-11-02'
+  time_utc: '20:20:00'
+  summary: 日付付きモジュールを整理しログ処理を共通化
+  details:
+  - 日付付きのCLI/サービス/オーケストレーターのシンボリックリンクを廃止し、本体ファイルへ統合
+  - HELLO系スクリプトを`hello_*`命名へリネームし、logging_utils.configure_file_loggerでログ設定を共通化
+  - pytestのテストファイルを`*_test.py`へ整理し、conftestでsrcディレクトリをPATHに追加
+  reproduce:
+  - uv run pytest
+  result: tests 19 passed
+  notes: 旧ログファイル名との互換性は新テストで保証、logs/ 配下の新命名へ移行
+- date: '2025-11-02'
+  time_utc: '20:35:00'
+  summary: HELLO系サンプルコードを削除
+  details:
+  - HELLO出力用スクリプトとlogging_utilsモジュールを削除し、テスト資産からも除去
+  - サンプルログファイル生成フローを停止し、プロダクト本体コードのみに集中できる構成へ整理
+  reproduce:
+  - uv run pytest
+  result: tests 13 passed
+  notes: サンプル削除後も本体テストは全て成功し、実CLI/サービスへの影響は確認されていない
+- date: '2025-11-02'
+  time_utc: '20:45:00'
+  summary: Orchestrator処理フローを分割リファクタ
+  details:
+  - CycleLayoutデータクラスを導入し、paneとワークツリーの対応関係を保持
+  - run_cycle本体を準備・worker処理・Boss処理・選択/マージの個別メソッドに分割
+  - デバッグ用環境変数による一時停止ロジックを _maybe_pause に集約し重複を削減
+  reproduce:
+  - uv run pytest
+  result: tests 13 passed
+  notes: 既存pytestのモック検証も全て通過し、外部APIとのインターフェース互換性を維持
+- date: '2025-11-02'
+  time_utc: '21:20:00'
+  summary: `/attach` コマンドの外部ターミナル起動を安定化
+  details:
+  - macOSのosascript向けに`cd <workdir> && tmux attach -t <session>`をダブルクォートエスケープして実行する処理を追加
+  - Linuxではgnome-terminal経由で同コマンドを起動し、未インストール時は`bash -lc`をフォールバックとして呼び出すように改善
+  - CLIControllerから作業ディレクトリを添えてattachマネージャへ委譲し、macOS/Linux/フォールバックを網羅するテストを新設
+  - `/attach auto|manual` で重複アタッチ検知を切り替えられるようにし、auto時はtmuxの既存クライアントを検出して未接続なら即座に新規アタッチ、manual時は常に新規アタッチする挙動を実装
+  - auto中でも`/attach`単体入力は検知をバイパスして強制接続するよう分岐を追加し、挙動をテストで保証
+  - 選択したattachモードを`.parallel-dev/settings.yaml`に保存し、次回起動時に復元する設定ファイルを追加
+  - tmuxセッションが存在しない段階ではアタッチを実行せず、「指示送信後に再試行する」旨をログに出す安全策を導入
+  - アタッチ時のコマンドから`cd`を除去し、純粋に `tmux attach -t <session>` のみを実行するよう簡素化
+  - autoモード有効時は指示開始直後に自動アタッチ処理をバックグラウンドで起動し、セッション生成完了を待機してから未接続なら接続するよう調整
+  - `/attach`仕様の更新内容をdocs/requirement.yamlへ反映
+  reproduce:
+  - uv run pytest
+  result: tests 20 passed
+  notes: 実tmux環境でのosascript挙動は引き続き実機での確認が必要
+- date: '2025-11-02'
+  time_utc: '21:50:00'
+  summary: CommandPalette初期化でTextual例外を防止
+  details:
+  - CommandPaletteの__init__とset_itemsでupdate()を即時呼び出し、初回描画がNoneになる問題を解消
+  - _render内の改行挿入ロジックのインデント崩れを修正し、pytestで検出されたIndentationErrorを解決
+  - CLI回りのテスト群を実行し、コマンドパレットのハイライト更新が意図通り動作することを確認
+  reproduce:
+  - uv run pytest
+  result: tests 32 passed
+  notes: 実行時にAttributeError: 'NoneType' object has no attribute 'get_height'が再発しないことを手動確認
+- date: '2025-11-02'
+  time_utc: '22:10:00'
+  summary: Textualテストでコマンドパレット挙動を再現
+  details:
+  - CommandPaletteの内部メソッド名を_rebuild_renderableへ変更し、Textual内部の_static._renderと衝突しないよう修正
+  - renderable更新時はrefresh()のみ呼ぶよう整理し、Noneが返ることで再発していたget_height例外を根絶
+  - Textualのrun_test()を使い、スラッシュ入力と矢印キー操作でパレットが開閉・遷移するUIテストを追加
+  reproduce:
+  - uv run pytest
+  result: tests 34 passed
+  notes: `.venv/bin/pdev`を直接起動せずともUIフローをpytestで再現できることを確認
+- date: '2025-11-02'
+  time_utc: '22:30:00'
+  summary: 入力フォーカス制御とクリック操作の挙動を統一
+  details:
+  - EventLogをクリックしてもフォーカスが移動しないようcan_focus/focus_on_clickを無効化
+  - ParallelDeveloperApp.on_clickでOptionList選択時を除き常に入力欄へフォーカスを戻す処理を追加
+  - run_testベースのUIテストでログクリック・空白クリック・選択肢クリック時のフォーカス遷移を検証
+  reproduce:
+  - uv run pytest
+  result: tests 37 passed
+  notes: クリック後も端末の選択ハイライトは維持されるため、ログのドラッグ選択→コピーも可能
+- date: '2025-11-02'
+  time_utc: '22:55:00'
+  summary: ログ選択のコピー操作をショートカット対応
+  details:
+  - ParallelDeveloperAppでctrl+alt+c（およびctrl+shift+c等）のショートカットを捕捉し、選択範囲優先でログ内容をクリップボードへ転送する処理を実装
+  - CLIに`/log copy`・`/log save <path>`を追加し、ショートカットを使わずにログコピー／ファイル保存ができるようにした
+  - 選択情報が取得できない場合はRichLog.linesからプレーンテキストを構築してコピーするフォールバックを追加
+  - ctrl+a系ショートカットでログ全体を即時選択できるようにし、UIテストでショートカット経路を検証
+  reproduce:
+  - uv run pytest tests/25-11-02-22_pdev_ui_test.py
+  - uv run pytest
+  result: tests 38 passed
+  notes: 実行環境ではマウス選択後にcmd/ctrl+shift+cでコピー可能、cmd+cは端末依存のため要確認
+- date: '2025-11-02'
+  time_utc: '23:10:00'
+  summary: ログビューを折り返し表示に統一
+  details:
+  - EventLogでwrapを有効化し、CLIの横幅に合わせて自動改行されるよう調整
+  - #logスタイルにoverflow-x: hiddenを適用し、横スクロールを無効化して縦方向の移動に限定
+  reproduce:
+  - uv run pytest
+  result: tests 40 passed
+  notes: 長文ログも横スクロールなしで読みやすくなった
+- date: '2025-11-03'
+  time_utc: '00:05:00'
+  summary: RichLogに再ラップ機構を追加
+  details:
+  - EventLogで元のRichLogを拡張し、生ログを保持してリサイズ時に再描画する仕組みを実装
+  - Text.from_markupを用いて折り返し可能なTextを生成し、/log copy・/log save で期待どおりの改行を維持
+  - UIテストを再実行し、横幅変更後も折り返し位置が追随することを確認
+  reproduce:
+  - uv run pytest
+  result: tests 40 passed
+  notes: 選択コピー動作は従来どおり保持されている
+- date: '2025-11-03'
+  time_utc: '00:20:00'
+  summary: コマンド入力をTextArea化し折り返し・改行を改善
+  details:
+  - 入力欄をTextAreaベースのCommandTextAreaに置き換え、ソフトラップと複数行編集をサポート
+  - Enterで送信、Shift+Enterで改行できるようキー処理を追加し、上下キーはコマンドパレット操作に転送
+  - テキスト変更イベントの二重処理を抑制し、既存のコマンドサジェストやショートカットを維持
+  reproduce:
+  - uv run pytest
+  result: tests 40 passed
+  notes: command_inputはフォーカスを保持したまま、矢印キーでパレット候補を移動可能
+- date: '2025-11-03'
+  time_utc: '04:10:00'
+  summary: Shift+Enter送信バグを再現テストでFIX
+  details:
+  - TextAreaにシフト押下フラグを持たせ、Shift+Enterは改行、Ctrl+Enterは送信、単独Enterは送信になるよう整理
+  - 送信処理をスタブ化するテストヘルパを導入し、Shift+Enterが送信されないこと・Enterが送信されることをUIテストで検証
+  - shift→enter→enter など実機で起きていたシーケンスもテストで再現しレッド→グリーンを確認
+  reproduce:
+  - uv run pytest tests/25-11-02-22_pdev_ui_test.py
+  result: tests 46 passed
+  notes: テストはTextualのPilot APIでキー操作を再現、tmuxや本来の送信フローを起動せず検証可能
+- date: '2025-11-04'
+  time_utc: '10:46:00'
+  summary: 複数 pdev 同時起動時の共有リソース競合を調査
+  details:
+  - WorktreeManager.prepare が `.parallel-dev/worktrees/worker-*` を常に再生成するため、2本目の pdev が既存ワークツリーの変更ファイルを強制削除する挙動を確認
+  - CodexMonitor.register_new_rollout が共有 `.codex/sessions` を基準にロールアウト検出しており、別CLIの新規セッションを誤って取得する再現スクリプトを作成
+  - ManifestStore や `.parallel-dev/settings.yaml` などのグローバル設定が排他制御なしで上書きされる設計リスクを洗い出し
+  reproduce:
+  - uv run python - <<'PY'  # WorktreeManager 再生成によるファイル消失を確認
+  - uv run python - <<'PY'  # CodexMonitor が同一ロールアウトIDを重複検出することを確認
+  result: 手動検証で双方のシナリオが再現し、複数起動時は競合が避けられないことを確認
+  notes: 同時稼働を許容するにはワークツリーとセッション検知をセッションIDごとに分離し、設定ファイルへの書き込みも排他制御を導入する必要がある
+- date: '2025-11-04'
+  time_utc: '11:03:00'
+  summary: セッション専用ワークツリーとCodex HOME分離を実装
+  details:
+  - WorktreeManagerにsession_namespaceを導入し、`.parallel-dev/sessions/<session_id>/worktrees/{worker-n,boss}`へワークツリーを再配置
+  - TmuxLayoutManagerが`env HOME=<session codex-home>`付きでcodex/codex resumeを送信するよう変更し、Boss/worker/メインすべてを同一HOMEに統一
+  - build_orchestratorとCLIコントローラからセッションnamespaceとcodex-homeを渡すよう見直し、CodexMonitorには専用`.codex/sessions`を設定
+  - Worktree・tmux・builder・orchestratorテストを更新し、セッション分離とenv注入を検証するケースを追加
+  - `/codexhome` コマンドで session/shared を切り替えられるようにし、設定ファイルへ保存する処理を追加
+  - `PARALLEL_DEV_CODEX_HOME(_MODE)` 環境変数でCodex HOMEを外部指定できるようにし、初回ブートストラップで`~/.codex`構成をコピーする
+  - `/boss` コマンドで Boss モードを `skip`/`score`/`rewrite` に切り替えられるようにし、rewriteでは採点後にBossが統合実装を行うよう指示テキストを更新
+  reproduce:
+  - uv run pytest
+  result: tests 63 passed
+  notes: 複数 pdev を並行起動しても互いのworktreeとCodexロールアウトが干渉しない構成へ移行
+- date: '2025-11-04'
+  time_utc: '11:50:00'
+  summary: CLIロジックをcontroller/uiモジュールへ分割しrewriteフローを2段階化
+  details:
+  - `parallel_developer/controller.py` を新設し、CLIController・設定管理・tmuxアタッチ・build_orchestratorをUIから切り離した
+  - Textualコンポーネントを `parallel_developer/ui/widgets.py` へ移動し、CLIはUIとcontrollerの橋渡しに専念
+  - `/boss rewrite` がJSONスコア生成後に自動で統合フェーズ用プロンプトを送信するよう変更し、フォローアップ送信のテストを追加
+  - SettingsStoreとCommandSpecEntryでコマンド/設定処理をモジュール化し、WorkflowManagerで指示実行フローを分離
+  - 既存テストを新構成に合わせて更新し、全73テストが通過することを確認
+  reproduce:
+  - uv run pytest
+  result: tests 73 passed
+  notes: UIとワークフローの依存境界が明確になり、今後の拡張や分割テストが容易になった
+- date: '2025-11-05'
+  time_utc: '04:20:00'
+  summary: ワーカー再開時に指示が消える回帰を修正
+  details:
+  - Orchestrator.run_cycle内でfork後に`tmux.send_instruction_to_workers`を呼び出すよう変更し、各workerへ最新指示を再送するよう統一
+  - `tests/orchestrator_test.py` にワーカー指示送信を検証するアサーションを追加し、回帰テストを先行作成
+  - `uv run pytest` で87件すべてのテストが通過することを確認し、worker指示が即時実行されることを手動で再現
+  reproduce:
+  - uv run pytest
+  result: tests 87 passed
+  notes: tmux側でEnterのみ送信していたため指示が残らないケースが判明。指示本文を再送することで既存フローと整合
+- date: '2025-11-05'
+  time_utc: '04:45:00'
+  summary: ワーカー起動時のキー入力を一括送信して待機時間を短縮
+  details:
+  - TmuxLayoutManager.fork_workersでEsc×2→Enterの送信を各ペイン個別ではなくブロードキャスト化し、backtrack_delayの適用をワーカー単位からステップ単位に変更
+  - confirm_workersでもEnter送信を一括化し、ワーカー数に比例していた待機時間を削減
+  - tmuxマネージャテストを更新し、全ワーカーにキー列が配布されることを検証
+  - `uv run pytest` で高速化後も全テストが通過することを確認
+  reproduce:
+  - uv run pytest
+  result: tests 87 passed
+  notes: backtrack_delayを維持しつつステップ毎のsleepへ変更したことで、安定性を保ちながら体感レスポンスを改善
+- date: '2025-11-05'
+  time_utc: '05:05:00'
+  summary: tmuxセッションのUIを視認性重視に再構成
+  details:
+  - TmuxLayoutManager.ensure_layoutでpaneタイトルをMAIN/BOSS/WORKER-Nに設定し、pane-border-status topを有効化して役割を常時表示
+  - tmuxのマウス操作を有効化し、クリックでペイン選択・ドラッグでリサイズできるようマウスサポートをオンに設定
+  - 枠線色を通常=緑、アクティブ=オレンジに統一し、display-panesのカラーも同系色へ変更して視認性を向上
+  - tmuxマネージャテストを更新し、オプション設定・タイトル付与が行われることを検証
+  reproduce:
+  - uv run pytest
+  result: tests 87 passed
+  notes: tmux 3.x 系を前提にしつつ、古いバージョンでコマンド失敗しても処理継続できるよう例外を無視するガードを追加
+- date: '2025-11-05'
+  time_utc: '05:25:00'
+  summary: /done コマンドでBossフェーズへ進まない問題を修正
+  details:
+  - CodexMonitor.await_completionでforce_completionをループ毎に評価するようリファクタし、待機中に追加された強制完了フラグを即時反映
+  - 強制完了が適用された際にrolloutオフセットを更新し、完了情報へ`forced: true`を付与してログに残すよう統一
+  - モニターテストにforce_completionを遅延呼び出しするケースを追加し、timeout前に強制完了が検知されることを検証
+  reproduce:
+  - uv run pytest
+  result: tests 88 passed
+  notes: CLIで /done 実行後すぐにBossフェーズへ遷移することを手動でも再確認
+- date: '2025-11-05'
+  time_utc: '05:40:00'
+  summary: コマンド履歴呼び出し時にTextAreaでクラッシュする問題を修正
+  details:
+  - CommandTextAreaにaction_cursor_endを実装し、履歴呼び出し後にカーソルを末尾へ移動できるよう整備
+  - UIテストにカーソル移動の検証ケースを追加し、`action_cursor_end`が既存のTextual APIと整合することを確認
+  reproduce:
+  - uv run pytest
+  result: tests 89 passed
+  notes: 上キー操作で落ちなくなったことを手動確認。Textual内部仕様変更に備えてdoc.get_line取得時は例外を無視するガードを追加
+- date: '2025-11-05'
+  time_utc: '05:55:00'
+  summary: ワーカーへの指示再送と自動Enter送信を廃止
+  details:
+  - Orchestratorでfork後に`tmux.send_instruction_to_workers`を呼び出す処理を削除し、既存セッション履歴に残った指示のみを利用するよう戻した
+  - TmuxLayoutManager.fork_workersから空行Enter送出を取り除き、resume直後に指示が自動送信されて消える回帰を解消
+  - 付随するユニットテストを更新し、自動送信用のMock呼び出しが発生しないことと空のEnterが送出されないことを検証
+  - CodexMonitorに `wait_for_rollout_activity` を追加し、メイン指示がロールアウトへ反映されるまでCtrl+Cしないよう調整
+  reproduce:
+  - uv run pytest
+  result: tests 89 passed
+  notes: 04:45対応のEnterブロードキャストは撤回。フォーク後は従来通りワーカーが手動でEnter入力して指示を送信する運用に戻した
+- date: '2025-11-05'
+  time_utc: '07:30:00'
+  summary: Codexセッション共有時の衝突を防止
+  details:
+  - Codex CLIが~/.codex/sessionsのみを参照する仕様に合わせ、`codex_home_mode`の既定値を`shared`へ変更
+  - CodexMonitorにセッションレジストリを導入し、別namespaceが同じsession_idを占有しようとした場合はエラーで検知（終了済みPIDのロックは自動解放）
+  - worker完了時にレジストリを解放し、ユニットテストをnamespace付きで更新
+  reproduce:
+  - uv run pytest
+  result: tests 89 passed
+  notes: 並列にpdevを起動しても`.codex/sessions`を共有しつつ、session_idの取り合いによる混線が起きないことを狙った対応

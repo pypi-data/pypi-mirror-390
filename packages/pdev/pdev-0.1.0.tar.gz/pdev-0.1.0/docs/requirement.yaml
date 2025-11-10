@@ -1,0 +1,140 @@
+metadata:
+  generated_at_utc: "2025-11-01T09:56:00Z"
+  author: codex-cli
+  language: "ja"
+  source_summary: >
+    CLI上で複数のコーディングエージェントを並列稼働させ、最終的にBossエージェントが
+    出力を評価・統合できるOSSを開発する。
+現在の状況:
+  ステータス: "実装・検証中"
+  未解決事項:
+    - "エージェントが利用する具体的なLLM/モデルの選定と設定手順"
+    - "実tmux環境でのキー送出安定性およびCodex応答遅延に対するリトライ戦略"
+    - "Boss評価プロンプトと採点ガイドラインの継続的な調整"
+概要:
+  目標: >
+    同一指示を複数エージェントへ同時配信し、その成果をBossエージェントが評価・統合する
+    開発支援CLIツールを提供する。
+  成功指標:
+    - "1コマンドでN個のエージェント環境（tmux + git worktree）を立ち上げられること。"
+    - "各エージェントのログを詳細に取得し、障害箇所を追跡できること。"
+    - "Bossエージェントが任意のエージェント成果物を選択・統合し、継続作業に接続できること。"
+  並列起動フロー:
+    - "ユーザーは`parallel-dev --instruction \"...\" --workers N`でメインCodexへ指示を送る。"
+    - "Orchestratorは指示を保存し、メインセッションへCtrl+Cを2回送ってCodexを安全に停止する。"
+    - "共有された指示を基に、各ワークツリー用tmuxペインで`codex resume <main_session_id>`を実行し、Esc×2→Enterで独立セッションIDを取得する。"
+    - "workerはフォーク後にEnterのみを送信して処理を確定し、完了時はホストが提示する完了フラグ（例: `~/.parallel-dev/sessions/<session_id>/signals/<cycle>/worker-1.done`）を `touch` して完了を通知する。"
+    - "全worker完了後にBossが同様にフォークし、評価JSONを返したのちBoss用フラグ（例: `~/.parallel-dev/sessions/<session_id>/signals/<cycle>/boss.done`）を `touch` して完了を通知する。"
+詳細フロー:
+  前提:
+    - "`parallel-dev --instruction \"...\" --workers N` が起動時に指示を受信し、末尾へ完了フラグの作成/削除手順を含むプロトコルを付与する。"
+    - "メインCodexは`codex`で起動し、指示送信後にCtrl+C×2で中断して履歴を保持する。"
+    - "worker Codexはフォークされた履歴を共有し、Esc×2→Enterで独立セッションへ派生した後にEnterのみを送信する。"
+    - "Boss Codexは全worker完了後にフォークされ、score/skipモードなら評価JSONを返した時点で完了、rewriteモードのみ追加統合作業を終えて完了フラグを `touch` する。"
+    - "CLIごとに一意な`session_id`をnamespaceとして利用し、`.parallel-dev/sessions/<session_id>`配下へワークツリーとCodex用HOMEを隔離する。"
+  手順:
+    - "CLIがワークツリーを準備：`.parallel-dev/sessions/<session_id>/worktrees/worker-N` と `.../worktrees/boss` を生成し、各worker用・Boss用ブランチを再作成する。"
+    - "tmuxレイアウトを作成し、メイン/Boss/worker*Nペインで`env HOME=.parallel-dev/sessions/<session_id>/codex-home codex`を起動する。"
+      - "メインペインへ指示を送信し、即座にCtrl+C×2で中断。CodexMonitorが指示とセッションIDを`~/.parallel-dev/session_maps/<session_id>.yaml`に登録する。"
+    - "workerペインで `codex resume <main_session_id>` を実行し、Esc×2→Enterでフォーク後にEnterのみ送信して指示を確定する。"
+    - "CodexMonitorが各workerの新セッションIDとrolloutパスを記録し、指定された完了フラグファイルの生成を監視する。"
+    - "全workerの完了フラグが立ったら、Bossペインで `codex resume <main_session_id>` → Esc×2→Enter を実行し、評価プロンプトを送る。"
+    - "BossはJSON形式で`scores`を返し、score/skipモードではそこで完了。rewriteモードでは追加統合作業を行い、完了したらBoss用フラグを `touch` する。Monitorが結果を取り込み、LogManagerが`cycles/<timestamp>.yaml`へ書き出す。"
+    - "CLIがスコアボードと候補一覧を表示し、ユーザーは採用する案を番号で選択する。Boss自身を候補に含めるのはrewriteモード時のみ。"
+    - "WorktreeManagerが選択ブランチをfast-forwardマージし、メインペインで`codex resume <採用セッションID>`を送信して次サイクルを整える。"
+      - "instruction.log や cycles/*.yaml は `~/.parallel-dev/logs/<session_id>/<cycle_timestamp>/` に保存され、セッション対応表は `~/.parallel-dev/session_maps/<session_id>.yaml` に保存される。"
+  評価・採用フロー:
+    - "Boss Codexは評価プロンプトに従い、各候補に対する0〜100の`score`と`comment`をJSON形式で返す。"
+    - "ControllerとUIの通知は `ControllerEventType` (status/log/log_copy/log_save/scoreboard/selection_request/selection_finished/pause_state/quit) を用いて統一される。詳細は docs/25-11-09-08_controller_contract.md を参照。"
+    - "CLI設定 (SettingsStore) とセッションマニフェスト (SessionManifest) は `parallel_developer.stores` パッケージで提供され、格納パスやキー構造は同ドキュメントで定義する。"
+    - "CodexMonitorがBoss出力を取り込み、CLIがスコアボード（例: worker1 80, worker2 50, boss -）として表示する。"
+    - "ユーザーはCLIプロンプトで採用案を手動選択し、選択結果がスコアボードにマークされる。"
+    - "選択された候補のワークツリーをmainへfast-forwardマージし、必要に応じてBoss案はbossブランチを適用する。"
+    - "採用セッションIDをメインCodexで`codex resume <id>`し、次サイクルへ継続する。"
+    - "Bossモードは`skip`（採点をスキップして即選択）、`score`（従来の採点のみ）、`rewrite`（採点後にBossが統合実装）を切り替え可能。rewrite時はJSONスコアを出力後、必要に応じてBossワークスペースで統合実装を行い、完了後にBoss用フラグを `touch` する。"
+主なインターフェース:
+  cli:
+    目的: "指示受付・パイプライン制御・結果承認を一元化するフロントエンド。将来的にGUIへ移行できるAPI設計を前提とする。"
+    機能:
+      - "指示入力コマンド（例: `parallel-dev --instruction \"...\" --workers 2`）でメインCodexへ送信。"
+      - "tmuxレイアウト管理（セッション1個 + メイン/Boss/worker*Nペイン、Nのデフォルトは3）。"
+      - "ワークフロー状態遷移管理（指示受付→フォーク展開→完了検知→Boss採点→ユーザー選択→mainマージ→次サイクル）とスコアボード表示。"
+      - "REST/IPC化を見据えた内部APIを提供し、将来的なGUI接続を想定。"
+      - "`pdev`（仮）コマンドで対話型CLIを起動し、通常入力をタスク指示、`/コマンド`形式を制御操作として扱う。"
+      - "`/parallel <N>` でワーカー数を即時変更し、現在のCLIセッション設定に保存する。"
+      - "`/mode main|parallel` で並列モードを切り替え、メインのみ実行かワーカー起動かを制御する。"
+      - "`/resume` で過去CLIセッション一覧を表示し、選択した履歴から再開できるようにする。"
+      - "`/log copy` で表示中のログをクリップボードに転送し、`/log save <path>` でテキストファイルとして保存できるようにする。"
+      - "`/flow <mode>` でフローモード（manual / auto_review / auto_select / full_auto）を切り替えられるようにする。"
+      - "`/continue` でワーカー完了後の指示をそのまま既存ワーカーペインへ再送し、ワークツリーを巻き戻さず追作業できるようにする。"
+      - "CLI画面にスコアボード・採点結果をストリーミング表示し、必要に応じて`/scoreboard`で再表示できるようにする。"
+      - "会話ログ（ユーザー指示・エージェント応答）をCLI上にロードし直し、`/resume` 実行直後から続きが見える状態に復元する。"
+      - "TextualベースのUIを採用し、イベントログ・状態表示・入力欄を統合する。採点完了後は候補がリスト表示され、上下キーで選択、Enterで決定できる操作を提供する。"
+      - "`/attach` コマンドで現在のtmuxセッションへ外部ターミナルから接続できるようにする。macOSではTerminal.appで `tmux attach -t <session>` を実行し、Linuxではgnome-terminal（存在しない場合は`bash -lc`）で同じコマンドを起動する。`/attach auto|manual` で自動アタッチ時の重複検知を切り替え、autoは指示開始直後にセッション生成完了を待機しつつ、未接続なら自動でターミナルを開く。manualは常に新規ターミナルを立ち上げる。autoモード中でも `/attach` 単体を実行した場合は検知を無視して強制的に接続する。選択したモードはユーザー設定ディレクトリの`config.yaml`（例: `~/.parallel-dev/config.yaml`）に保存され、CLI再起動後も継続される。"
+tmuxレイアウト:
+  セッション: "1つのtmuxセッションにメインCodex、Boss Codex、worker*Nの計N+2ペインを配置。"
+  デフォルトN: 3
+  ペイン役割:
+    - "メイン: 指示を受け取る専用。"
+    - "Boss: 評価・統合・マージを行う。"
+    - "worker: 並列開発を担当。必要に応じて追加生成・終了が可能。"
+  命名方針: "tmuxセッション名・paneタイトル・ワークツリーブランチにはタイムスタンプ+連番など一意なIDを含め、履歴再開やリソース再割当時に衝突しないようにする。"
+ログ設計:
+  - "`~/.parallel-dev/session_maps/<session_id>.yaml` にpane・session_id・rolloutパス・offsetを保存する。"
+  - "`logs/<タイムスタンプ>/instruction.log` に送信指示と対象paneを追記する。"
+  - "`logs/<タイムスタンプ>/cycles/<時刻>.yaml` にレイアウト、fork_map、完了状況、選択結果を記録する。"
+  - "rollout JSONL本体は`.parallel-dev/sessions/<session_id>/codex-home/.codex/sessions`を参照し、必要に応じて`logs/<タイムスタンプ>/sessions/`へ複製する検討を継続する。共有モードでは従来どおり`~/.codex/sessions`を利用する。"
+完了検知方式:
+  - "各workerはタスク完了時に必ず専用の完了フラグファイルを `touch` する（AGENTS.mdやプロンプトで厳守させる）。"
+  - "CodexMonitorがrollout JSONLに加えて完了フラグの生成を監視し、フラグ検知をもって完了とみなす（Boss評価は引き続き`scores` JSONから取得）。"
+  - "検出できなかったセッションは`done: False`としてログに残し、後続の選択処理で確認できる。"
+  - "タイムアウト時にユーザーへ確認ダイアログを提示する仕組みは未実装で、今後の検討事項とする。"
+セッションID取得:
+  - "フォーク後、CLIは`.parallel-dev/sessions/<session_id>/codex-home/.codex/sessions`（または共有モード時は`~/.codex/sessions`）配下のrollout-*.jsonlを監視し、先頭行のSessionMetaから`id`を取得する。"
+環境変数:
+  - "ファイル名に含まれるUUIDとSessionMeta内のIDを照合し、一致を確認してセッションIDとして採用する。"
+  - "取得したIDとrolloutパス・offsetは`~/.parallel-dev/session_maps/<session_id>.yaml`に記録し、paneやworktreeとの対応関係を保持する。"
+  - "Bossが採用したセッションをメインに昇格させる際は、このMapを用いて対象セッションのJSONL・worktree・ペインIDを逆引きし、メインペインで`codex resume <採用ID>`を発行する。"
+セッション再開・マニフェスト:
+  - "CLIごとに一意なセッションID（例: タイムスタンプ+UUID）を発行し、tmuxセッション名・pane ID・CodexセッションID・ワークツリーパスを含むマニフェストを保存する。"
+  - "マニフェストには前回の並列設定（ワーカー数、モード）、実行ログのパス、スコアボード情報、会話ログの参照先も記録する。"
+  - "`/resume` 実行時にマニフェストから候補を一覧し、選択されたものについてtmuxセッションの存在を確認する。"
+  - "既存tmuxセッションが残っていればそのまま再利用し、存在しなければマニフェストを基に再生成（新規tmux、ワークツリー割当、`codex resume <session_id>` の再実行）する。"
+  - "復元時にCLI上の会話ログ・採点結果を再表示し、直前の状態から指示を継続できるようにする。"
+  - "採点完了直後は候補リストへフォーカスを切り替え、上下キーで候補移動・Enterで採択できるワークフローを提供する。"
+  - "セッションリストや削除などの管理コマンドを提供し、不要な履歴やtmuxセッションを整理できるようにする。"
+設定管理:
+  - "ユーザー設定は`platformdirs`で取得したユーザー設定ディレクトリ（例: macOS/Linuxは`~/.parallel-dev/config.yaml`、Windowsは`%AppData%\\ParallelDeveloper\\config.yaml`）へ保存する。"
+  - "`worktree_root`設定キーを追加し、既定値はプロジェクト直下の`.parallel-dev/worktrees/<session_id>`とする。ユーザーが設定値を上書きした場合のみ、そのディレクトリをワークツリーのルートとして利用する。"
+  - "`worktree_root`は設定ファイルおよび環境変数`PARALLEL_DEV_WORKTREE_ROOT`で上書き可能とし、未指定時は従来どおりプロジェクト内にワークツリーを作成することで後方互換性を維持する。"
+機能要件:
+  - id: F-001
+    内容: "CLIコマンドでタスク指示を作成し、N個のエージェントに同時ブロードキャストする。"
+  - id: F-002
+    内容: "各エージェントごとに独立したgit worktreeを生成・管理する。"
+  - id: F-003
+    内容: "tmuxセッション（またはペイン）上でエージェントを起動し、resumeで文脈を保持する。"
+  - id: F-004
+    内容: "エージェントごとの詳細ログを生成し、トラブルシュートを容易にする。"
+  - id: F-005
+    内容: "Bossエージェントが成果物を閲覧し、スコアリング・統合方針を決定できるUI/コマンドを備える。"
+  - id: F-006
+    内容: "Bossエージェントが採用案をmainワークツリーにマージし、メインCodexで再び指示を出せるようにする。"
+  - id: F-007
+    内容: "メインセッションで取得したユーザー指示を自動的に保存・中断し、フォーク済み各セッションへ再送する制御機構を提供する。"
+  - id: F-008
+    内容: "tmuxレイアウト（メイン/Boss/worker*N）の生成・破棄・再配置をCLIから一括操作できるようにする。"
+  - id: F-009
+    内容: "完了フラグファイルの生成を検知し、全worker完了時にBossフェーズへ遷移するワークフロー制御を実装する。"
+  - id: F-010
+    内容: "フォーク後に生成された各セッションIDを自動取得し、ログとBoss統合プロセスに関連付ける。"
+  - id: F-011
+    内容: "HELLO文字列を標準出力する単純なスクリプトを提供し、TTDでテスト可能な形で維持する。"
+成果物:
+  - "CLI実装コードとテスト（TTDベース）。"
+  - "セットアップ・利用方法・ログ方針を説明するドキュメント。"
+  - "複数エージェント起動スクリプト、tmux制御スクリプト、Boss用統合ツール。"
+留意事項:
+  - "区切りのタイミングでgitコミットし、docs/experiment.yamlに活動ログを記録する。"
+  - "手動で判断して要件を変更する際は、事前に依頼者の承認を得る。"
+  - "CLI画面の縦幅が不足する際は status → log → 入力欄 の順で表示領域を優先的に縮めること。"
