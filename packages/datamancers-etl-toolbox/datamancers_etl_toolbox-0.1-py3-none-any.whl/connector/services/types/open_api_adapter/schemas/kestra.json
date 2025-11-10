@@ -1,0 +1,1526 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Kestra Open Source API",
+    "description": "API for Kestra open source data orchestration platform. Provides endpoints for managing flows, executions, logs, and other Kestra resources.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Kestra Support",
+      "url": "https://kestra.io/docs",
+      "email": "support@kestra.io"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Kestra Open Source API Server"
+    }
+  ],
+  "paths": {
+    "/flows/{namespace}": {
+      "get": {
+        "summary": "List Flows",
+        "description": "Retrieve a list of all flows in the system",
+        "operationId": "listFlows",
+        "tags": ["Flows"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Namespace"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved flows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Flow"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Total number of flows"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Flow",
+        "description": "Create a new flow",
+        "operationId": "createFlow",
+        "tags": ["Flows"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFlowRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Flow successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Flow"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/flows/{namespace}/{id}": {
+      "get": {
+        "summary": "Get Flow",
+        "description": "Retrieve a specific flow by namespace and ID",
+        "operationId": "getFlow",
+        "tags": ["Flows"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Namespace"
+          },
+          {
+            "$ref": "#/components/parameters/FlowId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved flow",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Flow"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Flow",
+        "description": "Update an existing flow",
+        "operationId": "updateFlow",
+        "tags": ["Flows"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Namespace"
+          },
+          {
+            "$ref": "#/components/parameters/FlowId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFlowRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Flow successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Flow"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Flow",
+        "description": "Delete a flow",
+        "operationId": "deleteFlow",
+        "tags": ["Flows"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Namespace"
+          },
+          {
+            "$ref": "#/components/parameters/FlowId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Flow successfully deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+
+    "/executions/latest":{
+    "post":{
+      "tags":["Executions"],
+      "summary": "Get the latest execution for given flows",
+      "operationId": "getLatestExecutions",
+      "parameters": [
+        {
+          "name": "tenant",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "id",
+          "in": "body",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "namespace",
+          "in": "body",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionRepositoryInterface.FlowFilter"
+            }
+          }
+        }
+      },
+        "required": true
+    },
+        "responses": {
+          "200": {
+            "description": "getLatestExecutions 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExecutionController.LastExecutionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/executions/{namespace}/{id}": {
+      "post": {
+        "summary": "Execute Flow",
+        "description": "Execute a flow with optional inputs in a specific tenant context",
+        "operationId": "executeFlow",
+        "tags": ["Executions"],
+        "parameters": [
+
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "description": "Namespace identifier",
+            "schema": {
+              "type": "string",
+              "example": "default"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Flow identifier",
+            "schema": {
+              "type": "string",
+              "example": "my-flow"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Flow execution started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/executions": {
+      "get": {
+        "summary": "List Executions",
+        "description": "Retrieve a list of executions with optional filtering",
+        "operationId": "listExecutions",
+        "tags": ["Executions"],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "query",
+            "description": "Filter executions by namespace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "flowId",
+            "in": "query",
+            "description": "Filter executions by flow ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "Filter executions by state",
+            "schema": {
+              "type": "string",
+              "enum": ["CREATED", "RUNNING", "SUCCESS", "FAILED", "KILLED", "WARNING"]
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Filter executions started after this date (ISO 8601)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "Filter executions started before this date (ISO 8601)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved executions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Execution"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Total number of executions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/executions/{executionId}": {
+      "get": {
+        "summary": "Get Execution",
+        "description": "Retrieve a specific execution by ID",
+        "operationId": "getExecution",
+        "tags": ["Executions"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved execution",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Kill Execution",
+        "description": "Kill a running execution",
+        "operationId": "killExecution",
+        "tags": ["Executions"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Execution successfully killed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/executions/{executionId}/taskruns": {
+      "get": {
+        "summary": "Get Execution Task Runs",
+        "description": "Retrieve task runs for a specific execution",
+        "operationId": "getExecutionTaskRuns",
+        "tags": ["Executions"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved task runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskRun"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/executions/{executionId}/taskruns/{taskRunId}": {
+      "get": {
+        "summary": "Get Task Run",
+        "description": "Retrieve a specific task run",
+        "operationId": "getTaskRun",
+        "tags": ["Executions"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          },
+          {
+            "$ref": "#/components/parameters/TaskRunId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved task run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRun"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/logs/{executionId}": {
+      "get": {
+        "summary": "Get Execution Logs by Tenant",
+        "description": "Retrieve logs for a specific execution in a tenant context",
+        "operationId": "getExecutionLogs",
+        "tags": ["Logs"],
+        "parameters": [
+          {
+            "name": "executionId",
+            "in": "path",
+            "required": true,
+            "description": "Execution identifier",
+            "schema": {
+              "type": "string",
+              "example": "01HZ1234567890ABCDEF"
+            }
+          },
+          {
+            "name": "taskRunId",
+            "in": "query",
+            "description": "Filter logs by task run ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attemptNumber",
+            "in": "query",
+            "description": "Filter logs by attempt number",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "minLevel",
+            "in": "query",
+            "description": "Minimum log level to include",
+            "schema": {
+              "type": "string",
+              "enum": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved execution logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LogEntry"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/{tenant}/logs/search": {
+      "get": {
+        "summary": "Search Logs by Tenant",
+        "description": "Search logs across executions in a tenant context",
+        "operationId": "searchLogs",
+        "tags": ["Logs"],
+        "parameters": [
+    
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search query for log content",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "description": "Filter logs by namespace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "flowId",
+            "in": "query",
+            "description": "Filter logs by flow ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "executionId",
+            "in": "query",
+            "description": "Filter logs by execution ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskRunId",
+            "in": "query",
+            "description": "Filter logs by task run ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minLevel",
+            "in": "query",
+            "description": "Minimum log level to include",
+            "schema": {
+              "type": "string",
+              "enum": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Filter logs from this date (ISO 8601)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "Filter logs until this date (ISO 8601)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LogEntry"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Total number of matching log entries"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/namespaces/search": {
+      "get": {
+        "summary": "List Namespaces",
+        "description": "Retrieve a list of all namespaces",
+        "operationId": "listNamespaces",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for pagination",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {"name":"q",
+            "in": "query",
+            "description": "Search query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        
+        "tags": ["Namespaces"],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved namespaces",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Namespace"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/namespaces/{namespace}": {
+      "get": {
+        "summary": "Get Namespace",
+        "description": "Retrieve a specific namespace",
+        "operationId": "getNamespace",
+        "tags": ["Namespaces"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Namespace"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved namespace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Namespace"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Namespace",
+        "description": "Delete a namespace",
+        "operationId": "deleteNamespace",
+        "tags": ["Namespaces"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Namespace"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Namespace successfully deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Basic authentication for Kestra API access"
+      }
+    },
+    "parameters": {
+      "Namespace": {
+        "name": "namespace",
+        "in": "path",
+        "required": true,
+        "description": "Namespace identifier",
+        "schema": {
+          "type": "string",
+          "example": "default"
+        }
+      },
+      "FlowId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Flow identifier",
+        "schema": {
+          "type": "string",
+          "example": "my-flow"
+        }
+      },
+      "ExecutionId": {
+        "name": "executionId",
+        "in": "path",
+        "required": true,
+        "description": "Execution identifier",
+        "schema": {
+          "type": "string",
+          "example": "01HZ1234567890ABCDEF"
+        }
+      },
+      "TaskRunId": {
+        "name": "taskRunId",
+        "in": "path",
+        "required": true,
+        "description": "Task run identifier",
+        "schema": {
+          "type": "string",
+          "example": "01HZ1234567890ABCDEF"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - invalid input data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Flow": {
+        "type": "object",
+        "description": "A Kestra flow definition",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Flow identifier",
+            "example": "my-flow"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace where the flow is defined",
+            "example": "default"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Flow revision number",
+            "example": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Flow description",
+            "example": "A sample flow for data processing"
+          },
+          "labels": {
+            "type": "object",
+            "description": "Flow labels",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "description": "List of tasks in the flow",
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "triggers": {
+            "type": "array",
+            "description": "List of triggers for the flow",
+            "items": {
+              "$ref": "#/components/schemas/Trigger"
+            }
+          },
+          "inputs": {
+            "type": "array",
+            "description": "Flow input definitions",
+            "items": {
+              "$ref": "#/components/schemas/Input"
+            }
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Flow creation timestamp"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Flow last update timestamp"
+          }
+        },
+        "required": ["id", "namespace", "revision", "tasks"]
+      },
+      "Task": {
+        "type": "object",
+        "description": "A task within a flow",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Task identifier",
+            "example": "task-1"
+          },
+          "type": {
+            "type": "string",
+            "description": "Task type",
+            "example": "io.kestra.core.tasks.scripts.Script"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "labels": {
+            "type": "object",
+            "description": "Task labels",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "timeout": {
+            "type": "string",
+            "description": "Task timeout duration",
+            "example": "PT1H"
+          },
+          "retry": {
+            "$ref": "#/components/schemas/Retry"
+          }
+        },
+        "required": ["id", "type"]
+      },
+      "Trigger": {
+        "type": "object",
+        "description": "A trigger for a flow",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Trigger identifier",
+            "example": "trigger-1"
+          },
+          "type": {
+            "type": "string",
+            "description": "Trigger type",
+            "example": "io.kestra.core.triggers.schedule.Schedule"
+          },
+          "cron": {
+            "type": "string",
+            "description": "Cron expression for schedule triggers",
+            "example": "0 0 * * *"
+          }
+        },
+        "required": ["id", "type"]
+      },
+      "Input": {
+        "type": "object",
+        "description": "A flow input definition",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Input identifier",
+            "example": "input-1"
+          },
+          "type": {
+            "type": "string",
+            "description": "Input type",
+            "enum": ["STRING", "INT", "FLOAT", "BOOLEAN", "DATE", "DATETIME", "DURATION", "FILE", "JSON", "URI"]
+          },
+          "defaults": {
+            "type": "array",
+            "description": "Default values for the input",
+            "items": {}
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the input is required",
+            "default": false
+          }
+        },
+        "required": ["id", "type"]
+      },
+      "Retry": {
+        "type": "object",
+        "description": "Retry configuration for a task",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["constant", "exponential", "random"]
+          },
+          "interval": {
+            "type": "string",
+            "description": "Retry interval duration",
+            "example": "PT1M"
+          },
+          "maxAttempt": {
+            "type": "integer",
+            "description": "Maximum number of retry attempts",
+            "example": 3
+          }
+        }
+      },
+      "ExecutionRepositoryInterface.FlowFilter": {
+        "type": "object",
+        "description": "Flow filter for execution repository",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace of the flow",
+            "example": "default"
+          },
+          "id": {
+            "type": "string",
+            "description": "Flow identifier",
+            "example": "my-flow"
+          }
+        }
+      },
+      "ExecutionController.LastExecutionResponse": {
+        "type": "object",
+        "description": "Last execution response for execution controller",
+        "properties": {
+            "id": {
+              "type": "string",
+              "description": "Execution identifier",
+              "example": "01HZ1234567890ABCDEF"
+            },
+            "flowId": {
+              "type": "string",
+              "description": "Flow identifier",
+              "example": "my-flow"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "Namespace of the execution",
+              "example": "default"
+            },
+            "startDate": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Execution start timestamp"
+            },
+            "status": {
+              "$ref": "#/components/schemas/State.Type"
+            }
+         },
+        "required": ["id", "flowId", "namespace", "startDate", "status"]
+      },
+      "Execution": {
+        "type": "object",
+        "description": "A flow execution",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Execution identifier",
+            "example": "01HZ1234567890ABCDEF"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace of the executed flow",
+            "example": "default"
+          },
+          "flowId": {
+            "type": "string",
+            "description": "ID of the executed flow",
+            "example": "my-flow"
+          },
+          "flowRevision": {
+            "type": "integer",
+            "description": "Revision of the executed flow",
+            "example": 1
+          },
+          "state": {
+            "type": "string",
+            "description": "Current execution state",
+            "enum": ["CREATED", "RUNNING", "SUCCESS", "FAILED", "KILLED", "WARNING"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Execution start timestamp"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Execution end timestamp",
+            "nullable": true
+          },
+          "duration": {
+            "type": "string",
+            "description": "Execution duration",
+            "example": "PT1H30M"
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Input values passed to the execution",
+            "additionalProperties": {}
+          },
+          "outputs": {
+            "type": "object",
+            "description": "Output values from the execution",
+            "additionalProperties": {}
+          },
+          "taskRunList": {
+            "type": "array",
+            "description": "List of task runs in this execution",
+            "items": {
+              "$ref": "#/components/schemas/TaskRun"
+            }
+          }
+        },
+        "required": ["id", "namespace", "flowId", "state", "startDate"]
+      },
+      "TaskRun": {
+        "type": "object",
+        "description": "A task run within an execution",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Task run identifier",
+            "example": "01HZ1234567890ABCDEF"
+          },
+          "executionId": {
+            "type": "string",
+            "description": "Parent execution identifier",
+            "example": "01HZ1234567890ABCDEF"
+          },
+          "taskId": {
+            "type": "string",
+            "description": "Task identifier",
+            "example": "task-1"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace",
+            "example": "default"
+          },
+          "flowId": {
+            "type": "string",
+            "description": "Flow identifier",
+            "example": "my-flow"
+          },
+          "state": {
+            "type": "string",
+            "description": "Current task run state",
+            "enum": ["CREATED", "RUNNING", "SUCCESS", "FAILED", "KILLED", "WARNING"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Task run start timestamp"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Task run end timestamp",
+            "nullable": true
+          },
+          "duration": {
+            "type": "string",
+            "description": "Task run duration",
+            "example": "PT5M"
+          },
+          "attempts": {
+            "type": "array",
+            "description": "List of attempts for this task run",
+            "items": {
+              "$ref": "#/components/schemas/TaskRunAttempt"
+            }
+          },
+          "outputs": {
+            "type": "object",
+            "description": "Output values from the task run",
+            "additionalProperties": {}
+          }
+        },
+        "required": ["id", "executionId", "taskId", "state", "startDate"]
+      },
+      "TaskRunAttempt": {
+        "type": "object",
+        "description": "An attempt of a task run",
+        "properties": {
+          "attemptNumber": {
+            "type": "integer",
+            "description": "Attempt number (1-based)",
+            "example": 1
+          },
+          "state": {
+            "type": "string",
+            "description": "Attempt state",
+            "enum": ["CREATED", "RUNNING", "SUCCESS", "FAILED", "KILLED", "WARNING"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Attempt start timestamp"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Attempt end timestamp",
+            "nullable": true
+          },
+          "duration": {
+            "type": "string",
+            "description": "Attempt duration",
+            "example": "PT2M"
+          }
+        },
+        "required": ["attemptNumber", "state", "startDate"]
+      },
+      "LogEntry": {
+        "type": "object",
+        "description": "A log entry",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Log entry timestamp"
+          },
+          "level": {
+            "type": "string",
+            "description": "Log level",
+            "enum": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"]
+          },
+          "message": {
+            "type": "string",
+            "description": "Log message"
+          },
+          "thread": {
+            "type": "string",
+            "description": "Thread name"
+          },
+          "logger": {
+            "type": "string",
+            "description": "Logger name"
+          },
+          "executionId": {
+            "type": "string",
+            "description": "Execution identifier"
+          },
+          "taskRunId": {
+            "type": "string",
+            "description": "Task run identifier",
+            "nullable": true
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "description": "Attempt number",
+            "nullable": true
+          }
+        },
+        "required": ["timestamp", "level", "message"]
+      },
+      "Namespace": {
+        "type": "object",
+        "description": "A namespace in Kestra",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Namespace identifier",
+            "example": "default"
+          },
+          "description": {
+            "type": "string",
+            "description": "Namespace description"
+          },
+          "variables": {
+            "type": "object",
+            "description": "Namespace variables",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Namespace creation timestamp"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Namespace last update timestamp"
+          }
+        },
+        "required": ["id"]
+      },
+      "CreateFlowRequest": {
+        "type": "object",
+        "description": "Request to create a new flow",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace where to create the flow",
+            "example": "default"
+          },
+          "id": {
+            "type": "string",
+            "description": "Flow identifier",
+            "example": "my-flow"
+          },
+          "description": {
+            "type": "string",
+            "description": "Flow description"
+          },
+          "labels": {
+            "type": "object",
+            "description": "Flow labels",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "description": "List of tasks in the flow",
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "triggers": {
+            "type": "array",
+            "description": "List of triggers for the flow",
+            "items": {
+              "$ref": "#/components/schemas/Trigger"
+            }
+          },
+          "inputs": {
+            "type": "array",
+            "description": "Flow input definitions",
+            "items": {
+              "$ref": "#/components/schemas/Input"
+            }
+          }
+        },
+        "required": ["namespace", "id", "tasks"]
+      },
+      "UpdateFlowRequest": {
+        "type": "object",
+        "description": "Request to update an existing flow",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Flow description"
+          },
+          "labels": {
+            "type": "object",
+            "description": "Flow labels",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "description": "List of tasks in the flow",
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "triggers": {
+            "type": "array",
+            "description": "List of triggers for the flow",
+            "items": {
+              "$ref": "#/components/schemas/Trigger"
+            }
+          },
+          "inputs": {
+            "type": "array",
+            "description": "Flow input definitions",
+            "items": {
+              "$ref": "#/components/schemas/Input"
+            }
+          }
+        }
+      },
+      "ExecuteFlowRequest": {
+        "type": "object",
+        "description": "Request to execute a flow",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "description": "Input values for the flow execution",
+            "additionalProperties": {}
+          },
+          "labels": {
+            "type": "object",
+            "description": "Execution labels",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "State.Type": {
+        "type": "string",
+        "enum": ["CREATED", "RUNNING", "PAUSED", "RESTARTED", "KILLING", "SUCCESS", "WARNING", "FAILED", "KILLED", "CANCELLED", "QUEUED", "RETRYING", "RETRIED", "SKIPPED", "BREAKPOINT"]
+      },
+      "CreateNamespaceRequest": {
+        "type": "object",
+        "description": "Request to create a new namespace",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Namespace identifier",
+            "example": "my-namespace"
+          },
+          "description": {
+            "type": "string",
+            "description": "Namespace description"
+          },
+          "variables": {
+            "type": "object",
+            "description": "Namespace variables",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id"]
+      },
+      "Error": {
+        "type": "object",
+        "description": "Error response",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "status": {
+            "type": "integer",
+            "description": "HTTP status code"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Error timestamp"
+          }
+        },
+        "required": ["message", "status"]
+      }
+    }
+  },
+  "security": [
+    {
+      "BasicAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Flows",
+      "description": "Flow management operations"
+    },
+    {
+      "name": "Executions",
+      "description": "Execution management and monitoring"
+    },
+    {
+      "name": "Logs",
+      "description": "Log retrieval operations"
+    },
+    {
+      "name": "Namespaces",
+      "description": "Namespace management operations"
+    }
+  ]
+}

@@ -1,0 +1,1264 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Todoist API v1",
+    "description": "Complete API for Todoist task management system. All requests must be made via HTTPS. Rate limit: varies by endpoint. Documentation: https://developer.todoist.com/api/v1",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Todoist Support",
+      "email": "support@todoist.com",
+      "url": "https://developer.todoist.com/api/v1"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.todoist.com/api/v1",
+      "description": "Todoist API v1 Production Server"
+    }
+  ],
+  "paths": {
+    "/user": {
+      "get": {
+        "summary": "Get Current User",
+        "description": "Returns information about the current authenticated user",
+        "operationId": "getCurrentUser",
+        "tags": ["User"],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/tasks": {
+      "get": {
+        "summary": "List Tasks",
+        "description": "Retrieve a list of tasks with cursor-based pagination",
+        "operationId": "listTasks",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Filter tasks by project ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "section_id",
+            "in": "query",
+            "description": "Filter tasks by section ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "description": "Filter tasks by label",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "Filter tasks by filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "description": "Language for the response",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Task"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Cursor for the next page of results"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Task",
+        "description": "Create a new task",
+        "operationId": "createTask",
+        "tags": ["Tasks"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/tasks/{id}": {
+      "get": {
+        "summary": "Get Task",
+        "description": "Get a specific task by ID",
+        "operationId": "getTask",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TaskId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update Task",
+        "description": "Update an existing task",
+        "operationId": "updateTask",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TaskId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Task",
+        "description": "Delete a task",
+        "operationId": "deleteTask",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TaskId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Task successfully deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "List Projects",
+        "description": "Retrieve a list of projects with cursor-based pagination",
+        "operationId": "listProjects",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Cursor for the next page of results"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Project",
+        "description": "Create a new project",
+        "operationId": "createProject",
+        "tags": ["Projects"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "summary": "Get Project",
+        "description": "Get a specific project by ID",
+        "operationId": "getProject",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update Project",
+        "description": "Update an existing project",
+        "operationId": "updateProject",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Project",
+        "description": "Delete a project",
+        "operationId": "deleteProject",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProjectId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Project successfully deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/labels": {
+      "get": {
+        "summary": "List Labels",
+        "description": "Retrieve a list of labels with cursor-based pagination",
+        "operationId": "listLabels",
+        "tags": ["Labels"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved labels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Label"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Cursor for the next page of results"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Label",
+        "description": "Create a new label",
+        "operationId": "createLabel",
+        "tags": ["Labels"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Label successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Label"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/labels/{id}": {
+      "get": {
+        "summary": "Get Label",
+        "description": "Get a specific label by ID",
+        "operationId": "getLabel",
+        "tags": ["Labels"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LabelId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved label",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Label"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "summary": "Update Label",
+        "description": "Update an existing label",
+        "operationId": "updateLabel",
+        "tags": ["Labels"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LabelId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLabelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Label successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Label"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Label",
+        "description": "Delete a label",
+        "operationId": "deleteLabel",
+        "tags": ["Labels"],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/LabelId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Label successfully deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Personal API token obtained from Todoist account settings. Get your token from Settings → Integrations → API token."
+      }
+    },
+    "parameters": {
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "description": "Cursor for pagination (opaque string from previous response)",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Number of items to return per page",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 30
+        }
+      },
+      "TaskId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Task ID",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ProjectId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Project ID",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "LabelId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Label ID",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request - invalid data provided",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - invalid or missing API token",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "description": "Current authenticated user",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "User ID",
+            "example": "2671355"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address",
+            "example": "user@example.com"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "User's full name",
+            "example": "John Doe"
+          },
+          "avatar_big": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to user's avatar (big size)",
+            "example": "https://dcff1xvirvpfp.cloudfront.net/5e4c1c9c92aa31.79973322.jpg?size=big"
+          },
+          "avatar_medium": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to user's avatar (medium size)",
+            "example": "https://dcff1xvirvpfp.cloudfront.net/5e4c1c9c92aa31.79973322.jpg?size=medium"
+          },
+          "avatar_small": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to user's avatar (small size)",
+            "example": "https://dcff1xvirvpfp.cloudfront.net/5e4c1c9c92aa31.79973322.jpg?size=small"
+          },
+          "is_premium": {
+            "type": "boolean",
+            "description": "Whether user has premium subscription",
+            "example": false
+          },
+          "is_biz_admin": {
+            "type": "boolean",
+            "description": "Whether user is business admin",
+            "example": false
+          },
+          "join_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date when user joined",
+            "example": "2015-05-15"
+          }
+        },
+        "required": ["id", "email", "full_name"]
+      },
+      "Task": {
+        "type": "object",
+        "description": "A task in Todoist",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Task ID",
+            "example": "2995104339"
+          },
+          "assigner_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the user who assigned the task",
+            "example": "2671355"
+          },
+          "assignee_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the user who is assigned to the task",
+            "example": "2671362"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "ID of the project that contains the task",
+            "example": "2203306141"
+          },
+          "section_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the section that contains the task",
+            "example": "7025"
+          },
+          "parent_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the parent task if this is a subtask",
+            "example": "2995104589"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order of the task in the project",
+            "example": 1
+          },
+          "content": {
+            "type": "string",
+            "description": "Content of the task",
+            "example": "Buy milk"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the task",
+            "example": "Remember to buy milk from the grocery store"
+          },
+          "is_completed": {
+            "type": "boolean",
+            "description": "Whether the task is completed",
+            "example": false
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of label IDs associated with the task",
+            "example": ["2156144812", "2156144813"]
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Priority of the task (1-4, where 1 is the highest priority)",
+            "minimum": 1,
+            "maximum": 4,
+            "example": 1
+          },
+          "comment_count": {
+            "type": "integer",
+            "description": "Number of comments on the task",
+            "example": 10
+          },
+          "creator_id": {
+            "type": "string",
+            "description": "ID of the user who created the task",
+            "example": "2671355"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date and time when the task was created",
+            "example": "2017-09-19T11:25:12.000000Z"
+          },
+          "due": {
+            "type": "object",
+            "nullable": true,
+            "description": "Due date information",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date",
+                "description": "Due date",
+                "example": "2016-09-01"
+              },
+              "datetime": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true,
+                "description": "Due date and time",
+                "example": "2016-09-01T09:00:00"
+              },
+              "string": {
+                "type": "string",
+                "description": "Human-readable due date",
+                "example": "tomorrow at 12"
+              },
+              "timezone": {
+                "type": "string",
+                "nullable": true,
+                "description": "Timezone for the due date",
+                "example": "Europe/Moscow"
+              }
+            }
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to view the task in Todoist",
+            "example": "https://todoist.com/showTask?id=2995104339"
+          },
+          "duration": {
+            "type": "object",
+            "nullable": true,
+            "description": "Duration information for the task",
+            "properties": {
+              "amount": {
+                "type": "integer",
+                "description": "Duration amount",
+                "example": 30
+              },
+              "unit": {
+                "type": "string",
+                "enum": ["minute", "day"],
+                "description": "Duration unit",
+                "example": "minute"
+              }
+            }
+          }
+        },
+        "required": ["id", "content", "is_completed", "priority", "created_at"]
+      },
+      "CreateTaskRequest": {
+        "type": "object",
+        "description": "Request payload for creating a task",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content of the task (required)",
+            "example": "Buy milk"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the task",
+            "example": "Remember to buy milk from the grocery store"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "ID of the project to add the task to",
+            "example": "2203306141"
+          },
+          "section_id": {
+            "type": "string",
+            "description": "ID of the section to add the task to",
+            "example": "7025"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "ID of the parent task if this is a subtask",
+            "example": "2995104589"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order of the task in the project",
+            "example": 1
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of label IDs to associate with the task",
+            "example": ["2156144812", "2156144813"]
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Priority of the task (1-4, where 1 is the highest priority)",
+            "minimum": 1,
+            "maximum": 4,
+            "example": 1
+          },
+          "due_string": {
+            "type": "string",
+            "description": "Human-readable due date",
+            "example": "tomorrow at 12"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date",
+            "example": "2016-09-01"
+          },
+          "due_datetime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Due date and time",
+            "example": "2016-09-01T09:00:00"
+          },
+          "due_lang": {
+            "type": "string",
+            "description": "Language for the due date",
+            "example": "en"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "ID of the user to assign the task to",
+            "example": "2671362"
+          }
+        },
+        "required": ["content"]
+      },
+      "UpdateTaskRequest": {
+        "type": "object",
+        "description": "Request payload for updating a task",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content of the task",
+            "example": "Buy milk"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the task",
+            "example": "Remember to buy milk from the grocery store"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of label IDs to associate with the task",
+            "example": ["2156144812", "2156144813"]
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Priority of the task (1-4, where 1 is the highest priority)",
+            "minimum": 1,
+            "maximum": 4,
+            "example": 1
+          },
+          "due_string": {
+            "type": "string",
+            "description": "Human-readable due date",
+            "example": "tomorrow at 12"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Due date",
+            "example": "2016-09-01"
+          },
+          "due_datetime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Due date and time",
+            "example": "2016-09-01T09:00:00"
+          },
+          "due_lang": {
+            "type": "string",
+            "description": "Language for the due date",
+            "example": "en"
+          },
+          "assignee_id": {
+            "type": "string",
+            "description": "ID of the user to assign the task to",
+            "example": "2671362"
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "description": "A project in Todoist",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Project ID",
+            "example": "2203306141"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the project",
+            "example": "Inbox"
+          },
+          "comment_count": {
+            "type": "integer",
+            "description": "Number of comments on the project",
+            "example": 10
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order of the project",
+            "example": 1
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of the project",
+            "example": "charcoal"
+          },
+          "is_shared": {
+            "type": "boolean",
+            "description": "Whether the project is shared",
+            "example": false
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "Whether the project is favorited",
+            "example": false
+          },
+          "is_inbox_project": {
+            "type": "boolean",
+            "description": "Whether this is the inbox project",
+            "example": true
+          },
+          "is_team_inbox": {
+            "type": "boolean",
+            "description": "Whether this is the team inbox project",
+            "example": false
+          },
+          "view_style": {
+            "type": "string",
+            "enum": ["list", "board"],
+            "description": "View style of the project",
+            "example": "list"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to view the project in Todoist",
+            "example": "https://todoist.com/showProject?id=2203306141"
+          },
+          "parent_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the parent project if this is a subproject",
+            "example": "2203306140"
+          }
+        },
+        "required": ["id", "name", "order", "color", "is_shared", "is_favorite", "is_inbox_project", "is_team_inbox", "view_style"]
+      },
+      "CreateProjectRequest": {
+        "type": "object",
+        "description": "Request payload for creating a project",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the project (required)",
+            "example": "My Project"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "ID of the parent project if this is a subproject",
+            "example": "2203306140"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of the project",
+            "example": "charcoal"
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "Whether the project should be favorited",
+            "example": false
+          },
+          "view_style": {
+            "type": "string",
+            "enum": ["list", "board"],
+            "description": "View style of the project",
+            "example": "list"
+          }
+        },
+        "required": ["name"]
+      },
+      "UpdateProjectRequest": {
+        "type": "object",
+        "description": "Request payload for updating a project",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the project",
+            "example": "My Project"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of the project",
+            "example": "charcoal"
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "Whether the project should be favorited",
+            "example": false
+          },
+          "view_style": {
+            "type": "string",
+            "enum": ["list", "board"],
+            "description": "View style of the project",
+            "example": "list"
+          }
+        }
+      },
+      "Label": {
+        "type": "object",
+        "description": "A label in Todoist",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Label ID",
+            "example": "2156144812"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the label",
+            "example": "Important"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of the label",
+            "example": "charcoal"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order of the label",
+            "example": 1
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "Whether the label is favorited",
+            "example": false
+          }
+        },
+        "required": ["id", "name", "color", "order", "is_favorite"]
+      },
+      "CreateLabelRequest": {
+        "type": "object",
+        "description": "Request payload for creating a label",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the label (required)",
+            "example": "Important"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of the label",
+            "example": "charcoal"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order of the label",
+            "example": 1
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "Whether the label should be favorited",
+            "example": false
+          }
+        },
+        "required": ["name"]
+      },
+      "UpdateLabelRequest": {
+        "type": "object",
+        "description": "Request payload for updating a label",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the label",
+            "example": "Important"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of the label",
+            "example": "charcoal"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order of the label",
+            "example": 1
+          },
+          "is_favorite": {
+            "type": "boolean",
+            "description": "Whether the label should be favorited",
+            "example": false
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Error response",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error code",
+            "example": "invalid_request"
+          },
+          "error_description": {
+            "type": "string",
+            "description": "Human-readable error description",
+            "example": "The request is invalid"
+          }
+        },
+        "required": ["error", "error_description"]
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerToken": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "User",
+      "description": "User operations"
+    },
+    {
+      "name": "Tasks",
+      "description": "Task management operations"
+    },
+    {
+      "name": "Projects",
+      "description": "Project management operations"
+    },
+    {
+      "name": "Labels",
+      "description": "Label management operations"
+    }
+  ]
+}
