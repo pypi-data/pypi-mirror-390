@@ -1,0 +1,13 @@
+extensions: ["semantiva-examples"]
+pipeline:
+  nodes:
+  - processor: FloatValueDataSource
+  - processor: FloatMultiplyOperationWithDefault
+    parameters:
+      factor: 2.5
+  - processor: FloatMultiplyOperationWithDefault
+  - processor: FloatCollectValueProbe
+    context_key: factor
+  - processor: FloatMultiplyOperationWithDefault
+  - processor: rename:factor:dead_factor
+  - processor: FloatPayloadSink
