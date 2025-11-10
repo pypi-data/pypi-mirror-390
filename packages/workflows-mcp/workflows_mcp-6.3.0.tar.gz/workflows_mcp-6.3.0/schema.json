@@ -1,0 +1,1703 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Workflow Definition",
+  "type": "object",
+  "required": [
+    "name",
+    "blocks"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Workflow name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Workflow description"
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Workflow input parameters",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "str",
+                "num",
+                "bool",
+                "list",
+                "dict"
+              ]
+            },
+            "default": {},
+            "description": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Workflow output expressions with type coercion",
+      "patternProperties": {
+        ".*": {
+          "additionalProperties": false,
+          "description": "Schema for workflow-level output with type coercion.\n\nDefines outputs that the workflow exposes to callers. Outputs are expressions\nthat reference block outputs, with optional type coercion.\n\nAttributes:\n    value: Expression (e.g., \"{{block.outputs.field}}\" or \"{{block.exit_code}}\")\n    type: Output type (str, int, float, bool, json, list, dict) - defaults to str\n    description: Optional human-readable output description\n\nType Coercion:\n    When type is specified, the resolved value is coerced to that type:\n    - str: Convert any value to string\n    - int: Parse string to int or validate existing int\n    - float: Parse string to float or validate existing float\n    - bool: Parse string (\"true\"/\"false\") or validate existing bool\n    - json: Parse JSON string to dict/list or validate existing JSON-compatible value\n    - list: Validate existing list\n    - dict: Validate existing dict\n\nExamples:\n    # Minimal (type defaults to str)\n    outputs:\n      message:\n        value: \"{{blocks.foo.outputs.msg}}\"\n\n    # With type coercion\n    outputs:\n      count:\n        value: \"{{blocks.foo.outputs.count}}\"\n        type: int\n        description: \"Number of items\"\n\n    # Logical expression (evaluates to bool)\n      success:\n        value: \"{{blocks.test.outputs.exit_code}} == 0\"\n        type: bool\n        description: \"Whether tests passed\"",
+          "properties": {
+            "value": {
+              "description": "Expression referencing block outputs",
+              "minLength": 1,
+              "title": "Value",
+              "type": "string"
+            },
+            "type": {
+              "$ref": "#/$defs/ValueType",
+              "default": "str",
+              "description": "Output type with automatic coercion (defaults to str)"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Human-readable description",
+              "title": "Description"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "title": "WorkflowOutputSchema",
+          "type": "object"
+        }
+      }
+    },
+    "blocks": {
+      "type": "array",
+      "description": "Workflow execution blocks",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "inputs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique block identifier"
+          },
+          "type": {
+            "enum": [
+              "Shell",
+              "Workflow",
+              "CreateFile",
+              "ReadFile",
+              "RenderTemplate",
+              "HttpCall",
+              "LLMCall",
+              "Prompt",
+              "ReadJSONState",
+              "WriteJSONState",
+              "MergeJSONState"
+            ],
+            "description": "Block type"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional block description"
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Block inputs (schema depends on type)"
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Dependencies (block IDs or specs with 'required' flag)",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "description": "Block ID (shorthand for {\"block\": \"id\", \"required\": true})"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "block"
+                  ],
+                  "properties": {
+                    "block": {
+                      "type": "string",
+                      "description": "Block ID of parent dependency"
+                    },
+                    "required": {
+                      "type": "boolean",
+                      "default": true,
+                      "description": "Skip this block if parent fails/skips (default: true)"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "condition": {
+            "type": "string",
+            "description": "Conditional execution expression"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "Shell"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for Shell block",
+                  "properties": {
+                    "command": {
+                      "description": "Shell command to execute",
+                      "title": "Command",
+                      "type": "string"
+                    },
+                    "working_dir": {
+                      "default": "",
+                      "description": "Working directory (empty = current dir)",
+                      "title": "Working Dir",
+                      "type": "string"
+                    },
+                    "timeout": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": 120,
+                      "description": "Timeout in seconds (or interpolation string)",
+                      "title": "Timeout"
+                    },
+                    "env": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "Environment variables",
+                      "title": "Env",
+                      "type": "object"
+                    },
+                    "capture_output": {
+                      "default": true,
+                      "description": "Capture stdout/stderr",
+                      "title": "Capture Output",
+                      "type": "boolean"
+                    },
+                    "shell": {
+                      "default": true,
+                      "description": "Execute via shell",
+                      "title": "Shell",
+                      "type": "boolean"
+                    },
+                    "custom_outputs": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Custom file-based outputs to read after execution",
+                      "title": "Custom Outputs"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "title": "ShellInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "Workflow"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for Workflow block",
+                  "properties": {
+                    "workflow": {
+                      "description": "Workflow name to execute",
+                      "title": "Workflow",
+                      "type": "string"
+                    },
+                    "inputs": {
+                      "additionalProperties": true,
+                      "description": "Inputs to pass to child workflow (variables resolved in parent context)",
+                      "title": "Inputs",
+                      "type": "object"
+                    },
+                    "timeout_ms": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Optional timeout for child execution in milliseconds",
+                      "title": "Timeout Ms"
+                    }
+                  },
+                  "required": [
+                    "workflow"
+                  ],
+                  "title": "WorkflowInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "CreateFile"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for CreateFile block",
+                  "properties": {
+                    "path": {
+                      "description": "File path (absolute or relative)",
+                      "title": "Path",
+                      "type": "string"
+                    },
+                    "content": {
+                      "description": "File content to write",
+                      "title": "Content",
+                      "type": "string"
+                    },
+                    "encoding": {
+                      "default": "utf-8",
+                      "description": "Text encoding",
+                      "title": "Encoding",
+                      "type": "string"
+                    },
+                    "mode": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "File permissions (Unix only, e.g., 0o644, 644, or '644')",
+                      "title": "Mode"
+                    },
+                    "overwrite": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Whether to overwrite existing file (or interpolation string)",
+                      "title": "Overwrite"
+                    },
+                    "create_parents": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Create parent directories if missing (or interpolation string)",
+                      "title": "Create Parents"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "content"
+                  ],
+                  "title": "CreateFileInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "ReadFile"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for ReadFile block",
+                  "properties": {
+                    "path": {
+                      "description": "File path to read (absolute or relative)",
+                      "title": "Path",
+                      "type": "string"
+                    },
+                    "encoding": {
+                      "default": "utf-8",
+                      "description": "Text encoding",
+                      "title": "Encoding",
+                      "type": "string"
+                    },
+                    "required": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "If False, missing file returns empty content instead of error (or interpolation string)",
+                      "title": "Required"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "title": "ReadFileInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "RenderTemplate"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for RenderTemplate block",
+                  "properties": {
+                    "template": {
+                      "description": "Jinja2 template string",
+                      "title": "Template",
+                      "type": "string"
+                    },
+                    "variables": {
+                      "additionalProperties": true,
+                      "description": "Variables to substitute in template",
+                      "title": "Variables",
+                      "type": "object"
+                    },
+                    "output_path": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Optional file path to write rendered content",
+                      "title": "Output Path"
+                    },
+                    "encoding": {
+                      "default": "utf-8",
+                      "description": "Text encoding for output file",
+                      "title": "Encoding",
+                      "type": "string"
+                    },
+                    "overwrite": {
+                      "default": true,
+                      "description": "Whether to overwrite existing output file",
+                      "title": "Overwrite",
+                      "type": "boolean"
+                    },
+                    "create_parents": {
+                      "default": true,
+                      "description": "Create parent directories for output file",
+                      "title": "Create Parents",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "template"
+                  ],
+                  "title": "RenderTemplateInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "HttpCall"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for HttpCall block",
+                  "properties": {
+                    "url": {
+                      "description": "Request URL (supports ${ENV_VAR} substitution)",
+                      "title": "Url",
+                      "type": "string"
+                    },
+                    "method": {
+                      "default": "POST",
+                      "description": "HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)",
+                      "title": "Method",
+                      "type": "string"
+                    },
+                    "headers": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "HTTP headers (supports ${ENV_VAR} substitution in values)",
+                      "title": "Headers",
+                      "type": "object"
+                    },
+                    "json": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "JSON request body (mutually exclusive with content). Matches httpx parameter name.",
+                      "title": "Json"
+                    },
+                    "content": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "format": "binary",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Text or binary request body (mutually exclusive with json). Matches httpx parameter name.",
+                      "title": "Content"
+                    },
+                    "timeout": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": 30,
+                      "description": "Request timeout in seconds (or interpolation string)",
+                      "title": "Timeout"
+                    },
+                    "follow_redirects": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Whether to follow HTTP redirects (or interpolation string)",
+                      "title": "Follow Redirects"
+                    },
+                    "verify_ssl": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Whether to verify SSL certificates (or interpolation string)",
+                      "title": "Verify Ssl"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "title": "HttpCallInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "LLMCall"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for LLMCall block",
+                  "properties": {
+                    "profile": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Profile name from ~/.workflows/llm-config.yml (e.g., 'cloud', 'local', 'default'). If specified, provider/model are loaded from config. Mutually exclusive with direct provider/model specification.",
+                      "title": "Profile"
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/LLMProvider"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "LLM provider (enum or interpolation string). Required if profile not specified. Ignored if profile specified.",
+                      "title": "Provider"
+                    },
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Model name (e.g., gpt-4o, claude-3-5-sonnet-20241022, gemini-2.0-flash-exp). Required if profile not specified. Can override profile model if both specified.",
+                      "title": "Model"
+                    },
+                    "prompt": {
+                      "description": "User prompt to send to the LLM",
+                      "title": "Prompt",
+                      "type": "string"
+                    },
+                    "system_instructions": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "System instructions (optional)",
+                      "title": "System Instructions"
+                    },
+                    "api_key": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "API key (pre-resolved from {{secrets.PROVIDER_API_KEY}})",
+                      "title": "Api Key"
+                    },
+                    "api_url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Custom API endpoint URL (optional, for custom deployments)",
+                      "title": "Api Url"
+                    },
+                    "response_schema": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "JSON Schema for expected response structure (dict or JSON string, enables validation and retry)",
+                      "title": "Response Schema"
+                    },
+                    "max_retries": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": 3,
+                      "description": "Maximum number of retry attempts (or interpolation string)",
+                      "title": "Max Retries"
+                    },
+                    "retry_delay": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": 2.0,
+                      "description": "Initial retry delay in seconds (exponential backoff, or interpolation string)",
+                      "title": "Retry Delay"
+                    },
+                    "timeout": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": 60,
+                      "description": "Request timeout in seconds (or interpolation string)",
+                      "title": "Timeout"
+                    },
+                    "temperature": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Sampling temperature 0.0-2.0 (or interpolation string)",
+                      "title": "Temperature"
+                    },
+                    "max_tokens": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Maximum tokens to generate (or interpolation string)",
+                      "title": "Max Tokens"
+                    },
+                    "validation_prompt_template": {
+                      "default": "Your previous response failed JSON schema validation.\n\nError: {validation_error}\n\nExpected schema:\n{schema}\n\nPlease provide a valid response that conforms to the schema.",
+                      "description": "Template for validation retry prompt",
+                      "title": "Validation Prompt Template",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "prompt"
+                  ],
+                  "title": "LLMCallInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "Prompt"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for Prompt block",
+                  "properties": {
+                    "prompt": {
+                      "description": "Prompt/question to display to LLM. The LLM will provide a response.",
+                      "title": "Prompt",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "prompt"
+                  ],
+                  "title": "PromptInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "ReadJSONState"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for ReadJSONState block",
+                  "properties": {
+                    "path": {
+                      "description": "Path to JSON file",
+                      "title": "Path",
+                      "type": "string"
+                    },
+                    "required": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": false,
+                      "description": "Whether file must exist (False returns empty dict, or interpolation string)",
+                      "title": "Required"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "title": "ReadJSONStateInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "WriteJSONState"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for WriteJSONState block",
+                  "properties": {
+                    "path": {
+                      "description": "Path to JSON file",
+                      "title": "Path",
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": true,
+                      "description": "JSON data to write",
+                      "title": "Data",
+                      "type": "object"
+                    },
+                    "create_parents": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Create parent directories if missing (or interpolation string)",
+                      "title": "Create Parents"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "data"
+                  ],
+                  "title": "WriteJSONStateInput",
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "MergeJSONState"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "inputs": {
+                  "additionalProperties": false,
+                  "description": "Inputs for MergeJSONState block",
+                  "properties": {
+                    "path": {
+                      "description": "Path to JSON file",
+                      "title": "Path",
+                      "type": "string"
+                    },
+                    "updates": {
+                      "additionalProperties": true,
+                      "description": "Updates to merge",
+                      "title": "Updates",
+                      "type": "object"
+                    },
+                    "create_if_missing": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Create file if it doesn't exist (or interpolation string)",
+                      "title": "Create If Missing"
+                    },
+                    "create_parents": {
+                      "anyOf": [
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ],
+                      "default": true,
+                      "description": "Create parent directories if missing (or interpolation string)",
+                      "title": "Create Parents"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "updates"
+                  ],
+                  "title": "MergeJSONStateInput",
+                  "type": "object"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "ValueType": {
+      "description": "Unified Python type system for workflow values.\n\nSingle source of truth for all type declarations across:\n- Workflow inputs\n- Block outputs (file-based)\n- Workflow outputs\n- Output parsing logic\n\nThese match Python's built-in types for consistency with:\n- isinstance() checks in conditions: isinstance({{inputs.name}}, str)\n- Type annotations in executor models: Field(default=\"\", description=\"...\")\n- Variable resolution return types\n\nType mappings:\n- str: Text values (Python str)\n- num: Numeric values (int or float)\n- bool: Boolean values (Python bool)\n- list: List/array values (Python list)\n- dict: Dictionary/object values (Python dict)\n- json: Special - parse as JSON (returns dict/list/str/int/float/bool/None)",
+      "enum": [
+        "str",
+        "num",
+        "bool",
+        "list",
+        "dict",
+        "json"
+      ],
+      "title": "ValueType",
+      "type": "string"
+    },
+    "ShellInput": {
+      "additionalProperties": false,
+      "description": "Input model for Shell executor.\n\nArchitecture (ADR-006):\n- Execute returns ShellOutput directly\n- Operation outcome determined by exit_code\n- Exceptions indicate execution failure",
+      "properties": {
+        "command": {
+          "description": "Shell command to execute",
+          "title": "Command",
+          "type": "string"
+        },
+        "working_dir": {
+          "default": "",
+          "description": "Working directory (empty = current dir)",
+          "title": "Working Dir",
+          "type": "string"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 120,
+          "description": "Timeout in seconds (or interpolation string)",
+          "title": "Timeout"
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables",
+          "title": "Env",
+          "type": "object"
+        },
+        "capture_output": {
+          "default": true,
+          "description": "Capture stdout/stderr",
+          "title": "Capture Output",
+          "type": "boolean"
+        },
+        "shell": {
+          "default": true,
+          "description": "Execute via shell",
+          "title": "Shell",
+          "type": "boolean"
+        },
+        "custom_outputs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom file-based outputs to read after execution",
+          "title": "Custom Outputs"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "title": "ShellInput",
+      "type": "object"
+    },
+    "WorkflowInput": {
+      "additionalProperties": false,
+      "description": "Input model for Workflow executor.\n\nSupports variable references from parent context:\n- {{inputs.field}}: Parent workflow inputs\n- {{blocks.block_id.outputs.field}}: Parent block outputs\n- {{metadata.field}}: Parent workflow metadata\n\nVariable resolution happens in parent context before passing to child.",
+      "properties": {
+        "workflow": {
+          "description": "Workflow name to execute",
+          "title": "Workflow",
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "description": "Inputs to pass to child workflow (variables resolved in parent context)",
+          "title": "Inputs",
+          "type": "object"
+        },
+        "timeout_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional timeout for child execution in milliseconds",
+          "title": "Timeout Ms"
+        }
+      },
+      "required": [
+        "workflow"
+      ],
+      "title": "WorkflowInput",
+      "type": "object"
+    },
+    "CreateFileInput": {
+      "additionalProperties": false,
+      "description": "Input model for CreateFile executor.",
+      "properties": {
+        "path": {
+          "description": "File path (absolute or relative)",
+          "title": "Path",
+          "type": "string"
+        },
+        "content": {
+          "description": "File content to write",
+          "title": "Content",
+          "type": "string"
+        },
+        "encoding": {
+          "default": "utf-8",
+          "description": "Text encoding",
+          "title": "Encoding",
+          "type": "string"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "File permissions (Unix only, e.g., 0o644, 644, or '644')",
+          "title": "Mode"
+        },
+        "overwrite": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Whether to overwrite existing file (or interpolation string)",
+          "title": "Overwrite"
+        },
+        "create_parents": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Create parent directories if missing (or interpolation string)",
+          "title": "Create Parents"
+        }
+      },
+      "required": [
+        "path",
+        "content"
+      ],
+      "title": "CreateFileInput",
+      "type": "object"
+    },
+    "ReadFileInput": {
+      "additionalProperties": false,
+      "description": "Input model for ReadFile executor.",
+      "properties": {
+        "path": {
+          "description": "File path to read (absolute or relative)",
+          "title": "Path",
+          "type": "string"
+        },
+        "encoding": {
+          "default": "utf-8",
+          "description": "Text encoding",
+          "title": "Encoding",
+          "type": "string"
+        },
+        "required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "If False, missing file returns empty content instead of error (or interpolation string)",
+          "title": "Required"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "ReadFileInput",
+      "type": "object"
+    },
+    "RenderTemplateInput": {
+      "additionalProperties": false,
+      "description": "Input model for RenderTemplate executor.",
+      "properties": {
+        "template": {
+          "description": "Jinja2 template string",
+          "title": "Template",
+          "type": "string"
+        },
+        "variables": {
+          "additionalProperties": true,
+          "description": "Variables to substitute in template",
+          "title": "Variables",
+          "type": "object"
+        },
+        "output_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional file path to write rendered content",
+          "title": "Output Path"
+        },
+        "encoding": {
+          "default": "utf-8",
+          "description": "Text encoding for output file",
+          "title": "Encoding",
+          "type": "string"
+        },
+        "overwrite": {
+          "default": true,
+          "description": "Whether to overwrite existing output file",
+          "title": "Overwrite",
+          "type": "boolean"
+        },
+        "create_parents": {
+          "default": true,
+          "description": "Create parent directories for output file",
+          "title": "Create Parents",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "template"
+      ],
+      "title": "RenderTemplateInput",
+      "type": "object"
+    },
+    "HttpCallInput": {
+      "additionalProperties": false,
+      "description": "Input model for HttpCall executor.\n\nField names match httpx.AsyncClient.request() parameters for consistency\nand to avoid type confusion during parameter passing.",
+      "properties": {
+        "url": {
+          "description": "Request URL (supports ${ENV_VAR} substitution)",
+          "title": "Url",
+          "type": "string"
+        },
+        "method": {
+          "default": "POST",
+          "description": "HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)",
+          "title": "Method",
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "HTTP headers (supports ${ENV_VAR} substitution in values)",
+          "title": "Headers",
+          "type": "object"
+        },
+        "json": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "JSON request body (mutually exclusive with content). Matches httpx parameter name.",
+          "title": "Json"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "format": "binary",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text or binary request body (mutually exclusive with json). Matches httpx parameter name.",
+          "title": "Content"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 30,
+          "description": "Request timeout in seconds (or interpolation string)",
+          "title": "Timeout"
+        },
+        "follow_redirects": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Whether to follow HTTP redirects (or interpolation string)",
+          "title": "Follow Redirects"
+        },
+        "verify_ssl": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Whether to verify SSL certificates (or interpolation string)",
+          "title": "Verify Ssl"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "HttpCallInput",
+      "type": "object"
+    },
+    "LLMProvider": {
+      "description": "Enum for supported LLM providers.",
+      "enum": [
+        "openai",
+        "anthropic",
+        "gemini",
+        "ollama"
+      ],
+      "title": "LLMProvider",
+      "type": "string"
+    },
+    "LLMCallInput": {
+      "additionalProperties": false,
+      "description": "Input model for LLMCall executor.\n\nAll inputs are pre-resolved by VariableResolver:\n- {{secrets.OPENAI_API_KEY}} \u2192 actual key value\n- {{inputs.prompt}} \u2192 actual prompt text\n- {{blocks.previous.outputs.data}} \u2192 actual data\n\nConfiguration Modes:\n1. Profile-based (NEW): Specify profile name, optionally override parameters\n2. Direct specification (backward compatible): Specify provider + model directly\n\nExamples:\n    # Profile-based (recommended)\n    profile: quick\n    prompt: \"...\"\n\n    # Profile with overrides\n    profile: standard\n    temperature: 1.0\n    max_tokens: 8000\n    prompt: \"...\"\n\n    # Direct specification (backward compatible)\n    provider: openai\n    model: gpt-4o\n    api_key: \"{{secrets.OPENAI_API_KEY}}\"\n    prompt: \"...\"",
+      "properties": {
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Profile name from ~/.workflows/llm-config.yml (e.g., 'cloud', 'local', 'default'). If specified, provider/model are loaded from config. Mutually exclusive with direct provider/model specification.",
+          "title": "Profile"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LLMProvider"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "LLM provider (enum or interpolation string). Required if profile not specified. Ignored if profile specified.",
+          "title": "Provider"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Model name (e.g., gpt-4o, claude-3-5-sonnet-20241022, gemini-2.0-flash-exp). Required if profile not specified. Can override profile model if both specified.",
+          "title": "Model"
+        },
+        "prompt": {
+          "description": "User prompt to send to the LLM",
+          "title": "Prompt",
+          "type": "string"
+        },
+        "system_instructions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "System instructions (optional)",
+          "title": "System Instructions"
+        },
+        "api_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "API key (pre-resolved from {{secrets.PROVIDER_API_KEY}})",
+          "title": "Api Key"
+        },
+        "api_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom API endpoint URL (optional, for custom deployments)",
+          "title": "Api Url"
+        },
+        "response_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "JSON Schema for expected response structure (dict or JSON string, enables validation and retry)",
+          "title": "Response Schema"
+        },
+        "max_retries": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 3,
+          "description": "Maximum number of retry attempts (or interpolation string)",
+          "title": "Max Retries"
+        },
+        "retry_delay": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 2.0,
+          "description": "Initial retry delay in seconds (exponential backoff, or interpolation string)",
+          "title": "Retry Delay"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 60,
+          "description": "Request timeout in seconds (or interpolation string)",
+          "title": "Timeout"
+        },
+        "temperature": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sampling temperature 0.0-2.0 (or interpolation string)",
+          "title": "Temperature"
+        },
+        "max_tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum tokens to generate (or interpolation string)",
+          "title": "Max Tokens"
+        },
+        "validation_prompt_template": {
+          "default": "Your previous response failed JSON schema validation.\n\nError: {validation_error}\n\nExpected schema:\n{schema}\n\nPlease provide a valid response that conforms to the schema.",
+          "description": "Template for validation retry prompt",
+          "title": "Validation Prompt Template",
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "title": "LLMCallInput",
+      "type": "object"
+    },
+    "PromptInput": {
+      "additionalProperties": false,
+      "description": "Input for Prompt executor.\n\nSimple design: single prompt field for maximum flexibility.",
+      "properties": {
+        "prompt": {
+          "description": "Prompt/question to display to LLM. The LLM will provide a response.",
+          "title": "Prompt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "title": "PromptInput",
+      "type": "object"
+    },
+    "ReadJSONStateInput": {
+      "additionalProperties": false,
+      "description": "Input for ReadJSONState executor.",
+      "properties": {
+        "path": {
+          "description": "Path to JSON file",
+          "title": "Path",
+          "type": "string"
+        },
+        "required": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": false,
+          "description": "Whether file must exist (False returns empty dict, or interpolation string)",
+          "title": "Required"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "ReadJSONStateInput",
+      "type": "object"
+    },
+    "WriteJSONStateInput": {
+      "additionalProperties": false,
+      "description": "Input for WriteJSONState executor.",
+      "properties": {
+        "path": {
+          "description": "Path to JSON file",
+          "title": "Path",
+          "type": "string"
+        },
+        "data": {
+          "additionalProperties": true,
+          "description": "JSON data to write",
+          "title": "Data",
+          "type": "object"
+        },
+        "create_parents": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Create parent directories if missing (or interpolation string)",
+          "title": "Create Parents"
+        }
+      },
+      "required": [
+        "path",
+        "data"
+      ],
+      "title": "WriteJSONStateInput",
+      "type": "object"
+    },
+    "MergeJSONStateInput": {
+      "additionalProperties": false,
+      "description": "Input for MergeJSONState executor.",
+      "properties": {
+        "path": {
+          "description": "Path to JSON file",
+          "title": "Path",
+          "type": "string"
+        },
+        "updates": {
+          "additionalProperties": true,
+          "description": "Updates to merge",
+          "title": "Updates",
+          "type": "object"
+        },
+        "create_if_missing": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Create file if it doesn't exist (or interpolation string)",
+          "title": "Create If Missing"
+        },
+        "create_parents": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": true,
+          "description": "Create parent directories if missing (or interpolation string)",
+          "title": "Create Parents"
+        }
+      },
+      "required": [
+        "path",
+        "updates"
+      ],
+      "title": "MergeJSONStateInput",
+      "type": "object"
+    }
+  }
+}

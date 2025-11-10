@@ -1,0 +1,38 @@
+name: composition-output-passing
+description: Test passing outputs between parent and child workflows
+tags: [test, core, composition, outputs]
+inputs:
+  value:
+    type: num
+    default: 10
+    description: "Input value for calculation"
+blocks:
+  - id: multiply
+    type: Workflow
+    inputs:
+      workflow: "composition-child-calculator"
+      inputs:
+        number_a: "{{inputs.value}}"
+        number_b: 5
+        operation: "*"
+  - id: add
+    type: Workflow
+    inputs:
+      workflow: "composition-child-calculator"
+      inputs:
+        number_a: "{{blocks.multiply.outputs.result}}"
+        number_b: 5
+        operation: "+"
+    depends_on: [multiply]
+outputs:
+  multiply_result:
+    value: "{{blocks.multiply.outputs.result}}"
+    type: num
+  add_result:
+    value: "{{blocks.add.outputs.result}}"
+    type: num
+  both_succeeded:
+    value: >
+      {{blocks.multiply.succeeded}} and {{blocks.add.succeeded}}
+    type: bool
+
