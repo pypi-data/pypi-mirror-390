@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+
+# keyword_density.py
+# ccr . 2025 Oct 28
+
+"""Calculate keyword density.
+
+This script reads a document from standard input.
+
+It writes a report on standard output, showing keywords and their
+density.  Documents optimized for search-engine placement show keyword
+density that is abnormally high (>= 0.02).  AI-generated text also
+exhibits this characteristic.  Although AI text is indistinguishable
+from human text in most regards, it is unlikely that AI will ever
+be made less wordy.
+
+"""
+
+ZERO = 0
+SPACE = ' '
+NULL = ''
+NUL = '\x00'
+NA = -1
+
+import math
+import sys
+sys.modules['BeautifulSoup'] = bs4  # Monkeypatch lxml module.
+import lxml.html.soupparser as BS  # Beautiful Soup
+import nltk
+nltk.download('stopwords', quiet=True)
+import codecs
+
+STDIN = sys.stdin
+STDOUT = sys.stdout
+STDERR = sys.stderr
+
+
+class Sample:
+
+    def __init__(self):
+        return 
+
+    def get(self):
+        with open(STDIN.fileno(), 'rb') as unit:
+            bytes = unit.read()
+        result = bytes.decode()
+#        print(result[:200])
+        return result
+
+    def strip_script(self, doc):
+        for elt in doc.findall('.//script'):
+            elt.getparent().remove(elt)
+        return self
+
+    def strip_style(self, doc):
+        for elt in doc.findall('.//style'):
+            elt.getparent().remove(elt)
+        return self
+
+    def txt_w_o_markup(self, txt):
+        doc = BS.fromstring(txt)
+        self.strip_script(doc)
+        self.strip_style(doc)
+        result = doc.xpath('//text()')
+        return NULL.join(result)
+
+    def tokenize(self, txt):
+        result = nltk.word_tokenize(txt)
+#        print(result)
+        return result
+
+    def drop_stop_words(self, tokens):
+        result = [token.lower() for token in tokens
+                  if (len(token) > 1) and
+                  (not token.lower() in nltk.corpus.stopwords.words('english'))]
+        return result
+
+    def keywords(self, tokens):
+        counts = {}
+        for token in tokens:
+            counts[token] = counts.setdefault(token, ZERO) + 1
+        collection = [(freq, keyword) for (keyword, freq) in counts.items()]
+        collection.sort()
+        collection.reverse()
+        result = [(keyword, freq) for (freq, keyword) in collection]
+        return result
+
+    
+def main_line():
+    result = ZERO
+    sample = Sample()
+    try:
+        markup = sample.get()
+    except UnicodeDecodeError:
+        markup = NULL
+    txt_visible = sample.txt_w_o_markup(txt=markup)
+    tokens = sample.tokenize(txt=txt_visible)
+    significant_tokens = sample.drop_stop_words(tokens=tokens)
+    keywords = sample.keywords(tokens=significant_tokens)
+    limit = 7
+    count_keywords = [freq for (keyword, freq) in keywords[:limit]]
+    collection = [keyword for (keyword, freq) in keywords[:limit]]
+    total_tokens = len(significant_tokens)
+    if total_tokens:
+        keyword_density = sum(count_keywords) / (limit * len(significant_tokens))
+    else:
+        keyword_density = math.nan
+    D_MAX = 0.02
+    has_keyword_stuffing = keyword_density >= D_MAX
+    print(f'Keywords:  {"; ".join(collection)}', file=STDERR)
+    print(f'Keyword density:  {keyword_density:.03f}', file=STDOUT)
+    if has_keyword_stuffing:
+        
+        print(f'Keyword density > {D_MAX:.03f} indicates the '
+              'probability a document was search-engine-optimized or '
+              'even AI generated.', file=STDERR)
+        
+    else:
+
+        print(f'Keyword density <= {D_MAX:.03f} indicates the '
+              'probability the document was written for human consumption by '
+              'another human being.', file=STDERR)
+        
+        return result
+    
+    
+def entry_point():
+    retcd = main_line()
+    sys.exit(retcd)
+    
+    
+if __name__ == "__main__":
+    entry_point()
+    
+    
+# Fin
+    
