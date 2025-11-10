@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trends - Code Metrics Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="images/logo.svg" alt="Metripy Logo" class="logo-icon">
+                    <h2>Metripy</h2>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="files.html" class="nav-link">
+                            <i class="fas fa-file-code"></i>
+                            <span>Files</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="top_offenders.html" class="nav-link">
+                            <i class="fa-solid fa-stethoscope"></i>
+                            <span>Top Offenders</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="git_analysis.html" class="nav-link">
+                            <i class="fab fa-git-alt"></i>
+                            <span>Git Analysis</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="dependencies.html" class="nav-link">
+                            <i class="fas fa-cubes"></i>
+                            <span>Dependencies</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="trends.html" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Trends</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="project-info">
+                    <h4>Project: {{project_name}}</h4>
+                    <p>Last updated: {{last_updated}}</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="page-header">
+                <div class="header-content">
+                    <h1>Code Quality Trends</h1>
+                    <p class="subtitle">Track improvements and regressions over time</p>
+                </div>
+            </header>
+
+            {{#IF has_trend_data}}
+            
+            <!-- Health Distribution Over Time -->
+            <section class="trends-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-heartbeat"></i> Health Distribution Evolution</h2>
+                    <p>See how code quality segments have changed</p>
+                </div>
+                
+                <div class="health-distribution-grid">
+                    <!-- Lines of Code Segment -->
+                    <div class="health-card">
+                        <div class="health-card-header">
+                            <h3>Lines of Code</h3>
+                            <span class="time-label">Previous → Current</span>
+                        </div>
+                        <div class="segment-comparison">
+                            <div class="comparison-row">
+                                <span class="row-label">Previous</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.loc_segments_prev.good_percent}}%" data-count="{{trend_data.loc_segments_prev.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.loc_segments_prev.ok_percent}}%" data-count="{{trend_data.loc_segments_prev.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.loc_segments_prev.warning_percent}}%" data-count="{{trend_data.loc_segments_prev.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.loc_segments_prev.critical_percent}}%" data-count="{{trend_data.loc_segments_prev.critical}}"></div>
+                                </div>
+                            </div>
+                            <div class="comparison-row">
+                                <span class="row-label">Current</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.loc_segments_current.good_percent}}%" data-count="{{trend_data.loc_segments_current.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.loc_segments_current.ok_percent}}%" data-count="{{trend_data.loc_segments_current.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.loc_segments_current.warning_percent}}%" data-count="{{trend_data.loc_segments_current.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.loc_segments_current.critical_percent}}%" data-count="{{trend_data.loc_segments_current.critical}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="segment-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot good"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Small</span>
+                                    <span class="legend-values">{{trend_data.loc_segments_prev.good}} → {{trend_data.loc_segments_current.good}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot okay"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Medium</span>
+                                    <span class="legend-values">{{trend_data.loc_segments_prev.ok}} → {{trend_data.loc_segments_current.ok}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot warning"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Large</span>
+                                    <span class="legend-values">{{trend_data.loc_segments_prev.warning}} → {{trend_data.loc_segments_current.warning}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot critical"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Very Large</span>
+                                    <span class="legend-values">{{trend_data.loc_segments_prev.critical}} → {{trend_data.loc_segments_current.critical}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Complexity Segment -->
+                    <div class="health-card">
+                        <div class="health-card-header">
+                            <h3>Avg. Complexity</h3>
+                            <span class="time-label">Previous → Current</span>
+                        </div>
+                        <div class="segment-comparison">
+                            <div class="comparison-row">
+                                <span class="row-label">Previous</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.complexity_segments_prev.good_percent}}%" data-count="{{trend_data.complexity_segments_prev.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.complexity_segments_prev.ok_percent}}%" data-count="{{trend_data.complexity_segments_prev.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.complexity_segments_prev.warning_percent}}%" data-count="{{trend_data.complexity_segments_prev.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.complexity_segments_prev.critical_percent}}%" data-count="{{trend_data.complexity_segments_prev.critical}}"></div>
+                                </div>
+                            </div>
+                            <div class="comparison-row">
+                                <span class="row-label">Current</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.complexity_segments_current.good_percent}}%" data-count="{{trend_data.complexity_segments_current.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.complexity_segments_current.ok_percent}}%" data-count="{{trend_data.complexity_segments_current.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.complexity_segments_current.warning_percent}}%" data-count="{{trend_data.complexity_segments_current.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.complexity_segments_current.critical_percent}}%" data-count="{{trend_data.complexity_segments_current.critical}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="segment-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot good"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Simple</span>
+                                    <span class="legend-values">{{trend_data.complexity_segments_prev.good}} → {{trend_data.complexity_segments_current.good}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot okay"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Moderate</span>
+                                    <span class="legend-values">{{trend_data.complexity_segments_prev.ok}} → {{trend_data.complexity_segments_current.ok}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot warning"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Complex</span>
+                                    <span class="legend-values">{{trend_data.complexity_segments_prev.warning}} → {{trend_data.complexity_segments_current.warning}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot critical"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Very Complex</span>
+                                    <span class="legend-values">{{trend_data.complexity_segments_prev.critical}} → {{trend_data.complexity_segments_current.critical}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Maintainability Segment -->
+                    <div class="health-card">
+                        <div class="health-card-header">
+                            <h3>Maintainability</h3>
+                            <span class="time-label">Previous → Current</span>
+                        </div>
+                        <div class="segment-comparison">
+                            <div class="comparison-row">
+                                <span class="row-label">Previous</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.maintainability_segments_prev.good_percent}}%" data-count="{{trend_data.maintainability_segments_prev.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.maintainability_segments_prev.ok_percent}}%" data-count="{{trend_data.maintainability_segments_prev.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.maintainability_segments_prev.warning_percent}}%" data-count="{{trend_data.maintainability_segments_prev.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.maintainability_segments_prev.critical_percent}}%" data-count="{{trend_data.maintainability_segments_prev.critical}}"></div>
+                                </div>
+                            </div>
+                            <div class="comparison-row">
+                                <span class="row-label">Current</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.maintainability_segments_current.good_percent}}%" data-count="{{trend_data.maintainability_segments_current.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.maintainability_segments_current.ok_percent}}%" data-count="{{trend_data.maintainability_segments_current.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.maintainability_segments_current.warning_percent}}%" data-count="{{trend_data.maintainability_segments_current.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.maintainability_segments_current.critical_percent}}%" data-count="{{trend_data.maintainability_segments_current.critical}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="segment-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot good"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Excellent</span>
+                                    <span class="legend-values">{{trend_data.maintainability_segments_prev.good}} → {{trend_data.maintainability_segments_current.good}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot okay"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Good</span>
+                                    <span class="legend-values">{{trend_data.maintainability_segments_prev.ok}} → {{trend_data.maintainability_segments_current.ok}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot warning"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Fair</span>
+                                    <span class="legend-values">{{trend_data.maintainability_segments_prev.warning}} → {{trend_data.maintainability_segments_current.warning}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot critical"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Poor</span>
+                                    <span class="legend-values">{{trend_data.maintainability_segments_prev.critical}} → {{trend_data.maintainability_segments_current.critical}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Method Size Segment -->
+                    <div class="health-card">
+                        <div class="health-card-header">
+                            <h3>Avg. Method Size</h3>
+                            <span class="time-label">Previous → Current</span>
+                        </div>
+                        <div class="segment-comparison">
+                            <div class="comparison-row">
+                                <span class="row-label">Previous</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.method_size_segments_prev.good_percent}}%" data-count="{{trend_data.method_size_segments_prev.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.method_size_segments_prev.ok_percent}}%" data-count="{{trend_data.method_size_segments_prev.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.method_size_segments_prev.warning_percent}}%" data-count="{{trend_data.method_size_segments_prev.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.method_size_segments_prev.critical_percent}}%" data-count="{{trend_data.method_size_segments_prev.critical}}"></div>
+                                </div>
+                            </div>
+                            <div class="comparison-row">
+                                <span class="row-label">Current</span>
+                                <div class="segment-bar-horizontal">
+                                    <div class="segment-piece good" style="width: {{trend_data.method_size_segments_current.good_percent}}%" data-count="{{trend_data.method_size_segments_current.good}}"></div>
+                                    <div class="segment-piece okay" style="width: {{trend_data.method_size_segments_current.ok_percent}}%" data-count="{{trend_data.method_size_segments_current.ok}}"></div>
+                                    <div class="segment-piece warning" style="width: {{trend_data.method_size_segments_current.warning_percent}}%" data-count="{{trend_data.method_size_segments_current.warning}}"></div>
+                                    <div class="segment-piece critical" style="width: {{trend_data.method_size_segments_current.critical_percent}}%" data-count="{{trend_data.method_size_segments_current.critical}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="segment-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot good"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Concise</span>
+                                    <span class="legend-values">{{trend_data.method_size_segments_prev.good}} → {{trend_data.method_size_segments_current.good}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot okay"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Optimal</span>
+                                    <span class="legend-values">{{trend_data.method_size_segments_prev.ok}} → {{trend_data.method_size_segments_current.ok}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot warning"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Large</span>
+                                    <span class="legend-values">{{trend_data.method_size_segments_prev.warning}} → {{trend_data.method_size_segments_current.warning}}</span>
+                                </div>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot critical"></span>
+                                <div class="legend-info">
+                                    <span class="legend-label">Too Large</span>
+                                    <span class="legend-values">{{trend_data.method_size_segments_prev.critical}} → {{trend_data.method_size_segments_current.critical}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Improved Files -->
+            <section class="trends-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-arrow-up"></i> Top Improved Files</h2>
+                    <p>Files that showed the most improvement</p>
+                </div>
+                
+                <div class="improvement-grid">
+                    <!-- Improved Complexity -->
+                    <div class="trend-card">
+                        <div class="trend-card-header improved">
+                            <i class="fas fa-award"></i>
+                            <h3>Complexity Reduced</h3>
+                        </div>
+                        <div class="trend-list">
+                            {{#EACH trend_data.top_improved_complexity AS file}}
+                            <div class="trend-item">
+                                <div class="trend-item-header">
+                                    <span class="file-name">{{file.name}}</span>
+                                    <span class="trend-delta positive">
+                                        <i class="fas fa-arrow-down"></i>
+                                        <span class="delta-value">{{file.complexity_delta}}</span>
+                                    </span>
+                                </div>
+                                <div class="trend-item-details">
+                                    <span class="prev-value">{{file.complexity_prev}}</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="curr-value">{{file.complexity_current}}</span>
+                                </div>
+                            </div>
+                            {{/EACH}}
+                        </div>
+                    </div>
+
+                    <!-- Improved Maintainability -->
+                    <div class="trend-card">
+                        <div class="trend-card-header improved">
+                            <i class="fas fa-star"></i>
+                            <h3>Maintainability Improved</h3>
+                        </div>
+                        <div class="trend-list">
+                            {{#EACH trend_data.top_improved_maintainability AS file}}
+                            <div class="trend-item">
+                                <div class="trend-item-header">
+                                    <span class="file-name">{{file.name}}</span>
+                                    <span class="trend-delta positive">
+                                        <i class="fas fa-arrow-up"></i>
+                                        <span class="delta-value">{{file.maintainability_delta}}</span>
+                                    </span>
+                                </div>
+                                <div class="trend-item-details">
+                                    <span class="prev-value">{{file.maintainability_prev}}</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="curr-value">{{file.maintainability_current}}</span>
+                                </div>
+                            </div>
+                            {{/EACH}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Worsened Files -->
+            <section class="trends-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-arrow-down"></i> Files Needing Attention</h2>
+                    <p>Files that have regressed and need improvement</p>
+                </div>
+                
+                <div class="improvement-grid">
+                    <!-- Worsened Complexity -->
+                    <div class="trend-card">
+                        <div class="trend-card-header worsened">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>Complexity Increased</h3>
+                        </div>
+                        <div class="trend-list">
+                            {{#EACH trend_data.top_worsened_complexity AS file}}
+                            <div class="trend-item">
+                                <div class="trend-item-header">
+                                    <span class="file-name">{{file.name}}</span>
+                                    <span class="trend-delta negative">
+                                        <i class="fas fa-arrow-up"></i>
+                                        <span class="delta-value">{{file.complexity_delta}}</span>
+                                    </span>
+                                </div>
+                                <div class="trend-item-details">
+                                    <span class="prev-value">{{file.complexity_prev}}</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="curr-value">{{file.complexity_current}}</span>
+                                </div>
+                            </div>
+                            {{/EACH}}
+                        </div>
+                    </div>
+
+                    <!-- Worsened Maintainability -->
+                    <div class="trend-card">
+                        <div class="trend-card-header worsened">
+                            <i class="fas fa-warning"></i>
+                            <h3>Maintainability Decreased</h3>
+                        </div>
+                        <div class="trend-list">
+                            {{#EACH trend_data.top_worsened_maintainability AS file}}
+                            <div class="trend-item">
+                                <div class="trend-item-header">
+                                    <span class="file-name">{{file.name}}</span>
+                                    <span class="trend-delta negative">
+                                        <i class="fas fa-arrow-down"></i>
+                                        <span class="delta-value">{{file.maintainability_delta}}</span>
+                                    </span>
+                                </div>
+                                <div class="trend-item-details">
+                                    <span class="prev-value">{{file.maintainability_prev}}</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="curr-value">{{file.maintainability_current}}</span>
+                                </div>
+                            </div>
+                            {{/EACH}}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- No Trend Data State -->
+            {{#ELSE}}
+            <div class="empty-state">
+                <i class="fas fa-chart-line"></i>
+                <h3>No Trend Data Available</h3>
+                <p>Run analysis at least twice to see trends and compare changes over time.</p>
+            </div>
+            {{/IF}}
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Embed data directly from template engine
+        window.TREND_DATA = {{trend_data_json}};
+    </script>
+</body>
+</html>
+
