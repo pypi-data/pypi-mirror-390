@@ -1,0 +1,135 @@
+From a11bb9937f6aab4887209427a9bbdaf5b6c65f5e Mon Sep 17 00:00:00 2001
+From: Matt McCormick <matt@fideus.io>
+Date: Sun, 9 Nov 2025 18:51:43 -0500
+Subject: [PATCH] fix(py): use create_array instead of create_dataset
+
+---
+ py/test/test_from_ngff_zarr.py  | 36 ++++++++++++++++++++++++---------
+ py/test/test_rfc4_validation.py | 22 +++++++++++++++++---
+ 2 files changed, 46 insertions(+), 12 deletions(-)
+
+diff --git a/py/test/test_from_ngff_zarr.py b/py/test/test_from_ngff_zarr.py
+index 9ff0f95..18325a9 100644
+--- a/py/test/test_from_ngff_zarr.py
++++ b/py/test/test_from_ngff_zarr.py
+@@ -158,9 +158,15 @@ def test_omero_metadata_backward_compatibility():
+     # Create sample data
+     np.random.seed(42)  # For reproducibility
+     data = np.random.randint(0, 1000, size=(1, 1, 10, 100, 100), dtype=np.uint16)
+-    array = zarr_group.create_array(
+-        "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
+-    )
++    # Use .array() for zarr v2, .create_array() for zarr v3
++    if zarr_version_major >= 3:
++        array = zarr_group.create_array(
++            "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
++        )
++    else:
++        array = zarr_group.array(
++            "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
++        )
+     array[:] = data
+ 
+     # Set attributes with OMERO metadata using old min/max format only
+@@ -227,9 +233,15 @@ def test_omero_metadata_backward_compatibility():
+     # Test with start/end format only (newer format)
+     store2 = MemoryStore()
+     zarr_group2 = zarr.open_group(store2, mode="w")
+-    array2 = zarr_group2.create_array(
+-        "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
+-    )
++    # Use .array() for zarr v2, .create_array() for zarr v3
++    if zarr_version_major >= 3:
++        array2 = zarr_group2.create_array(
++            "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
++        )
++    else:
++        array2 = zarr_group2.array(
++            "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
++        )
+     array2[:] = data
+ 
+     attrs2 = attrs.copy()
+@@ -256,9 +268,15 @@ def test_omero_metadata_backward_compatibility():
+     # Test with both formats present (most complete)
+     store3 = MemoryStore()
+     zarr_group3 = zarr.open_group(store3, mode="w")
+-    array3 = zarr_group3.create_array(
+-        "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
+-    )
++    # Use .array() for zarr v2, .create_array() for zarr v3
++    if zarr_version_major >= 3:
++        array3 = zarr_group3.create_array(
++            "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
++        )
++    else:
++        array3 = zarr_group3.array(
++            "0", shape=data.shape, dtype=data.dtype, chunks=(1, 1, 10, 50, 50)
++        )
+     array3[:] = data
+ 
+     attrs3 = attrs.copy()
+diff --git a/py/test/test_rfc4_validation.py b/py/test/test_rfc4_validation.py
+index dbd87ca..0286854 100644
+--- a/py/test/test_rfc4_validation.py
++++ b/py/test/test_rfc4_validation.py
+@@ -4,6 +4,7 @@
+ 
+ import pytest
+ import zarr
++from packaging import version
+ from zarr.storage import MemoryStore
+ from ngff_zarr import from_ngff_zarr
+ from ngff_zarr.rfc4_validation import (
+@@ -12,6 +13,9 @@ from ngff_zarr.rfc4_validation import (
+ )
+ from jsonschema import ValidationError
+ 
++zarr_version = version.parse(zarr.__version__)
++zarr_version_major = zarr_version.major
++
+ 
+ def test_has_rfc4_orientation_metadata():
+     """Test detection of RFC 4 orientation metadata."""
+@@ -204,7 +208,11 @@ def test_from_ngff_zarr_with_rfc4_validation():
+ 
+     # Create a simple zarr array
+     root = zarr.open_group(store, mode="w")
+-    root.create_dataset("0", shape=(10, 10, 10), dtype="uint8")
++    # Use .array() for zarr v2, .create_array() for zarr v3
++    if zarr_version_major >= 3:
++        root.create_array("0", shape=(10, 10, 10), dtype="uint8")
++    else:
++        root.array("0", shape=(10, 10, 10), dtype="uint8")
+ 
+     # Add OME-NGFF metadata with RFC 4 orientation
+     multiscales_metadata = {
+@@ -256,7 +264,11 @@ def test_from_ngff_zarr_with_rfc4_validation_invalid():
+ 
+     # Create a simple zarr array
+     root = zarr.open_group(store, mode="w")
+-    root.create_dataset("0", shape=(10, 10, 10), dtype="uint8")
++    # Use .array() for zarr v2, .create_array() for zarr v3
++    if zarr_version_major >= 3:
++        root.create_array("0", shape=(10, 10, 10), dtype="uint8")
++    else:
++        root.array("0", shape=(10, 10, 10), dtype="uint8")
+ 
+     # Add OME-NGFF metadata with incomplete RFC 4 orientation (missing z orientation)
+     multiscales_metadata = {
+@@ -308,7 +320,11 @@ def test_from_ngff_zarr_without_rfc4_validation():
+ 
+     # Create a simple zarr array
+     root = zarr.open_group(store, mode="w")
+-    root.create_dataset("0", shape=(10, 10, 10), dtype="uint8")
++    # Use .array() for zarr v2, .create_array() for zarr v3
++    if zarr_version_major >= 3:
++        root.create_array("0", shape=(10, 10, 10), dtype="uint8")
++    else:
++        root.array("0", shape=(10, 10, 10), dtype="uint8")
+ 
+     # Add OME-NGFF metadata with incomplete RFC 4 orientation
+     multiscales_metadata = {
+-- 
+2.48.1
+
