@@ -1,0 +1,39 @@
+<div 
+id="{{ id }}-container" 
+class="flex h-full flex-col rounded chart-container my-5 border-stone-500"
+style="height: 400px;"
+>
+    <input type="hidden" value="{{ id }}" name="graph-id" />
+    {% csrf_token %}
+    
+    <div
+    id="{{ id }}-wrapper"
+    x-init="
+    const observer = new ResizeObserver(entries => {
+        for (const entry of entries) {
+            htmx.trigger($el, 'resizeChart');
+        }
+    });
+    observer.observe($el);
+    "
+    class="w-full relative flex-1 chart-wrapper"
+    {% if callback %}
+    hx-post="{% url callback.endpoint_name %}"
+    hx-trigger="{{ callback.trigger_event }}"
+    hx-swap="innerHTML"
+    hx-include="
+    {% for element in callback.inputs %}
+        #{{ element }},
+    {% endfor %}
+    previous [name=csrfmiddlewaretoken]
+    "
+    {% endif %}
+    >
+        <div class="flex flex-col items-center spinner-container">
+            <svg class="h-full absolute" viewBox="0 0 100 100">
+                <circle class="spinner" cx="50" cy="50" r="30" stroke-width="2" stroke-linecap="round" pathLength="100" stroke="hsl(353, 71%, 55%)" fill="transparent" />
+            </svg>
+        </div>
+    </div>
+
+</div>
