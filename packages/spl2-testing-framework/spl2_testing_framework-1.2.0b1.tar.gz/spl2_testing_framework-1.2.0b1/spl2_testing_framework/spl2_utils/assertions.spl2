@@ -1,0 +1,157 @@
+/**
+#  SPDX-FileCopyrightText: 2021 Splunk, Inc. <sales@splunk.com>
+#  SPDX-License-Identifier: LicenseRef-Splunk-8-2021
+ */
+
+/**
+ * Utility function to compare a result with an expected value.
+ * 
+ * @param $source events
+ * @param $expected_value value the test expects
+ * @param $test_field name of field that has the result to check
+ * @param $test_name optional, name the test to make it easier to parse results with multiple tests
+ * @param $expected_field optional, expected value is in this field
+
+ */
+export function expect($source: dataset, $expected_value: any="", $test_field: any=_raw, $test_name: string="test", $expected_field: any=expected): dataset {
+    return from $source
+        | eval _testExpectedField = if(isnotnull($expected_field), $expected_field, $expected_value)
+        | eval _testResult = if($test_field == _testExpectedField, "true", "false")
+        | _testAddResult $test_name _testResult _testExpectedField, $test_field
+        | fields - _testExpectedField, _testResult
+}
+
+/**
+ * Test utility to ensure a given field exists on an event.
+ *
+ * @param $source events
+ * @param $field_name the field name to ensure exists
+ */
+export function expect_field($source: dataset, $field_name: any): dataset {
+    return | from $source
+        | eval _expect = if(isnotnull(_expect), _expect, "true")
+        | eval _original_event_json = tojson()
+        | eval _expectHasField=if(isnotnull(json_extract_exact(_original_event_json, $field_name)), "true", "false")
+        | eval _result=if(_expectHasField == _expect, "true", "false")
+        | _testAddResult name="Has field: ${$field_name}" result=_result expected=_expectHasField received=_expectHasField
+        | fields - _expectHasField, _original_event_json, _result
+}
+
+/**
+ * Test utility to ensure given fields exists on an event.
+ * 
+ * _expect field is not considered
+ *
+ * @param $source events
+ * @param $field_names the field name that are required
+ * @param $delimeter delimeter for the field names
+ */
+export function expect_fields($source: dataset, $field_names: string): dataset {
+    $delimiter = ","
+  return | from $source
+    | eval _expect = if(isnotnull(_expect),_expect, "false")
+    // Convert the original event into json
+    | eval _original_event_json = tojson()
+    // Remove the _expect field
+    | eval _original_event_json=json_delete(_original_event_json, "_expect")
+    // Set the expected fields
+    | eval  _expected_fields = mv_to_json_array(split($field_names, $delimiter))
+    // Test all the expected fields
+    | eval _test_result = json_object("result", "true", "received", ""),
+       _test_result = reduce(
+           _expected_fields,
+           _test_result,
+           ($results, $field) -> if(isnotnull(json_extract_exact(_original_event_json, $field)),
+               json_set($results, "", {"result": json_extract($results, "result"), "received": json_extract_exact($results, "received")+$field+": true\n"}),
+               json_set($results, "", {"result": "false", "received": json_extract($results, "received")+$field+": false\n"})
+           )
+       )
+    | eval _result=if(_test_result.result == _expect, "true", "false")      
+    // Create a test result
+    | _testAddResult name="expect_fields" result=_result expected=_expect received=_test_result.result
+    | fields - _original_event_json, _expected_fields, _test_result, _result
+ }
+
+
+
+/**
+ * Utility to ensure a given field exists on an event.
+ *
+ * @param $source events
+ * @param $field_names comma seperated list of fields to validate
+ * @param $delimeter the delimeter to split the fields list
+ * @param $ignore_testResults ignore the _testResult field if it exists. Useful when chaining tests.
+ */
+export function expect_exact_fields($source: dataset, $field_names: string, $delimiter: string=",", $ignore_testResults: boolean=true): dataset {
+    return | from $source
+       | eval _expect = if(isnotnull(_expect),_expect, "false")
+        // Convert the original event into json
+        | eval _original_event_json = tojson()
+        // Remove the _expect field
+        | eval _original_event_json=json_delete(_original_event_json, "_expect")
+        // Get and sort the names of all the fields in the event into a MV field
+        | eval _original_event_fields = json_keys(_original_event_json)
+        // Get and sort all of the expected fields into a MV field
+        | eval _expected_fields = split($field_names, $delimiter)
+
+        // Match the expected fields against the event fields
+        | eval _test_result = json_object("fields", json_object()),
+            _test_result = reduce(
+                mv_to_json_array(_expected_fields),
+                _test_result,
+                ($results, $field) ->
+                    json_set($results, "fields."+$field,
+                        if(isnotnull(json_extract_exact(_original_event_json, $field)), "present", "missing")
+                    )
+            )
+        // Match event fields against expected fields to find unexpected fields
+        | eval _test_result = reduce(
+                _original_event_fields,
+                _test_result,
+                ($results, $field) ->
+                    json_set($results, "fields."+$field,
+                        if(in($field, _expected_fields), "present", "not expected")
+                    )
+            )
+        // Determine the test result
+        | eval _result = "true", 
+          _result = reduce(
+                json_keys(_test_result.fields),
+                _result,
+                ($results, $field) ->
+                    if(json_extract_exact(_test_result.fields, $field) != "present", "false", _result)
+            )        
+
+        | eval _output=if(_result == _expect, "true", "false")   
+        | _testAddResult name="expect_exact_fields", result=_output, expected=_expect, received=_result
+        | fields - _original_event_json, _original_event_fields, _expected_fields, _result, _test_result, _output
+}
+
+
+// Test result object
+type testResult = {
+    test: string,
+    result: string,
+    expected: any,
+    received: any
+};
+
+/**
+ * Utility function to add a test result object to the test result field.
+ *
+ * @param $source events
+ * @param $name test name
+ * @param $result test result
+ * @param $expected expected result of the test
+ * @param $received the received result of the test
+ */
+function _testAddResult($source: dataset, $name: string, $result: any, $expected: any, $received: any): dataset {
+    return from $source
+        // Create the test result object
+        | eval _testResultObject = json_object("result", $result, "test", $name, "expected", $expected, "received", $received)
+        | eval _testResults = if(isnotnull(_testResults),
+            json_append(_testResults, "results", json_extract(_testResultObject)),
+            json_object("results", json_array(json_extract(_testResultObject)))
+        )
+        | fields - _testResultObject
+}
