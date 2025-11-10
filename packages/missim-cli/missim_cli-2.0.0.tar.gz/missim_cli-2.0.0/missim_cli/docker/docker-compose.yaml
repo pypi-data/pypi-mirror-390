@@ -1,0 +1,40 @@
+services:
+  missim_core:
+    container_name: missim_core
+    image: ghcr.io/greenroom-robotics/missim_core:${MISSIM_VERSION:-latest}
+    volumes:
+      - /dev/shm:/dev/shm
+      - /tmp:/tmp
+      - ~/.config/greenroom:/home/ros/.config/greenroom
+      - ${MISSIM_LOG_DIR:-/tmp}:/home/ros/.ros/log
+      - ${MISSIM_RECORDING_DIR:-/tmp}:/home/ros/missim_core/rosbags
+
+    command: ros2 launch missim_bringup missim.launch.py
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: ${ROS_AUTOMATIC_DISCOVERY_RANGE}
+      MISSIM_CONFIG: ${MISSIM_CONFIG}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION}
+      # RUST_LOG: debug
+    stop_signal: SIGINT
+
+  missim_ui:
+    container_name: missim_ui
+    image: ghcr.io/greenroom-robotics/missim_ui:${MISSIM_VERSION:-latest}
+    volumes:
+      - /dev/shm:/dev/shm
+    environment:
+      USE_HTTPS: ${USE_HTTPS:-false}
+      MISSIM_MODE: ${MISSIM_MODE:-low-fidelity}
+    stop_signal: SIGINT
+
+  missim_chart_tiler:
+    container_name: missim_chart_tiler
+    image: ghcr.io/greenroom-robotics/gr_chart_tiler:1.1.0
+    ports:
+      - 5003:8080
+    volumes:
+      - ${MISSIM_CHARTS_DIR:-/tmp}/styles:/app/data/styles
+      - ${MISSIM_CHARTS_DIR:-/tmp}/tiles:/app/data/tiles
+      - ${MISSIM_CHARTS_DIR:-/tmp}/config.json:/app/data/config.json
+    stop_signal: SIGINT

@@ -1,0 +1,30 @@
+services:
+  missim_ue_standalone:
+    container_name: missim_ue_standalone
+    image: ghcr.io/greenroom-robotics/missim_ue_standalone
+    build:
+      context: ./
+      dockerfile: ./projects/missim_ue/Dockerfile.standalone
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev/shm:/dev/shm
+      - ~/.config/greenroom:/home/ue4/.config/greenroom
+      - ${MISSIM_LOG_DIR:-/tmp}:/home/ue4/logs
+    privileged: true
+    environment:
+      - DISPLAY
+      - XDG_RUNTIME_DIR
+      - QT_X11_NO_MITSHM=1
+      - XAUTHORITY
+      - SIM_ARGS=-WINDOWED -AudioMixer -PixelStreamingIP=localhost -PixelStreamingPort=5004 -ResX=1920 -ResY=1080 -RenderOffscreen -ForceRes -ExecCmds="DisableAllScreenMessages" ABSLOG=/home/ue4/logs/unreal/unreal.log
+      - ROS_DOMAIN_ID
+      - ROS_AUTOMATIC_DISCOVERY_RANGE
+    command: bash -c "mkdir -p /home/ue4/logs && ros2 launch /home/ue4/mis_sim/sim.launch.py"
+    restart: always

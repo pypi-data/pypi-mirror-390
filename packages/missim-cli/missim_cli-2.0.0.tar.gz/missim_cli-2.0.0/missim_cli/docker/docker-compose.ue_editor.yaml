@@ -1,0 +1,45 @@
+services:
+  missim_ue:
+    container_name: missim_ue
+    image: ghcr.io/greenroom-robotics/missim_ue
+    build:
+      context: ./
+      dockerfile: ./projects/missim_ue/Dockerfile.dev
+      secrets:
+        - apt_conf
+        - API_TOKEN_GITHUB
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    devices:
+       - /dev/dri:/dev/dri
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev/shm:/dev/shm
+      - ~/.config/greenroom:/home/ue4/.config/greenroom
+      - ./projects/missim_ue/:/home/ue4/mis_sim/
+      - ./projects/:/home/ue4/Unreal Projects/
+      - ./packages/missim_interfaces/:/home/ue4/ros_ws/missim_interfaces/
+      - ./.cache/:/home/ue4/.config/Epic/UnrealEngine/Common/
+      - ~/.ssh/:/home/ue4/.ssh/:ro
+      - ~/.gitconfig:/home/ue4/.gitconfig:ro
+    privileged: true
+    environment:
+      - DISPLAY
+      - QT_X11_NO_MITSHM=1
+      - XAUTHORITY
+      - PROJECTS_HOME=/home/ue4/Unreal Projects
+      - PROJECT_NAME=MissimProject
+      - UNREAL_HOME=/home/ue4/UnrealEngine
+      - ROS_DOMAIN_ID
+      - ROS_AUTOMATIC_DISCOVERY_RANGE
+
+secrets:
+  API_TOKEN_GITHUB:
+    file: ./.secrets/API_TOKEN_GITHUB
+  apt_conf:
+    file: ./.secrets/apt.conf
