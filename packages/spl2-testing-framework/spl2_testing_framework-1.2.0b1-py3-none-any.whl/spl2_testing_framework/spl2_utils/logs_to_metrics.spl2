@@ -1,0 +1,36 @@
+/**
+#  SPDX-FileCopyrightText: 2021 Splunk, Inc. <sales@splunk.com>
+#  SPDX-License-Identifier: LicenseRef-Splunk-8-2021
+ */
+
+type metrict=string where $value in (["gauge", "counter", "cumulative", "histogram"]);
+
+/**
+ * This is a MOCK implementation of logs_to_metrics function. It is meant to be used just for testing.
+ *
+ * @param $source events
+ * @param $time time of the metric
+ * @param $name name of the metric
+ * @param $value value of the metric
+ * @param $metrictype type of the metric
+ * @param $dimensions dimensions of the metric
+ */
+function logs_to_metrics($source, $time:time, $name:string, $value:number, $metrictype:metrict = "gauge", $dimensions:object = {}): dataset {
+	return from $source
+	| eval _has_time=if(isnotnull($time), 1, 0)
+    | eval _time=if(_has_time=1, $time, time())
+    | eval _time=floor(_time / 10) * 10
+	| select _time as _time,
+            $name as metric_name,
+            $value as metric_value,
+            $metrictype as metric_type,
+            $dimensions as dimensions,
+            source as source,
+            sourcetype as sourcetype,
+            index as index,
+            host as host,
+            _has_time as _has_time
+	| fields - _raw
+}
+
+export logs_to_metrics;
