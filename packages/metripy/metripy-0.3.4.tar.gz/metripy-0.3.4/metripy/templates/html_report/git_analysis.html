@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Analysis - Code Metrics Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="images/logo.svg" alt="Metripy Logo" class="logo-icon">
+                    <h2>Metripy</h2>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="files.html" class="nav-link">
+                            <i class="fas fa-file-code"></i>
+                            <span>Files</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="top_offenders.html" class="nav-link">
+                            <i class="fa-solid fa-stethoscope"></i>
+                            <span>Top Offenders</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="git_analysis.html" class="nav-link">
+                            <i class="fab fa-git-alt"></i>
+                            <span>Git Analysis</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="dependencies.html" class="nav-link">
+                            <i class="fas fa-cubes"></i>
+                            <span>Dependencies</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="trends.html" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Trends</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="project-info">
+                    <h4>Project: {{project_name}}</h4>
+                    <p>Last updated: {{last_updated}}</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="page-header">
+                <div class="header-content">
+                    <h1>Git Analysis</h1>
+                    <p class="subtitle">Repository insights, code hotspots, and team collaboration patterns</p>
+                </div>
+            </header>
+
+            {{#IF has_git_analysis_data}}
+
+            <!-- Git Metrics Cards Row -->
+            <section class="git-metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                            <i class="fas fa-code-commit"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Total Commits</h3>
+                            <p>Last 12 months</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value">{{git_analysis.total_commits}}</span>
+                        <span class="unit">commits</span>
+                    </div>
+                    <div class="metric-description">
+                        <p>Total commits made since {{git_analysis.analysis_start_date}}</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Active Contributors</h3>
+                            <p>Since {{git_analysis.analysis_start_date}}</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value">{{git_analysis.active_contributors}}</span>
+                        <span class="unit">developers</span>
+                    </div>
+                    <div class="metric-description">
+                        <p>{{git_analysis.core_contributors}} core developers make up {{git_analysis.core_percentage}}% of all commits</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Avg. Commit Size</h3>
+                            <p>Lines changed per commit</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value">{{git_analysis.avg_commit_size}}</span>
+                        <span class="unit">lines</span>
+                    </div>
+                    <div class="metric-description">
+                        <p>Average number of lines changed per commit</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="two-column-section">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Commit Activity Timeline</h3>
+                        <p>Monthly commits over time</p>
+                    </div>
+                    <div class="chart-content">
+                        <canvas id="gitCommitsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Code Churn Analysis</h3>
+                        <p>Lines added vs removed over time</p>
+                    </div>
+                    <div class="chart-content">
+                        <canvas id="gitChurnChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <div class="section-divider"></div>
+
+            <!-- Risk Analysis Section -->
+            <section class="two-column-section">
+                <div class="info-card">
+                    <h4><i class="fas fa-exclamation-triangle text-warning"></i> Code Hotspots</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                        Files that change frequently often indicate quality issues or architectural problems.
+                    </p>
+                    
+                    <div class="table-container">
+                        <table class="hotspot-table">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Changes</th>
+                                    <th>Risk</th>
+                                    <th>Contributors</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hotspots-table-body">
+                                {{#EACH git_hotspots_data AS hotspot}}
+                                    <tr>
+                                        <td><strong>{{hotspot.file_path}}</strong></td>
+                                        <td><span class="stat-highlight">{{hotspot.changes_count}}</span></td>
+                                        <td><span class="risk-badge risk-{{hotspot.risk_level}}">{{hotspot.risk_label}}</span></td>
+                                        <td>{{hotspot.contributors_count}}</td>
+                                    </tr>
+                                {{/EACH}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h4><i class="fas fa-shield-alt text-info"></i> Knowledge Silos</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                        Files touched by only one person create knowledge risks and bottlenecks.
+                    </p>
+                    
+                    <div class="table-container">
+                        <table class="hotspot-table">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Owner</th>
+                                    <th>Commits</th>
+                                    <th>Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="silos-table-body">
+                                {{#EACH git_silos_data AS silo}}
+                                    <tr>
+                                        <td><strong>{{silo.file_path}}</strong></td>
+                                        <td>{{silo.owner}}</td>
+                                        <td><span class="stat-highlight">{{silo.commits_count}}</span></td>
+                                        <td><span class="risk-badge risk-{{silo.risk_level}}">{{silo.risk_label}}</span></td>
+                                    </tr>
+                                {{/EACH}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <div class="section-divider"></div>
+
+            <!-- Team Insights Section -->
+            <section class="two-column-section">
+                <div class="info-card">
+                    <h4><i class="fas fa-trophy text-success"></i> Top Contributors</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                        Most active developers by commits and lines of code.
+                    </p>
+                    
+                    <div class="table-container">
+                        <table class="contributor-table">
+                            <thead>
+                                <tr>
+                                    <th>Developer</th>
+                                    <th>Commits</th>
+                                    <th>Lines</th>
+                                    <th>Share</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contributors-table-body">
+                                {{#EACH git_contributors AS contributor}}
+                                    <tr>
+                                        <td>
+                                            <div class="author-avatar">{{contributor.initials}}</div>
+                                            <strong>{{contributor.name}}</strong>
+                                        </td>
+                                        <td><span class="stat-highlight">{{contributor.commits_count}}</span></td>
+                                        <td>+{{contributor.lines_added}} / -{{contributor.lines_removed}}</td>
+                                        <td>
+                                            {{contributor.contribution_percentage}}%
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: {{contributor.contribution_percentage}}%;"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {{/EACH}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h4><i class="fas fa-clock text-primary"></i> Development Patterns - Not implemented</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-lg);">
+                        Key insights about development velocity and code quality patterns.
+                    </p>
+                    
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <h5 style="color: var(--text-primary); margin-bottom: var(--spacing-sm);">📅 Most Active Days</h5>
+                        <div id="active-days-content" style="margin-left: var(--spacing-md); color: var(--text-secondary);">
+                            <!-- Active days will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <h5 style="color: var(--text-primary); margin-bottom: var(--spacing-sm);">⚡ Commit Quality</h5>
+                        <div id="commit-quality-content" style="margin-left: var(--spacing-md); color: var(--text-secondary);">
+                            <!-- Commit quality stats will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 style="color: var(--text-primary); margin-bottom: var(--spacing-sm);">🎯 Recommendations</h5>
+                        <div id="recommendations-content" style="margin-left: var(--spacing-md); color: var(--text-secondary);">
+                            <!-- Recommendations will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <!-- No Git Analysis Data State -->
+            {{#ELSE}}
+            <div class="empty-state">
+                <i class="fas fa-chart-line"></i>
+                <h3>No Git Analysis Data Available</h3>
+                <p>Enable analysis of git history in your config file.</p>
+            </div>
+            {{/IF}}
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Embed data directly from template engine
+        window.GIT_STATS_DATA = {{git_stats_data}};
+        window.GIT_CHURN_DATA = {{git_churn_data}};
+        window.GIT_ANALYSIS_DATA = {{git_analysis_json}};
+    </script>
+    <script src="js/git_analysis.js"></script>
+</body>
+</html>
