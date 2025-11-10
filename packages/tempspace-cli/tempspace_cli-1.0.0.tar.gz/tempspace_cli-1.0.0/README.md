@@ -1,0 +1,137 @@
+# 🚀 FileShare - Enhanced Terminal File Upload Service
+
+A modern, terminal-style file sharing service with password protection, rate limiting, and QR code generation.
+
+## 📦 Installation
+
+### Server
+
+To run the web server, you can clone the repository and run it locally.
+
+```bash
+# Clone the repository
+git clone <your-repo>
+cd fileshare
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env and change admin credentials!
+nano .env
+
+# Run the server
+python main.py
+```
+
+### Command-Line Tool (CLI)
+
+To use the command-line tool, you can install it directly from PyPI.
+
+```bash
+pip install tempspace-cli
+```
+
+## ✨ Features
+
+### 🔒 Security
+- **Rate Limiting**: 10 uploads/hour, 100 downloads/hour per IP
+- **Password Protection**: Optional password-protected uploads
+- **Secure Admin Panel**: HTTP Basic Auth for debug endpoints
+- **File Deduplication**: Automatic duplicate detection (SHA256)
+- **One-Time Downloads**: Self-destructing links after first download
+
+### 🎨 UI/UX
+- **Modern Terminal Design**: Green-on-black terminal aesthetic
+- **Drag & Drop**: Intuitive file upload interface
+- **QR Code Generation**: Instant QR codes for mobile sharing
+- **Upload History**: Local storage of recent uploads (browser)
+- **Toast Notifications**: Non-intrusive feedback system
+- **Real-time Progress**: Upload progress with speed indicators
+- **Countdown Timer**: Shows time remaining until expiry
+- **Responsive Design**: Works on mobile, tablet, and desktop
+
+### 📦 File Management
+- **Large File Support**: Up to 4GB per file
+- **Image Previews**: Automatic preview for images
+- **Multiple Expiry Options**: 1, 3, 6, 12, or 24 hours
+- **Chunked Uploads**: Efficient streaming for large files
+- **Automatic Cleanup**: Background task removes expired files
+
+## 📖 Usage
+
+### Web Interface
+
+1. **Open** `http://localhost:8000` in your browser
+2. **Drag & drop** a file or click to browse
+3. **Configure** expiry time and optional password
+4. **Upload** and share the generated link
+5. **Scan QR code** for mobile access
+
+### CLI Usage
+
+Once installed, you can use the `tempspace` command.
+
+#### Basic Upload
+```bash
+tempspace /path/to/document.pdf -t 6h
+```
+
+#### Password Protected Upload
+```bash
+tempspace /path/to/secret.txt -t 12h -p "mypassword"
+```
+
+#### One-Time Download
+```bash
+tempspace /path/to/report.pdf --one-time
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file for the server:
+
+```bash
+# Admin credentials (CHANGE THESE!)
+ADMIN_USER=admin
+ADMIN_PASS=your-secure-password-here
+
+# Optional: Custom limits
+RATE_LIMIT_UPLOADS=10
+RATE_LIMIT_DOWNLOADS=100
+```
+
+## 🛡️ Admin Endpoints
+
+Protected by HTTP Basic Auth (use credentials from `.env`).
+
+### View Statistics
+```bash
+curl -u admin:password http://localhost:8000/debug/stats
+```
+
+### Wipe All Files
+```bash
+curl -X POST -u admin:password http://localhost:8000/debug/wipe
+```
+
+⚠️ **Warning**: This deletes ALL uploaded files permanently!
+
+## 📝 License
+
+MIT License - Feel free to use and modify!
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
+
+## 📧 Support
+
+For issues and questions, please open a GitHub issue.
