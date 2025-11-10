@@ -1,0 +1,76 @@
+{# -- Macro for rendering update lists -- #}
+{% macro render_update_list(updates) %}
+    {% for update in updates %}
+    - {{ update.name }}: {{ update.current_version or '(NEW)' }} -> {{ update.new_version }}
+        {% if update.source %}
+      Source: {{ update.source }}
+        {% endif %}
+    {% endfor %}
+{% endmacro %}
+
+{# -- Start of Report -- #}
+{% set report_title = "SYSTEM UPDATES REPORT" %}
+{% for char in report_title %}={% endfor +%}
+{{ report_title }}
+{%+ for char in report_title %}={% endfor +%}
+
+{{ report_type.value }}, {{ report_scope.value }}, generated: {{ now().strftime('%Y-%m-%d %H:%M:%S %z') }}
+
+Summary:
+
+{% if report_scope == report_scope.complete %}
+  Total hosts: {{ hosts_count }}
+{% elif report_scope == report_scope.filtered %}
+  Selected hosts: {{ hosts_count }}
+{% endif %}
+{% if report_type == report_type.security_only %}
+  Hosts with security updates: {{ hosts|selectattr('security_updates')|list|length }}
+{% else %}
+  Hosts with updates: {{ hosts|selectattr('updates')|list|length }}
+  Total updates: {{ hosts|map(attribute='updates')|map('length')|sum }}
+{% endif %}
+{% set security_label = "Total security updates:" if report_type == report_type.security_only else "Security updates:" %}
+  {{ security_label }} {{ hosts|map(attribute='security_updates')|map('length')|sum }}
+{% for host in hosts %}
+
+{{ host.name }} ({{ host.ip }})
+{% for char in (host.name + " (" + host.ip + ")") %}-{% endfor %}
+    {% if host.description +%}
+{{ host.description }}
+    {% endif %}
+
+  System: {{ host.os }}{% if host.flavor and host.flavor != host.os %} {{ host.flavor }}{% endif %}{% if host.version %} {{ host.version }}{% endif +%}
+  Package Manager: {{ host.package_manager or 'None' }}
+  Last Refresh: {% if host.last_refresh %}{{ host.last_refresh.astimezone().strftime('%Y-%m-%d %H:%M:%S %z') }}{% else %}Never{% endif %}{% if host.is_stale %} (Stale, needs refresh){% endif %}
+    {% set updates_list = host.security_updates if report_type == report_type.security_only else host.updates %}
+    {% if updates_list +%}
+        {% set main_title = "Security Updates" if report_type == report_type.security_only else "Updates" %}
+
+  {{ main_title }} ({{ updates_list|length }}):
+
+        {% set security_updates = updates_list|selectattr('security', 'equalto', true)|list %}
+        {% set regular_updates = updates_list|selectattr('security', 'equalto', false)|list %}
+        {% if security_updates and not (report_type == report_type.security_only) %}
+    Security Updates ({{ security_updates|length }}):
+{{ render_update_list(security_updates) }}
+        {% elif security_updates and (report_type == report_type.security_only) %}
+{{ render_update_list(security_updates) }}
+        {% endif %}
+        {% if regular_updates %}
+            {% if security_updates %}
+    Regular Updates ({{ regular_updates|length }}):
+            {% endif %}
+{{ render_update_list(regular_updates) }}
+        {% endif %}
+    {% else +%}
+
+  No updates available.
+
+    {% endif %}
+{% endfor %}
+
+{% set report_footer = "Generated with Exosphere version " ~ exosphere_version %}
+{% for char in report_footer %}-{% endfor +%}
+{{ report_footer }}
+https://github.com/mrdaemon/exosphere
+{# EOF +#}
