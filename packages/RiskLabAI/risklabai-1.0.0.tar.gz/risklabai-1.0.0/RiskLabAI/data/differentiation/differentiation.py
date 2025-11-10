@@ -1,0 +1,372 @@
+"""
+Implements fractional differentiation of time series, including both
+expanding-window (standard) and fixed-width-window (FFD) methods.
+
+Includes functions to find the minimum differentiation factor 'd' that
+results in a stationary series.
+
+Reference:
+    De Prado, M. (2018) Advances in financial machine learning.
+    John Wiley & Sons, Chapter 5.
+"""
+
+import numpy as np
+import pandas as pd
+from statsmodels.tsa.stattools import adfuller
+from typing import Tuple, Optional
+
+def calculate_weights_std(degree: float, size: int) -> np.ndarray:
+    """
+    Compute weights for standard (expanding window) fractional differentiation.
+
+    Reference:
+        Snippet 5.2, Page 82.
+
+    Parameters
+    ----------
+    degree : float
+        The degree of differentiation (d).
+    size : int
+        The number of weights to generate (e.g., the series length).
+
+    Returns
+    -------
+    np.ndarray
+        An array of weights, ordered for dot product (w_0 at the end).
+    """
+    weights = [1.0]
+    for k in range(1, size):
+        weight = -weights[-1] / k * (degree - k + 1)
+        weights.append(weight)
+    
+    # Reverse for dot product: [w_k, ..., w_1, w_0]
+    return np.array(weights[::-1]).reshape(-1, 1)
+
+def calculate_weights_ffd(degree: float, threshold: float = 1e-5) -> np.ndarray:
+    """
+    Compute weights for Fixed-Width Window Fractional Differentiation (FFD).
+
+    The weights are generated until they fall below the `threshold`.
+
+    Reference:
+        Snippet 5.3, Page 83.
+
+    Parameters
+    ----------
+    degree : float
+        The degree of differentiation (d).
+    threshold : float, default=1e-5
+        The minimum absolute weight to include.
+
+    Returns
+    -------
+    np.ndarray
+        An array of weights, ordered for dot product (w_0 at the end).
+    """
+    weights = [1.0]
+    k = 1
+    while abs(weights[-1]) >= threshold:
+        weight = -weights[-1] / k * (degree - k + 1)
+        weights.append(weight)
+        k += 1
+    
+    # Reverse for dot product and drop w_0 (which is 1)
+    return np.array(weights[::-1]).reshape(-1, 1)
+
+
+def fractional_difference_std(
+    series: pd.DataFrame,
+    degree: float,
+    threshold: float = 0.01
+) -> pd.DataFrame:
+    """
+    Compute the standard (expanding window) fractionally differentiated series.
+
+    This method uses all available past data for each calculation.
+
+    Reference:
+        Snippet 5.2, Page 82.
+
+    Parameters
+    ----------
+    series : pd.DataFrame
+        DataFrame of time series (one column per series).
+    degree : float
+        The degree of differentiation (d).
+    threshold : float, default=0.01
+        The weight-loss threshold to determine the minimum number
+        of observations required (warm-up period).
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of fractionally differentiated series.
+    """
+    # 1. Compute weights for the full series
+    weights = calculate_weights_std(degree, series.shape[0])
+    
+    # 2. Determine warm-up period
+    weights_cumsum_abs = np.cumsum(np.abs(weights))
+    weights_cumsum_abs /= weights_cumsum_abs[-1]
+    skip = np.searchsorted(weights_cumsum_abs, threshold)
+    
+    result_df = pd.DataFrame(index=series.index, columns=series.columns)
+
+    for name in series.columns:
+        series_ffill = series[[name]].fillna(method="ffill").dropna()
+        if series_ffill.empty:
+            continue
+            
+        series_np = series_ffill.to_numpy() # More efficient
+
+        for iloc in range(skip, series_np.shape[0]):
+            # Get the relevant window of data and weights
+            window_data = series_np[:iloc + 1]
+            window_weights = weights[-(iloc + 1):]
+            
+            # Dot product
+            result_df.loc[series_ffill.index[iloc], name] = np.dot(
+                window_weights.T, window_data
+            )[0, 0]
+
+    return result_df.dropna()
+
+
+def fractional_difference_fixed(
+    series: pd.DataFrame,
+    degree: float,
+    threshold: float = 1e-5
+) -> pd.DataFrame:
+    """
+    Compute the Fixed-Width Window (FFD) fractionally differentiated series.
+
+    This method uses a fixed-width window, which is more efficient and
+    less prone to memory biases.
+
+    Reference:
+        Snippet 5.3, Page 83.
+
+    Parameters
+    ----------
+    series : pd.DataFrame
+        DataFrame of time series (one column per series).
+    degree : float
+        The degree of differentiation (d).
+    threshold : float, default=1e-5
+        Threshold to determine the fixed window width.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of fractionally differentiated series.
+    """
+    weights = calculate_weights_ffd(degree, threshold)
+    width = len(weights)
+    
+    result_df = pd.DataFrame(index=series.index, columns=series.columns)
+
+    for name in series.columns:
+        series_ffill = series[[name]].fillna(method="ffill").dropna()
+        if series_ffill.empty:
+            continue
+            
+        series_np = series_ffill.to_numpy()
+
+        for iloc in range(width, series_np.shape[0]):
+            window_data = series_np[iloc - width : iloc + 1]
+            
+            result_df.loc[series_ffill.index[iloc], name] = np.dot(
+                weights.T, window_data
+            )[0, 0]
+            
+    return result_df.dropna()
+
+def fractional_difference_fixed_single(
+    series: pd.Series,
+    degree: float,
+    threshold: float = 1e-5
+) -> pd.Series:
+    """
+    Compute the FFD series for a single `pd.Series`.
+
+    Parameters
+    ----------
+    series : pd.Series
+        Time series.
+    degree : float
+        The degree of differentiation (d).
+    threshold : float, default=1e-5
+        Threshold to determine the fixed window width.
+
+    Returns
+    -------
+    pd.Series
+        The fractionally differentiated series.
+    """
+    weights = calculate_weights_ffd(degree, threshold)
+    width = len(weights)
+    
+    series_ffill = series.fillna(method="ffill").dropna()
+    series_np = series_ffill.to_numpy()
+    
+    result_series = pd.Series(index=series.index, dtype="float64")
+
+    for iloc in range(width, series_np.shape[0]):
+        window_data = series_np[iloc - width : iloc + 1]
+        
+        result_series.loc[series_ffill.index[iloc]] = np.dot(
+            weights.T, window_data
+        )[0]
+
+    return result_series.dropna()
+
+
+def plot_weights(
+    degree_range: Tuple[float, float],
+    number_degrees: int,
+    size: int
+) -> None:
+    """
+    Plot the weights of fractionally differentiated series for various degrees.
+
+    Parameters
+    ----------
+    degree_range : Tuple[float, float]
+        (min_degree, max_degree) to plot.
+    number_degrees : int
+        Number of 'd' values to plot in the range.
+    size : int
+        Length of the time series (number of weights).
+    """
+    weights_df = pd.DataFrame()
+    for degree in np.linspace(degree_range[0], degree_range[1], number_degrees):
+        degree = round(degree, 2)
+        weights = calculate_weights_std(degree, size)
+        weights_df[degree] = pd.Series(weights.flatten(), index=range(size - 1, -1, -1))
+
+    ax = weights_df.plot()
+    ax.set_xlabel("Lag")
+    ax.set_ylabel("Weight")
+    ax.set_title("Fractional Differentiation Weights")
+    ax.legend(title="Degree (d)")
+    ax.get_figure().show()
+
+
+def find_optimal_ffd_simple(
+    input_series: pd.DataFrame,
+    p_value_threshold: float = 0.05
+) -> pd.DataFrame:
+    """
+    Find the minimum 'd' that passes the ADF test, for a range of d.
+
+    This function tests `d` in 11 steps from 0 to 1.
+
+    Reference:
+        Snippet 5.4, Page 85.
+
+    Parameters
+    ----------
+    input_series : pd.DataFrame
+        DataFrame containing a 'close' column.
+    p_value_threshold : float, default=0.05
+        The ADF test p-value to pass.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of ADF test results for each 'd'.
+    """
+    results_list = []
+    
+    # Resample to daily to ensure consistent lags
+    series_daily = np.log(input_series[['close']]).resample('1D').last()
+    
+    for d in np.linspace(0, 1, 11):
+        differentiated = fractional_difference_fixed(
+            series_daily, d, threshold=0.01
+        ).dropna()
+        
+        if differentiated.empty:
+            continue
+            
+        corr = np.corrcoef(
+            series_daily.loc[differentiated.index, 'close'],
+            differentiated['close']
+        )[0, 1]
+        
+        adf_result = adfuller(
+            differentiated['close'], maxlag=1, regression='c', autolag=None
+        )
+        
+        results_list.append(
+            {
+                'd': d,
+                'adfStat': adf_result[0],
+                'pVal': adf_result[1],
+                'lags': adf_result[2],
+                'nObs': adf_result[3],
+                '95% conf': adf_result[4]['5%'],
+                'corr': corr
+            }
+        )
+    
+    return pd.DataFrame(results_list).set_index('d')
+
+
+def fractionally_differentiated_log_price(
+    input_series: pd.Series,
+    threshold: float = 1e-5,
+    step: float = 0.01,
+    p_value_threshold: float = 0.05
+) -> pd.Series:
+    """
+    Find the minimum 'd' that makes a log-price series stationary.
+
+    This function iteratively increases 'd' by 'step' until the ADF test
+    p-value falls below `p_value_threshold`.
+
+    Parameters
+    ----------
+    input_series : pd.Series
+        Time series of prices.
+    threshold : float, default=1e-5
+        The weight threshold for FFD.
+    step : float, default=0.01
+        The increment for testing 'd'.
+    p_value_threshold : float, default=0.05
+        The significance level for the ADF test.
+
+    Returns
+    -------
+    pd.Series
+        The fractionally differentiated series with the minimum
+        stationary-passing 'd'.
+    """
+    log_price = np.log(input_series)
+    degree = 0.0
+    p_value = 1.0
+    
+    differentiated_series = None
+
+    while p_value > p_value_threshold:
+        degree += step
+        if degree > 2.0: # Safety break
+             raise ValueError("Failed to find stationary 'd' < 2.0")
+             
+        differentiated = fractional_difference_fixed_single(
+            log_price, degree, threshold=threshold
+        ).dropna()
+        
+        if differentiated.empty:
+            continue # Not enough data for this 'd'
+        
+        adf_test = adfuller(
+            differentiated, maxlag=1, regression='c', autolag=None
+        )
+        p_value = adf_test[1]
+        
+        if differentiated_series is None:
+            differentiated_series = differentiated # Store first valid series
+
+    # Return the last computed series that passed
+    return differentiated

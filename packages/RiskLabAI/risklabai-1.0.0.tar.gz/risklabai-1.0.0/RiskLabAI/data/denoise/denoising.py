@@ -1,0 +1,323 @@
+"""
+Implements covariance matrix denoising using Random Matrix Theory (RMT).
+
+This module provides functions to:
+1. Fit the Marcenko-Pastur distribution to the eigenvalues of a
+   correlation matrix.
+2. Identify and remove eigenvalues associated with noise.
+3. Reconstruct a "denoised" correlation and covariance matrix.
+
+Reference:
+    De Prado, M. (2018) Advances in financial machine learning.
+    John Wiley & Sons, Chapter 2.
+"""
+
+import pandas as pd
+import numpy as np
+from scipy.linalg import block_diag
+from scipy.optimize import minimize
+from sklearn.covariance import LedoitWolf
+from sklearn.neighbors import KernelDensity
+from typing import Tuple, Union, Optional, Dict, Any
+
+def marcenko_pastur_pdf(
+    variance: float, q: float, num_points: int = 1000
+) -> pd.Series:
+    r"""
+    Compute the Marcenko-Pastur (MP) probability density function.
+
+    This function defines the theoretical distribution of eigenvalues
+    for a random covariance matrix.
+
+    .. math::
+        f(\lambda) = \frac{q}{2\pi\sigma^2\lambda} \sqrt{(\lambda_{max} - \lambda)
+                     (\lambda - \lambda_{min})}
+
+    Parameters
+    ----------
+    variance : float
+        Variance of the observations (\(\sigma^2\)).
+    q : float
+        Ratio T/N, where T is observations and N is features.
+    num_points : int, default=1000
+        Number of points in the PDF.
+
+    Returns
+    -------
+    pd.Series
+        The Marcenko-Pastur PDF, indexed by eigenvalues (\(\lambda\)).
+    """
+    lambda_min = variance * (1 - (1.0 / q) ** 0.5) ** 2
+    lambda_max = variance * (1 + (1.0 / q) ** 0.5) ** 2
+    
+    eigenvalues = np.linspace(lambda_min, lambda_max, num_points)
+    
+    pdf = (q / (2 * np.pi * variance * eigenvalues)) * (
+        (lambda_max - eigenvalues) * (eigenvalues - lambda_min)
+    ) ** 0.5
+    
+    return pd.Series(pdf.flatten(), index=eigenvalues.flatten())
+
+
+def fit_kde(
+    observations: np.ndarray,
+    bandwidth: float = 0.01,
+    kernel: str = "gaussian",
+) -> KernelDensity:
+    """
+    Fit a Kernel Density Estimator (KDE) to observations.
+
+    Parameters
+    ----------
+    observations : np.ndarray
+        The observed data (e.g., eigenvalues).
+    bandwidth : float, default=0.01
+        The bandwidth for the kernel.
+    kernel : str, default="gaussian"
+        The kernel to use.
+
+    Returns
+    -------
+    KernelDensity
+        A fitted `sklearn.neighbors.KernelDensity` object.
+    """
+    observations = observations.reshape(-1, 1)
+    kde = KernelDensity(kernel=kernel, bandwidth=bandwidth).fit(observations)
+    return kde
+
+
+def _mp_pdf_fit_error(variance: float, q: float, eigenvalues: np.ndarray) -> float:
+    """
+    Error function for fitting the MP PDF to observed eigenvalues.
+    
+    Calculates the sum of squared errors between the theoretical
+    MP PDF and the empirical PDF (from KDE).
+
+    Parameters
+    ----------
+    variance : float
+        The \(\sigma^2\) parameter to test.
+    q : float
+        The T/N ratio.
+    eigenvalues : np.ndarray
+        The observed eigenvalues.
+
+    Returns
+    -------
+    float
+        The sum of squared errors.
+    """
+    theoretical_pdf = marcenko_pastur_pdf(variance, q, num_points=eigenvalues.shape[0])
+    
+    # Fit empirical PDF
+    kde = fit_kde(eigenvalues, bandwidth=0.01)
+    empirical_pdf = np.exp(kde.score_samples(theoretical_pdf.index.values.reshape(-1, 1)))
+    
+    # Calculate SSE
+    sse = np.sum((empirical_pdf - theoretical_pdf.values) ** 2)
+    return sse
+
+
+def find_max_eval(
+    eigenvalues: np.ndarray, q: float, bandwidth: float
+) -> Tuple[float, float]:
+    """
+    Find the maximum theoretical eigenvalue (\(\lambda_{max}\))
+    by fitting the Marcenko-Pastur distribution.
+
+    Parameters
+    ----------
+    eigenvalues : np.ndarray
+        The diagonal matrix (or vector) of observed eigenvalues.
+    q : float
+        The T/N ratio.
+    bandwidth : float
+        The KDE bandwidth.
+
+    Returns
+    -------
+    Tuple[float, float]
+        - lambda_max: The maximum theoretical eigenvalue.
+        - variance: The fitted variance (\(\sigma^2\)).
+    """
+    eigenvalues = np.diag(eigenvalues) # Ensure it's a vector
+    
+    # Minimize the SSE to find the best-fit variance
+    objective_func = lambda *args: _mp_pdf_fit_error(args[0], q, eigenvalues)
+    
+    optimizer_result = minimize(
+        objective_func,
+        x0=np.array([0.5]), # Initial variance guess
+        bounds=((1e-5, 1 - 1e-5),),
+    )
+
+    if optimizer_result.success:
+        variance = optimizer_result.x[0]
+    else:
+        variance = 1.0 # Fallback
+
+    # Calculate lambda_max based on the fitted variance
+    lambda_max = variance * (1 + (1.0 / q) ** 0.5) ** 2
+    return lambda_max, variance
+
+
+def denoised_corr(
+    eigenvalues: np.ndarray, eigenvectors: np.ndarray, num_facts: int
+) -> np.ndarray:
+    """
+    Reconstruct the correlation matrix using only the eigenvalues
+    associated with signal (i.e., > lambda_max).
+
+    Parameters
+    ----------
+    eigenvalues : np.ndarray
+        The diagonal matrix of *all* eigenvalues.
+    eigenvectors : np.ndarray
+        The matrix of eigenvectors.
+    num_facts : int
+        The number of factors (signal eigenvalues) to keep.
+
+    Returns
+    -------
+    np.ndarray
+        The denoised correlation matrix.
+    """
+    # 1. Get the eigenvalues and eigenvectors for signal
+    eigenvalues_signal = np.diag(eigenvalues)[:num_facts, :num_facts]
+    eigenvectors_signal = eigenvectors[:, :num_facts]
+    
+    # 2. Reconstruct the signal-only correlation matrix
+    corr1 = eigenvectors_signal @ eigenvalues_signal @ eigenvectors_signal.T
+    
+    # 3. Get the eigenvalues for noise and average them
+    if num_facts < eigenvalues.shape[0]:
+        avg_noise_eigenvalue = np.diag(eigenvalues)[num_facts:].mean()
+        eigenvectors_noise = eigenvectors[:, num_facts:]
+        
+        # 4. Reconstruct the noise-only correlation matrix
+        corr2 = eigenvectors_noise @ (
+            np.diag([avg_noise_eigenvalue] * (eigenvalues.shape[0] - num_facts))
+        ) @ eigenvectors_noise.T
+        
+        # 5. Add them back together
+        corr1 = corr1 + corr2
+        
+    # 6. Rescale to be a valid correlation matrix
+    np.fill_diagonal(corr1, 1.0)
+    return corr1
+
+
+def _cov_to_corr(cov: np.ndarray) -> np.ndarray:
+    """Convert covariance matrix to correlation matrix."""
+    std = np.sqrt(np.diag(cov))
+    corr = cov / np.outer(std, std)
+    corr[corr < -1] = -1.0 # Handle numerical errors
+    corr[corr > 1] = 1.0
+    return corr
+
+
+def _corr_to_cov(corr: np.ndarray, std: np.ndarray) -> np.ndarray:
+    """Convert correlation matrix to covariance matrix."""
+    return corr * np.outer(std, std)
+
+
+def denoise_cov(
+    cov0: np.ndarray, q: float, bandwidth: float = 0.01
+) -> np.ndarray:
+    """
+    De-noises a covariance matrix.
+
+    Parameters
+    ----------
+    cov0 : np.ndarray
+        The original (noisy) covariance matrix.
+    q : float
+        The T/N ratio.
+    bandwidth : float, default=0.01
+        The KDE bandwidth.
+
+    Returns
+    -------
+    np.ndarray
+        The de-noised covariance matrix.
+    """
+    corr0 = _cov_to_corr(cov0)
+    
+    eigenvalues, eigenvectors = np.linalg.eigh(corr0)
+    eigenvalues_diag = np.diag(eigenvalues)
+
+    # Find the noise cutoff
+    emax0, var0 = find_max_eval(eigenvalues_diag, q, bandwidth)
+    
+    # Identify number of signal factors
+    n_facts0 = eigenvalues.searchsorted(emax0)
+    
+    # Denoise the correlation matrix
+    corr1 = denoised_corr(eigenvalues_diag, eigenvectors, n_facts0)
+    
+    # Convert back to covariance
+    cov1 = _corr_to_cov(corr1, np.diag(cov0) ** 0.5)
+    return cov1
+
+
+def optimal_portfolio(
+    cov: np.ndarray, mu: Optional[np.ndarray] = None
+) -> np.ndarray:
+    """
+    Compute the optimal (e.g., minimum variance) portfolio weights.
+    
+    (Note: This is duplicated in `optimization/nco.py`)
+
+    Parameters
+    ----------
+    cov : np.ndarray
+        Covariance matrix.
+    mu : np.ndarray, optional
+        Vector of expected returns. If None, computes GMV portfolio.
+
+    Returns
+    -------
+    np.ndarray
+        The optimal portfolio weights.
+    """
+    inv_cov = np.linalg.inv(cov)
+    ones = np.ones(shape=(inv_cov.shape[0], 1))
+    
+    if mu is None:
+        mu = ones
+    
+    w = inv_cov @ mu
+    w /= (ones.T @ w)
+    return w.flatten()
+
+
+def optimal_portfolio_denoised(
+    cov: np.ndarray,
+    q: float,
+    mu: Optional[np.ndarray] = None,
+    bandwidth: float = 0.01,
+) -> np.ndarray:
+    """
+    Compute the optimal portfolio weights from a denoised covariance matrix.
+
+    Parameters
+    ----------
+    cov : np.ndarray
+        The *original* (noisy) covariance matrix.
+    q : float
+        The T/N ratio.
+    mu : np.ndarray, optional
+        Vector of expected returns.
+    bandwidth : float, default=0.01
+        The KDE bandwidth.
+
+    Returns
+    -------
+    np.ndarray
+        The optimal, denoised portfolio weights.
+    """
+    # Denoise the covariance matrix
+    cov_denoised = denoise_cov(cov, q, bandwidth)
+    
+    # Compute optimal portfolio on the denoised matrix
+    return optimal_portfolio(cov_denoised, mu)
