@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>分类 | {{ category_name }}</title>
+    <link rel="icon" type="image/x-icon" href="/blog/images/favicon.ico">
+    <link href="/blog/css/basic.css" rel="stylesheet">
+    <link href="/blog/css/category.css" rel="stylesheet">
+</head>
+<body>
+<nav>
+    <a href="/" class="brand">阿辉的小站</a>
+    <div class="nav-links">
+        <a href="/blog/index.html">blog</a>
+        <a href="/blog/archive.html">archive</a>
+        <a href="/blog/about/index.html">about</a>
+        <a href="/blog/hardware/index.html">hardware</a>
+        <a href="/blog/software/index.html">software</a>
+        <a href="/blog/cook/index.html">cook</a>
+    </div>
+</nav>
+
+<div class="category-container">
+    {% if not categories %}
+    <h1>暂无内容</h1>
+    {% endif %}
+
+    {% for item in categories %}
+
+    <div class="{{ 'article' if item['type'] == 'article' else 'category' }}">
+        <a href="{{ item['href'] }}">
+            <h2>
+                {{ item['name'] }}
+            </h2>
+        </a>
+        {% if item['metadata'] is not none %}
+        <div class="article-metadata">
+            <strong>Date:</strong> {{ item.metadata.date }}<br>
+            <strong>Summary:</strong> {{ item.metadata.summary }}
+        </div>
+        {% endif %}
+    </div>
+
+    {% endfor %}
+</div>
+
+<footer>
+    <p class="site-footer">
+        备案号:
+        <a href="https://beian.miit.gov.cn/" target="_blank">
+            浙ICP备19051268号
+        </a>
+    </p>
+</footer>
+
+</body>
+</html>
