@@ -1,0 +1,242 @@
+[project]
+name = "mcp-docker"
+version = "1.0.1"
+description = "Model Context Protocol server for Docker management with AI assistants"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "James Williams" }
+]
+keywords = [
+    "mcp",
+    "docker",
+    "model-context-protocol",
+    "ai",
+    "claude",
+    "containers",
+    "docker-management",
+    "llm",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "mcp>=1.2.0",
+    "docker>=7.1.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "loguru>=0.7.0",
+    "starlette>=0.27.0",
+    "uvicorn>=0.27.0",
+    "cryptography>=41.0.0",  # SSH authentication support (Apache-2.0/BSD)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-docker>=3.0.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "ruff>=0.6.0",
+    "types-docker>=7.1.0",
+    "httpx>=0.27.0",
+    "httpx-sse>=0.4.0",
+    "hypothesis>=6.0.0",
+    "atheris>=2.3.0",  # Fuzzing with ClusterFuzzLite (Apache-2.0)
+]
+
+[project.urls]
+Homepage = "https://github.com/williajm/mcp_docker"
+Documentation = "https://williajm.github.io/mcp_docker/"
+Repository = "https://github.com/williajm/mcp_docker"
+Issues = "https://github.com/williajm/mcp_docker/issues"
+Changelog = "https://github.com/williajm/mcp_docker/releases"
+
+[project.scripts]
+mcp-docker = "mcp_docker.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_docker"]
+
+[tool.hatch.build.targets.sdist]
+# Explicitly exclude all development, CI, and config files
+exclude = [
+    ".gitignore",
+    ".git",
+    ".github",
+    ".clusterfuzzlite",
+    ".python-version",
+    ".pre-commit-config.yaml",
+    "codecov.yml",
+    "sonar-project.properties",
+    "uv.lock",
+    "start_sse_server.sh",
+    "docs/_config.yml",
+    "AGENTS.md",
+    "CLAUDE.md",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+    "RET",   # flake8-return
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "ERA",   # eradicate
+    "PL",    # pylint
+    "PERF",  # perflint
+]
+ignore = [
+    "UP038",  # isinstance requires tuple syntax, not union types (X | Y only for annotations)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests need flexibility for fixtures, long assertions, and test-specific patterns
+"tests/**/*.py" = [
+    "ARG",      # Unused arguments (fixtures may require args for setup)
+    "PLR2004",  # Magic values (acceptable in test assertions)
+    "E501",     # Line length (test assertions can be long for readability)
+    "PLC0415",  # Import at top-level (tests may need conditional imports)
+    "SIM105",   # Use contextlib.suppress (explicit try-except-pass is clearer in tests)
+    "SIM117",   # Single with statement (separate context managers are more readable)
+    "PLR0915",  # Too many statements (integration/E2E tests naturally have many steps)
+    "ERA001",   # Commented code (tests sometimes keep old approaches as documentation)
+]
+# Examples prioritize educational clarity over strict linting
+"examples/**/*.py" = [
+    "E501",     # Line length (examples can have long lines for clarity)
+    "PLR0913",  # Too many arguments (examples may show various parameters)
+    "PLR2004",  # Magic values (acceptable for demonstration)
+    "T201",     # Print statements (examples use print for output)
+    "ERA001",   # Commented code (examples may show alternative approaches)
+    "PLC0415",  # Imports not at top (examples may show imports inline for clarity)
+    "F401",     # Unused imports (examples may import for demonstration)
+    "F541",     # f-string without placeholders (acceptable for consistency)
+    "F821",     # Undefined names (examples may be incomplete)
+    "F841",     # Unused variables (examples may show syntax without using all vars)
+    "I001",     # Import sorting (not critical for examples)
+    "UP012",    # Unnecessary encoding (explicit encoding is clearer in examples)
+    "UP031",    # Use format specifiers (% formatting is shown for comparison)
+]
+# Fuzz tests use Atheris conventions (TestOneInput is required entry point)
+"tests/fuzz/**/*.py" = [
+    "N802",     # TestOneInput function name is required by Atheris fuzzing framework
+    "UP038",    # isinstance with tuples is more readable for multiple types
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = "docker.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pydantic.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pydantic_settings.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "loguru.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "starlette.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "uvicorn.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "hypothesis.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "atheris.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests requiring Docker",
+    "e2e: End-to-end tests with realistic scenarios",
+    "slow: Slow running tests",
+    "fuzz: Fuzz tests (run by ClusterFuzzLite)",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "**/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
