@@ -1,0 +1,57 @@
+[project]
+name = "atooms"
+description = "A framework for simulations of interacting particles"
+readme = "README.md"
+version = "3.28.3"
+authors = [
+    {name = "Daniele Coslovich", email = "daniele.coslovich@umontpellier.fr"}
+]
+requires-python = ">=3.7"
+license = {text = "GPLv3"}
+dependencies = [
+    "numpy>=1.21.6,<3",
+    "f2py_jit>=1.1.1"
+]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+]
+
+[project.urls]
+repository = "https://framagit.org/atooms/atooms"
+homepage = "https://framagit.org/atooms/atooms"
+documentation = "https://atooms.frama.io/atooms"
+changelog = "https://framagit.org/atooms/atooms/-/blob/master/CHANGELOG.md"
+
+[project.optional-dependencies]
+backends = [
+    "h5py",
+    # Version 2 of gsd has troubles with numpy 2, except for these python versions
+    # TODO: support gsd 3
+    "gsd~=2.0; python_version >= '3.13' or python_version == '3.8'",
+    "matplotlib",
+    # "ovito",
+    # "py3dmol",
+    "lammps"
+]
+
+# Deprecated but still working.
+# It seems the only way to be backward compatible with scripts ending in .py
+[tool.setuptools]
+script-files = ["bin/trj.py"]
+include-package-data = true
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["atooms.*"]
