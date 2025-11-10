@@ -1,0 +1,41 @@
+# Simplified Pre-commit hooks for Source Cooperative MCP Server
+# Install: uv run pre-commit install
+# Run manually: uv run pre-commit run --all-files
+
+repos:
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+        name: ruff linter
+      - id: ruff-format
+        name: ruff formatter
+
+  # Essential checks only (no file modifications)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Security
+      - id: detect-private-key
+        name: detect private keys
+      - id: check-added-large-files
+        name: check for large files
+        args: [--maxkb=1000]
+
+      # Syntax validation
+      - id: check-yaml
+        name: check yaml syntax
+      - id: check-json
+        name: check json syntax
+      - id: check-ast
+        name: check python ast
+
+      # Conflicts
+      - id: check-merge-conflict
+        name: check for merge conflicts
+
+# Configuration
+default_stages: [pre-commit]
+fail_fast: false
