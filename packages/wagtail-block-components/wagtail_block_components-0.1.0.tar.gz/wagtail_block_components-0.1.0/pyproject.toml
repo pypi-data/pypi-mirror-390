@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wagtail-block-components"
+version = "0.1.0"
+description = "Use Wagtail blocks as reusable components in Django templates"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Joey Jurjens", email = "joeyjurjens@gmail.com"}
+]
+keywords = ["wagtail", "django", "components", "blocks"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Wagtail",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "wagtail>=6.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/joeyjurjens/wagtail-block-components"
+Repository = "https://github.com/joeyjurjens/wagtail-block-components"
+Issues = "https://github.com/joeyjurjens/wagtail-block-components/issues"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+]
+test = [
+    "pytest",
+    "pytest-django",
+    "pytest-cov",
+    "Jinja2",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+python_files = ["test_*.py", "*_test.py"]
+pythonpath = [".", "tests"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["wagtail_block_components"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.ruff]
+target-version = "py38"
+src = ["wagtail_block_components", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9", "F",
+    "UP",
+    "B",
+    "I",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.isort]
+known-first-party = ["wagtail_block_components"]
+section-order = [
+  "future",
+  "standard-library",
+  "django",
+  "wagtail",
+  "third-party",
+  "first-party",
+  "local-folder"
+]
+
+[tool.ruff.lint.isort.sections]
+django = ["django", "django_*"]
+wagtail = ["wagtail", "wagtail_*"]
