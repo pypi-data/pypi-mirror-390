@@ -1,0 +1,75 @@
+# Referências
+
+- [Referências](#referências)
+  - [Erros Numéricos](#erros-numéricos)
+  - [Raízes de funções](#raízes-de-funções)
+  - [Interpolações](#interpolações)
+  - [Funções Aproximadoras](#funções-aproximadoras)
+  - [Integrações Numéricas](#integrações-numéricas)
+    - [Usando `integracao_trapezio`](#usando-integracao_trapezio)
+
+## Erros Numéricos
+
+| <div style="width: 350px;"> Métodos </div>                | <div style="width: 400px;">Descrição</div>                                                          | <div style="width: 175px;">Argumentos</div>                                                                                                                                                                                                                                                                                                                      |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `erro_absluto`                                            | Calcula o erro absoluto de dois números                                                             | `valor_real`: valor real <br> `valor_aproximado`: valor aproximado                                                                                                                                                                                                                                                                                               |
+| `erro_relativo`                                           | Calcula o erro do valor aproximado em <br> proporção do real.                                       | `valor1`: primeiro valor <br> `valor2`: segundo valor                                                                                                                                                                                                                                                                                                            |
+
+## Raízes de funções
+
+| <div style="width: 350px;"> Métodos </div>                | <div style="max-width: 400px; overflow-wrap: break-word; white-space: normal;">Descrição</div>      | <div style="width: 175px;">Argumentos</div>                                                                                                                                                                                                                                                                                                                      |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `newton_raphson`                                          | Aplica o método de __Newton-Raphson__ para encontrar <br> uma raiz da função f                      | `f`: função f(x) <br> `x0`: ponto inicial <br> `tol`: tolerância <br> `max_iter`: número máximo de iterações<br> `df`: Derivada de f(x)                                                                                                                                                                                                                          |
+| `biseccao`                                                | Aplica o método da __bissecção__ para encontrar uma raiz no <br> intervalo __a__ e __b__.           | `f`: função f(x) <br> `a`: menor do intervalo <br> `b`: maior do intervalo <br> `tol`: tolerancia <br> `max_iter`: número de iterações máxima                                                                                                                                                                                                                    |
+| `secante`                                                 | Encontra uma raiz da função f usando o método da __secante__                                        | `f`: a fun;'ao real <br> `x0`: o primeiro ponto <br> `x1`: o segundo ponto <br> `tol`: tolerância para o critério de parada <br>`max_iter`: o número máximo de interações permitidas |
+
+Você pode ver
+
+## Interpolações
+
+| <div style="width: 350px;"> Métodos </div>                | <div style="width: 400px;">Descrição</div>                                                          | <div style="width: 175px;">Argumentos</div>                                                                                                                                                                                                                                                                                                                     |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `linear`                                                  | Faz a interpolação linear de uma escala e <br> obtém o valor correspondente.                        | `a`: primeiro ponto <br> `b`: segundo ponto <br> `x`: valor independente entre `a` e `b` <br> `t`: parâmetro da interpolação entre 0 e 1                                                                                                                                                                                                                        |                                        
+| `linear_partes`                                           | Faz a interpolação po partes de acordo com o <br> número de amostras.                               | `x_valores`: lista de abscissas <br> `y_valores`: lista de ordenadas <br> `__call__(t)`: obtem o valor da interpolação para o valor `t` entre __0__ e __1__                                                                                                                                                                                                      |
+| `polinomial`                                              | Faz a interpolação polinomial a partir de pontos no espaço.                                         | `x`  lista de abscissas <br> `y`: lista de ordenadas `__call__(x)`: função de interpolação avaliada no ponto x <br> `coeficientes()`: calcula os coeficientes do polinômio                                                                                                                                                                                       |
+| `polinomial_hermite`                                      | Faz a interpolação de Hermite-Osculadora com <br> pontos e derivadas                                | `D` tupla do ponto com suas derivadas, em ordem crescente da ordem da derivda                                                                                                                                                                                                                                                                                    |
+
+## Funções Aproximadoras
+| <div style="width: 350px;"> Métodos </div>                | <div style="width: 400px;">Descrição</div>                                                          | <div style="width: 175px;">Argumentos</div>                                                                                                                                                                                                                                                                                                                    |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `theil_sen`                                               | Calcula a reta aproximada desconsiderando pontos descrepantes                                       | `x`: conjuntos de pontos do eixo-x <br> `y`: conjunto de pontos do eixo-y                                                                                                                                                                                                                                                                                      |
+| `minimos_quadrados`                                       | Método de aproximção por mínimos quadrados                                                          | `vetor_x`: lista de abscissas <br> `vetor_y`: lista de ordenadas.                                                                                                                                                                                                                                                                                              |
+| `ajuste_polinomial_min_quadrados`                         | Método de aproximação polinomial por mínimos quadrados                                              | `x`: lista de abscissas <br> `y`: lista de ordenadas <br> `grau`: grau do polinômio desejado <br> `cond_thresh: limiar para o número de condição usado.                                                                                                                                                                                                        |
+
+## Integrações Numéricas
+
+| <div style="width: 350px;"> Métodos </div>                                                   | <div style="width: 400px;">Descrição</div>                       | <div style="width: 175px;">Argumentos</div>                                                                                                                                            |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `integral_trapezio`                                       | Calcula a integral de forma aproximada com o método do Trapézio                                     | `func`: função real f(x) <br> `a`: valor inicial <br> `b`: valor final <br> `n`: número de subintervalos <br> `ponto_corte`: parâmetro de altura do subintervalo <ul> <li> __0__ para soma de Riemann pela esquerda</li> <li> __1__ para soma de Riemann pela direita</li> <li> __0.5__ para soma de Riemann pelo centro</li> </ul>                            |
+| `integral_retangulo`                                      | Calcula a integral aproximada usando subdivisões em retângulo                                       | `func`: função real f(x) <br> `pi`: limite inferior do intervalo <br> `pf`: limite superior do intervalo <br> `n`: número de subdivisões trapezoidais.                                                                                                                                                                                                         | 
+| `integral_componentes`                                    | Calcula a integral de das componentes de uma curva                                                  | 'f_vex': função vetorial f(x) <br> 'a': ponto inicial do intervalo <br> 'b': ponto final do intervalo <br> 'n': número de subintervalos da partição <br> `ponto_corte`: parâmetro de altura do                                                                                                                                                                 |
+
+### Usando `integracao_trapezio`
+
+> __ATENÇÃO__: A integração por `integracao_trapezio` ela não é exata
+
+```python
+from CB2325NumericaG2 import integracao_trapezio, erro_absoluto
+
+import math
+
+from sympy import integrate, symbols
+
+f = lambda x: math.sin(x**2)
+INTERVALS = 100
+
+
+exact_f_val = integrate(f, a, b)
+appr_f_val = integracao_trapezio(f, a, b, INTERVALS)
+
+err = erro_absoluto(exact_f_val - appr_f_val)
+
+print(f"Aproximação da função sin(x^2) com {INTERVALS} foi de: {err}")
+
+
+```
