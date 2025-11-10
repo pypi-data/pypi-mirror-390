@@ -1,0 +1,70 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF_NAME#v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Validate version
+      run: |
+        python -m pip install tomli
+        TAG_VERSION=${{ steps.version.outputs.version }}
+        PKG_VERSION=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])")
+        if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+          echo "Error: Tag version ($TAG_VERSION) != Package version ($PKG_VERSION)"
+          exit 1
+        fi
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build
+    
+    - name: Build package
+      run: |
+        python -m build
+    
+    - name: Upload to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        body: |
+          ## Changes
+          
+          See [CHANGELOG.md](https://github.com/fabiandistler/pypet/blob/${{ github.ref_name }}/CHANGELOG.md) for details.
+          
+          ## Installation
+          pip install pypet==${{ steps.version.outputs.version }}
+          
+          ## Assets
+          
+          - `pypet-${{ steps.version.outputs.version }}-py3-none-any.whl` - Wheel distribution
+          - `pypet-${{ steps.version.outputs.version }}.tar.gz` - Source distribution
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
