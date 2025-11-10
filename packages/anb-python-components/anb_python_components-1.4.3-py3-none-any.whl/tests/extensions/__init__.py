@@ -1,0 +1,1 @@
+# tests/extensions/__init__.py
