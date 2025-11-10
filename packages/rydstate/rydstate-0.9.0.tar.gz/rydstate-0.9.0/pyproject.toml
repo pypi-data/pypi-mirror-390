@@ -1,0 +1,154 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "rydstate"
+dynamic = ["version"]
+description = "A Python package for calculating Rydberg wavefunctions."
+readme = "README.md"
+keywords = ["rydberg", "wavefunctions", "numerov", "quantum physics"]
+authors = [
+    { name = "RydState Developers" },
+]
+maintainers = [
+    { name = "Johannes Mögerle", email = "johannes.moegerle@itp3.uni-stuttgart.de" },
+]
+license = "LGPL-3.0-or-later"
+license-files = ["LICENSE.txt", "LICENSES/*"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Typing :: Typed",
+]
+requires-python = ">= 3.9"
+dependencies = [
+    "numpy >= 2.0",
+    "numba >= 0.60",
+    "pint >= 0.24",
+    "scipy >= 1.13",
+    "sympy >= 1.13",
+    "mpmath >= 1.3",
+]
+
+[project.optional-dependencies]
+tests = [
+  "pytest >= 8.0",
+  "nbmake >= 1.3",
+  "rydstate[comparison]",
+]
+docs = [
+  "sphinx >= 7",
+  "sphinx-rtd-theme >= 2.0",
+  "nbsphinx >= 0.9",
+  "nbconvert >= 7.8",
+  "jupyter >= 1.1",
+  "sphinx_autodoc_typehints >= 1.24",
+  "sphinx-autobuild >= 2021.3",
+  "matplotlib >= 3.7.4",
+  "myst-parser >= 3.0",
+]
+comparison = [
+  "pairinteraction < 1.0",
+  "arc-alkali-rydberg-calculator < 3.9",
+]
+jupyter = [
+  "pip",
+  "ipykernel",
+]
+mypy = [
+  "mypy >= 1.14",
+  "scipy-stubs >= 1.15; python_version >= '3.10'",
+]
+
+[dependency-groups]
+dev = [
+  "rydstate[docs,tests,comparison,jupyter,mypy]",
+  "check-wheel-contents >= 0.6",
+]
+
+[project.urls]
+Repository = "https://github.com/pairinteraction/rydstate"
+
+
+[tool.setuptools.dynamic]
+version = {attr = "rydstate.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+rydstate = ["species/nist_energy_levels/*.txt"]
+
+[tool.check-wheel-contents]
+toplevel = ["rydstate"]
+
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+  "docs/examples",
+  "src/rydstate"
+]
+addopts = [
+    "--import-mode=importlib",
+    # "--nbmake",  # only run nbmake locally and in one dedicated CI job
+    "--doctest-modules",
+]
+
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+extend-ignore = [
+  # FIXME: we should fix these in the future
+  "TRY003",  # Avoid specifying long messages outside the exception class
+  "FBT",  # Boolean arguments ...
+  "PLR2004",  # FIXME: Magic value used in comparison
+  "D1",  # FIXME: remove once more docstrings are added
+  "S101",  # FIXME: Use of assert detected
+  # We don't use the following rules
+  "COM812",  # (missing-trailing-comma) incompatible with ruff format
+  "D203",  # (incorrect-blank-line-before-class) incompatible with D211: no-blank-line-before-class
+  "D213",  # (multi-line-summary-second-line) incompatible with D212: multi-line-summary-first-line
+  "SIM114",  # Combine if branches using logical or operator; this breaks mypy, so we disable it for now
+  "TD",  # Linting TODOs; we dont need this
+  "FIX",  # Disallow TODOs, FIXMEs, etc.; enforcing this is a bit too strict
+  "E741",  # Ambiguous variable name, does not like quantum number 'l'
+  "EM10",  # raw-string or f-string in-exception
+  "PLR0913",  # Too many arguments in function definition (... > 5)
+  "PLW1641",  # eq-without-hash
+  "RUF023",  # unsorted-dunder-slots
+]
+future-annotations = true
+flake8-tidy-imports.ban-relative-imports = "all"
+mccabe.max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"docs/examples/*.ipynb" = ["T201"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+
+
+[tool.mypy]
+strict = true
+disallow_untyped_decorators = false
+ignore_missing_imports = true
