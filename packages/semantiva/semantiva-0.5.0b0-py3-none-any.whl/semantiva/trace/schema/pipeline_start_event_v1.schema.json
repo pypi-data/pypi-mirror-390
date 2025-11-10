@@ -1,0 +1,38 @@
+{
+  "$id": "https://semantiva.tech/schemas/trace/v1/pipeline_start_event_v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Semantiva Pipeline Start Event v1",
+  "type": "object",
+  "allOf": [
+    { "$ref": "./trace_header_v1.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "record_type": { "const": "pipeline_start" },
+        "pipeline_id": { "type": "string", "minLength": 1 },
+        "pipeline_spec_canonical": { "type": "object" },
+        "run_space_launch_id": {
+          "type": "string",
+          "description": "Foreign key to run_space_start (FK part 1)"
+        },
+        "run_space_attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Foreign key to run_space_start (FK part 2, for retry disambiguation)"
+        },
+        "run_space_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based position of this run within the launch"
+        },
+        "run_space_context": {
+          "type": "object",
+          "description": "Parameter values for this specific run"
+        },
+        "meta": { "type": "object" }
+      },
+      "required": ["pipeline_id", "pipeline_spec_canonical"],
+      "additionalProperties": true
+    }
+  ]
+}
