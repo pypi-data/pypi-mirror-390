@@ -1,0 +1,2 @@
+"""Agent‑OS CLI package."""
+
