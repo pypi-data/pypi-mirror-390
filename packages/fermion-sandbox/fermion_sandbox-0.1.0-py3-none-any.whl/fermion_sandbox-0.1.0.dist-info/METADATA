@@ -1,0 +1,397 @@
+Metadata-Version: 2.4
+Name: fermion-sandbox
+Version: 0.1.0
+Summary: Secure isolated code execution SDK for Python
+Author-email: Fermion <support@fermion.app>
+License-Expression: MIT
+Project-URL: Homepage, https://docs.fermion.app/
+Project-URL: Documentation, https://docs.fermion.app/
+Project-URL: Repository, https://github.com/fermion-app/sandbox-python
+Project-URL: Issues, https://github.com/fermion-app/sandbox-python/issues
+Keywords: code-execution,sandbox,fermion,container,isolation
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: websockets>=12.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Dynamic: license-file
+
+# fermion-sandbox
+
+Secure isolated code execution SDK for Python. Run untrusted code, build projects, or host services in ephemeral containers.
+
+## Installation
+
+```bash
+pip install fermion-sandbox
+```
+
+## Quick Start
+
+```python
+import asyncio
+import os
+from fermion_sandbox import Sandbox
+
+async def main():
+    # Get API key from environment
+    api_key = os.getenv('FERMION_API_KEY')
+    if not api_key:
+        raise ValueError("FERMION_API_KEY environment variable is required")
+
+    # Create sandbox
+    sandbox = Sandbox(api_key=api_key)
+    await sandbox.create(should_backup_filesystem=False)
+
+    # Execute commands
+    result = await sandbox.run_command(cmd='node', args=['--version'])
+    print(result.stdout)
+
+    # Write and read files
+    await sandbox.write_file(
+        path='~/script.js',
+        content='console.log("Hello World")'
+    )
+
+    response = await sandbox.get_file('~/script.js')
+    content = response.text
+
+    # Clean up
+    await sandbox.disconnect()
+
+asyncio.run(main())
+```
+
+> **Note:** Set your API key as an environment variable: `export FERMION_API_KEY='your-api-key'`
+
+## Key Features
+
+- **Isolated containers** - Secure Linux environments for code execution
+- **Real-time streaming** - WebSocket-based command output streaming
+- **File operations** - Read/write files with binary support
+- **Public URLs** - Expose ports 3000, 1337, 1338 for web services
+- **Git support** - Clone repositories on container startup
+- **Type safety** - Full type hints with Pydantic models
+- **Async/await** - Built on asyncio for modern Python applications
+
+## Core API
+
+### Creating a Sandbox
+
+```python
+sandbox = Sandbox(api_key='your-api-key')
+
+# New container
+await sandbox.create(
+    should_backup_filesystem=False,  # Persist filesystem after shutdown
+    git_repo_url='https://github.com/user/repo.git'  # Optional
+)
+
+# Or connect to existing
+await sandbox.from_snippet('snippet-id')
+```
+
+### Running Commands
+
+```python
+# Quick commands (< 5 seconds)
+result = await sandbox.run_command(
+    cmd='ls',
+    args=['-la']
+)
+print(result.stdout, result.stderr)
+
+# Long-running with streaming
+result = await sandbox.run_streaming_command(
+    cmd='npm',
+    args=['install'],
+    on_stdout=lambda data: print(data),
+    on_stderr=lambda data: print(data)
+)
+print(f"Exit code: {result.exit_code}")
+```
+
+### File Operations
+
+```python
+# Write file
+await sandbox.write_file(
+    path='~/app.js',
+    content='console.log("Hello")'
+)
+
+# Read file
+response = await sandbox.get_file('~/app.js')
+text = response.text
+binary_data = response.content
+```
+
+### Web Services
+
+```python
+# Start a server
+asyncio.create_task(sandbox.run_streaming_command(
+    cmd='node',
+    args=['server.js']
+))
+
+# Get public URL
+url = await sandbox.expose_port(3000)
+print(f'Live at: {url}')
+# https://abc123-3000.run-code.com
+```
+
+### Quick Code Execution
+
+```python
+from fermion_sandbox import decode_base64url
+
+# Execute code without full sandbox
+result = await sandbox.quick_run(
+    runtime='Python',
+    source_code='print("Hello, World!")'
+)
+
+if result.run_result and result.run_result.program_run_data:
+    stdout = decode_base64url(result.run_result.program_run_data.stdout_base64_url_encoded)
+    print(stdout)
+```
+
+## Examples
+
+### Run a Node.js Project
+
+```python
+import asyncio
+from fermion_sandbox import Sandbox
+
+async def main():
+    sandbox = Sandbox(api_key='your-api-key')
+    await sandbox.create(
+        should_backup_filesystem=False,
+        git_repo_url='https://github.com/user/node-app.git'
+    )
+
+    # Install dependencies
+    await sandbox.run_streaming_command(
+        cmd='npm',
+        args=['install'],
+        on_stdout=lambda data: print(data.strip())
+    )
+
+    # Build project
+    await sandbox.run_command(cmd='npm', args=['run', 'build'])
+
+    # Start server
+    asyncio.create_task(sandbox.run_streaming_command(
+        cmd='npm',
+        args=['start']
+    ))
+
+    # Get public URL
+    url = await sandbox.expose_port(3000)
+    print(f'App running at: {url}')
+
+    # Keep running
+    await asyncio.sleep(60)
+    await sandbox.disconnect()
+
+asyncio.run(main())
+```
+
+### Execute C++ Code
+
+```python
+from fermion_sandbox import Sandbox, decode_base64url
+
+async def main():
+    sandbox = Sandbox(api_key='your-api-key')
+
+    result = await sandbox.quick_run(
+        runtime='C++',
+        source_code='''
+            #include <iostream>
+            using namespace std;
+            int main() {
+                int a, b;
+                cin >> a >> b;
+                cout << a + b << endl;
+                return 0;
+            }
+        ''',
+        stdin='5 3',
+        expected_output='8'
+    )
+
+    print(f"Status: {result.run_result.run_status}")
+    stdout = decode_base64url(result.run_result.program_run_data.stdout_base64_url_encoded)
+    print(f"Output: {stdout}")
+
+asyncio.run(main())
+```
+
+## API Reference
+
+### Sandbox Class
+
+#### Constructor
+
+```python
+Sandbox(api_key: str)
+```
+
+Initialize sandbox client with API key.
+
+#### Methods
+
+**`async create(should_backup_filesystem: bool, git_repo_url: Optional[str] = None) -> str`**
+
+- Create new container
+- Returns: snippet ID
+
+**`async from_snippet(playground_snippet_id: str) -> None`**
+
+- Connect to existing container
+
+**`async run_command(cmd: str, args: Optional[list[str]] = None) -> CommandResult`**
+
+- Execute command (< 5s timeout)
+- Returns: CommandResult with stdout, stderr
+
+**`async run_streaming_command(...) -> CommandResult`**
+
+- Execute with streaming output
+- Callbacks: on_stdout, on_stderr
+- Returns: CommandResult with stdout, stderr, exit_code
+
+**`async write_file(path: str, content: Union[str, bytes]) -> None`**
+
+- Write file to container
+
+**`async get_file(path: str) -> httpx.Response`**
+
+- Read file from container
+- Returns: Response object (use .text or .content)
+
+**`async expose_port(port: Literal[3000, 1337, 1338]) -> str`**
+
+- Get public URL for port
+
+**`get_public_urls() -> Dict[int, str]`**
+
+- Get all available public URLs
+
+**`async disconnect() -> None`**
+
+- Clean up resources
+
+**`is_connected() -> bool`**
+
+- Check connection status
+
+**`async quick_run(...) -> DsaExecutionResult`**
+
+- Execute code without full sandbox
+- Supported runtimes: C, C++, Java, Python, Node.js, SQLite, MySQL, Go, Rust, .NET
+
+## File Paths
+
+All paths must start with `~` (home) or `/home/damner`:
+
+- `~/file.js` → `/home/damner/file.js`
+- `/home/damner/app/index.js` → absolute path
+- `/home/damner/code/app/index.js` → also supported (nested under home)
+
+## Supported Ports
+
+Public URLs available for:
+
+- Port 3000
+- Port 1337
+- Port 1338
+
+## Requirements
+
+- Python 3.8+
+- httpx
+- websockets
+- pydantic
+
+## Development
+
+```bash
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Format code
+black fermion_sandbox/
+
+# Type checking
+mypy fermion_sandbox/
+```
+
+## Examples Directory
+
+Check the `examples/` directory for more usage examples:
+
+- `basic_usage.py` - Basic commands and file operations
+- `streaming_command.py` - Real-time streaming output
+- `quick_run.py` - Quick code execution
+- `web_server.py` - Running web servers with public URLs
+
+### Running Examples
+
+Set your API key and run any example:
+
+```bash
+# Set API key inline (recommended)
+FERMION_API_KEY='your-api-key' python examples/basic_usage.py
+
+# Or export for current terminal session
+export FERMION_API_KEY='your-api-key'
+python examples/basic_usage.py
+```
+
+### Running Tests
+
+```bash
+# Unit tests (no API key needed)
+pytest tests/test_utils.py tests/test_types.py
+
+# Integration tests (API key required)
+FERMION_API_KEY='your-api-key' pytest tests/test_integration.py
+
+# All tests
+FERMION_API_KEY='your-api-key' pytest tests/
+```
+
+## License
+
+MIT
+
+## Support
+
+For issues and questions, visit [GitHub Issues](https://github.com/fermion-app/sandbox-python/issues).
+
+## Related
+
+- [Node.js SDK](https://github.com/fermion-app/sandbox) - Official TypeScript/JavaScript SDK
+- [Documentation](https://docs.fermion.app/) - Full API documentation
