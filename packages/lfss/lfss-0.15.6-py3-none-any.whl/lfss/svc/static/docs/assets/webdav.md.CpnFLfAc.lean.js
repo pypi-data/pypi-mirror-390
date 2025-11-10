@@ -1,0 +1,1 @@
+import{_ as e,c as t,o as i,a2 as o}from"./chunks/framework.DGhb03gm.js";const _=JSON.parse('{"title":"WebDAV","description":"","frontmatter":{},"headers":[],"relativePath":"webdav.md","filePath":"webdav.md"}'),s={name:"webdav.md"},a=o("",7),d=[a];function l(r,c,n,h,p,b){return i(),t("div",null,d)}const m=e(s,[["render",l]]);export{_ as __pageData,m as default};
