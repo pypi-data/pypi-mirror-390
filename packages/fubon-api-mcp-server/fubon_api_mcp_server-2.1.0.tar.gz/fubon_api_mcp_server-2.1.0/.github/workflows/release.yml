@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        default: 'patch'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine setuptools-scm
+
+    - name: Get version from tag
+      if: github.event_name == 'release'
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "TAG_VERSION=v$VERSION" >> $GITHUB_ENV
+
+    - name: Bump version and create tag
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        # Get current version from setuptools-scm
+        CURRENT_VERSION=$(python -c "import setuptools_scm; print(setuptools_scm.get_version())")
+        echo "Current version: $CURRENT_VERSION"
+
+        # Bump version based on input
+        if [ "${{ github.event.inputs.version }}" = "major" ]; then
+          # Extract major.minor.patch from current version
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+          NEW_VERSION="$((major + 1)).0.0"
+        elif [ "${{ github.event.inputs.version }}" = "minor" ]; then
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+          NEW_VERSION="$major.$((minor + 1)).0"
+        else
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+          NEW_VERSION="$major.$minor.$((patch + 1))"
+        fi
+
+        echo "New version: $NEW_VERSION"
+        echo "VERSION=$NEW_VERSION" >> $GITHUB_ENV
+        echo "TAG_VERSION=v$NEW_VERSION" >> $GITHUB_ENV
+
+        # Create and push tag
+        git tag "$TAG_VERSION"
+        git push origin "$TAG_VERSION"
+
+    - name: Build package
+      run: |
+        python -m build
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        username: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        print-hash: true
+
+    - name: Create GitHub release
+      if: github.event_name == 'workflow_dispatch'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ env.VERSION }}
+        release_name: Release v${{ env.VERSION }}
+        body: |
+          ## What's Changed
+
+          ### 🚀 Features
+          - New features and improvements
+
+          ### 🐛 Bug Fixes
+          - Bug fixes and patches
+
+          ### 📚 Documentation
+          - Documentation updates
+
+          ### 🔧 Maintenance
+          - Code quality improvements
+          - Dependency updates
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ env.VERSION }}...v${{ env.VERSION }}
+
+        draft: false
+        prerelease: false

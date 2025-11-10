@@ -1,0 +1,151 @@
+{
+  "name": "fubon-api-mcp-server",
+  "displayName": "Fubon API MCP Server",
+  "description": "富邦證券 MCP Server - 完整的台股交易功能與市場數據查詢",
+  "version": "2.1.0",
+  "publisher": "mofesto",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Data Science",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "fubon",
+    "securities",
+    "trading",
+    "mcp",
+    "model-context-protocol",
+    "taiwan-stock",
+    "api",
+    "finance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mofesto/fubon-api-mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/Mofesto/fubon-api-mcp-server/issues"
+  },
+  "homepage": "https://github.com/Mofesto/fubon-api-mcp-server#readme",
+  "license": "MIT",
+  "author": {
+    "name": "Mofesto",
+    "email": "mofesto.cui@gmail.com"
+  },
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "*"
+  ],
+  "contributes": {
+    "modelContextProtocol": {
+      "servers": {
+        "fubon-api": {
+          "command": "python",
+          "args": [
+            "-m",
+            "fubon_api_mcp_server.server"
+          ],
+          "env": {
+            "FUBON_USERNAME": "${config:fubon-mcp.username}",
+            "FUBON_PASSWORD": "${env:FUBON_PASSWORD}",
+            "FUBON_PFX_PATH": "${config:fubon-mcp.pfxPath}",
+            "FUBON_PFX_PASSWORD": "${env:FUBON_PFX_PASSWORD}",
+            "FUBON_DATA_DIR": "${config:fubon-mcp.dataDir}"
+          }
+        }
+      }
+    },
+    "configuration": {
+      "title": "Fubon API MCP Server",
+      "properties": {
+        "fubon-mcp.username": {
+          "type": "string",
+          "default": "",
+          "description": "富邦證券帳號"
+        },
+        "fubon-mcp.pfxPath": {
+          "type": "string",
+          "default": "",
+          "description": "PFX 憑證檔案路徑"
+        },
+        "fubon-mcp.dataDir": {
+          "type": "string",
+          "default": "",
+          "description": "本地數據儲存目錄（空白則使用預設路徑 ~/Library/Application Support/fubon-mcp/data）"
+        },
+        "fubon-mcp.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "VS Code 啟動時自動啟動 MCP Server"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "fubon-mcp.configure",
+        "title": "Configure Fubon MCP Server",
+        "category": "Fubon MCP"
+      },
+      {
+        "command": "fubon-mcp.start",
+        "title": "Start Fubon MCP Server",
+        "category": "Fubon MCP"
+      },
+      {
+        "command": "fubon-mcp.stop",
+        "title": "Stop Fubon MCP Server",
+        "category": "Fubon MCP"
+      },
+      {
+        "command": "fubon-mcp.restart",
+        "title": "Restart Fubon MCP Server",
+        "category": "Fubon MCP"
+      },
+      {
+        "command": "fubon-mcp.showLogs",
+        "title": "Show Fubon MCP Server Logs",
+        "category": "Fubon MCP"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "fubon-mcp.configure",
+          "when": "true"
+        },
+        {
+          "command": "fubon-mcp.start",
+          "when": "true"
+        },
+        {
+          "command": "fubon-mcp.stop",
+          "when": "true"
+        },
+        {
+          "command": "fubon-mcp.restart",
+          "when": "true"
+        },
+        {
+          "command": "fubon-mcp.showLogs",
+          "when": "true"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0"
+  },
+  "dependencies": {}
+}
