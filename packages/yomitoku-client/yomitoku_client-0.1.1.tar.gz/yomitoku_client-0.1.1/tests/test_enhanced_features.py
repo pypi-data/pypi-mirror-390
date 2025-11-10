@@ -1,0 +1,289 @@
+"""
+Tests for Enhanced Features - PDF Generator, Visualizers, Utils, and Renderers
+"""
+
+import os
+import tempfile
+
+import numpy as np
+import pytest
+
+from yomitoku_client.exceptions import FormatConversionError
+from yomitoku_client.renderers import RendererFactory
+from yomitoku_client.utils import (
+    calc_distance,
+    calc_intersection,
+    calc_overlap_ratio,
+    convert_table_array,
+    convert_table_array_to_dict,
+    escape_markdown_special_chars,
+    is_contained,
+    is_dot_list_item,
+    is_intersected_horizontal,
+    is_intersected_vertical,
+    is_numeric_list_item,
+    quad_to_xyxy,
+    remove_dot_prefix,
+    remove_numeric_prefix,
+    save_image,
+    table_to_csv,
+)
+from yomitoku_client.visualizers import DocumentVisualizer
+
+
+class TestVisualizers:
+    """Test cases for Visualizers"""
+
+    def test_document_visualizer_initialization(self):
+        """Test document visualizer initialization"""
+        visualizer = DocumentVisualizer()
+        assert visualizer is not None
+        assert visualizer.palette is not None
+        assert len(visualizer.palette) > 0
+
+    def test_document_visualizer_with_mock_data(self):
+        """Test document visualizer with mock data"""
+        visualizer = DocumentVisualizer()
+
+        # Create mock image
+        img = np.ones((200, 200, 3), dtype=np.uint8) * 255
+
+        # Create mock results
+        class MockElement:
+            def __init__(self, box, order=1, role=None):
+                self.box = box
+                self.order = order
+                self.role = role
+
+        class MockResults:
+            def __init__(self):
+                self.paragraphs = [MockElement([10, 10, 50, 30], 1, "paragraph")]
+                self.tables = [MockElement([60, 10, 100, 50], 2, "table")]
+                self.figures = [MockElement([110, 10, 150, 50], 3, "figure")]
+
+        results = MockResults()
+
+        # Test different visualization types
+        try:
+            # Layout detail
+            output = visualizer.visualize(img, results, mode="layout")
+            assert output is not None
+            assert output.shape == img.shape
+
+            # Reading order
+            output = visualizer.visualize(img, results, mode="ocr")
+            assert output is not None
+
+        except Exception as e:
+            pytest.fail(f"Visualization failed: {e}")
+
+
+class TestUtils:
+    """Test cases for Utility Functions"""
+
+    def test_rectangle_calculations(self):
+        """Test rectangle calculation functions"""
+        rect1 = [100, 100, 200, 200]
+        rect2 = [150, 150, 250, 250]
+
+        # Test overlap ratio
+        overlap_ratio, intersection = calc_overlap_ratio(rect1, rect2)
+        assert overlap_ratio > 0
+        assert intersection is not None
+
+        # Test distance
+        distance = calc_distance(rect1, rect2)
+        assert distance > 0
+
+        # Test containment
+        contained = is_contained(rect1, rect2)
+        assert isinstance(contained, bool)
+
+        # Test intersection
+        intersection_result = calc_intersection(rect1, rect2)
+        assert intersection_result is not None
+
+    def test_intersection_functions(self):
+        """Test intersection detection functions"""
+        rect1 = [100, 100, 200, 200]
+        rect2 = [150, 150, 250, 250]
+
+        # Test horizontal intersection
+        h_intersect = is_intersected_horizontal(rect1, rect2)
+        assert isinstance(h_intersect, bool)
+
+        # Test vertical intersection
+        v_intersect = is_intersected_vertical(rect1, rect2)
+        assert isinstance(v_intersect, bool)
+
+    def test_quad_to_xyxy(self):
+        """Test quadrilateral to bounding box conversion"""
+        quad = [[100, 100], [200, 100], [200, 200], [100, 200]]
+        bbox = quad_to_xyxy(quad)
+        assert bbox == (100, 100, 200, 200)
+
+    def test_text_processing_functions(self):
+        """Test text processing utility functions"""
+        # Test markdown escaping
+        text = "This has *bold* and `code`"
+        escaped = escape_markdown_special_chars(text)
+        assert "\\*" in escaped
+        assert "\\`" in escaped
+
+        # Test dot prefix removal
+        text_with_dot = "· List item"
+        cleaned = remove_dot_prefix(text_with_dot)
+        assert cleaned == "List item"
+
+        # Test numeric list detection
+        numeric_item = "1. First item"
+        assert is_numeric_list_item(numeric_item)
+        assert not is_numeric_list_item("Regular text")
+
+        # Test dot list detection
+        dot_item = "· Bullet point"
+        assert is_dot_list_item(dot_item)
+        assert not is_dot_list_item("Regular text")
+
+        # Test numeric prefix removal
+        numeric_text = "1. Numbered item"
+        cleaned_numeric = remove_numeric_prefix(numeric_text)
+        assert cleaned_numeric == "Numbered item"
+
+    def test_table_processing_functions(self):
+        """Test table processing functions"""
+
+        # Mock table object
+        class MockCell:
+            def __init__(self, contents, row, col, row_span=1, col_span=1):
+                self.contents = contents
+                self.row = row
+                self.col = col
+                self.row_span = row_span
+                self.col_span = col_span
+
+        class MockTable:
+            def __init__(self):
+                self.n_row = 2
+                self.n_col = 2
+                self.cells = [
+                    MockCell("Header1", 1, 1),
+                    MockCell("Header2", 1, 2),
+                    MockCell("Data1", 2, 1),
+                    MockCell("Data2", 2, 2),
+                ]
+
+        table = MockTable()
+
+        # Test table array conversion
+        table_array = convert_table_array(table)
+        assert len(table_array) == 2
+        assert len(table_array[0]) == 2
+
+        # Test table to CSV
+        csv_result = table_to_csv(table)
+        assert isinstance(csv_result, str)
+        assert "Header1" in csv_result
+
+        # Test table array to dict
+        table_dict = convert_table_array_to_dict(table_array, header_row=1)
+        assert isinstance(table_dict, list)
+        assert len(table_dict) == 1  # Only data row after header
+
+
+class TestRenderers:
+    """Test cases for Renderers"""
+
+    def test_renderer_factory(self):
+        """Test renderer factory"""
+        # Test getting supported formats
+        formats = RendererFactory.get_supported_formats()
+        expected_formats = ["csv", "markdown", "md", "html", "htm", "json", "pdf"]
+        for fmt in expected_formats:
+            assert fmt in formats
+
+        # Test creating renderers
+        csv_renderer = RendererFactory.create_renderer("csv")
+        assert csv_renderer is not None
+
+        html_renderer = RendererFactory.create_renderer("html")
+        assert html_renderer is not None
+
+        json_renderer = RendererFactory.create_renderer("json")
+        assert json_renderer is not None
+
+        markdown_renderer = RendererFactory.create_renderer("markdown")
+        assert markdown_renderer is not None
+
+        # Test PDF renderer (if available)
+        try:
+            pdf_renderer = RendererFactory.create_renderer("pdf")
+            assert pdf_renderer is not None
+        except ImportError:
+            pytest.skip("PDF dependencies not available")
+
+    def test_renderer_factory_unsupported_format(self):
+        """Test renderer factory with unsupported format"""
+        with pytest.raises(FormatConversionError):
+            RendererFactory.create_renderer("unsupported_format")
+
+    def test_renderer_factory_is_supported(self):
+        """Test renderer factory support check"""
+        assert RendererFactory.is_supported("csv")
+        assert RendererFactory.is_supported("html")
+        assert RendererFactory.is_supported("json")
+        assert not RendererFactory.is_supported("unsupported")
+
+
+class TestImageProcessing:
+    """Test cases for Image Processing"""
+
+    def test_save_image(self):
+        """Test image saving functionality"""
+        # Create a test image
+        img = np.ones((100, 100, 3), dtype=np.uint8) * 255
+
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            output_path = tmp.name
+
+        try:
+            save_image(img, output_path)
+            assert os.path.exists(output_path)
+            assert os.path.getsize(output_path) > 0
+        finally:
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+
+
+class TestIntegration:
+    """Integration tests"""
+
+    def test_visualization_workflow(self):
+        """Test visualization workflow"""
+        visualizer = DocumentVisualizer()
+
+        # Create test image and results
+        img = np.ones((200, 200, 3), dtype=np.uint8) * 255
+
+        class MockElement:
+            def __init__(self, box, order=1, role=None):
+                self.box = box
+                self.order = order
+                self.role = role
+
+        class MockResults:
+            def __init__(self):
+                self.paragraphs = [MockElement([10, 10, 50, 30], 1, "paragraph")]
+                self.tables = []
+                self.figures = []
+
+        results = MockResults()
+
+        # Test visualization
+        output = visualizer.visualize(img, results, mode="ocr")
+        assert output is not None
+        assert output.shape == img.shape
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])

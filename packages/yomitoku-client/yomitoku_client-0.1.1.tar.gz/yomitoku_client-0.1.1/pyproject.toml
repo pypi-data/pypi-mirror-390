@@ -1,0 +1,192 @@
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[project]
+name = "yomitoku-client"
+dynamic = ["version"]
+authors = [{name = "MLism Inc.", email = "support-aws-marketplace@mlism.com"}]
+description = "YomiToku-Client is a Python library for processing SageMaker YomiToku API outputs with format conversion and visualization capabilities."
+readme = "README.md"
+license = "Apache-2.0"
+urls = {Homepage = "https://github.com/MLism-Inc/yomitoku-client", Repository = "https://github.com/MLism-Inc/yomitoku-client", Issues = "https://github.com/MLism-Inc/yomitoku-client/issues"}
+requires-python = ">=3.10,<3.13"
+keywords = ["yomitoku", "sagemaker", "document-analysis", "format-conversion", "visualization"]
+dependencies = [
+    "pandas>=2.1.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.9.2",
+    "requests>=2.28.0",
+    "click>=8.1.0",
+    "lxml>=5.3.0",
+    "PyPDF2>=3.0.0",
+    "pypdfium2==4.30.0",
+    "opencv-python>=4.8.0",
+    "Pillow>=9.5.0",
+    "reportlab>=4.4.1",
+    "jaconv>=0.4.0",
+    "boto3>=1.26.0",
+]
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "semver"
+format = "{base}"
+
+[dependency-groups]
+dev = [
+    "json-schema-for-humans>=1.4.1",
+    "mkdocs-codeinclude-plugin>=0.2.1",
+    "mkdocs-include-markdown-plugin>=7.1.6",
+    "mkdocs-material>=9.5.44",
+    "mkdocs-static-i18n",
+    "mkdocs>=1.6.1",
+    "plantuml-markdown",
+    "pygments",
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=5.0.0",
+    "pytest>=8.3.3",
+    "ruff>=0.7.0",
+    "pip-licenses>=5.5.0",
+    "pyparsing>=3.2.5",
+]
+
+[project.scripts]
+yomitoku-client = "yomitoku_client.cli.cli:main"
+
+[tool.uv.sources]
+yomitoku-client = { workspace = true }
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  "E","F","W","I","UP","B","SIM","ARG","A","C4","DTZ","G","Q","S","BLE","PIE"
+]
+ignore = ["E501","C901","B008", "S101", "BLE001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["yomitoku_client"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--color=yes",
+]
+
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "pdf: marks tests that require PDF dependencies",
+    "visualization: marks tests that require visualization dependencies",
+]
+
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = lint, py310, py311, py312, docs, docs-check, lock-check, sync-check, license-check
+
+[testenv]
+deps =
+    pytest
+    pyparsing
+    pip-licenses
+    pytest-asyncio>=1.2.0
+commands = 
+    pytest {toxinidir}/tests
+changedir = {toxworkdir}/{envname}
+
+[testenv:format]
+description = Run ruff format
+deps = ruff>=0.7
+commands =
+    ruff format .
+
+[testenv:lint]
+deps = ruff>=0.7
+commands = 
+    ruff check --fix . --exclude tests
+
+[testenv:type]
+description = Run mypy strict type checks
+deps = mypy>=1.10
+commands =
+    mypy src tests --ignore-missing-imports --disallow-untyped-defs
+
+[testenv:docs]
+basepython = python3.12
+changedir = {toxinidir}
+deps = 
+    mkdocs-material
+    pygments 
+    plantuml_markdown 
+    mkdocs-include-markdown-plugin
+    mkdocs-static-i18n
+    mkdocs-codeinclude-plugin
+commands = 
+    mkdocs gh-deploy --force
+
+[testenv:docs-check]
+description = Build MkDocs site strictly to check internal link consistency
+changedir = {toxinidir}
+deps =
+    mkdocs-material
+    pygments 
+    plantuml_markdown 
+    mkdocs-include-markdown-plugin
+    mkdocs-static-i18n
+    mkdocs-codeinclude-plugin
+commands =
+    mkdocs build --strict
+
+[testenv:uv-check]
+description = Check uv
+skip_install = true
+allowlist_externals =
+    uv
+commands =
+    uv lock --check
+    uv sync --frozen
+
+[testenv:license-check]
+description = Check third-party licenses using pip-licenses
+skip_install = true
+allowlist_externals =
+    uv
+commands =
+    uv run python {toxinidir}/utils/check_license.py \
+         -a "MIT" \
+         -a "MIT License" \
+         -a "MIT-CMU" \
+         -a "BSD License" \
+         -a "BSD-2-Clause" \
+         -a "BSD-3-Clause" \
+         -a "Apache Software License" \
+         -a "Apache-2.0" \
+         -a "Mozilla Public License 2.0 (MPL 2.0)" \
+         -a "PSF-2.0" \
+         -a "LicenseRef-PdfiumThirdParty"
+"""
