@@ -1,0 +1,89 @@
+[project]
+name = "chuk-acp-agent"
+version = "0.1.0"
+description = "Opinionated agent kit for building sophisticated ACP agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Chris Hay", email = "chris@chrishay.com"}
+]
+keywords = ["acp", "agent", "mcp", "llm", "editor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "chuk-acp>=0.1.0",
+    "anyio>=4.0.0",
+    "chuk-tool-processor>=0.1.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.8.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "chuk-acp-agent[dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/chrishayuk/chuk-acp-agent"
+Repository = "https://github.com/chrishayuk/chuk-acp-agent"
+Issues = "https://github.com/chrishayuk/chuk-acp-agent/issues"
+
+[project.scripts]
+chuk-acp-agent = "chuk_acp_agent.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chuk_acp_agent"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/chuk_acp_agent/py.typed",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+# Allow untyped imports for external dependencies without type stubs
+[[tool.mypy.overrides]]
+module = [
+    "chuk_tool_processor.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
