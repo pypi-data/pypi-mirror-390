@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-server-mm1"
+version = "0.1.2"
+description = "Model Context Protocol server for M/M/1 queue simulation and analysis"
+readme = "README.md"
+authors = [
+    {name = "WSC 2025 Research Project", email = "noreply@example.com"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "simulation",
+    "queue",
+    "mm1",
+    "queueing-theory",
+    "simpy",
+    "discrete-event-simulation"
+]
+
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "simpy>=4.0.0",
+    "numpy>=1.24.0",
+    "uvicorn>=0.27.0",
+    "starlette>=0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+mcp-server-mm1 = "mcp_server_mm1.server:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/mcp-server-mm1"
+Repository = "https://github.com/yourusername/mcp-server-mm1"
+Issues = "https://github.com/yourusername/mcp-server-mm1/issues"
+Documentation = "https://github.com/yourusername/mcp-server-mm1#readme"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mcp_server_mm1 = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
