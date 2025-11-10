@@ -1,0 +1,55 @@
+name: Common Modules Pipeline
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  UV_VERSION: "0.9.8"
+
+jobs:
+  ci_pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Run tests
+        run: make test
+
+  cd_pipeline:
+    runs-on: ubuntu-latest
+    needs: ci_pipeline
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && success()
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - name: Build Package
+        run: uv build --no-cache
+
+      - name: Publish Package to PyPI
+        run: uv publish --token ${{ secrets.PYPI_TOKEN }}
+
+  notify:
+    needs: [ci_pipeline, cd_pipeline]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slack Alert
+        uses: jyablonski/actions/alert@v1
+        with:
+          status: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          custom_message: "Common Modules Package"
