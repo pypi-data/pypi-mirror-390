@@ -1,0 +1,49 @@
+# Advanced YAML-based Template Generation Example
+# This demonstrates nested iteration and conditional patterns
+
+globals:
+  version: "2.0.0"
+  project: "AdvancedExample"
+  company: "TechCorp"
+
+templates:
+  - name: "Module Structure"
+    folder: "templates"
+    files:
+      include: ["_foreach_module___init__.py.j2"]
+    output: "output/modules/{{ module.name }}"
+    iterate: "module in dd.modules"
+    enabled: true
+
+  - name: "Component Files"
+    folder: "templates"
+    files:
+      include: ["_foreach_component_*.j2"]
+    output: "output/modules/{{ module.name }}"
+    iterate: "module in dd.modules >> component in module.components"
+    enabled: true
+
+  - name: "Public APIs Only"
+    folder: "templates"
+    files:
+      include: ["_foreach_*_api.py.j2"]
+    output: "output/api"
+    iterate: "endpoint in dd.endpoints if endpoint.public"
+    enabled: true
+
+  - name: "Documentation"
+    folder: "templates"
+    files:
+      include: ["_foreach_*_doc.md.j2"]
+    output: "output/docs"
+    iterate:
+      - "module in dd.modules if module.documented"
+      - "endpoint in dd.endpoints if endpoint.public"
+    enabled: true
+
+  - name: "Project Overview"
+    folder: "templates"
+    files:
+      include: ["PROJECT_OVERVIEW.md.j2"]
+    output: "output"
+    enabled: true

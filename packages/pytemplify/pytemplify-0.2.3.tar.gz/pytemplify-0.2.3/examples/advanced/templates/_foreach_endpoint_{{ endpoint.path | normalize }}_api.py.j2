@@ -1,0 +1,56 @@
+"""API Endpoint: {{ endpoint.path }}
+
+{{ endpoint.description }}
+Module: {{ endpoint.module }}
+"""
+
+import logging
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, HTTPException, Request
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.{{ endpoint.method | lower }}("{{ endpoint.path }}")
+async def {{ endpoint.path | replace('/', '_') | replace('-', '_') }}(
+    request: Request,
+) -> Dict[str, Any]:
+    """{{ endpoint.description }}
+
+    Method: {{ endpoint.method }}
+    Public: {{ endpoint.public }}
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        API response dictionary
+    """
+    logger.info(f"{{ endpoint.method }} request to {{ endpoint.path }}")
+
+    # MANUAL SECTION START: endpoint_implementation
+    # TODO: Implement endpoint logic here
+    try:
+        # Your implementation here
+        return {
+            "status": "success",
+            "endpoint": "{{ endpoint.path }}",
+            "method": "{{ endpoint.method }}",
+            "message": "{{ endpoint.description }}"
+        }
+    except Exception as e:
+        logger.error(f"Error processing {{ endpoint.path }}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    # MANUAL SECTION END
+
+
+# Endpoint metadata
+ENDPOINT_METADATA = {
+    "path": "{{ endpoint.path }}",
+    "method": "{{ endpoint.method }}",
+    "module": "{{ endpoint.module }}",
+    "public": {{ endpoint.public | lower }},
+    "description": "{{ endpoint.description }}"
+}

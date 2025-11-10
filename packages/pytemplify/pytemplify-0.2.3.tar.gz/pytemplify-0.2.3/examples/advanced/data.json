@@ -1,0 +1,86 @@
+{
+  "project_name": "ModularApplication",
+  "modules": [
+    {
+      "name": "authentication",
+      "description": "User authentication and session management",
+      "documented": true,
+      "components": [
+        {
+          "name": "login",
+          "type": "handler",
+          "methods": ["login", "logout", "refresh_token"]
+        },
+        {
+          "name": "session",
+          "type": "manager",
+          "methods": ["create", "validate", "destroy"]
+        },
+        {
+          "name": "password",
+          "type": "utility",
+          "methods": ["hash", "verify", "reset"]
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "description": "User profile and management",
+      "documented": true,
+      "components": [
+        {
+          "name": "profile",
+          "type": "handler",
+          "methods": ["get", "update", "delete"]
+        },
+        {
+          "name": "roles",
+          "type": "manager",
+          "methods": ["assign", "revoke", "check"]
+        }
+      ]
+    },
+    {
+      "name": "internal",
+      "description": "Internal utilities and helpers",
+      "documented": false,
+      "components": [
+        {
+          "name": "cache",
+          "type": "utility",
+          "methods": ["set", "get", "delete"]
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "path": "/api/v1/login",
+      "method": "POST",
+      "public": true,
+      "module": "authentication",
+      "description": "User login endpoint"
+    },
+    {
+      "path": "/api/v1/logout",
+      "method": "POST",
+      "public": true,
+      "module": "authentication",
+      "description": "User logout endpoint"
+    },
+    {
+      "path": "/api/v1/users",
+      "method": "GET",
+      "public": true,
+      "module": "users",
+      "description": "List all users"
+    },
+    {
+      "path": "/api/internal/cache",
+      "method": "GET",
+      "public": false,
+      "module": "internal",
+      "description": "Internal cache status"
+    }
+  ]
+}

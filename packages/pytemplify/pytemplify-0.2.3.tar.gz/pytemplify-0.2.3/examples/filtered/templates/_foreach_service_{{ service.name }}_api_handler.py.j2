@@ -1,0 +1,38 @@
+"""API Handler: {{ service.name }}
+
+Category: {{ service.category }}
+{{ service.description }}
+"""
+
+import logging
+from fastapi import APIRouter, HTTPException
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/{{ service.name }}", tags=["{{ service.category }}"])
+
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint for {{ service.name }}."""
+    return {
+        "status": "healthy",
+        "service": "{{ service.name }}",
+        "port": {{ service.port }}
+    }
+
+
+@router.get("/info")
+async def service_info():
+    """Get service information."""
+    return {
+        "name": "{{ service.name }}",
+        "description": "{{ service.description }}",
+        "category": "{{ service.category }}",
+        "port": {{ service.port }}
+    }
+
+
+# MANUAL SECTION START: custom_endpoints
+# Add your custom API endpoints here
+# MANUAL SECTION END

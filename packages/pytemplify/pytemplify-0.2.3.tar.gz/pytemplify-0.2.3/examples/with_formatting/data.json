@@ -1,0 +1,101 @@
+{
+    "services": [
+        {
+            "name": "user_service",
+            "port": 8080,
+            "description": "User management service",
+            "endpoints": [
+                "login",
+                "profile",
+                "logout"
+            ]
+        },
+        {
+            "name": "order_service",
+            "port": 8081,
+            "description": "Order processing service",
+            "endpoints": [
+                "create",
+                "update",
+                "cancel"
+            ]
+        }
+    ],
+    "utils": [
+        {
+            "name": "validation",
+            "functions": [
+                "validateEmail",
+                "validatePassword",
+                "sanitizeInput"
+            ]
+        },
+        {
+            "name": "formatting",
+            "functions": [
+                "formatDate",
+                "formatCurrency",
+                "truncateText"
+            ]
+        }
+    ],
+    "configs": [
+        {
+            "name": "database",
+            "settings": {
+                "host": "localhost",
+                "port": 5432,
+                "database": "myapp",
+                "max_connections": 20
+            }
+        }
+    ],
+    "components": [
+        {
+            "name": "DataProcessor",
+            "namespace": "processing",
+            "description": "High-performance data processing component",
+            "methods": [
+                {
+                    "name": "process",
+                    "return_type": "bool",
+                    "params": "const std::vector<int>& data"
+                },
+                {
+                    "name": "validate",
+                    "return_type": "bool",
+                    "params": "const std::string& input"
+                },
+                {
+                    "name": "transform",
+                    "return_type": "std::vector<double>",
+                    "params": "const std::vector<int>& input, double scale"
+                }
+            ],
+            "includes": ["vector", "string", "memory"]
+        },
+        {
+            "name": "CacheManager",
+            "namespace": "cache",
+            "description": "Thread-safe cache management component",
+            "methods": [
+                {
+                    "name": "get",
+                    "return_type": "std::shared_ptr<void>",
+                    "params": "const std::string& key"
+                },
+                {
+                    "name": "set",
+                    "return_type": "void",
+                    "params": "const std::string& key, std::shared_ptr<void> value"
+                },
+                {
+                    "name": "clear",
+                    "return_type": "void",
+                    "params": ""
+                }
+            ],
+            "includes": ["string", "memory", "mutex", "unordered_map"]
+        }
+    ]
+}

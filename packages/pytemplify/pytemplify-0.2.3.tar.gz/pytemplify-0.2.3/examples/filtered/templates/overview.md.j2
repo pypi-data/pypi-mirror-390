@@ -1,0 +1,56 @@
+# {{ project_name }} - Service Overview
+
+**Version:** {{ gg.version }}
+
+## Services
+
+### Core Services ({{ services | selectattr('category', 'equalto', 'core') | list | length }})
+
+{% for service in services if service.category == 'core' -%}
+- **{{ service.name }}** (Port {{ service.port }}) - {{ service.description }}
+{% endfor %}
+
+### API Services ({{ services | selectattr('category', 'equalto', 'api') | list | length }})
+
+{% for service in services if service.category == 'api' -%}
+- **{{ service.name }}** (Port {{ service.port }}) - {{ service.description }}
+{% endfor %}
+
+## Template Filtering
+
+This project demonstrates template filtering. You can generate subsets of files using:
+
+```bash
+# Generate only core services
+yagen -c config.yaml -d data.json --include "Core Infrastructure"
+
+# Generate only API services
+yagen -c config.yaml -d data.json --include "API Services"
+
+# Exclude debug utilities
+yagen -c config.yaml -d data.json --exclude "Debug*"
+
+# Exclude all tests
+yagen -c config.yaml -d data.json --exclude "*Test*"
+
+# Generate only tests
+yagen -c config.yaml -d data.json --include "*Test*"
+
+# Use regex patterns
+yagen -c config.yaml -d data.json --include "regex:^(Core|API).*"
+```
+
+## Generated Structure
+
+When all templates are generated:
+
+```
+output/
+├── core/           # Core infrastructure services
+├── api/            # API services
+├── debug/          # Debug utilities
+├── tests/
+│   ├── unit/       # Unit tests
+│   └── integration/# Integration tests
+└── docs/           # Documentation
+```
