@@ -1,0 +1,30 @@
+# This file comes from "https://docs.python.org/3/reference/grammar.html".
+# 
+# Import statements
+# -----------------
+
+start:
+    | import_name
+    | import_from
+
+
+import_name: 'import' dotted_as_names 
+# note below: the ('.' | '...') is necessary because '...' is tokenized as ELLIPSIS
+import_from:
+    | 'from' ('.' | '...')* dotted_name 'import' import_from_targets 
+    | 'from' ('.' | '...')+ 'import' import_from_targets 
+import_from_targets:
+    | '(' import_from_as_names [','] ')' 
+    | import_from_as_names !','
+    | '*' 
+import_from_as_names:
+    | ','.import_from_as_name+ 
+import_from_as_name:
+    | NAME ['as' NAME ] 
+dotted_as_names:
+    | ','.dotted_as_name+ 
+dotted_as_name:
+    | dotted_name ['as' NAME ] 
+dotted_name:
+    | dotted_name '.' NAME 
+    | NAME
