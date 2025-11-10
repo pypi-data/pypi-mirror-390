@@ -1,0 +1,31 @@
+"""
+Usersearch - Search for gamertags / userprofiles
+"""
+
+from typing import ClassVar
+
+from pythonxbox.api.provider.baseprovider import BaseProvider
+from pythonxbox.api.provider.usersearch.models import UserSearchResponse
+
+
+class UserSearchProvider(BaseProvider):
+    USERSEARCH_URL = "https://usersearch.xboxlive.com"
+    HEADERS_USER_SEARCH: ClassVar = {"x-xbl-contract-version": "1"}
+
+    async def get_live_search(self, query: str, **kwargs) -> UserSearchResponse:
+        """
+        Get userprofiles for search query
+
+        Args:
+            query: Search query
+
+        Returns:
+            :class:`UserSearchResponse`: User Search Response
+        """
+        url = self.USERSEARCH_URL + "/suggest"
+        params = {"q": query}
+        resp = await self.client.session.get(
+            url, params=params, headers=self.HEADERS_USER_SEARCH, **kwargs
+        )
+        resp.raise_for_status()
+        return UserSearchResponse.model_validate_json(resp.text)
