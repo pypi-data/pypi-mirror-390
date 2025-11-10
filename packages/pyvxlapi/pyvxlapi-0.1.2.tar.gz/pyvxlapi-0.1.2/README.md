@@ -1,0 +1,34 @@
+# pyvxlapi
+
+Python Wrapper for Vector XL Driver Library
+
+The `pyvxlapi.py` is convert from `vxlapi.h` by [ctypesgen](https://github.com/ctypesgen/ctypesgen)
+
+## Installation
+```
+$ uv venv
+$ uv pip install pyvxlapi
+```
+
+## Development
+```sh
+$ uv sync
+$ uv run ctypesgen -lvxlapi64 --strip-build-path="C:\\pyvxlapi\\assets\\" -o src/pyvxlapi/__init__.py assets/vxlapi.h
+```
+
+## Example
+
+```py
+from pyvxlapi import (
+    XLdriverConfig,
+    xlGetDriverConfig,
+)
+
+driver_config = XLdriverConfig()
+status = xlGetDriverConfig(driver_config)
+print(status)
+
+for i in range(driver_config.channelCount):
+    channel_config = driver_config.channel[i]
+    print(f"{i} {channel_config.name} {channel_config.channelMask}")
+```
