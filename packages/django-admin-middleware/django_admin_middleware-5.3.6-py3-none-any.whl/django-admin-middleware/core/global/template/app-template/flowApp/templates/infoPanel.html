@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% block custom_css %}
+    <link rel="stylesheet" href="{% static "css/infoPanel.css" %}">
+{% endblock custom_css %}
+{% block main_content %}
+    
+<div class="main-info-wrapper">
+    <div class="main-info-block" id="all-task">
+        <p>Всего заявок</p>
+        <p>{{orders_count}}</p>
+    </div>
+    <div class="main-info-block" id="active-task">
+        <p>Заявок в работе</p>
+        <p>{{active_count}}</p>
+    </div>
+    <div class="main-info-block" id='wait-task'>
+         <p>Ожидают назначения</p>
+        <p>{{wait_order}}</p>    
+    </div>
+</div>
+<div class="active-order-table-wrapper">
+    <h3 class="active-item-title">Заявки в работе</h3>
+    <ul class="active-order-list">
+        <li class="active-order-item">
+            <p>№</p>
+            <p>Предмет заявки</p>
+            <p>Описание</p>
+            <p>Ответственный</p>
+            <p>Подал заявку</p>
+            <p>Дата подачи</p>
+        </li>
+        {% for order in orders_list %}
+        <li class="active-order-item">
+            <p>{{order.id}}</p>
+            <p>{{order.order_name}}</p>
+            <p>{{order.order_description}}</p>
+            <p>{{order.response_person.last_name}} {{order.response_person.first_name}}</p>
+            <p>{{order.user.last_name}} {{order.user.first_name}}</p>
+            <p>{{order.created_at}}</p>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+
+{% endblock main_content %}
+
+{% block custom_js %}
+<script src="{% static "js/infoPanel.js" %}"></script>
+{% endblock custom_js %}
