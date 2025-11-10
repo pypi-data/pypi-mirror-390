@@ -1,0 +1,151 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "pylhc_submitter/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/doc",
+  "/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pylhc_submitter"]
+
+[project]
+name = "pylhc_submitter"
+readme = "README.md"
+description = "pylhc-submitter contains scripts to simplify the creation and submission of jobs to HTCondor at CERN"
+authors = [
+    {name = "OMC Team", email = "pylhc@github.com"},  # see zenodo file / commits for details
+]
+license = "MIT"
+dynamic = ["version"]
+requires-python = ">=3.9"
+
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "numpy >= 1.24",
+    "scipy >= 1.10",
+    "pandas >= 2.1",
+    "tfs-pandas >= 3.8",
+    "matplotlib >= 3.8",
+    "htcondor >= 8.9.2 ; sys_platform=='linux'",  # no bindings for macOS or windows on PyPI
+    "generic-parser >= 1.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=2.9",
+    "pytest-mpl>=0.15",
+]
+doc = [
+    "sphinx >= 7.0",
+    "sphinx_rtd_theme >= 2.0",
+]
+
+all = [
+    "pylhc_submitter[test]",
+    "pylhc_submitter[doc]",
+]
+
+[project.urls]
+homepage = "https://github.com/pylhc/submitter"
+repository = "https://github.com/pylhc/submitter"
+documentation = "https://pylhc.github.io/submitter/"
+changelog = "https://github.com/pylhc/submitter/blob/master/CHANGELOG.md"
+
+# ----- Testing ----- #
+
+[tool.pytest.ini_options]
+markers = [
+    "cern_network: tests that require access to afs or the technical network",
+]
+
+addopts = [
+    "--import-mode=importlib",
+]
+
+# Helpful for pytest-debugging (leave commented out on commit):
+# log_cli=true
+# log_level=DEBUG
+
+[tool.coverage.run]
+relative_files = true
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",  # do not count type checking imports (ignored at runtime) for coverage
+  "except ImportError:",  # do not count missing optional dependencies set to None, we monkeypatch and test that
+]
+
+# ----- Dev Tools Configuration ----- #
+
+[tool.ruff]
+exclude = [
+  ".eggs",
+  ".git",
+  ".mypy_cache",
+  ".venv",
+  "_build",
+  "build",
+  "dist",
+]
+
+# Assume Python 3.10+
+target-version = "py310"
+
+line-length = 100
+indent-width = 4
+
+[tool.ruff.lint]
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+ignore = [
+  "E501",  # line too long
+  "FBT001",  # boolean-type-hint-positional-argument
+  "FBT002",  # boolean-default-value-positional-argument
+  "PT019",  # pytest-fixture-param-without-value (but suggested solution fails)
+]
+extend-select = [
+    "F",        # Pyflakes rules
+    "W",        # PyCodeStyle warnings
+    "E",        # PyCodeStyle errors
+    "I",        # Sort imports properly
+    "A",        # Detect shadowed builtins
+    "N",        # enforce naming conventions, e.g. ClassName vs function_name
+    "UP",       # Warn if certain things can changed due to newer Python versions
+    "C4",       # Catch incorrect use of comprehensions, dict, list, etc
+    "FA",       # Enforce from __future__ import annotations
+    "FBT",      # detect boolean traps
+    "ISC",      # Good use of string concatenation
+    "BLE",      # disallow catch-all exceptions
+    "ICN",      # Use common import conventions
+    "RET",      # Good return practices
+    "SIM",      # Common simplification rules
+    "TID",      # Some good import practices
+    "TC",       # Enforce importing certain types in a TYPE_CHECKING block
+    "PTH",      # Use pathlib instead of os.path
+    "NPY",      # Some numpy-specific things
+]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
