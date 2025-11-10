@@ -1,0 +1,99 @@
+Metadata-Version: 2.4
+Name: ben-music-mcp
+Version: 0.1.0
+Summary: 
+Author: ben
+Author-email: 2014911413@qq.com
+Requires-Python: >=3.12
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: fastmcp (>=2.13.0.2)
+Requires-Dist: requests (>=2.32.4)
+Description-Content-Type: text/markdown
+
+# API 工具说明
+
+本项目基于 FastMCP，封装了音乐相关常用接口，所有方法均以 JSON 格式返回，适合自动化调用和二次开发。
+
+## 方法列表
+
+### 1. hello
+测试方法，返回示例字符串。
+
+### 2. get_song_info(keywords)
+根据关键词搜索歌曲信息，返回首条歌曲的详细信息（id、name、artists、album、alias、transNames、duration、fee、mvid）。
+
+### 3. get_song_id(keywords)
+根据关键词搜索歌曲，返回第一首歌的ID。
+
+### 4. lyric(keywords)
+根据歌名关键词搜索歌词（内部先获取歌曲ID），返回歌词文本。
+
+### 5. search_artist(keyword)
+根据关键词搜索歌手信息，自动带上 cookie，返回首个歌手的基本信息（artistName、artistId、avatar）。
+
+### 6. get_artist_info(keyword)
+根据关键词获取歌手详细信息，先查 id 再查详情，返回完整歌手信息。
+
+### 7. get_artist_hot_songs(keyword)
+根据关键词获取歌手最火的 50 首歌曲，先查 id 再查热门歌曲。
+
+### 8. get_music_url(keywords, level="standard")
+根据关键词获取音乐播放 url，先查歌曲 id 再查 url，支持音质等级选择。
+
+### 9. get_song_comment(keywords)
+根据关键词获取歌曲评论，先查歌曲 id 再查评论，只保留有用字段（nickname、content、likedCount、timeStr）。
+
+### 10. get_playlist(id)
+根据歌单 id 获取歌单详情，只返回关键字段（id、name、coverImgUrl、userId、trackCount、playCount、tracks 等）。
+
+### 11. get_toplist(name)
+根据排行榜名获取榜单详情（先查 id 再查 get_playlist）。
+
+### 12. get_similar_songs(keywords)
+根据关键词获取相似音乐（先查 id 再查 /simi/song），只保留关键信息。
+
+### 13. get_style_songs(style_name)
+根据曲风名返回歌曲列表（先查曲风 id，再查 /style/song），只保留关键信息（id、name、artists、album、duration）。
+
+### 14. get_uid(nickname)
+根据用户昵称获取其 uid，返回 uid 和昵称。
+
+### 15. get_user_playlist(nickname)
+输入用户昵称，获取用户歌单（先查 uid，再查 /user/playlist），只保留必要字段（id、name、coverImgUrl、trackCount、playCount、creator 信息）。
+
+### 16. login_anonymous()
+游客登录，获取游客 cookie，并保存到全局变量。
+
+### 17. login_refresh()
+刷新登录状态，获取新的 cookie。
+
+### 18. start_netease_music(exe_path="C:\\CloudMusic\\cloudmusic.exe")
+启动本地网易云音乐客户端，支持自定义 exe 路径。
+
+## 返回格式
+所有方法均返回如下结构：
+
+```json
+{
+	"code": 200,           // 状态码，200 表示成功
+	"msg": "success",      // 状态信息
+	"data": {...}          // 具体数据内容
+}
+```
+
+## 使用说明
+1. 推荐通过 MCP 工具接口调用各方法。
+2. 部分方法（如评论、歌单、曲风）已做字段精简，适合前端展示和二次处理。
+3. 启动本地网易云客户端需 Windows 环境，默认路径可自定义。
+
+## 依赖
+- Python 3.8+
+- requests
+- fastmcp
+
+## 维护
+如需扩展新接口或字段，请参考 tool.py 和 server.py 的实现风格。
+
