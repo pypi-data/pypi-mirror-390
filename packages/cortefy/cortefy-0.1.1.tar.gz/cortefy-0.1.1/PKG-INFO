@@ -1,0 +1,138 @@
+Metadata-Version: 2.4
+Name: cortefy
+Version: 0.1.1
+Summary: Python client library for the Cortefy API
+Home-page: https://cortefy.com
+Author: Cortefy
+Project-URL: Homepage, https://cortefy.com
+Project-URL: Documentation, https://cortefy.com/docs
+Keywords: cortefy,memory,semantic-search,embeddings,ai
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.28.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: build>=0.10.0; extra == "dev"
+Requires-Dist: twine>=4.0.0; extra == "dev"
+Dynamic: home-page
+Dynamic: requires-python
+
+# Cortefy Python Client
+
+Python client library for the Cortefy API - a semantic memory and search system.
+
+## Installation
+
+```bash
+pip install cortefy
+```
+
+## Quick Start
+
+```python
+from cortefy import Cortefy
+import os
+
+# Initialize the client
+client = Cortefy(
+    api_key=os.environ.get("CORTEFY_API_KEY"),
+    base_url="https://api.cortefy.com"  # Optional, defaults to localhost
+)
+
+# Add a memory
+result = client.memories.add(
+    content="Machine learning enables computers to learn from data",
+    container_tags=["ai-research"],
+    metadata={"priority": "high"}
+)
+
+# Search memories
+results = client.search.memories(
+    q="machine learning accuracy",
+    limit=5,
+    container_tag="ai-research"
+)
+```
+
+## API Reference
+
+### Cortefy Client
+
+```python
+client = Cortefy(api_key: str, base_url: Optional[str] = None)
+```
+
+- `api_key`: Your Cortefy API key (required)
+- `base_url`: Base URL for the API (defaults to `http://localhost:8000`)
+
+### Memories Resource
+
+#### `client.memories.add(...)`
+
+Add a memory to the Cortefy API.
+
+**Parameters:**
+- `content` (str, required): The text content to store
+- `container_tags` (List[str] or str, optional): Container tag(s) - uses first if multiple
+- `metadata` (dict, optional): Optional metadata dictionary
+- `chunk_method` (str, optional): Chunking method ('tokens' or 'sentences', default: 'tokens')
+- `chunk_size` (int, optional): Size of chunks (default: 1000)
+- `chunk_overlap` (int, optional): Overlap between chunks (default: 200)
+
+**Returns:** Response dict with `status`, `chunks`, `memory_ids`, `container`, and `timing`
+
+### Search Resource
+
+#### `client.search.memories(...)`
+
+Search memories using semantic search.
+
+**Parameters:**
+- `q` (str, required): Search query text
+- `container_tag` (str, optional): Container tag to filter by
+- `limit` (int, optional): Maximum number of results (default: 5)
+- `min_similarity` (float, optional): Minimum similarity score 0.0-1.0 (default: 0.0)
+
+**Returns:** Response dict with `results`, `timing`, and `total`
+
+## Error Handling
+
+The client raises custom exceptions:
+
+- `CortefyException`: Base exception for all Cortefy errors
+- `AuthenticationError`: Raised when API key authentication fails
+- `APIError`: Raised when API returns an error response
+- `ValidationError`: Raised when request validation fails
+
+```python
+from cortefy import Cortefy
+from cortefy.exceptions import AuthenticationError, APIError
+
+try:
+    client = Cortefy(api_key="invalid-key")
+    result = client.memories.add(content="test")
+except AuthenticationError as e:
+    print(f"Auth failed: {e}")
+except APIError as e:
+    print(f"API error: {e} (status: {e.status_code})")
+```
+
+## License
+
+MIT
+
+## Links
+
+- Homepage: https://cortefy.com
+- API Documentation: https://cortefy.com/docs
+
