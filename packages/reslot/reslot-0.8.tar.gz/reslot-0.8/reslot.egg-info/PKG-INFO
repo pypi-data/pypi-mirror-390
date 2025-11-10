@@ -1,0 +1,60 @@
+Metadata-Version: 2.4
+Name: reslot
+Version: 0.8
+Summary: Class decorator to enable @cached_property on classes with __slots__
+Author-email: Zachary Spector <public@zacharyspector.com>
+License-Expression: MIT
+Project-URL: Homepage, https://codeberg.org/clayote/reslot
+Project-URL: Bug tracker, https://codeberg.org/clayote/reslot/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Development Status :: 2 - Pre-Alpha
+Requires-Python: ~=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# reslot
+
+
+A class decorator that lets you use `@cached_property` on classes with `__slots__`.
+
+The decorated class needs a `__dict__` slot, but there won't exactly be a
+dictionary in it. Instead, `@reslot` will give it a custom `MutableMapping`
+with *its own* slots. `@cached_property` will keep its cache there.
+
+The custom `MutableMapping`'s slots will be exactly the slots needed to store
+the results of every `@cached_property` that was on the class at the time it
+was declared. This minimizes the memory footprint and makes lookup speedy.
+
+
+## Usage
+
+```python
+from functools import cached_property
+
+from reslot import reslot
+
+BEANED = False
+
+@reslot
+class Spam:
+    __slots__ = ("__dict__",)
+
+    @cached_property
+    def eggs(self):
+        return {"delicious": False}
+
+    @cached_property
+    def beans(self):
+        global BEANED
+        BEANED = True
+        return {"spam": 111000, "delicious": True}
+
+spam = Spam()
+print(spam.eggs)   # {"delicious": False}
+print(BEANED)      # False
+print(spam.beans)  # {"spam": 111000, "delicious": True}
+print(BEANED)      # True
+```
