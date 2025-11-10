@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""
+Training script for custom bird species classifier.
+Fine-tunes an EfficientNet model on the extracted bird images.
+"""
+
+import os
+import warnings
+import torch
+import signal
+import sys
+from pathlib import Path
+from datetime import datetime
+import logging
+
+# Suppress specific warnings
+warnings.filterwarnings('ignore', category=UserWarning, message='.*pin_memory.*')
+warnings.filterwarnings('ignore', category=FutureWarning)
+
+# Reduce transformers logging verbosity
+logging.getLogger("transformers").setLevel(logging.ERROR)
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+from transformers import (
+    AutoImageProcessor,
+    AutoModelForImageClassification,
+    TrainingArguments,
+    Trainer,
+    EarlyStoppingCallback
+)
+from datasets import load_dataset
+from torchvision.transforms import (
+    Compose,
+    RandomRotation,
+    RandomAffine,
+    GaussianBlur,
+    RandomResizedCrop,
+    RandomHorizontalFlip,
+    ColorJitter,
+)
+import numpy as np
+from PIL import Image
+import json
+
+# Configuration
+DATA_DIR = Path("/home/imme/vogel-training-data/organized")
+OUTPUT_DIR = Path("/home/imme/vogel-models")
+MODEL_NAME = "google/efficientnet-b0"  # Base model for fine-tuning
+BATCH_SIZE = 16
+NUM_EPOCHS = 50
+LEARNING_RATE = 2e-4
+IMAGE_SIZE = 224
+
+def get_species_from_directory(data_dir):
+    """Automatically detect species from train directory structure."""
+    train_dir = data_dir / "train"
+    if not train_dir.exists():
+        raise ValueError(f"Train directory not found: {train_dir}")
+    
+    # Get all subdirectories (each is a species)
+    species = sorted([d.name for d in train_dir.iterdir() if d.is_dir()])
+    
+    if not species:
+        raise ValueError(f"No species directories found in {train_dir}")
+    
+    return species
+
+def prepare_model_and_processor(species):
+    """Load base model and processor."""
+    print(f"Lade Basis-Modell: {MODEL_NAME}")
+    
+    # Create label mappings
+    id2label = {i: sp for i, sp in enumerate(species)}
+    label2id = {sp: i for i, sp in enumerate(species)}
+    
+    processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
+    model = AutoModelForImageClassification.from_pretrained(
+        MODEL_NAME,
+        num_labels=len(species),
+        id2label=id2label,
+        label2id=label2id,
+        ignore_mismatched_sizes=True
+    )
+    
+    return model, processor
+
+def get_augmentation_transforms():
+    """Create data augmentation transforms (applied BEFORE processor)."""
+    return Compose([
+        RandomResizedCrop(IMAGE_SIZE, scale=(0.7, 1.0)),  # More scale variation
+        RandomHorizontalFlip(p=0.5),
+        RandomRotation(degrees=15),  # Birds can appear at different angles
+        RandomAffine(degrees=0, translate=(0.1, 0.1)),  # Slight position shifts
+        ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),  # Stronger color augmentation
+        GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Simulate focus variations
+    ])
+
+def transform_function(examples, processor, is_training=True):
+    """Transform function for dataset mapping.
+    
+    Uses processor for normalization to match inference behavior.
+    Only applies data augmentation for training.
+    """
+    images = []
+    
+    for img in examples["image"]:
+        # Convert to RGB
+        img = img.convert("RGB")
+        
+        # Apply data augmentation for training only
+        if is_training:
+            augmentation = get_augmentation_transforms()
+            img = augmentation(img)
+        
+        # Use processor for final preprocessing (resize, normalize)
+        # This ensures train/val/test preprocessing is consistent!
+        processed = processor(img, return_tensors="pt")
+        images.append(processed["pixel_values"][0])
+    
+    examples["pixel_values"] = images
+    return examples
+
+def create_compute_metrics(species):
+    """Create compute_metrics function with species list."""
+    id2label = {i: sp for i, sp in enumerate(species)}
+    
+    def compute_metrics(eval_pred):
+        """Compute accuracy metrics."""
+        predictions, labels = eval_pred
+        predictions = np.argmax(predictions, axis=1)
+        
+        accuracy = (predictions == labels).mean()
+        
+        # Per-class accuracy
+        per_class_acc = {}
+        for i, sp in id2label.items():
+            mask = labels == i
+            if mask.sum() > 0:
+                per_class_acc[sp] = (predictions[mask] == labels[mask]).mean()
+        
+        return {
+            "accuracy": accuracy,
+            **{f"acc_{sp}": acc for sp, acc in per_class_acc.items()}
+        }
+    
+    return compute_metrics
+
+def collate_fn(examples):
+    """Custom collate function for DataLoader."""
+    pixel_values = torch.stack([example["pixel_values"] for example in examples])
+    labels = torch.tensor([example["label"] for example in examples])
+    return {"pixel_values": pixel_values, "labels": labels}
+
+# Global flag for graceful shutdown
+interrupted = False
+
+def signal_handler(sig, frame):
+    """Handle Ctrl+C gracefully."""
+    global interrupted
+    if not interrupted:
+        interrupted = True
+        print("\n\n" + "="*60)
+        print("⚠️  Training wird unterbrochen (Strg+C erkannt)")
+        print("Warte auf sauberes Beenden des aktuellen Schritts...")
+        print("="*60 + "\n")
+        print("(Drücke Strg+C erneut für sofortiges Beenden)")
+    else:
+        print("\n⚠️  Sofortiges Beenden erzwungen!")
+        sys.exit(1)
+
+def train_model(data_dir, output_dir, model_name="google/efficientnet-b0", 
+                batch_size=16, num_epochs=50, learning_rate=3e-4):
+    """
+    Train a custom bird species classifier.
+    
+    Args:
+        data_dir: Directory with train/val folders containing species subdirectories
+        output_dir: Directory to save the trained model
+        model_name: Hugging Face model name (default: google/efficientnet-b0)
+        batch_size: Training batch size (default: 16)
+        num_epochs: Number of training epochs (default: 50)
+        learning_rate: Initial learning rate (default: 3e-4)
+    
+    Returns:
+        str: Path to the final trained model
+    """
+    from pathlib import Path
+    from datetime import datetime
+    
+    # Register signal handler
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    data_dir = Path(data_dir).expanduser()
+    output_dir = Path(output_dir).expanduser()
+    
+    print("="*60)
+    print("Vogel-Artenerkennung Training")
+    print("="*60)
+    print("(Drücke Strg+C zum sauberen Beenden)")
+    print("="*60)
+    
+    # Detect species from directory structure
+    print("\nErkenne Vogelarten aus Verzeichnisstruktur...")
+    species = get_species_from_directory(data_dir)
+    
+    # Create output directory with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_output_dir = output_dir / f"bird-classifier-{timestamp}"
+    model_output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"\nOutput Ordner: {model_output_dir}")
+    print(f"Vogelarten: {', '.join(species)}")
+    print(f"Anzahl Klassen: {len(species)}")
+    
+    # Load dataset
+    print("\nLade Dataset...")
+    dataset = load_dataset("imagefolder", data_dir=str(data_dir))
+    
+    print(f"  Training:   {len(dataset['train'])} Bilder")
+    print(f"  Validation: {len(dataset['validation'])} Bilder")
+    
+    # Verify species match dataset labels
+    dataset_labels = dataset["train"].features["label"].names
+    print(f"\nDataset Labels: {dataset_labels}")
+    print(f"Detected Species: {species}")
+    
+    if sorted(dataset_labels) != sorted(species):
+        print("\n⚠️  WARNUNG: Species-Liste stimmt nicht mit Dataset überein!")
+        print(f"   Dataset hat: {sorted(dataset_labels)}")
+        print(f"   Erkannt wurden: {sorted(species)}")
+        raise ValueError("Species mismatch - bitte Verzeichnisstruktur prüfen!")
+    
+    # Use dataset labels (they are already correctly mapped)
+    species = dataset_labels
+    print(f"\nVerwende Dataset Label-Mapping: {species}")
+    
+    # Prepare model and processor with correct species order
+    model, processor = prepare_model_and_processor(species)
+    
+    # Apply transforms
+    print("\nAppliziere Transformationen...")
+    dataset["train"] = dataset["train"].map(
+        lambda x: transform_function(x, processor, is_training=True),
+        batched=True
+    )
+    dataset["validation"] = dataset["validation"].map(
+        lambda x: transform_function(x, processor, is_training=False),
+        batched=True
+    )
+    
+    # Training arguments
+    training_args = TrainingArguments(
+        output_dir=str(model_output_dir / "checkpoints"),
+        num_train_epochs=num_epochs,
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        warmup_ratio=0.1,
+        learning_rate=learning_rate,
+        weight_decay=0.01,
+        logging_dir=str(model_output_dir / "logs"),
+        logging_steps=10,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="accuracy",
+        greater_is_better=True,
+        save_total_limit=3,
+        push_to_hub=False,
+        remove_unused_columns=False,
+        label_smoothing_factor=0.1,
+        lr_scheduler_type="cosine",
+    )
+    
+    # Trainer
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=dataset["train"],
+        eval_dataset=dataset["validation"],
+        tokenizer=processor,
+        compute_metrics=create_compute_metrics(species),
+        data_collator=collate_fn,
+    )
+    
+    # Train
+    print("\nStarte Training...")
+    print(f"Batch Size: {batch_size}")
+    print(f"Learning Rate: {learning_rate}")
+    print(f"Epochs: {num_epochs}")
+    
+    trainer.train()
+    
+    # Save final model
+    final_model_path = model_output_dir / "final"
+    print(f"\nSpeichere finales Modell: {final_model_path}")
+    trainer.save_model(str(final_model_path))
+    processor.save_pretrained(str(final_model_path))
+    
+    # Save config
+    import json
+    config = {
+        "model_name": model_name,
+        "species": species,
+        "num_classes": len(species),
+        "timestamp": timestamp,
+        "batch_size": batch_size,
+        "num_epochs": num_epochs,
+        "learning_rate": learning_rate
+    }
+    with open(final_model_path / "training_config.json", "w") as f:
+        json.dump(config, f, indent=2)
+    
+    print("\n✅ Training abgeschlossen!")
+    print(f"📁 Modell gespeichert in: {final_model_path}")
+    
+    return str(final_model_path)
+
+
+def main():
+    """Main training function (for direct script execution)."""
+    try:
+        train_model(
+            data_dir=DATA_DIR,
+            output_dir=OUTPUT_DIR,
+            model_name="google/efficientnet-b0",
+            batch_size=BATCH_SIZE,
+            num_epochs=NUM_EPOCHS,
+            learning_rate=LEARNING_RATE
+        )
+    except Exception as e:
+        print(f"\n❌ Fehler beim Training: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+    return 0
+
+if __name__ == "__main__":
+    exit(main())
