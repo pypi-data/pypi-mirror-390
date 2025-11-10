@@ -1,0 +1,204 @@
+#!python
+# This file is placed in the Public Domain.
+
+
+import logging
+import os
+import sys
+import threading
+import time
+
+
+sys.path.insert(0, os.getcwd())
+
+
+from genocide.clients import Client, Config
+from genocide.command import Commands, Mods, command, inits, modules, scanner
+from genocide.handler import Event
+from genocide.loggers import level
+from genocide.methods import parse
+from genocide.storage import Workdir, moddir, pidname
+from genocide.threads import threadhook
+from genocide.utility import daemon, forever, pidfile, privileges
+
+
+import genocide.modules as MODS
+
+
+threading.excepthook = threadhook
+
+
+Mods.add("local", "mods")
+Mods.add("mods", moddir())
+Mods.add("modules", MODS.__path__[0])
+Mods.ignore = ["udp", "web", "rst"]
+
+
+Workdir.wdr = os.path.expanduser(f"~/.{Config.name}")
+
+
+class CLI(Client):
+
+    def __init__(self):
+        Client.__init__(self)
+        self.register("command", command)
+
+    def raw(self, text):
+        print(text.encode('utf-8', 'replace').decode("utf-8"))
+
+
+class Console(CLI):
+
+    def callback(self, event):
+        if not event.text:
+            return
+        super().callback(event)
+        event.wait()
+
+    def poll(self):
+        evt = Event()
+        evt.text = input("> ")
+        evt.type = "command"
+        return evt
+
+
+def banner(name, version):
+    tme = time.ctime(time.time()).replace("  ", " ")
+    logger = logging.getLogger()
+    print("%s %s since %s (%s)" % (
+                                   name.upper(),
+                                   version,
+                                   tme,
+                                   logging.getLevelName(logger.getEffectiveLevel())
+                                  ))
+    sys.stdout.flush()
+
+
+def background():
+    daemon(check("v"))
+    privileges()
+    level("debug")
+    scanner()
+    Commands.add(cmd, ver)
+    pidfile(pidname(Config.name))
+    inits(modules())
+    forever()
+
+
+def console():
+    import readline # noqa: F401
+    parse(Config, " ".join(sys.argv[1:]))
+    level(Config.sets.level or "warn")    
+    if "v" in Config.opts:
+        banner(Config.name, Config.version)
+    mods = []
+    if "a" in Config.opts:
+        mods = modules()
+    scanner(mods)
+    Commands.add(cmd, ver)
+    csl = Console()
+    for _mod, thr in inits(Config.sets.init or mods):
+        thr.join(30.0)
+    csl.start()
+    forever()
+
+
+def control():
+    if len(sys.argv) == 1:
+        return
+    scanner()
+    Commands.add(cmd, srv, ver)
+    csl = CLI()
+    csl.silent = False
+    evt = Event()
+    evt.orig = repr(csl)
+    evt.text = " ".join(sys.argv[1:])
+    evt.type = "command"
+    command(evt)
+    evt.wait()
+
+
+def service():
+    privileges()
+    level("warn")
+    banner(Config.name, Config.version)
+    scanner()
+    Commands.add(cmd, ver)
+    pidfile(pidname(Config.name))
+    inits(modules())
+    forever()
+
+
+def cmd(event):
+    event.reply(",".join(sorted(Commands.names or Commands.cmds)))
+
+
+def srv(event):
+    import getpass
+    name = getpass.getuser()
+    event.reply(TXT % (Config.name.upper(), name, name, name, Config.name))
+
+
+TXT = """[Unit]
+Description=%s
+After=network-online.target
+
+[Service]
+Type=simple
+User=%s
+Group=%s
+ExecStart=/home/%s/.local/bin/%s -s
+
+[Install]
+WantedBy=multi-user.target"""
+
+
+def ver(event):
+    event.reply(f"{Config.name.upper()} {Config.version}")
+
+
+def wrapped(func):
+    try:
+        func()
+    except (KeyboardInterrupt, EOFError):
+        pass
+
+
+def wrap(func):
+    import termios
+    old = None
+    try:
+        old = termios.tcgetattr(sys.stdin.fileno())
+    except termios.error:
+        pass
+    try:
+        wrapped(func)
+    finally:
+        if old:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old)
+
+
+def check(text):
+    args = sys.argv[1:]
+    for arg in args:
+        if not arg.startswith("-"):
+            continue
+        for char in text:
+            if char in arg:
+                return True
+    return False
+
+
+def main():
+    if check("c"):
+        wrap(console)
+    elif check("d"):
+        background()
+    elif check("s"):
+        wrapped(service)
+    else:
+        wrapped(control)
+
+
+if __name__ == "__main__":
+    main()
