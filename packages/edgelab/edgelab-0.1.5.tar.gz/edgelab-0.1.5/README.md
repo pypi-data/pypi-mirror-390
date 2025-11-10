@@ -1,0 +1,171 @@
+# EdgeLab CLI
+
+> **Algorithmic Trading Strategy Analysis Platform**
+
+EdgeLab CLI is a Python package for developing, testing, and analyzing algorithmic trading strategies using server-side backtesting and machine learning optimization.
+
+## 🚀 Quick Start
+
+```bash
+# Install
+pip install edgelab
+
+# Sign up
+edgelab auth signup
+
+# Login
+edgelab auth login
+
+# Create workspace
+edgelab init my-strategies
+
+# Analyze strategy
+cd my-strategies
+edgelab analyze strategies/simple_rsi.py SPY 2023-01-01 2023-12-31
+```
+
+## ✨ Features
+
+- 🔬 **Server-Side Analysis** - No local compute needed, runs on EdgeLab Cloud
+- 📊 **4 Analysis Engines** - Backtest, Walk-Forward, Monte Carlo, Stress Testing
+- 🤖 **ML Optimization** - Automatic parameter tuning using XGBoost
+- 📈 **Multiple Symbols** - Test strategies across multiple stocks simultaneously
+- 🎨 **Rich Terminal UI** - Beautiful formatted output with progress bars
+- 🔐 **Secure** - JWT authentication, encrypted API communication
+
+## 📦 Installation
+
+```bash
+pip install edgelab
+```
+
+**Requirements:**
+- Python 3.11+
+- Internet connection (for API access)
+
+## 🎯 Usage
+
+### Authentication
+
+```bash
+# Create account
+edgelab auth signup
+
+# Login
+edgelab auth login
+
+# Check status
+edgelab auth whoami
+
+# Logout
+edgelab auth logout
+```
+
+### Workspace
+
+```bash
+# Initialize workspace with example strategies
+edgelab init my-strategies
+
+# Creates:
+# my-strategies/
+#   ├── strategies/
+#   │   ├── simple_rsi.py
+#   │   ├── ema_crossover.py
+#   │   └── orb_breakout.py
+#   └── results/
+```
+
+### Strategy Analysis
+
+```bash
+# Single symbol
+edgelab analyze strategies/my_rsi.py SPY 2023-01-01 2023-12-31
+
+# Multiple symbols
+edgelab analyze strategies/my_rsi.py SPY,TSLA,NVDA 2023-01-01 2023-12-31
+
+# With ML optimization
+edgelab analyze --ml strategies/my_ml_rsi.py SPY,QQQ,AAPL 2023-01-01 2023-12-31
+
+# Different resolution
+edgelab analyze --resolution 15m strategies/my_rsi.py SPY 2023-01-01 2023-12-31
+```
+
+### Results Management
+
+```bash
+# List all analysis runs
+edgelab results list
+
+# Show detailed results
+edgelab results show <workflow-id>
+```
+
+### Strategy Management
+
+```bash
+# List all your strategies
+edgelab strategies list
+
+# Show strategy details
+edgelab strategies show my_rsi v1
+```
+
+## 📝 Writing Strategies
+
+```python
+from edgelab.core import Strategy, Bar, SignalType, Indicators
+
+class MyRSI(Strategy):
+    @property
+    def name(self) -> str:
+        return "my_rsi"
+
+    @property
+    def version(self) -> str:
+        return "v1"
+
+    def on_bar(self, bar: Bar) -> SignalType | None:
+        rsi = Indicators.rsi(bar.close, period=14)
+
+        if rsi < 30:
+            return SignalType.LONG
+        elif rsi > 70:
+            return SignalType.SHORT
+        else:
+            return None
+
+    def stop_loss(self, entry_price: float) -> float:
+        return entry_price * 0.98  # 2% stop
+
+    def take_profit(self, entry_price: float) -> float:
+        return entry_price * 1.05  # 5% profit
+```
+
+## 🤖 ML Optimization
+
+```python
+from edgelab.core import Strategy, Bar, SignalType, Indicators
+from edgelab.ml import ml_optimizable, param_range
+
+@ml_optimizable
+class MyMLStrategy(Strategy):
+    rsi_period = param_range(10, 20, default=14, step=2)
+    oversold = param_range(20, 40, default=30, step=5)
+
+    # ... rest of strategy
+```
+
+## 📚 Documentation
+
+Full documentation: [https://docs.edgelab.com](https://docs.edgelab.com)
+
+## 🆘 Support
+
+- GitHub Issues: [https://github.com/yourusername/edgelab-cli/issues](https://github.com/yourusername/edgelab-cli/issues)
+- Email: support@edgelab.com
+
+## 📄 License
+
+MIT License - see LICENSE file for details
