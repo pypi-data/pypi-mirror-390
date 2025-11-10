@@ -1,0 +1,123 @@
+Metadata-Version: 2.4
+Name: pydra-tasks-fastsurfer
+Version: 0.2.2
+Summary: Pydra tasks package for fastsurfer
+Author-email: Nipype developers <neuroimaging@python.org>
+Maintainer-email: Nipype developers <neuroimaging@python.org>
+License:    Copyright 2021 Nipype developers
+        
+           Licensed under the Apache License, Version 2.0 (the "License");
+           you may not use this file except in compliance with the License.
+           You may obtain a copy of the License at
+        
+               http://www.apache.org/licenses/LICENSE-2.0
+        
+           Unless required by applicable law or agreed to in writing, software
+           distributed under the License is distributed on an "AS IS" BASIS,
+           WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+           See the License for the specific language governing permissions and
+           limitations under the License.
+License-File: LICENSE
+Keywords: pydra
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.8
+Requires-Dist: fileformats-datascience>=0.1
+Requires-Dist: fileformats-medimage>=0.4.1
+Requires-Dist: fileformats>=0.8.3
+Requires-Dist: pydra>=0.22
+Provides-Extra: dev
+Requires-Dist: black; extra == 'dev'
+Requires-Dist: pre-commit; extra == 'dev'
+Provides-Extra: doc
+Requires-Dist: packaging; extra == 'doc'
+Requires-Dist: sphinx-rtd-theme; extra == 'doc'
+Requires-Dist: sphinx>=2.1.2; extra == 'doc'
+Requires-Dist: sphinxcontrib-apidoc~=0.3.0; extra == 'doc'
+Requires-Dist: sphinxcontrib-napoleon; extra == 'doc'
+Requires-Dist: sphinxcontrib-versioning; extra == 'doc'
+Provides-Extra: test
+Requires-Dist: codecov; extra == 'test'
+Requires-Dist: fileformats-datascience-extras; extra == 'test'
+Requires-Dist: fileformats-extras; extra == 'test'
+Requires-Dist: fileformats-medimage-extras; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest-env; extra == 'test'
+Requires-Dist: pytest-rerunfailures; extra == 'test'
+Requires-Dist: pytest-xdist; extra == 'test'
+Requires-Dist: pytest>=4.4.0; extra == 'test'
+Description-Content-Type: text/markdown
+
+# Pydra task package for fastsurfer
+
+[![CI/CD](https://github.com/nipype/pydra-tasks-fastsurfer/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/nipype/pydra-tasks-fastsurfer/actions/workflows/ci-cd.yaml)
+[![Codecov](https://codecov.io/gh/nipype/pydra-tasks-fastsurfer/branch/main/graph/badge.svg?token=UIS0OGPST7)](https://codecov.io/gh/nipype/pydra-tasks-fastsurfer)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/pydra-tasks-fastsurfer.svg)](https://pypi.python.org/pypi/pydra-tasks-fastsurfer/)
+[![Latest Version](https://img.shields.io/pypi/v/pydra-tasks-fastsurfer.svg)](https://pypi.python.org/pypi/pydra-tasks-fastsurfer/)
+
+This package contains a Pydra interface for the fastsurfer toolkit.t.
+
+
+## Tests
+
+This package comes with a battery of automatically generated test modules. To install the necessary dependencies to run the tests, use the following command:
+
+the necessary dependencies to run the tests
+
+```
+   $ pip install -e .[test]
+```
+
+Then the tests, including [doctests](https://docs.python.org/3/library/doctest.html), can be launched using
+
+```
+   $ pytest --doctest-modules pydra/tasks/*
+```
+
+
+By default, the tests are set to time-out after 10s, after which the underlying tool is
+assumed to have passed the validation/initialisation phase and we assume that it will
+run to completion. To disable this and run the test(s) through to completion run
+
+```
+   $ pytest --doctest-modules --timeout-pass 0 pydra/tasks/*
+```
+
+
+## Contributing to this package
+
+### Developer installation
+
+Install repo in developer mode from the source directory and install pre-commit to
+ensure consistent code-style and quality.
+
+```
+   $ pip install -e .[test,dev]
+   $ pre-commit install
+```
+
+
+### Typing and sample test data
+
+The automatically generated tests will attempt to provided the task instance to be tested
+with sensible default values based on the type of the field and any constraints it has
+on it. However, these will often need to be manually overridden after consulting the
+underlying tool's documentation.
+
+For file-based data, automatically generated file-system objects will be created for
+selected format types, e.g. Nifti, Dicom. Therefore, it is important to specify the
+format of the file using the "mime-like" string corresponding to a
+[fileformats](https://github.com/ArcanaFramework/fileformats) class
+in the ``inputs > types`` and ``outputs > types`` dicts of the YAML spec.
+
+If the required file-type is not found implemented within fileformats, please see the [fileformats
+docs](https://arcanaframework.github.io/fileformats/developer.html) for instructions on how to define
+new fileformat types, and see 
+[fileformats-medimage-extras](https://github.com/ArcanaFramework/fileformats-medimage-extras/blob/6c2dabe91e95687eebc2639bb6f034cf9595ecfc/fileformats/extras/medimage/nifti.py#L30-L48)
+for an example on how to implement methods to generate sample data for them.
