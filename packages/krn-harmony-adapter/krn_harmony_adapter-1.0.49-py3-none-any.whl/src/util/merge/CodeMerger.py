@@ -1,0 +1,591 @@
+# -*- coding: utf-8 -*-
+import re
+import textwrap
+import difflib
+from typing import Dict, Set, List, Tuple, Optional
+
+class CodeMerger:
+    """
+    一个最终版的、用于智能合并 RN 和 Harmony 代码的工具。
+    它集成了作用域感知解析、依赖分析和基于规则的差异合并引擎。
+    """
+    JS_KEYWORDS = {
+        'if', 'for', 'while', 'switch', 'case', 'catch', 'throw', 'try', 'finally', 'return', 'yield', 'await', 'async', 'function', 'class', 'const', 'let', 'var', 'import', 'export', 'default', 'from', 'in', 'of', 'new', 'delete', 'typeof', 'instanceof', 'void', 'with', 'debugger', 'super', 'this', 'get', 'set', 'console', 'Math', 'JSON', 'Promise', 'Object', 'Array', 'String', 'Number', 'Boolean', 'Date', 'RegExp', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Symbol', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURI', 'decodeURI', 'encodeURIComponent', 'decodeURIComponent', 'require'
+    }
+
+    def _get_brace_level_at(self, content: str, pos: int) -> int:
+        """通过逐字符扫描，准确计算在特定位置的括号嵌套层级，会忽略字符串和注释内的括号。"""
+        level, in_string, in_line_comment, in_block_comment, i = 0, None, False, False, 0
+        while i < pos:
+            char = content[i]
+            prev_char = content[i-1] if i > 0 else ''
+            if in_line_comment:
+                if char == '\n': in_line_comment = False
+            elif in_block_comment:
+                if char == '*' and content[i-1:i+1] == '*/': in_block_comment = False
+            elif in_string:
+                if char == in_string and prev_char != '\\': in_string = None
+            else:
+                if char in ['"', "'", "`"]: in_string = char
+                elif char == '/' and content[i-1:i+1] == '//': in_line_comment = True
+                elif char == '*' and content[i-1:i+1] == '/*': in_block_comment = True
+                elif char == '{': level += 1
+                elif char == '}': level -= 1
+            i += 1
+        return level
+
+    def _extract_top_level_blocks(self, content: str) -> Tuple[List[Tuple[str, str]], Dict[str, str]]:
+        """使用作用域感知的方法，只提取顶层的代码块。"""
+        ordered_blocks, blocks_dict = [], {}
+        block_start_pattern = re.compile(r"(?:export\s+)?(?:const|let|var|function|class)\s+(\w+)")
+        
+        current_pos = 0
+        while current_pos < len(content):
+            match = block_start_pattern.search(content, pos=current_pos)
+            if not match: break
+
+            if self._get_brace_level_at(content, match.start()) == 0:
+                block_name = match.group(1)
+                if block_name in blocks_dict:
+                    current_pos = match.end()
+                    continue
+                start_pos = match.start()
+                # 对于const/let/var声明，需要从声明的开始位置查找结束
+                if content[start_pos:start_pos+5] in ['const', 'let ', 'var ']:
+                    end_pos = self._find_block_end(content, start_pos)
+                else:
+                    end_pos = self._find_block_end(content, match.end())
+                block_content = content[start_pos:end_pos]
+                ordered_blocks.append((block_name, block_content))
+                blocks_dict[block_name] = block_content
+                current_pos = end_pos
+            else:
+                current_pos = match.end()
+        return ordered_blocks, blocks_dict
+    
+    def _find_function_calls(self, content: str) -> Set[str]:
+        pattern = re.compile(r"(?<!\.)\b([a-zA-Z_$][\w$]*)\s*\(")
+        return set(pattern.findall(content)) - self.JS_KEYWORDS
+
+    def _find_identifier_usages(self, content: str) -> Set[str]:
+        pattern = re.compile(r"\b([a-zA-Z_$][\w$]*)\b")
+        return set(pattern.findall(content)) - self.JS_KEYWORDS
+
+    def _contains_harmony_code(self, content: str) -> bool:
+        """检测是否包含鸿蒙相关代码"""
+        # 简单检测harmony关键字
+        return 'harmony' in content.lower() or 'Platform.OS' in content
+
+    def _is_local_import(self, import_path: str) -> bool:
+        """判断是否为本地模块导入"""
+        # 相对路径导入
+        if import_path.startswith(('./', '../', '/')):
+            return True
+        # 项目内部路径（根据实际项目结构调整）
+        if import_path.startswith(('src/', 'bundles/', '@/')):
+            return True
+        return False
+
+    def _get_block_name_from_import(self, import_path: str) -> str:
+        """从import路径中提取组件名"""
+        # 移除路径前缀和扩展名
+        path_parts = import_path.replace('./', '').replace('../', '').split('/')
+        filename = path_parts[-1].replace('.tsx', '').replace('.ts', '')
+        # 将kebab-case转换为PascalCase
+        return ''.join(word.capitalize() for word in filename.split('-'))
+
+    def _find_real_dependencies(self, content: str, all_blocks: Dict[str, str]) -> Set[str]:
+        """只收集真正的依赖，排除误报"""
+        dependencies = set()
+        
+        # 检查import语句
+        import_matches = re.findall(r'import\s+.*?\s+from\s+[\'"]([^\'"]+)[\'"]', content)
+        for import_path in import_matches:
+            # 只处理来自同一模块的import
+            if self._is_local_import(import_path):
+                block_name = self._get_block_name_from_import(import_path)
+                if block_name in all_blocks:
+                    dependencies.add(block_name)
+        
+        # 检查函数调用，但排除误报
+        function_calls = self._find_function_calls(content)
+        for call in function_calls:
+            if (call in all_blocks and 
+                self._is_actual_dependency(call, content, all_blocks[call])):
+                dependencies.add(call)
+        
+        return dependencies
+
+    def _is_actual_dependency(self, block_name: str, content: str, block_content: str) -> bool:
+        """判断是否为真实的依赖关系"""
+        # 检查是否真的调用了该函数/组件
+        call_pattern = rf'\b{re.escape(block_name)}\s*\('
+        if not re.search(call_pattern, content):
+            return False
+        
+        # 检查是否导入了该组件
+        import_pattern = rf'import.*\b{re.escape(block_name)}\b'
+        if re.search(import_pattern, content):
+            return True
+        
+        # 如果没有显式导入，检查是否在同一文件中定义（可能是内部函数）
+        definition_pattern = rf'(?:function|const|let|var)\s+{re.escape(block_name)}\s*[:=(]'
+        if re.search(definition_pattern, block_content):
+            return True
+        
+        return False
+
+    def _should_skip_block(self, block_name: str, content: str, backup_content: str) -> bool:
+        """判断是否应该跳过这个代码块"""
+        # 基于语义分析判断是否为独立的业务组件
+        if self._is_standalone_business_component(block_name, backup_content):
+            # 检查当前文件是否包含相关的业务上下文
+            return not self._has_related_business_context(block_name, content, backup_content)
+        return False
+
+    def _get_function_from_content(self, function_name: str, content: str) -> Optional[str]:
+        """从内容中提取指定函数的代码"""
+        # 使用与_extract_top_level_blocks相同的方法来查找函数
+        block_start_pattern = re.compile(r"(?:export\s+)?(?:const|let|var|function|class)\s+(\w+)")
+        
+        current_pos = 0
+        while current_pos < len(content):
+            match = block_start_pattern.search(content, pos=current_pos)
+            if not match:
+                break
+            
+            block_name = match.group(1)
+            if block_name == function_name:
+                # 检查是否在顶层
+                brace_level = self._get_brace_level_at(content, match.start())
+                if brace_level == 0:
+                    # 找到函数开始位置
+                    start_pos = match.start()
+                    # 使用_find_block_end找到函数结束
+                    end_pos = self._find_block_end(content, match.end())
+                    if end_pos > start_pos:
+                        return content[start_pos:end_pos]
+            
+            current_pos = match.end()
+        
+        return None
+
+    def _calculate_change_ratio(self, current: str, backup: str) -> float:
+        """计算两个代码块的改动比例"""
+        import difflib
+        
+        current_lines = current.strip().split('\n')
+        backup_lines = backup.strip().split('\n')
+        
+        # 使用difflib计算相似度
+        matcher = difflib.SequenceMatcher(None, current_lines, backup_lines)
+        similarity = matcher.ratio()
+        
+        return 1.0 - similarity
+
+    def _apply_merges(self, current_content: str, blocks_to_merge: Dict[str, str]) -> str:
+        """应用合并结果"""
+        result = current_content
+        
+        # 先处理所有需要替换的函数
+        for block_name, new_content in blocks_to_merge.items():
+            # 使用与_get_function_from_content相同的方法来查找和替换函数
+            block_start_pattern = re.compile(r"(?:export\s+)?(?:const|let|var|function|class)\s+(\w+)")
+            
+            found_existing_block = False
+            current_pos = 0
+            while current_pos < len(result):
+                match = block_start_pattern.search(result, pos=current_pos)
+                if not match:
+                    break
+                
+                found_block_name = match.group(1)
+                if found_block_name == block_name:
+                    found_existing_block = True
+                    # 检查是否在顶层
+                    brace_level = self._get_brace_level_at(result, match.start())
+                    if brace_level == 0:
+                        # 找到函数开始位置
+                        start_pos = match.start()
+                        # 使用_find_block_end找到函数结束
+                        end_pos = self._find_block_end(result, match.end())
+                        if end_pos > start_pos:
+                            # 替换函数
+                            result = result[:start_pos] + new_content + result[end_pos:]
+                            # 更新current_pos，避免无限循环
+                            current_pos = start_pos + len(new_content)
+                            break
+                
+                current_pos = match.end()
+        
+        # 再处理所有需要添加的新函数
+        for block_name, new_content in blocks_to_merge.items():
+            # 检查是否已经处理过这个函数
+            block_start_pattern = re.compile(r"(?:export\s+)?(?:const|let|var|function|class)\s+(\w+)")
+            found_existing_block = False
+            
+            current_pos = 0
+            while current_pos < len(result):
+                match = block_start_pattern.search(result, pos=current_pos)
+                if not match:
+                    break
+                
+                found_block_name = match.group(1)
+                if found_block_name == block_name:
+                    found_existing_block = True
+                    break
+                
+                current_pos = match.end()
+            
+            # 如果没有找到现有函数，添加新函数
+            if not found_existing_block:
+                # 找到合适的位置插入新函数（在文件末尾）
+                insert_pos = len(result)
+                # 确保插入位置不会破坏现有函数
+                if insert_pos > 0 and result[insert_pos-1] != '\n':
+                    result = result[:insert_pos] + f"\n\n{new_content}\n" + result[insert_pos:]
+                else:
+                    result = result[:insert_pos] + f"\n{new_content}\n" + result[insert_pos:]
+                print(f"✅ 添加新函数: {block_name}")
+        
+        return result
+    
+    def _find_insert_position(self, content: str) -> int:
+        """找到插入新函数的位置"""
+        # 通常在最后一个函数之后插入
+        block_start_pattern = re.compile(r"(?:export\s+)?(?:const|let|var|function|class)\s+(\w+)")
+        
+        last_match = None
+        current_pos = 0
+        while current_pos < len(content):
+            match = block_start_pattern.search(content, pos=current_pos)
+            if not match:
+                break
+            last_match = match
+            current_pos = match.end()
+        
+        if last_match:
+            # 在最后一个函数之后插入
+            end_pos = self._find_block_end(content, last_match.end())
+            # 确保插入位置在换行符之后，但不要跳过多个换行符
+            if end_pos < len(content) and content[end_pos] == '\n':
+                end_pos += 1
+            return end_pos
+        
+        # 如果没有找到任何函数，在文件末尾插入
+        return len(content)
+
+    def _record_conflicts(self, conflicts: List[Dict]):
+        """记录冲突信息"""
+        print("冲突记录:")
+        for conflict in conflicts:
+            print(f"  - {conflict['block_name']}: {conflict['change_ratio']:.2%} 改动")
+
+    def _find_block_end(self, content: str, start_pos: int) -> int:
+        """查找代码块的结束位置，正确处理函数参数中的括号"""
+        # 首先找到函数签名的结束（找到完整的参数列表后的第一个{或=>）
+        
+        # 查找函数签名结束的可能位置
+        paren_end = content.find(')', start_pos)  # 参数列表结束
+        arrow_pos = content.find('=>', start_pos)  # 箭头函数
+        
+        # 对于const/let/var声明，需要特殊处理
+        if content[start_pos:start_pos+5] in ['const', 'let ', 'var ']:
+            # 处理变量声明
+            equals_pos = content.find('=', start_pos)
+            if equals_pos != -1:
+                # 找到等号后的第一个{
+                first_brace_pos = content.find('{', equals_pos)
+                if first_brace_pos != -1:
+                    return self._find_matching_brace_end(content, first_brace_pos)
+                # 如果没有{，找到分号
+                try:
+                    return content.index(';', equals_pos) + 1
+                except ValueError:
+                    return len(content)
+        
+        if paren_end == -1 and arrow_pos == -1:
+            # 没有参数也没有箭头，直接找{
+            brace_pos = content.find('{', start_pos)
+            if brace_pos == -1:
+                try: return content.index(';', start_pos) + 1
+                except ValueError:
+                    try: return content.index('\n', start_pos) + 1
+                    except ValueError: return len(content)
+            return self._find_matching_brace_end(content, brace_pos)
+        
+        # 确定函数签名的真正结束位置
+        if arrow_pos != -1 and (paren_end == -1 or arrow_pos < paren_end):
+            # 箭头函数，没有参数或箭头在参数前
+            first_brace_pos = content.find('{', arrow_pos + 2)
+            if first_brace_pos == -1:
+                # 箭头函数没有大括号，找到表达式结束
+                return content.find('\n', arrow_pos) + 1
+            return self._find_matching_brace_end(content, first_brace_pos)
+        
+        # 普通函数，有参数列表
+        if paren_end != -1:
+            # 找到参数列表后的第一个{
+            first_brace_pos = content.find('{', paren_end)
+            if first_brace_pos == -1:
+                # 没有函数体，可能是函数声明
+                try: return content.index(';', start_pos) + 1
+                except ValueError:
+                    try: return content.index('\n', start_pos) + 1
+                    except ValueError: return len(content)
+            return self._find_matching_brace_end(content, first_brace_pos)
+        
+        # 默认情况
+        brace_pos = content.find('{', start_pos)
+        if brace_pos == -1:
+            try: return content.index(';', start_pos) + 1
+            except ValueError:
+                try: return content.index('\n', start_pos) + 1
+                except ValueError: return len(content)
+        return self._find_matching_brace_end(content, brace_pos)
+    
+    def _find_matching_brace_end(self, content: str, first_brace_pos: int) -> int:
+        """找到匹配的大括号结束位置"""
+        if first_brace_pos == -1:
+            return len(content)
+        
+        # 计算大括号的层级
+        brace_level = 1
+        search_pos = first_brace_pos + 1
+        
+        while brace_level > 0 and search_pos < len(content):
+            char = content[search_pos]
+            
+            # 跳过字符串中的括号
+            if char in ['"', "'", "`"] and (search_pos == 0 or content[search_pos-1] != '\\'):
+                string_char = char
+                search_pos += 1
+                while search_pos < len(content) and (content[search_pos] != string_char or content[search_pos-1] == '\\'):
+                    search_pos += 1
+                if search_pos < len(content):
+                    search_pos += 1
+                continue
+            
+            # 跳过注释中的括号
+            if char == '/' and search_pos + 1 < len(content):
+                if content[search_pos + 1] == '/':
+                    # 行注释
+                    search_pos = content.find('\n', search_pos)
+                    if search_pos == -1:
+                        search_pos = len(content)
+                    else:
+                        search_pos += 1
+                    continue
+                elif content[search_pos + 1] == '*':
+                    # 块注释
+                    search_pos = content.find('*/', search_pos)
+                    if search_pos == -1:
+                        search_pos = len(content)
+                    else:
+                        search_pos += 2
+                    continue
+            
+            # 跳过HTML标签中的括号
+            if char == '<' and search_pos + 1 < len(content):
+                if content[search_pos + 1] != '/':  # 开始标签
+                    # 找到标签结束
+                    tag_end = content.find('>', search_pos)
+                    if tag_end != -1:
+                        search_pos = tag_end + 1
+                        continue
+                else:  # 结束标签
+                    tag_end = content.find('>', search_pos)
+                    if tag_end != -1:
+                        search_pos = tag_end + 1
+                        continue
+            
+            if char == '{':
+                brace_level += 1
+            elif char == '}':
+                brace_level -= 1
+            
+            search_pos += 1
+        
+        # 查找分号
+        try:
+            semicolon_after_brace = content.index(';', search_pos - 1)
+            if all(c.isspace() for c in content[search_pos:semicolon_after_brace]): 
+                return semicolon_after_brace + 1
+        except ValueError: 
+            pass
+        
+        return search_pos
+
+    def _extract_imports(self, content: str) -> Dict[str, str]:
+        imports_map = {}
+        import_lines = re.findall(r"^\s*(?:import|from)\s+.*?(?:;|$)", content, re.MULTILINE)
+        for line in import_lines:
+            normalized_line = line.strip().rstrip(';')
+            if ' from ' in normalized_line and normalized_line.startswith('import'):
+                match = re.search(r"import\s+(.*?)\s+from", normalized_line)
+                if not match: continue
+                imports_str = match.group(1).strip()
+                if imports_str.startswith('{') and imports_str.endswith('}'):
+                    imports_str = imports_str[1:-1]
+                    components = [c.strip().split(' as ')[0] for c in imports_str.split(',')]
+                    for component in filter(None, components): imports_map[component] = normalized_line
+                elif '*' in imports_str:
+                    ns_match = re.search(r"\*\s+as\s+(\w+)", imports_str)
+                    if ns_match: imports_map[ns_match.group(1)] = normalized_line
+                else:
+                    default_import = imports_str.split(',')[0].strip()
+                    if default_import and '{' not in default_import: imports_map[default_import] = normalized_line
+                    if '{' in imports_str and '}' in imports_str:
+                        named_match = re.search(r"\{(.*?)\}", imports_str)
+                        if named_match:
+                            named_str = named_match.group(1)
+                            components = [c.strip().split(' as ')[0] for c in named_str.split(',')]
+                            for component in filter(None, components): imports_map[component] = normalized_line
+            elif ' import ' in normalized_line and normalized_line.startswith('from'):
+                match = re.search(r"import\s+(.*)", normalized_line)
+                if not match: continue
+                imports_str = match.group(1).strip()
+                if imports_str.startswith('{') and imports_str.endswith('}'): imports_str = imports_str[1:-1]
+                components = [c.strip().split(' as ')[0] for c in imports_str.split(',')]
+                for component in filter(None, components): imports_map[component] = normalized_line
+        return imports_map
+    
+    def merge_code(self, current_content: str, backup_content: str) -> str:
+        """
+        主函数：使用简化的合并策略，基于改动量决定是否自动合并。
+        """
+        ordered_backup_blocks, all_backup_blocks = self._extract_top_level_blocks(backup_content)
+        
+        # 筛选出包含harmony相关代码的function级别代码块
+        harmony_blocks = {
+            name: content for name, content in all_backup_blocks.items()
+            if self._contains_harmony_code(content)
+        }
+        
+        if not harmony_blocks:
+            print("INFO: 在 backup_content 中未发现鸿蒙相关代码，无需合并。")
+            return current_content
+
+        # 尝试合并每个harmony代码块
+        final_blocks_to_restore = {}
+        conflicts = []
+        
+        for block_name, block_content in harmony_blocks.items():
+            # 检查当前文件中是否已有同名函数
+            current_block = self._get_function_from_content(block_name, current_content)
+            
+            if current_block is None:
+                # 如果当前文件中没有这个函数，直接添加
+                final_blocks_to_restore[block_name] = block_content
+                print(f"✅ 智能恢复harmony内容: {block_name}")
+            else:
+                # 计算改动量
+                change_ratio = self._calculate_change_ratio(current_block, block_content)
+                
+                if change_ratio <= 0.3:  # 改动量小于30%，自动合并
+                    final_blocks_to_restore[block_name] = block_content
+                    print(f"自动合并 {block_name} (改动量: {change_ratio:.2%})")
+                    print(f"✅ 智能恢复harmony内容: {block_name}")
+                else:  # 改动量过大，标记为冲突，但仍尝试合并
+                    conflicts.append({
+                        'block_name': block_name,
+                        'current': current_block,
+                        'backup': block_content,
+                        'change_ratio': change_ratio
+                    })
+                    print(f"冲突: {block_name} (改动量: {change_ratio:.2%})")
+                    # 即使有冲突，也尝试合并，让用户手动处理
+                    final_blocks_to_restore[block_name] = block_content
+                    print(f"❌ 智能恢复harmony内容: {block_name} (包含冲突，需手动处理)")
+        
+        if conflicts:
+            print(f"发现 {len(conflicts)} 个冲突，需要手动处理")
+            self._record_conflicts(conflicts)
+        
+        # 额外处理：插入Harmony相关的import和注释
+        enhanced_content = self._insert_harmony_imports_and_comments(current_content, backup_content)
+        
+        # 应用函数级别的合并
+        result = self._apply_merges(enhanced_content, final_blocks_to_restore)
+        
+        return result
+    
+    def _insert_harmony_imports_and_comments(self, current_content: str, backup_content: str) -> str:
+        """插入Harmony相关的import语句和注释"""
+        result = current_content
+        
+        # 提取Harmony相关的import语句
+        harmony_imports = self._extract_harmony_imports(backup_content)
+        for import_stmt in harmony_imports:
+            if import_stmt not in result:
+                # 找到import语句的末尾，插入新的import
+                import_end_pos = self._find_import_section_end(result)
+                if import_end_pos > 0:
+                    result = result[:import_end_pos] + f"\n{import_stmt}" + result[import_end_pos:]
+                    print(f"✅ 插入Harmony import: {import_stmt.strip()}")
+        
+        # 提取Harmony相关的注释
+        harmony_comments = self._extract_harmony_comments(backup_content)
+        for comment in harmony_comments:
+            if comment not in result:
+                # 在文件开头插入注释
+                result = f"{comment}\n{result}"
+                print(f"✅ 插入Harmony注释: {comment.strip()}")
+        
+        return result
+    
+    def _extract_harmony_imports(self, content: str) -> List[str]:
+        """从内容中提取Harmony相关的import语句"""
+        imports = []
+        lines = content.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('import'):
+                # 检查是否包含Harmony相关的关键词
+                harmony_keywords = ['harmony', 'HARMONY', '鸿蒙']
+                if any(keyword in line for keyword in harmony_keywords):
+                    imports.append(line)
+                # 也检查import的模块名
+                elif 'from' in line:
+                    module_part = line.split('from')[1].strip().strip("';\"")
+                    if 'harmony' in module_part.lower():
+                        imports.append(line)
+        
+        return imports
+    
+    def _extract_harmony_comments(self, content: str) -> List[str]:
+        """从内容中提取Harmony相关的注释"""
+        comments = []
+        lines = content.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if (line.startswith('// HARMONY:') or 
+                line.startswith('/* HARMONY:') or
+                line.startswith('// harmony') or
+                line.startswith('/* harmony')):
+                comments.append(line)
+        
+        return comments
+    
+    def _find_import_section_end(self, content: str) -> int:
+        """找到import语句部分的结束位置"""
+        lines = content.split('\n')
+        import_section_end = 0
+        found_first_import = False
+        
+        for i, line in enumerate(lines):
+            if line.startswith('import'):
+                found_first_import = True
+                # 这是import语句，更新结束位置
+                import_section_end = sum(len(l) + 1 for l in lines[:i+1])
+            elif found_first_import and line.strip() == '':
+                # 在import部分中的空行，继续
+                continue
+            elif found_first_import:
+                # 已经找到了import语句，现在遇到非import且非空行，停止
+                break
+        
+        return import_section_end
+        
