@@ -1,0 +1,46 @@
+fail_fast: false
+
+repos:
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.7
+    hooks:
+    -   id: ruff
+        args: [--fix, --ignore, E722, --exclude, "__init__.py"]
+    -   id: ruff-format
+-   repo: https://github.com/PyCQA/isort
+    rev: 6.0.1
+    hooks:
+    -   id: isort
+        args:
+        -   --line-length=79
+-   repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.14.0
+    hooks:
+    -   id: pretty-format-yaml
+        args: [--autofix, --indent, '4', --preserve-quotes]
+
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: pretty-format-json
+        args: [--autofix, --indent, '4', --no-sort-keys]
+        files: ^(?!.*jsonld)$
+
+-   repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.14.0
+    hooks:
+    -   id: pretty-format-toml
+        args: [--autofix]
+-   repo: https://github.com/pappasam/toml-sort
+    rev: v0.24.2
+    hooks:
+    -   id: toml-sort
+        args: [-ia]
+-   repo: local
+    hooks:
+    -   id: ty
+        name: ty check
+        entry: bash -c 'ty check suthing test'
+        language: system
+        pass_filenames: false
+        always_run: true
