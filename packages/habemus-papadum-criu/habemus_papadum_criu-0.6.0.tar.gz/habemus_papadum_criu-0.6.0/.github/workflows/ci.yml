@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  repository-projects: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+      actions: read
+      repository-projects: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install apt dependencies
+        run: |
+          source /etc/os-release
+          if [ "${VERSION_ID}" = "24.04" ]; then
+            echo 'deb http://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu_24.04/ /' | sudo tee /etc/apt/sources.list.d/devel:tools:criu.list
+            curl -fsSL https://download.opensuse.org/repositories/devel:tools:/criu/xUbuntu_24.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_tools_criu.gpg > /dev/null
+          fi
+          sudo apt-get update
+          sudo apt-get install -y criu procps
+
+      - name: Project Setup
+        run: ./scripts/setup.sh
+
+
+      - name: Run Linting
+        run: uv run ruff check .
+
+      - name: Run Tests with Coverage
+        run: ./scripts/coverage.sh
+
+
+      - name: Temporarily disable git hooks for coverage action
+        run: |
+          if [ -f .git/hooks/pre-commit ]; then
+            mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
+          fi
+
+      - name: Coverage Comment
+        id: coverage_comment
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 70
+
+      - name: Re-enable git hooks
+        if: always()
+        run: |
+          if [ -f .git/hooks/pre-commit.disabled ]; then
+            mv .git/hooks/pre-commit.disabled .git/hooks/pre-commit
+          fi
+
+      - name: Store Pull Request comment to be posted
+        uses: actions/upload-artifact@v4
+        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt
