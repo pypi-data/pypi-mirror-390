@@ -1,0 +1,146 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools",
+]
+
+[project]
+name = "django-nh3"
+version = "0.2.1"
+description = "Django integration with for nh3, Python binding to Ammonia HTML sanitizer Rust crate."
+readme = "README.rst"
+keywords = [
+  "Django",
+]
+license = { file = "LICENSE" }
+authors = [
+  { name = "Mark Walker", email = "theshow@gmail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Django :: 3.2",
+  "Framework :: Django :: 4.0",
+  "Framework :: Django :: 4.1",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django :: 5.0",
+  "Framework :: Django :: 5.1",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Typing :: Typed",
+]
+dependencies = [
+  "django>=3.2",
+  "nh3",
+  "typing-extensions",
+]
+
+urls.Changelog = "https://github.com/marksweb/django-nh3/blob/main/CHANGELOG.rst"
+
+urls.Mastodon = "https://fosstodon.org/@markwalker"
+
+urls.Repository = "https://github.com/marksweb/django-nh3"
+
+urls.Twitter = "https://twitter.com/markwalker_"
+
+[tool.setuptools.packages.find]
+where = [
+  "src",
+]
+
+[tool.ruff]
+extend-exclude = [
+  "**migrations/**",
+  ".env",
+  ".ruff_cache",
+]
+
+# https://beta.ruff.rs/docs/configuration/
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "C",   # flake8-comprehensions
+  "B",   # flake8-bugbear
+  "Q",   # flake8-quotes
+  "PLE", # pylint error
+  "PLR", # pylint refactor
+  "PLW", # pylint warning
+  "UP",  # pyupgrade
+]
+
+ignore = [
+  "B006",    # Do not use mutable data structures for argument defaults
+  "PLR0913", # Too many arguments to function call,
+]
+
+isort.combine-as-imports = true
+# Preserve types, even if a file imports `from __future__ import annotations`.
+pyupgrade.keep-runtime-typing = true
+per-file-ignores."__init__.py" = [
+  "F401", # unused-import
+]
+per-file-ignores."src/django_nh3/forms.py" = [
+  "UP035", # import-replacements - breaks type hint Callable
+]
+
+[tool.pytest]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+django_find_project = false
+
+[tool.pytest.ini_options]
+addopts = """\
+    --strict-config
+    --strict-markers
+    --ds=tests.settings
+    """
+django_find_project = false
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = [
+  "django_nh3",
+  "tests",
+]
+
+[tool.coverage.paths]
+source = [
+  "src",
+  ".tox/py*/**/site-packages",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+mypy_path = "src/"
+namespace_packages = false
+no_implicit_optional = true
+show_error_codes = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+allow_untyped_defs = true
+
+[tool.rstcheck]
+ignore_directives = [
+  "automodule",
+]
+report_level = "ERROR"
