@@ -1,0 +1,184 @@
+Metadata-Version: 2.4
+Name: bauhaus-circular-tools
+Version: 0.2.1
+Summary: Herramientas de diseño circular para arquitectura basadas en principios Bauhaus
+Author-email: Mary Magali Villca Cruz <arqmaryvillca@gmail.com>
+Maintainer-email: Mary Magali Villca Cruz <arqmaryvillca@gmail.com>
+License: MIT
+Keywords: bauhaus,circular-design,architecture,sustainability,carbon,rhino,grasshopper,circular-economy,green-building,lca,ladybug-tools
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: Topic :: Utilities
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: ladybug-core>=0.44.0
+Requires-Dist: ladybug-geometry>=1.34.0
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: matplotlib
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: flake8>=5.0.0; extra == "dev"
+Requires-Dist: mypy>=0.990; extra == "dev"
+Requires-Dist: build>=0.10.0; extra == "dev"
+Requires-Dist: twine>=4.0.0; extra == "dev"
+Dynamic: license-file
+
+#  Bauhaus Circular Tools
+
+Herramientas de diseño circular para arquitectura basadas en principios Bauhaus.
+
+##  ¿Qué es?
+
+Librería Python que ayuda a arquitectos a diseñar edificios sostenibles aplicando:
+
+- **Principios Bauhaus** (simplicidad, máx 3 materiales, verdad material)
+- **Economía Circular** (reutilización, reciclaje, desmontaje)
+- **Reducción de Carbono** (materiales bajos en carbono embebido)
+
+### Flujo Simple
+
+```
+ANALIZAR materiales → CALCULAR carbono → OPTIMIZAR diseño
+```
+
+##  Instalación
+
+```bash
+pip install bauhaus-circular
+```
+
+Para incluir análisis climático con Ladybug Tools:
+
+```bash
+pip install bauhaus-circular[climate]
+```
+
+##  Uso Rápido
+
+```python
+from bauhaus_circular import quick_analysis
+
+# Definir diseño
+materials = ['wood', 'glass', 'recycled_steel']
+quantities = [45, 12, 28]  # m³
+climate = 'temperate'
+
+# Análisis completo
+result = quick_analysis(materials, quantities, climate)
+
+# Resultados
+print(f"Circularidad: {result['current_design']['circularity_score']:.1f}%")
+print(f"Carbono: {result['current_design']['carbon_footprint_kg_co2']:,} kgCO2e")
+print(f"Ahorro: {result['carbon_analysis']['carbon_savings_percent']:.1f}%")
+print(f"Bauhaus: {'✅' if result['current_design']['bauhaus_compliant'] else '❌'}")
+```
+
+##  Uso en Grasshopper (Rhino)
+
+```python
+import sys
+sys.path.append(r"C:\Python39\Lib\site-packages")
+
+from bauhaus_circular import quick_analysis
+
+# x, y, z son inputs de Grasshopper
+result = quick_analysis(x, y, z)
+
+# Output a panel
+a = f"""
+Circularidad: {result['current_design']['circularity_score']:.1f}%
+Carbono: {result['current_design']['carbon_footprint_kg_co2']:,} kgCO2e
+Bauhaus: {'✅' if result['current_design']['bauhaus_compliant'] else '❌'}
+"""
+```
+
+##  Materiales Disponibles
+
+| Material | Carbono (kgCO2/m³) | Reutilizable | Reciclable |
+|----------|-------------------|--------------|------------|
+| wood | 150 | 90% | 95% |
+| recycled_steel | 850 | 85% | 95% |
+| bamboo | 120 | 75% | 90% |
+| glass | 850 | 75% | 100% |
+| rammed_earth | 30 | 40% | 100% |
+| clay_brick | 220 | 85% | 90% |
+| recycled_insulation | 50 | 60% | 80% |
+| low_carbon_concrete | 180 | 30% | 70% |
+
+##  Principios Bauhaus Aplicados
+
+1. **Máximo 3 materiales principales** → Claridad y simplicidad
+2. **Verdad material** → Transparencia del ciclo de vida
+3. **Forma sigue función** → Función incluye impacto ambiental
+4. **Materiales honestos** → Acabado natural preferible
+
+##  Métricas Calculadas
+
+- **Circularidad**: Potencial de reutilización y reciclaje (0-100%)
+- **Carbono embebido**: kgCO2e de fabricación de materiales
+- **Ahorro de carbono**: % vs diseño convencional
+- **Adecuación climática**: Score de ajuste al clima (0-100)
+
+##  Desarrollo
+
+```bash
+# Clonar repositorio
+git clone https://github.com/Marymvc/bauhaus-circular-tools.git
+cd bauhaus-circular-tools
+
+# Crear entorno virtual
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate      # Windows
+
+# Instalar en modo desarrollo
+pip install -e ".[dev]"
+
+# Ejecutar tests
+pytest tests/
+
+# Formatear código
+black src/
+```
+
+##  Documentación
+
+- **Ejemplos**: Ver carpeta `examples/`
+- **Tests**: `pytest tests/ -v`
+- **API Reference**: Ver docstrings en código
+
+##  Contribuir
+
+¡Contribuciones bienvenidas! Ver [CONTRIBUTING.md](CONTRIBUTING.md)
+
+##  Licencia
+
+MIT License - ver [LICENSE](LICENSE)
+
+## ✨ Autor
+
+Mary Magali Villca Cruz - [@Marymvc](https://github.com/Marymvc)
+
+##  Agradecimientos
+
+- Bauhaus School (Walter Gropius, 1919)
+- Ellen MacArthur Foundation (Economía Circular)
+- Comunidad Grasshopper/Rhino
+
+---
+
+**Hecho con para arquitectos que diseñan el futuro circular**
