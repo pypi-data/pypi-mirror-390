@@ -1,0 +1,71 @@
+from http.client import IncompleteRead
+from http.cookiejar import Cookie
+from http.cookiejar import CookieJar
+from platform import python_version
+from platform import uname
+from re import compile as re_compile
+from typing import Optional
+from typing import Type
+from typing import TypedDict
+from typing import Union
+from urllib.robotparser import RobotFileParser
+
+from requests import Response
+from requests import Session
+
+from .__version__ import __version__
+from .exceptions import _raise_exception
+from .exceptions import Unauthorized
+
+root: str = "https://www.furaffinity.net"
+
+
+class CookieDict(TypedDict):
+    name: str
+    value: str
+
+
+def join_url(*url_comps: Union[str, int]) -> str:
+    return "/".join(map(lambda e: str(e).strip(" /"), url_comps))
+
+
+def make_session(cookies: Union[list[CookieDict], CookieJar], cls: Type[Session]) -> Session:
+    assert len(cookies), _raise_exception(Unauthorized("No cookies for session"))
+    session: Session = cls()
+    session.headers["User-Agent"] = f"faapi/{__version__} Python/{python_version()} {(u := uname()).system}/{u.release}"
+
+    for cookie in cookies:
+        if isinstance(cookie, Cookie):
+            session.cookies.set(cookie.name, cookie.value or "")
+        else:
+            session.cookies.set(cookie["name"], cookie["value"])
+
+    return session
+
+
+def get_robots(session: Session) -> RobotFileParser:
+    robots: RobotFileParser = RobotFileParser(url := join_url(root, "robots.txt"))
+    robots.parse(filter(re_compile(r"^[^#\s].+").match, map(str.strip, session.get(url).text.splitlines())))
+    return robots
+
+
+def get(
+    session: Session, path: str, *, timeout: Optional[int] = None,
+    params: Optional[dict[str, Union[str, bytes, int, float]]] = None
+) -> Response:
+    return session.get(join_url(root, path), params=params, timeout=timeout)
+
+
+def stream_binary(
+    session: Session, url: str, *, chunk_size: Optional[int] = None,
+    timeout: Optional[int] = None
+) -> bytes:
+    stream: Response = session.get(url, stream=True, timeout=timeout)
+    stream.raise_for_status()
+
+    file_binary: bytes = bytes().join(stream.iter_content(chunk_size))
+
+    if (length := int(stream.headers.get("Content-Length", 0))) > 0 and length != len(file_binary):
+        raise IncompleteRead(file_binary, length - len(file_binary))
+
+    return file_binary
