@@ -1,0 +1,37 @@
+[project]
+name = "iflow-mcp_scmcp"
+dynamic = ["version"] 
+description = "An MCP server for scRNA-Seq analysis with natural language!"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "shuang", email = "hsh-me@outlook.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "scanpy",
+    "mcp",
+    "pydantic",
+    "igraph",
+    "liana; sys_platform != 'win32'",
+    "cellrank>=2.0.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+scmcp = "scmcp.cli:run_cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "leidenalg"
+]
+
+[tool.hatch.version]
+path = "src/scmcp/__init__.py"  # 指定版本号所在的文件路径
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scmcp"]
