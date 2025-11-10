@@ -1,0 +1,115 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamlit-passwordless"
+authors = [
+  { name="Anton Lydell", email="anton.thedev@tuta.com" },
+]
+description = "A user model for Streamlit applications based on passwordless technology."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: JavaScript",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Internet :: WWW/HTTP :: Site Management",
+    "Topic :: Security"
+]
+keywords = ["Bitwarden", "FIDO2", "Passkey", "Passwordless", "Streamlit", "Web", "WebAuthn"]
+
+dynamic = ["version"]
+
+dependencies = [
+    "click >= 8.0",
+    "streamlit >= 1.24",
+    "passwordless >= 0.1",
+    "pydantic >= 2.0",
+    "sqlalchemy >= 2.0",
+]
+
+[project.scripts]
+stp = "streamlit_passwordless.cli.main:main"
+
+[project.urls]
+"Bug Tracker" = "https://github.com/antonlydell/streamlit-passwordless/issues"
+"Documentation" = "https://github.com/antonlydell/streamlit-passwordless"
+"Source Code" = "https://github.com/antonlydell/streamlit-passwordless"
+
+
+[tool.setuptools.dynamic]
+version = {attr = "streamlit_passwordless.metadata.__version__"}
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "ERA",  # eradicate
+    "S",    # flake8-bandit
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "ICN",  # flake8-import-conventions
+    "T20",  # flake8-print
+    "PT",   # flake8-pytest-style
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+    "ARG",  # flake8-unused-arguments
+    "I",    # isort
+    "C90",  # mccabe
+    "F",    # Pyflakes
+    "N",    # pep8-naming
+    "E",    # pycodestyle (Error)
+    "W",    # pycodestyle (Warning)
+    "RUF",  # Ruff-specific rules
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",     # Line too long ({width} > {limit})
+    "RUF022",   # __all__ is not sorted
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = [
+  "S101",     # Use of assert detected
+  "T20",      # flake8-print
+]
+
+[tool.ruff.format]
+quote-style = "single"
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-rsxX --showlocals --tb=short --strict-markers"
+xfail_strict = true
+testpaths = "tests"
+markers = [
+    "raises: Tests that are expected to raise an exception.",
+]
+
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["passwordless.*"]
+ignore_missing_imports = true
