@@ -1,0 +1,171 @@
+
+from __future__ import annotations
+from contextlib import contextmanager
+
+import torch
+from torch import is_tensor
+from torch.nn import Module
+from torch.func import functional_call
+
+# helper functions
+
+def exists(v):
+    return v is not None
+
+def is_empty(arr):
+    return len(arr) == 0
+
+def default(v, d):
+    return v if exists(v) else d
+
+# temporary seed
+
+@contextmanager
+def temp_seed(seed):
+    orig_torch_state = torch.get_rng_state()
+
+    orig_cuda_states = None
+    if torch.cuda.is_available():
+        orig_cuda_states = torch.cuda.get_rng_state_all()
+
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        
+    try:
+        yield
+        
+    finally:
+        torch.set_rng_state(orig_torch_state)
+
+        if torch.cuda.is_available() and orig_cuda_states:
+            torch.cuda.set_rng_state_all(orig_cuda_states)
+
+# torch.randn with seed
+
+def randn_from_seed(seed, shape, device = None):
+
+    with temp_seed(seed):
+        return torch.randn(shape, device = device)
+
+# wrapper
+
+class Noisable(Module):
+    def __init__(
+        self,
+        model: Module,
+        noise_scale = 1.
+    ):
+        super().__init__()
+        assert not is_empty(list(model.parameters()))
+
+        self.model = model
+        self.noise_scale = noise_scale
+
+    @property
+    def device(self):
+        return next(self.model.parameters()).device
+
+    @contextmanager
+    def temp_add_noise_(
+        self,
+        noise_for_params = dict(),
+        noise_scale = None,
+    ):
+        self.get_noised_params(noise_for_params, inplace = True)
+
+        yield
+
+        self.get_noised_params(noise_for_params, inplace = True, negate = True)
+
+    def add_noise_(
+        self,
+        noise_for_params = dict(),
+        noise_scale = None,
+        negate = False
+    ):
+        self.get_noised_params(noise_for_params, inplace = True, negate = negate)
+
+    def get_noised_params(
+        self,
+        noise_for_params = dict(),
+        inplace = False,
+        noise_scale = None,
+        negate = False
+    ):
+        # get named params
+
+        named_params = dict(self.model.named_parameters())
+
+        # noise the params
+
+        if not inplace:
+            noised_params = dict()
+            return_params = noised_params
+        else:
+            return_params = named_params
+
+        for name, param in named_params.items():
+
+            param_shape = param.shape
+
+            noise_or_seed = noise_for_params.get(name, None)
+            noise_scale = default(noise_scale, self.noise_scale)
+
+            if not exists(noise_or_seed):
+                continue
+
+            # determine the noise
+
+            if isinstance(noise_or_seed, int):
+                noise = randn_from_seed(noise_or_seed, param_shape)
+
+            elif isinstance(noise_or_seed, tuple) and len(noise_or_seed) == 2:
+
+                # overriding noise scale per param
+
+                seed, noise_scale = noise_or_seed
+                noise = randn_from_seed(seed, param_shape)
+
+            elif is_tensor(noise_or_seed):
+                noise = noise_or_seed
+            else:
+                raise ValueError('invalid type, noise must be float tensor or int')
+
+            # scale the noise
+
+            if noise_scale != 1.:
+                noise.mul_(noise_scale)
+
+            # add to param
+
+            noise = noise.to(self.device)
+
+            if negate:
+                noise.mul_(-1)
+
+            # if inplace, add directly to param, else set the new dictionary and return that
+
+            if inplace:
+                param.data.add_(noise)
+            else:
+                noised_params[name] = param + noise
+
+        return return_params
+
+    def forward(
+        self,
+        *args,
+        noise_for_params = dict(),
+        noise_scale = None,
+        **kwargs
+    ):
+        if is_empty(noise_for_params):
+            return self.model(*args, **kwargs)
+
+        noised_params = self.get_noised_params(noise_for_params, noise_scale = noise_scale)
+
+        # use functional call with noised params
+
+        return functional_call(self.model, noised_params, args, kwargs)
