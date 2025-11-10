@@ -1,0 +1,13 @@
+from fastapi import FastAPI
+{% if use_routes %}
+from .api.router import api_router
+{% endif %}
+
+app = FastAPI(title="{{ project_name }}")
+{% if use_routes %}
+app.include_router(api_router)
+{% endif %}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
