@@ -1,0 +1,59 @@
+name: Deploy static content to Pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy_docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install CRIU and procps
+        run: |
+          source /etc/os-release
+          if [ "${VERSION_ID}" = "24.04" ]; then
+            echo 'deb http://download.opensuse.org/repositories/devel:/tools:/criu/xUbuntu_24.04/ /' | sudo tee /etc/apt/sources.list.d/devel:tools:criu.list
+            curl -fsSL https://download.opensuse.org/repositories/devel:tools:/criu/xUbuntu_24.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_tools_criu.gpg > /dev/null
+          fi
+          sudo apt-get update
+          sudo apt-get install -y criu procps
+
+      - name: Project Setup
+        run: ./scripts/setup.sh
+
+
+      - name: Project Setup
+        run: ./scripts/setup.sh
+
+      - name: Generate Docs
+        run: uv run mkdocs build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './site'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
