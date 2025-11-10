@@ -1,0 +1,95 @@
+# 客户端专用配置 - 只包含 proto 定义，用于 PyPI 发布
+[tool.poetry]
+name = "agent-queue"
+version = "1.0.0"
+description = "A private task queue system for agents using Redis + Celery with gRPC interface (Client Package)"
+authors = ["NightSailingShip <149816081+NightSailingShip@users.noreply.github.com>"]
+readme = "README.md"
+license = "MIT"
+keywords = ["task-queue", "celery", "redis", "grpc", "agent", "distributed", "client"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+]
+packages = [
+    {include = "client"},
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+grpcio = ">=1.60.0"
+grpcio-tools = ">=1.60.0"
+protobuf = ">=4.25.0"
+pyyaml = ">=6.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.4.0"
+build = ">=1.0.0"
+twine = ">=4.0.0"
+
+[tool.poetry.urls]
+Homepage = "https://github.com/NightSailingShip/queues"
+Documentation = "https://github.com/NightSailingShip/queues#readme"
+Repository = "https://github.com/NightSailingShip/queues"
+Issues = "https://github.com/NightSailingShip/queues/issues"
+
+[project]
+name = "agent-queue"
+version = "1.0.0"
+description = "A private task queue system for agents using Redis + Celery with gRPC interface (Client Package)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "NightSailingShip", email = "149816081+NightSailingShip@users.noreply.github.com"}
+]
+keywords = ["task-queue", "celery", "redis", "grpc", "agent", "distributed", "client"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+    "grpcio>=1.60.0",
+    "grpcio-tools>=1.60.0",
+    "protobuf>=4.25.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/NightSailingShip/queues"
+Documentation = "https://github.com/NightSailingShip/queues#readme"
+Repository = "https://github.com/NightSailingShip/queues"
+Issues = "https://github.com/NightSailingShip/queues/issues"
+
+[tool.setuptools]
+# 自动发现所有 client 包及其子包
+packages = ["client", "client.config", "client.queues"]
+
+[tool.setuptools.package-data]
+client = ["*.proto", "*_pb2.py", "*_pb2_grpc.py", "*_pb2.pyi"]
+"client.config" = ["*.yaml"]
+
+[tool.setuptools.package-dir]
+"" = "."
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
