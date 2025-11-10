@@ -1,0 +1,76 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    defaults:
+        run:
+          shell: bash -l {0}
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        python: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+      - name: Setup venv
+        run: |
+          uv venv --python=${{ matrix.python }}
+      - name: Install parsevasp development and pytest-cov
+        run: |
+          uv pip install git+https://github.com/aiida-vasp/parsevasp.git@develop pytest-cov
+      - name: Install aiida-vasp
+        run: |
+          uv pip install -v -e .[tests]
+      - name: Run tests with codecov
+        run: |
+          source .venv/bin/activate
+          pytest --cov=aiida_vasp --cov-append --cov-report=xml --cov-report=term-missing -k 'not converge_wc' tests
+      - name: Archive error mock calculations
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: error-mock-calc-archive
+          path: |
+            test_mock_error.aiida
+          retention-days: 5
+          if-no-files-found: warn
+      - name: Upload coverage to Codecov
+        if: matrix.python == '3.12' && github.event.repository.fork == false
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: aiida-vasp
+          flags: pytests
+          fail_ci_if_error: true
+  docs:
+    runs-on: ubuntu-latest
+    defaults:
+        run:
+          shell: bash -l {0}
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        python: ['3.10']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+      - name: Setup venv
+        run: |
+          uv venv --python=${{ matrix.python }}
+      - name: Install parsevasp development
+        run: |
+          uv pip install git+https://github.com/aiida-vasp/parsevasp.git@develop
+      - name: Install aiida-vasp
+        run: |
+          uv pip install -v -e .[docs]
+      - name: Build the documentation
+        run: |
+          source .venv/bin/activate
+          cd docs
+          make html
