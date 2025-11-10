@@ -1,0 +1,143 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "enum-properties"
+version = "2.4.1"
+description = "Add properties and method specializations to Python enumeration values with a simple declarative syntax."
+requires-python = ">=3.9,<4.0"
+authors = [
+  {name = "Brian Kohan", email = "bckohan@gmail.com"}
+]
+license = "MIT"
+license-files = [ "LICENSE" ]
+repository = "https://github.com/bckohan/enum-properties"
+homepage = "https://enum-properties.readthedocs.io"
+readme = "README.md"
+keywords = ["enum",  "properties", "defines", "field", "dataclass", "dataclasses"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/bckohan/enum-properties"
+"Documentation" = "https://enum-properties.readthedocs.io"
+"Repository" = "https://github.com/bckohan/enum-properties"
+"Issues" = "https://github.com/bckohan/enum-properties/issues"
+"Changelog" = "https://enum-properties.readthedocs.io/en/latest/changelog.html"
+"Code_of_Conduct" = "https://github.com/bckohan/enum-properties/blob/main/CODE_OF_CONDUCT.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/enum_properties"]
+
+
+[dependency-groups]
+dev = [
+    "coverage>=7.6.1",
+    "importlib-metadata>=8.5.0",
+    "ipdb>=0.13.13",
+    "mypy>=1.14.1",
+    "packaging>=24.2",
+    "pre-commit>=3.5.0",
+    "pyright>=1.1.396",
+    "pytest>=8.3.5",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.9.9",
+]
+docs = [
+    "doc8>=1.1.2",
+    "furo>=2024.8.6",
+    "readme-renderer[md]>=43.0",
+    "sphinx>=7.1.2",
+    "sphinx-autobuild>=2021.3.14",
+    "sphinx-tabs>=3.4.7",
+]
+
+
+[tool.mypy]
+# The mypy configurations: http://bit.ly/2zEl9WI
+allow_redefinition = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+disallow_any_explicit = false
+disallow_any_generics = false
+disallow_untyped_calls = true
+ignore_errors = false
+ignore_missing_imports = true
+implicit_reexport = false
+strict_optional = true
+strict_equality = true
+local_partial_types = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unreachable = true
+warn_no_return = true
+exclude = "tests"
+mypy_path = "src"
+modules = "enum_properties"
+
+
+[tool.doc8]
+ignore-path = "doc/_build"
+max-line-length = 100
+sphinx = true
+
+
+[tool.pytest.ini_options]
+python_files = "test*.py"
+norecursedirs = "*.egg .eggs dist build docs .tox .git __pycache__"
+
+addopts = [
+  "--strict-markers",
+  "--cov=enum_properties",
+  "--cov-branch"
+]
+[tool.ruff]
+line-length = 88
+exclude = [
+    "doc",
+    "dist",
+    "examples",
+    "tests/resources/bad_code.py"
+]
+
+[tool.ruff.lint]
+exclude = [
+    "tests/**/*",
+]
+
+[tool.pyright]
+exclude = ["tests/**/*"]
+include = [
+    "src/enum_properties"
+]
+
+[tool.coverage.run]
+omit = ["tests/**/*py"]
+branch = true
+source = ["enum_properties"]
+concurrency = ["multiprocessing"]
+parallel = true
+relative_files = true
+command_line = "-m pytest --cov=enum_properties"
+
+[tool.coverage.paths]
+source = ["enum_properties"]
