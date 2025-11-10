@@ -1,0 +1,144 @@
+Metadata-Version: 2.4
+Name: ingestar
+Version: 0.1.7
+Summary: A practical tool for converting PDF to Markdown
+License: Proprietary License. Copyright (c) 2025 Jason Wong. All rights reserved.
+Project-URL: homepage, https://ingestar.net/
+Project-URL: documentation, https://jasonwang178.github.io/IngeStar/
+Project-URL: repository, https://github.com/jasonwang178/IngeStar
+Project-URL: issues, https://github.com/jasonwang178/IngeStar/issues
+Keywords: magic-pdf,ingestar,IngeStar,convert,pdf,markdown
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: <3.14,>=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: boto3>=1.28.43
+Requires-Dist: click>=8.1.7
+Requires-Dist: loguru>=0.7.2
+Requires-Dist: numpy>=1.21.6
+Requires-Dist: pdfminer.six==20250506
+Requires-Dist: tqdm>=4.67.1
+Requires-Dist: requests
+Requires-Dist: httpx
+Requires-Dist: pillow>=11.0.0
+Requires-Dist: pypdfium2>=4.30.0
+Requires-Dist: pypdf>=5.6.0
+Requires-Dist: reportlab
+Requires-Dist: pdftext>=0.6.2
+Requires-Dist: modelscope>=1.26.0
+Requires-Dist: huggingface-hub>=0.32.4
+Requires-Dist: json-repair>=0.46.2
+Requires-Dist: opencv-python>=4.11.0.86
+Requires-Dist: fast-langdetect<0.3.0,>=0.2.3
+Requires-Dist: scikit-image<1.0.0,>=0.25.0
+Requires-Dist: openai<2,>=1.70.0
+Requires-Dist: beautifulsoup4<5,>=4.13.5
+Requires-Dist: magika<0.7.0,>=0.6.2
+Requires-Dist: ingestar_vl_sdk<1,>=0.1.1
+Provides-Extra: test
+Requires-Dist: ingestar[core]; extra == "test"
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-cov; extra == "test"
+Requires-Dist: coverage; extra == "test"
+Requires-Dist: fuzzywuzzy; extra == "test"
+Provides-Extra: vlm
+Requires-Dist: transformers>=4.53.3; extra == "vlm"
+Requires-Dist: torch>=2.6.0; extra == "vlm"
+Requires-Dist: accelerate>=1.5.1; extra == "vlm"
+Provides-Extra: vllm
+Requires-Dist: vllm>=0.11; extra == "vllm"
+Provides-Extra: pipeline
+Requires-Dist: matplotlib<4,>=3.10; extra == "pipeline"
+Requires-Dist: ultralytics<9,>=8.3.48; extra == "pipeline"
+Requires-Dist: doclayout_yolo==0.0.4; extra == "pipeline"
+Requires-Dist: dill<1,>=0.3.8; extra == "pipeline"
+Requires-Dist: PyYAML<7,>=6.0.2; extra == "pipeline"
+Requires-Dist: ftfy<7,>=6.3.1; extra == "pipeline"
+Requires-Dist: shapely<3,>=2.0.7; extra == "pipeline"
+Requires-Dist: pyclipper<2,>=1.3.0; extra == "pipeline"
+Requires-Dist: omegaconf<3,>=2.3.0; extra == "pipeline"
+Requires-Dist: torch<3,>=2.6.0; extra == "pipeline"
+Requires-Dist: torchvision; extra == "pipeline"
+Requires-Dist: transformers!=4.51.0,<5.0.0,>=4.49.0; extra == "pipeline"
+Requires-Dist: onnxruntime>1.17.0; extra == "pipeline"
+Provides-Extra: api
+Requires-Dist: fastapi; extra == "api"
+Requires-Dist: python-multipart; extra == "api"
+Requires-Dist: uvicorn; extra == "api"
+Provides-Extra: core
+Requires-Dist: ingestar[pipeline]; extra == "core"
+Requires-Dist: ingestar[api]; extra == "core"
+Provides-Extra: all
+Requires-Dist: ingestar[core]; extra == "all"
+Requires-Dist: ingestar[vllm]; extra == "all"
+Dynamic: license-file
+
+# IngeStar
+
+A PDF ingestion tool
+
+## Test
+
+```shell
+../.venv/bin/ingestar -p test.pdf -o ./output -m auto -b pipeline --source modelscope
+
+../.venv/bin/ingestar -p test.pdf -o ./output -m auto -b vlm-transformers --source modelscope
+
+../.venv/bin/ingestar -p test.pdf -o ./output -m auto -b vlm-vllm-engine --source modelscope
+
+# .venv/bin/ingestar-vllm-server --port 38000
+
+
+NO_PROXY="localhost,127.0.0.1,192.168.0.0/16,10.0.0.0/8" ./.venv/bin/ingestar -p ./test.pdf -o ./ingestar_output -m auto -b vlm-http-client -u http://192.168.88.177:38000
+```
+
+## Build
+
+```py
+make build-multiplatform
+```
+
+
+ingestar 项目中用于 PDF 文档解析后生成的结构化数据文件：
+
+  文件作用
+
+  制度汇编_chunk_008_middle.json：
+  - 存储PDF文档的中间解析结果，包含文本内容和布局信息
+  - 包含预处理块(preproc_blocks)和段落块(para_blocks)
+  - 保存页面尺寸、废弃块等元数据
+  - 主要用于文本提取和内容理解
+
+  制度汇编_chunk_008_model.json：
+  - 存储布局检测模型的输出结果
+  - 包含AI模型识别的各种文档元素（标题、文本、页脚等）
+  - 用于文档结构分析和版面理解
+
+  关键字段含义
+
+  bbox (Bounding Box)
+
+  - 格式：[x1, y1, x2, y2] - 矩形边界框坐标
+  - 作用：定义文本或元素在页面中的精确位置
+  - 示例：[76, 78, 127, 103] 表示左上角(76,78)到右下角(127,103)的矩形区域
+
+  poly (Polygon)
+
+  - 格式：[x1, y1, x2, y2, x3, y3, x4, y4] - 四边形顶点坐标
+  - 作用：定义更精确的多边形区域，适用于倾斜或不规则的文档元素
+  - 示例：[212, 539, 1412, 539, 1412, 1102, 212, 1102] 定义了一个矩形的四个顶点
+
+  score (置信度分数)
+
+  - 范围：0.0 - 1.0
+  - 作用：表示AI模型对该检测结果的置信度
+  - 用途：
+    - 在middle.json中通常为1.0（文本提取置信度）
+    - 在model.json中反映布局检测的准确性（如0.956, 0.927等）
+    - 用于过滤低质量的检测结果
+
+  这些文件配合使用，为PDF文档的智能解析提供了文本内容和结构布局的双重信息。
+
