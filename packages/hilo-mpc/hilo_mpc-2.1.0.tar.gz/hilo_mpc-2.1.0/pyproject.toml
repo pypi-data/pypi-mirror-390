@@ -1,0 +1,90 @@
+#############################
+# Poetry project definition #
+#############################
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "hilo-mpc"
+version = "2.1.0"
+description = "HILO-MPC is a toolbox for easy, flexible and fast development of machine-learning-supported optimal control and estimation problems"
+readme = "README.md"
+license = "LGPL-3.0"
+authors = [
+    "Johannes Pohlodek",
+    "Bruno Morabito",
+    "Christian Schlauch",
+    "Pablo Zometa",
+    "Rolf Findeisen"
+]
+maintainers = ["HILO-MPC Developers"]
+homepage = "https://www.ccps.tu-darmstadt.de/research_ccps/hilo_mpc/"
+repository = "https://github.com/hilo-mpc/hilo-mpc"
+documentation = "https://hilo-mpc.github.io/hilo-mpc/"
+keywords = [
+    "machine-learning", "neural-networks", "gaussian-processes", "hybrid-modeling", "model-based-optimization",
+    "model-predictive-control", "mpc", "trajectory-tracking-mpc", "path-following-mpc", "moving-horizon-estimation",
+    "mhe", "lqr", "pid", "kalman-filters", "particle-filters"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development"
+]
+packages = [
+    { include = "hilo_mpc" }
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/hilo-mpc/hilo-mpc/issues"
+"Source Code" = "https://github.com/hilo-mpc/hilo-mpc"
+
+[tool.poetry.dependencies]
+# Choose the latest Python compatible with the latest stable CasADi. As of 2025, CasADi 3.6.x provides wheels up to Python 3.12.
+python = ">=3.10,<3.13"
+casadi = "^3.6.5"
+numpy = "<2.0"
+scipy = "*"
+prettytable = "*"
+pandas = ">=2.0.0"
+# Optional dependencies for extras
+scikit-learn = { version = ">=0.19.2", optional = true }
+bokeh = { version = ">=2.3.0", optional = true }
+matplotlib = { version = ">=3.0.0", optional = true }
+tensorflow = { version = ">=2.8.0", optional = true }
+tensorboard = { version = ">=2.8.0", optional = true }
+keras = { version = ">=3.11.3", optional = true }
+torch = { version = ">=1.2.0", optional = true }
+torchvision = { version = ">=0.4.0", optional = true }
+asyncua = { version = ">=1.0.0", optional = true }
+
+[tool.poetry.extras]
+ml = ["scikit-learn"]
+tensorflow = ["tensorflow", "tensorboard", "keras"]
+pytorch = ["torch", "torchvision"]
+viz = ["bokeh", "matplotlib"]
+connectivity = ["asyncua"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+tomli = "^2.3.0"
+sphinx = "<8.2"
+sphinx-theme = "^1.0"
+nbsphinx = "^0.9.7"
+sphinxcontrib-bibtex = "^2.6.5"
+sphinx-copybutton = "^0.5.2"
