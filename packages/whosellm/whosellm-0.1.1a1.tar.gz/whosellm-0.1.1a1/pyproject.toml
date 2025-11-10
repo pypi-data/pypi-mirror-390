@@ -1,0 +1,71 @@
+[project]
+name = "whosellm"
+version = "0.1.1a1"
+description = "A unified LLM model version and capability management library"
+authors = [
+    {name = "JQQ", email = "jqq1716@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "parse>=1.20.2",
+    "vrl-python>=0.1.0,<0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.1,<9.0.0",
+    "ruff>=0.12.9,<0.13.0",
+    "mypy>=1.17.1,<2.0.0",
+    "poethepoet>=0.37.0,<0.38.0",
+    "bump-my-version>=0.30.0",
+]
+test = [
+    "polyfactory>=2.22.2,<3.0.0",
+    "pytest-asyncio>=1.1.0,<2.0.0",
+    "pytest-cov>=6.2.1,<7.0.0",
+    "pytest-mock>=3.14.1,<4.0.0",
+    "inline-snapshot>=0.27.2,<0.28.0",
+    "pytest-dotenv>=0.5.2,<0.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.poe.tasks]
+# 开发环境安装 / Install development environment
+dev = "uv sync --extra dev --extra test"
+
+# 代码格式化 / Code formatting
+fmt = "ruff format ."
+format = "ruff format ."
+
+# 代码检查 / Code linting
+lint = "ruff check --fix ."
+check = "ruff check ."
+
+# 类型检查 / Type checking
+typecheck = "mypy whosellm"
+mypy = "mypy whosellm"
+
+# 测试 / Testing
+test = "pytest tests/"
+test-cov = "pytest tests -m 'not e2e' --cov whosellm --cov-report=term-missing --cov-fail-under=0 --cov-config=.coveragerc"
+test-e2e = "pytest tests -m e2e"
+test-all = "pytest tests -v"
+
+# 代码质量检查（全套） / Full code quality check
+qa = ["format", "lint", "typecheck", "test"]
+
+# 运行示例 / Run examples
+example = "python examples/basic_usage.py"
+
+# 清理缓存 / Clean cache
+[tool.poe.tasks.clean]
+shell = """
+rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov dist build *.egg-info
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+"""
+help = "清理所有缓存和构建文件 / Clean all cache and build files"
