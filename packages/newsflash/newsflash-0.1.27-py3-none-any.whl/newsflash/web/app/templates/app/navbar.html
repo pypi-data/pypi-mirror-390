@@ -1,0 +1,59 @@
+<div id="sidebar" class="h-screen ps-3 py-3 flex flex-col justify-between">
+
+    <div class="flex flex-col gap-3">
+        <a 
+        href="{% url 'home' %}" 
+        hx-boost="true" 
+        hx-push-url="{% url 'home' %}" 
+        class="w-full rounded-full cursor-pointer py-4 text-center
+        {% if page_num == 1 %}input-dropdown outline-2 outline-stone-500 
+        {% else %}bg-stone-600 text-stone-50 outline-none 
+        {% endif %}"
+        >
+            1
+        </a>
+    </div>
+
+    <div class="relative flex flex-col" 
+    x-data="{showAccount: false}"
+    >
+        <button 
+        @click="showAccount = !showAccount;"
+        class="bg-stone-600 text-stone-50 w-full rounded-full cursor-pointer py-4
+        hover:bg-stone-500 outline-none z-40">
+            {% if user.is_authenticated %}{{ user.username.0|capfirst }}{% else %}?{% endif %}
+        </button>
+
+        <!-- page overlay -->
+        <div
+        x-show="showAccount"
+        x-transition.opacity
+        class="absolute -bottom-3 -left-3 w-screen h-screen bg-stone-600/50 z-30">
+        </div>
+
+        <div
+        x-show="showAccount" 
+        x-transition.opacity
+        @click.outside="showAccount = false;"
+        class="absolute input bottom-0 z-50 rounded border border-stone-500 
+        p-5 shadow-2xl w-xl" 
+        style="left: 70px;"
+        >
+
+            <h1 class="text-3xl mb-3">Your Account</h1>
+
+            <div class="flex flex-col justify-between h-48">
+                {% if user.is_authenticated %}
+                    <p>You are logged in as: {{ user.username }}</p>
+                    <a href="{% url 'logout-view' %}" class="text-sky-50 px-4 py-3 
+                    text-center bg-sky-700 rounded my-3 block">Logout</a>
+                {% else %}
+                    <p>You are currently not logged in.</p>
+                    <a href="{% url 'login-page' %}" class="text-sky-50 px-4 py-3 
+                    text-center bg-sky-700 rounded my-3 block">Login</a>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>

@@ -1,0 +1,67 @@
+{% extends "app/base.html" %}
+
+{% block head %}
+
+{% load static %}
+<link rel="stylesheet" href="{% static 'app/output.css' %}">
+<link rel="stylesheet" href="{% static 'app/main_styles.css' %}">
+
+{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-center h-screen">
+
+    <form 
+    class="flex flex-col gap-3 rounded px-5 pb-16"
+    action="{% url 'auth-request' %}"
+    method="post"
+    >
+    
+        <h1 class="text-4xl mb-5">Welcome</h1>
+        <p class="mb-5">Please log in with your username and password.</p>
+        
+        {% csrf_token %}
+
+        <input 
+        type="text" 
+        name="username"
+        placeholder="username"
+        class="w-full py-3 px-4 rounded
+            bg-surface-light dark:bg-surface-dark 
+            focus:outline outline-blue-light/75 dark:outline-blue-dark/75 "/>
+
+        <input 
+        type="password"
+        name="password" 
+        placeholder="password"
+        class="w-full py-3 px-4 rounded
+            bg-surface-light dark:bg-surface-dark 
+            focus:outline outline-blue-light/75 dark:outline-blue-dark/75 "/>
+
+        <input
+        type="submit"
+        class="px-4 py-3 text-text-light dark:text-text-dark rounded 
+            cursor-pointer outline-none focus:underline
+            bg-blue-light/75 hover:bg-blue-light shadow-2xl"
+        value="Log In" />
+
+        <div class="relative mt-5 w-full">
+
+            {% if messages %}
+            <ul class="messages absolute bg-surface-light dark:bg-surface-dark 
+            border border-red-600 rounded 
+            p-5 w-full shadow-2xl">
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <a class="text-blue-light dark:text-blue-dark underline" href="/">Go back without logging in.</a>
+    </form>
+
+</div>
+
+{% endblock %}
