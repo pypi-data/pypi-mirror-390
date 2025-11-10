@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="{{visual_theme}}">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <link rel="shortcut icon" href="data:,">
+
+    <title>{{status}}@{{host}} monitor</title>
+
+    <script src="main.bundle.js"></script>
+{%- if map -%}
+    <script src="maps.bundle.js"></script>
+{%- endif %}
+    <meta http-equiv="refresh" content="{{interval}}" />
+    </head>
+
+    <body>
+      <div
+        class="navbar navbar-light border-bottom {{status_border}}"
+        id="summary"
+      >
+      <div class="container-fluid">
+        <div class="navbar-brand">{{navbar_title}}</div>
+        <div class="navbar-text d-none d-lg-block" id="updated">
+          Updated at {{now}} by {{host}} ({{version}})
+        </div>
+        <div class="navbar-text" id="refresh_status">
+          <span class="badge bg-warning d-none" id="refresh_badge"
+            >OUT OF DATE</span
+          >
+        </div>
+        <div class="navbar-text">
+          {%- if ok_count %}<span class="badge bg-success">{{ok_count}} OK</span>  {% endif %}{%- if fail_count %}<span class="badge bg-danger">{{fail_count}} FAIL</span>  {% endif %}{%- if disabled_count %}<span class="badge bg-secondary">{{disabled_count}} DISABLED</span>  {% endif %}{%- if old_count %}<span class="badge bg-warning">{{old_count}} OLD</span>  {% endif %}{%- if remote_count %}<span class="badge bg-info">{{remote_count}} remote</span>  {% endif %} </div>
+        </div>
+      </div>
+{%- if map -%}
+      <div id="mapid" style="fill: 1440px; height: 960px;"></div>
+      <script>
+        var mymap = L.map('mapid', {
+          center: [{{ map_start.latitude }}, {{ map_start.longitude }}],
+          zoom: {{ map_start.zoom }}
+        });
+        L.tileLayer(
+          'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }).addTo(mymap);
+
+{% macro map_pin(entry) -%}
+        L.marker([{{entry.gps[0]}},{{entry.gps[1]}}], {
+{% if entry.status %}
+            icon: markerIconUp,
+{%- else -%}
+            icon: markerIconDown,
+{%- endif -%}
+            title: '{{entry.monitor_name}}',
+        }).addTo(mymap).bindPopup("{{entry.monitor_name}} ({{entry.status_text}}) {{entry.fail_data}}");
+{%- endmacro -%}
+{% for entry in fail_entries %}
+{{map_pin(entry)}}
+{% endfor -%}
+{% for entry in ok_entries %}
+{{map_pin(entry)}}
+{% endfor -%}
+      </script>
+{%- else %}
+      <table class="table table-borderless table-striped table-hover table-sm">
+        <tr>
+          <th scope="col">Monitor</th>
+          <th scope="col">Status</th>
+          <th scope="col">Host</th>
+          <th scope="col">Failed at</th>
+          <th scope="col">VFC</th>
+          <th scope="col">Up/downtime</th>
+          <th scope="col">Detail</th>
+          <th scope="col">Failures</th>
+          <th scope="col">Last Failure</th>
+          <th scope="col">Age</th>
+        </tr>
+{% macro table_row(entry) -%}
+        <tr{% if entry.row_class %} class="{{entry.row_class}}"{% endif %}>
+          <td>
+            <span
+              data-toggle="tooltip"
+              data-placement="right"
+              title="{{entry.description|e}}"
+              >{{entry.monitor_name}}</span
+            >
+          </td>
+          <td{% if entry.cell_class %} class="{{entry.cell_class}}"{% endif %}>{{entry.status_text}}</td>
+          <td>{{entry.host}}</td>
+          <td>{{entry.fail_time}}</td>
+          <td>{% if entry.fail_count %}{{entry.fail_count}}{% endif %}</td>
+          <td>{{entry.downtime}} (<span
+              data-toggle="tooltip"
+              data-placement="right"
+              title="{{"%.5f" | format(entry.availability * 100)}}%"
+              >{{"%.2f" | format(entry.availability * 100)}}%</span
+            >)
+          </td>
+          <td>{{entry.fail_data}}</td>
+          {% if entry.failures == 0 %}
+          <td></td><td></td>
+          {% else %}
+          <td>{{entry.failures}}</td>
+          <td>{{entry.last_failure}}</td>
+          {% endif %}
+          <td>{% if not entry.my_host %}{{entry.age}}{% endif %}</td>
+        </tr>
+{%- endmacro -%}
+{% for entry in fail_entries -%}
+{{table_row(entry)}}
+{% endfor -%}
+{% for entry in ok_entries -%}
+{{table_row(entry)}}
+{% endfor -%}
+</table>
+{%- endif %}
+    <div class="navbar-text d-block d-lg-none" id="updatedfooter">
+      Updated at {{now}}<br />by {{host}} ({{version}})
+    </div>
+    <div class="container-fluid">
+      <div class="text-end text-muted">
+        SimpleMonitor {{version}}
+        <a
+          href="https://simplemonitor.readthedocs.io/en/latest/index.html"
+          target="_blank"
+          >&raquo; Documentation</a
+        >
+        |
+        <a href="https://github.com/jamesoff/simplemonitor" target="_blank"
+          >&raquo; Code</a
+        >
+      </div>
+    </div>
+    <script language="javascript" type="text/javascript">
+
+      function check_age() {
+        const generated = {{timestamp}};
+        const now = Math.floor(Date.now() / 1000);
+        const diff = now - generated;
+        if (diff > ({{interval}} * 2)) {
+          too_old();
+        }
+      }
+
+      $(function () {
+        const tooltip_trigger_list = document.querySelectorAll('[data-toggle="tooltip"]');
+        tooltip_trigger_list.forEach(tooltip_trigger_el => {
+          new bootstrap.Tooltip(tooltip_trigger_el);
+        });
+
+        const update_props = {
+          timestamp: {{timestamp}},
+          host: "{{host}}",
+          version: "{{version}}",
+          updated: "{{now}}",
+        };
+
+	if (document.readyState === "loading") {
+          document.addEventListener('DOMContentLoaded', (event) => {
+            check_age();
+            update_age(update_props);
+          });
+        } else {
+          check_age();
+          update_age(update_props);
+        }
+
+        setTimeout(too_old, ({{interval}} * 2000));
+        setInterval(update_age, 5000, update_props);
+      });
+    </script>
+  </body>
+</html>
