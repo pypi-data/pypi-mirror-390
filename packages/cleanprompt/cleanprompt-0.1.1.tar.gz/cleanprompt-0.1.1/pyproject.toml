@@ -1,0 +1,67 @@
+[project]
+name = "cleanprompt"
+description = "Utility to correctly strip LLM prompts"
+authors = [
+  { name="Arash Salarian", email="arash@salarian.com" }
+]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12.0, <3.15"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+]
+version = "0.1.1"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit~=v4.3.0",
+  "ruff~=0.14.0",
+  "mypy~=1.18.2",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "hatch>=1.14"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/salarian/cleanprompt"
+"Bug Tracker" = "https://github.com/salarian/cleanprompt/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/test",
+  "/.github",
+  "/.vscode",
+  ".gitignore",
+  ".editorconfig",
+  ".pre-commit-config.yaml",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.3"
+testpaths = [ "test" ]
+
+[tool.mypy]
+ignore_missing_imports = true
+scripts_are_modules = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["D", "I", "F", "N", "NPY", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["D104", "F401", "F403"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
