@@ -1,0 +1,20 @@
+metadata:
+  version: 1.0
+  description: Nested Node Monitor Panel
+
+widgets:
+  - type: TemplateTableWidget
+    header: [ID, Device Name, Description, Firmware Version, Status, Uptime, "5V,V", "Vin,V", "T,°C", Save/Reboot/Upgrade]
+    pattern:
+      - {type: ParamWidget, param: "uavcan.node.id", node_id: "{id}"}
+      - {type: BoundLabel, info: "name", node_id: "{id}"}
+      - {type: ParamWidget, param: "uavcan.node.description", node_id: "{id}"}
+      - {type: BoundLabel, info: "software_version", node_id: "{id}"}
+      - {type: HealthLabel, node_id: "{id}"}
+      - {type: BoundLabel, topics: [dronecan.uavcan.protocol.NodeStatus::uptime_sec, cyphal.uavcan.node.Heartbeat_1_0::uptime], node_id: "{id}"}
+      - {type: BoundLabel, topics: [dronecan.uavcan.equipment.power.CircuitStatus::voltage], node_id: "{id}", precision: 2}
+      - {type: BoundLabel, topics: [dronecan.uavcan.equipment.power.CircuitStatus::voltage], node_id: "{id}", precision: 2}
+      - {type: BoundLabel, topics: [dronecan.uavcan.equipment.device.Temperature::temperature], node_id: "{id}", precision: 0}
+      - [{type: ButtonWidget, text: Save, action: save_all, node_id: "{id}"},
+         {type: ButtonWidget, text: Reboot, action: reboot, node_id: "{id}"},
+         {type: ButtonWidget, text: Update, action: update_device, device_id: "{id}"}]

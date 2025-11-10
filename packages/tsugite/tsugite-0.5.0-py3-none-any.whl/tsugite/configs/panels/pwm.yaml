@@ -1,0 +1,78 @@
+metadata:
+  version: 1.0
+  description: PWM
+
+icon_url: "https://docs.raccoonlab.co/assets/img/t-view-top.27660fdb.png"
+
+widgets:
+  - type: table
+    header:
+      nope: "Nope"
+      update: "Bootloader"
+      save_all: "Parameters"
+      reboot: "Reboot"
+    rows:
+      - nope:         {type: ButtonWidget, text: "Noop",      action: noop,     node_id: 63}
+        update:       {type: ButtonWidget, text: "Upgrade",   action: upgrade,  node_id: 63}
+        save_all:     {type: ButtonWidget, text: "Save All",  action: save_all, node_id: 63}
+        reboot:       {type: ButtonWidget, text: "Reboot",    action: reboot,   node_id: 63}
+
+  - {type: const_label, text: "Advanced Parameters" }
+  - type: table
+    header:
+      p6: "fb.esc"
+      p7: "fb.actuators"
+      p8: "fb.hardpoint"
+      p1: "Logging"
+      p2: "CRCT"
+      p3: "TTL"
+      p4: "f, hz"
+      p5: "cmd"
+    rows:
+      - p1: {type: ParamWidget, param: "system.log_level",          node_id: 63}
+        p2: {type: ParamWidget, param: "crct.bitmask",              node_id: 63}
+        p3: {type: ParamWidget, param: "pwm.cmd_ttl_ms",            node_id: 63}
+        p4: {type: ParamWidget, param: "pwm.frequency",             node_id: 63}
+        p5: {type: ParamWidget, param: "pwm.cmd_type",              node_id: 63}
+        p6: {type: ParamWidget, param: "feedback.esc.enable",       node_id: 63}
+        p7: {type: ParamWidget, param: "feedback.actuator.enable",  node_id: 63}
+        p8: {type: ParamWidget, param: "feedback.hardpoint.enable", node_id: 63}
+
+  - type: table
+    header:
+      name: "Group"
+      p1: "ch"
+      p2: "min"
+      p3: "max"
+      p4: "def"
+    rows:
+      - name: {type: const_label, text: "pwm1" }
+        p1: {type: ParamWidget, param: "pwm1.ch",  node_id: 63}
+        p2: {type: ParamWidget, param: "pwm1.min", node_id: 63}
+        p3: {type: ParamWidget, param: "pwm1.max", node_id: 63}
+        p4: {type: ParamWidget, param: "pwm1.def", node_id: 63}
+
+      - name: {type: const_label, text: "pwm2" }
+        p1: {type: ParamWidget, param: "pwm2.ch",  node_id: 63}
+        p2: {type: ParamWidget, param: "pwm2.min", node_id: 63}
+        p3: {type: ParamWidget, param: "pwm2.max", node_id: 63}
+        p4: {type: ParamWidget, param: "pwm2.def", node_id: 63}
+
+      - name: {type: const_label, text: "pwm3" }
+        p1: {type: ParamWidget, param: "pwm3.ch",  node_id: 63}
+        p2: {type: ParamWidget, param: "pwm3.min", node_id: 63}
+        p3: {type: ParamWidget, param: "pwm3.max", node_id: 63}
+        p4: {type: ParamWidget, param: "pwm3.def", node_id: 63}
+
+      - name: {type: const_label, text: "pwm4" }
+        p1: {type: ParamWidget, param: "pwm4.ch",  node_id: 63}
+        p2: {type: ParamWidget, param: "pwm4.min", node_id: 63}
+        p3: {type: ParamWidget, param: "pwm4.max", node_id: 63}
+        p4: {type: ParamWidget, param: "pwm4.def", node_id: 63}
+
+  - type: PlotWidget
+    topics: [dronecan.uavcan.equipment.esc.Status]
+    fields: ["power_rating_pct"]
+    names: ["%"]
+    window: 300
+    refresh_rate: 15
