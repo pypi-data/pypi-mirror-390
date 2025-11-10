@@ -1,0 +1,1791 @@
+diff --git a/nornflow/builtins/__init__.py b/nornflow/builtins/__init__.py
+index 74c0b3a..171af68 100644
+--- a/nornflow/builtins/__init__.py
++++ b/nornflow/builtins/__init__.py
+@@ -5,7 +5,7 @@ This package contains the default filters and processors included with NornFlow.
+ """
+ 
+ from nornflow.builtins.filters import groups, hosts
+-from nornflow.builtins.hooks import ShushHook, SetToHook, IfHook
++from nornflow.builtins.hooks import IfHook, SetToHook, ShushHook
+ from nornflow.builtins.processors import DefaultNornFlowProcessor
+ 
+-__all__ = ["DefaultNornFlowProcessor", "ShushHook", "SetToHook", "IfHook", "groups", "hosts"]
++__all__ = ["DefaultNornFlowProcessor", "IfHook", "SetToHook", "ShushHook", "groups", "hosts"]
+diff --git a/nornflow/builtins/hooks/if_hook.py b/nornflow/builtins/hooks/if_hook.py
+index 881b390..ddc8a2f 100644
+--- a/nornflow/builtins/hooks/if_hook.py
++++ b/nornflow/builtins/hooks/if_hook.py
+@@ -1,6 +1,7 @@
+ import logging
++from collections.abc import Callable
+ from functools import wraps
+-from typing import TYPE_CHECKING, Any, Callable
++from typing import Any, TYPE_CHECKING
+ 
+ from nornir.core.inventory import Host
+ from nornir.core.task import Result, Task
+@@ -19,24 +20,25 @@ logger = logging.getLogger(__name__)
+ def skip_if_condition_flagged(task_func: Callable) -> Callable:
+     """
+     Decorator that checks for the 'nornflow_skip_flag' in host.data before executing the task.
+-    
++
+     If the flag is set to True, returns a skipped Result without executing the original task.
+     Otherwise, executes the original task normally.
+-    
++
+     This decorator is applied dynamically by IfHook when conditions are configured,
+     allowing conditional task execution per host without global overhead.
+-    
++
+     Args:
+         task_func: The original Nornir task function to wrap.
+-        
++
+     Returns:
+         Wrapped function that checks the skip flag before execution.
+     """
++
+     @wraps(task_func)
+     def wrapper(task: Task) -> Result:
+-        if task.host.data.get('nornflow_skip_flag', False):
++        if task.host.data.get("nornflow_skip_flag", False):
+             # Clean up the flag after use to avoid stale state
+-            task.host.data.pop('nornflow_skip_flag', None)
++            task.host.data.pop("nornflow_skip_flag", None)
+             return Result(
+                 host=task.host,
+                 result=None,
+@@ -45,7 +47,7 @@ def skip_if_condition_flagged(task_func: Callable) -> Callable:
+                 skipped=True,
+             )
+         return task_func(task)
+-    
++
+     return wrapper
+ 
+ 
+@@ -65,7 +67,7 @@ class IfHook(Hook):
+         # OR
+         if:
+           filter_name: [value1, value2]  # positional args
+-        # OR  
++        # OR
+         if:
+           filter_name: single_value  # single arg
+ 
+@@ -110,39 +112,37 @@ class IfHook(Hook):
+         if isinstance(self.value, dict):
+             # Filter function validation
+             if len(self.value) != 1:
+-                raise HookValidationError(
+-                    "IfHook",
+-                    [("value_count", "if must specify exactly one filter")]
+-                )
++                raise HookValidationError("IfHook", [("value_count", "if must specify exactly one filter")])
+         elif isinstance(self.value, str):
+             # Jinja2 expression validation - basic check for non-empty string
+             if not self.value.strip():
+-                raise HookValidationError(
+-                    "IfHook",
+-                    [("empty_expression", "if expression cannot be empty")]
+-                )
++                raise HookValidationError("IfHook", [("empty_expression", "if expression cannot be empty")])
+             # Ensure expression contains Jinja2 markers to prevent raw Python evaluation
+             if not any(marker in self.value for marker in JINJA2_MARKERS):
+                 raise HookValidationError(
+                     "IfHook",
+-                    [("invalid_expression", "if expression must be a valid Jinja2 template (contain {{, {%, {# etc.)")]
++                    [
++                        (
++                            "invalid_expression",
++                            "if expression must be a valid Jinja2 template (contain {{, {%, {# etc.)",
++                        )
++                    ],
+                 )
+         else:
+             raise HookValidationError(
+-                "IfHook",
+-                [("value_type", "if value must be a dict (filter) or string (expression)")]
++                "IfHook", [("value_type", "if value must be a dict (filter) or string (expression)")]
+             )
+ 
+     def task_started(self, task: Task) -> None:
+         """Dynamically decorate the task function to enable per-host skipping."""
+         if not self.value:
+             return
+-        
++
+         # Apply the skip decorator dynamically to the task function
+         # This ensures the decorated version is executed instead of the original
+         original_func = task.task
+         task.task = skip_if_condition_flagged(original_func)
+-        
++
+         logger.debug(f"Applied skip decorator to task '{task.name}' for condition evaluation")
+ 
+     def task_instance_started(self, task: Task, host: Host) -> None:
+@@ -152,22 +152,21 @@ class IfHook(Hook):
+ 
+         try:
+             should_skip = False
+-            
++
+             if isinstance(self.value, dict):
+                 # Filter function evaluation
+                 should_skip = not self._evaluate_filter_condition(host)
+             else:
+                 # Jinja2 expression evaluation
+                 should_skip = not self._evaluate_jinja2_condition(host)
+-            
++
+             if should_skip:
+-                host.data['nornflow_skip_flag'] = True
+-                
++                host.data["nornflow_skip_flag"] = True
++
+         except Exception as e:
+             logger.error(f"Error evaluating if condition for host '{host.name}': {e}")
+             raise HookValidationError(
+-                "IfHook",
+-                [("evaluation_error", f"Failed to evaluate condition: {e}")]
++                "IfHook", [("evaluation_error", f"Failed to evaluate condition: {e}")]
+             ) from e
+ 
+     def _evaluate_filter_condition(self, host: Host) -> bool:
+@@ -176,11 +175,16 @@ class IfHook(Hook):
+         filters_catalog = self.context.get("filters_catalog", {})
+ 
+         if filter_name not in filters_catalog:
+-            available = ', '.join(sorted(filters_catalog.keys()))
++            available = ", ".join(sorted(filters_catalog.keys()))
+             raise HookValidationError(
+                 "IfHook",
+-                [(filter_name, f"Filter '{filter_name}' not found in filters catalog. "
+-                              f"Available filters: {available}")]
++                [
++                    (
++                        filter_name,
++                        f"Filter '{filter_name}' not found in filters catalog. "
++                        f"Available filters: {available}",
++                    )
++                ],
+             )
+ 
+         filter_func, param_names = filters_catalog[filter_name]
+@@ -193,26 +197,23 @@ class IfHook(Hook):
+         vars_manager = self.context.get("vars_manager")
+         if not vars_manager:
+             raise HookValidationError(
+-                "IfHook",
+-                [("no_vars_manager", "vars_manager not available for Jinja2 expression evaluation")]
++                "IfHook", [("no_vars_manager", "vars_manager not available for Jinja2 expression evaluation")]
+             )
+-        
++
+         # Resolve the Jinja2 expression
+         resolved_expression = vars_manager.resolve_string(self.value, host.name)
+-        
++
+         # Evaluate as boolean
+         try:
+             result = bool(eval(resolved_expression))  # noqa: S307 - controlled environment
+         except Exception as e:
+-            raise TemplateError(f"Jinja2 expression did not evaluate to a boolean: '{resolved_expression}'") from e
+-        
++            raise TemplateError(
++                f"Jinja2 expression did not evaluate to a boolean: '{resolved_expression}'"
++            ) from e
++
+         return result
+ 
+-    def _build_filter_kwargs(
+-        self,
+-        param_names: list[str],
+-        filter_values: Any
+-    ) -> dict[str, Any]:
++    def _build_filter_kwargs(self, param_names: list[str], filter_values: Any) -> dict[str, Any]:
+         """Build keyword arguments for the filter function based on value format."""
+         if isinstance(filter_values, dict):
+             return filter_values
+@@ -224,13 +225,17 @@ class IfHook(Hook):
+             if len(filter_values) != len(param_names):
+                 raise HookValidationError(
+                     "IfHook",
+-                    [("param_count", f"Filter expects {len(param_names)} parameters, got {len(filter_values)}")]
++                    [
++                        (
++                            "param_count",
++                            f"Filter expects {len(param_names)} parameters, got {len(filter_values)}",
++                        )
++                    ],
+                 )
+             return dict(zip(param_names, filter_values, strict=False))
+ 
+         if len(param_names) != 1:
+             raise HookValidationError(
+-                "IfHook",
+-                [("param_count", f"Filter expects {len(param_names)} parameters, got 1")]
++                "IfHook", [("param_count", f"Filter expects {len(param_names)} parameters, got 1")]
+             )
+-        return {param_names[0]: filter_values}
+\ No newline at end of file
++        return {param_names[0]: filter_values}
+diff --git a/nornflow/builtins/hooks/set_to.py b/nornflow/builtins/hooks/set_to.py
+index e52eddd..9d250d2 100644
+--- a/nornflow/builtins/hooks/set_to.py
++++ b/nornflow/builtins/hooks/set_to.py
+@@ -1,5 +1,7 @@
++# ruff: noqa: PERF203
++
+ import logging
+-from typing import TYPE_CHECKING, Any
++from typing import Any, TYPE_CHECKING
+ 
+ from nornir.core.inventory import Host
+ from nornir.core.task import MultiResult, Result, Task
+@@ -27,7 +29,7 @@ class SetToHook(Hook):
+ 
+     For extraction paths, directly reference the keys in the result data:
+     - "vendor" - gets vendor from the result dict
+-    - "hostname" - gets hostname from the result dict  
++    - "hostname" - gets hostname from the result dict
+     - "environment.cpu.usage" - nested dict access
+     - "var_list[2]" - access indexes in lists
+     - "dict.nested_list[1].another_dict.another_list[10]" - any combination of nested structures
+@@ -70,95 +72,118 @@ class SetToHook(Hook):
+             HookValidationError: If validation fails, with details on the specific issue.
+         """
+         invalid_tasks = {"set", "echo", "set_to"}
+-        
++
+         if task_model.name in invalid_tasks:
+             raise HookValidationError(
+-                "SetToHook", 
+-                [("task_compatibility", f"Hook 'SetToHook' cannot be used with task '{task_model.name}'. Incompatible tasks: {invalid_tasks}")]
++                "SetToHook",
++                [
++                    (
++                        "task_compatibility",
++                        f"Hook 'SetToHook' cannot be used with task '{task_model.name}'. "
++                        f"Incompatible tasks: {invalid_tasks}",
++                    )
++                ],
+             )
+ 
+         if self.value is None:
+             raise HookValidationError(
+                 "SetToHook",
+-                [("value_required", "set_to hook requires a value (variable name or extraction specification)")]
++                [
++                    (
++                        "value_required",
++                        "set_to hook requires a value (variable name or extraction specification)",
++                    )
++                ],
+             )
+ 
+         if isinstance(self.value, str):
+             if not self.value.strip():
+                 raise HookValidationError(
+-                    "SetToHook",
+-                    [("empty_variable_name", "Variable name cannot be empty")]
++                    "SetToHook", [("empty_variable_name", "Variable name cannot be empty")]
+                 )
+         elif isinstance(self.value, dict):
+             if not self.value:
+                 raise HookValidationError(
+                     "SetToHook",
+-                    [("empty_extraction_spec", "Extraction specification cannot be empty")]
++                    [("empty_extraction_spec", "Extraction specification cannot be empty")],
+                 )
+-            
++
+             for var_name, extraction_path in self.value.items():
+                 if not isinstance(var_name, str) or not var_name.strip():
+                     raise HookValidationError(
+                         "SetToHook",
+-                        [("invalid_variable_name", f"Variable name must be a non-empty string, got: {var_name}")]
++                        [
++                            (
++                                "invalid_variable_name",
++                                f"Variable name must be a non-empty string, got: {var_name}",
++                            )
++                        ],
+                     )
+-                
++
+                 if not isinstance(extraction_path, str) or not extraction_path.strip():
+                     raise HookValidationError(
+                         "SetToHook",
+-                        [("invalid_extraction_path", f"Extraction path for '{var_name}' must be a non-empty string")]
++                        [
++                            (
++                                "invalid_extraction_path",
++                                f"Extraction path for '{var_name}' must be a non-empty string",
++                            )
++                        ],
+                     )
+         else:
+             raise HookValidationError(
+                 "SetToHook",
+-                [("invalid_value_type", f"set_to value must be a string or dict, got {type(self.value).__name__}")]
++                [
++                    (
++                        "invalid_value_type",
++                        f"set_to value must be a string or dict, got {type(self.value).__name__}",
++                    )
++                ],
+             )
+ 
+     def task_instance_completed(self, task: Task, host: Host, result: MultiResult) -> None:
+         """
+         Process task results and store them as runtime variables for the host.
+-    
++
+         Extracts data from the task's MultiResult based on the hook's configuration
+         and stores it in the runtime variable manager. Handles both simple storage
+         and complex extraction paths. Logs warnings/errors for missing components
+         or extraction failures.
+-    
++
+         Args:
+             task: The completed task instance.
+             host: The host for which the task was executed.
+             result: The MultiResult containing outcomes for all hosts.
+-    
++
+         Raises:
+             Exception: Propagates any unhandled errors during processing.
+         """
+         if self.value is None or result is None:
+             return
+-    
+-        # Skip setting variables if the task failed entirely
++
+         if result.failed:
+             return
+-    
++
+         vars_manager = self.context.get("vars_manager")
+         if not vars_manager:
+             logger.warning(f"No vars_manager available for set_to hook on host '{host.name}'")
+             return
+-    
++
+         try:
+             host_result = None
+             for individual_result in result:
+                 if individual_result.host.name == host.name:
+                     host_result = individual_result
+                     break
+-            
++
+             if host_result is None:
+                 logger.error(f"Could not find result for host '{host.name}' in MultiResult")
+                 return
+-            
+-            # Skip setting variables if the task was skipped (predicate sets skipped=True)
+-            if hasattr(host_result, 'skipped') and host_result.skipped:
++
++            if hasattr(host_result, "skipped") and host_result.skipped:
+                 logger.debug(f"Host {host.name} was skipped by predicate, not setting variables")
+                 return
+-                    
++
+             if isinstance(self.value, str):
+                 vars_manager.set_runtime_variable(self.value, host_result.result, host.name)
+                 logger.debug(f"Stored result in variable '{self.value}' for host '{host.name}'")
+@@ -167,9 +192,15 @@ class SetToHook(Hook):
+                     try:
+                         extracted_value = self._extract_data_from_result(host_result, extraction_path)
+                         vars_manager.set_runtime_variable(var_name, extracted_value, host.name)
+-                        logger.debug(f"Extracted '{extraction_path}' and stored as '{var_name}' for host '{host.name}'")
++                        logger.debug(
++                            f"Extracted '{extraction_path}' and stored as '{var_name}' "
++                            f"for host '{host.name}'"
++                        )
+                     except Exception as e:
+-                        logger.error(f"Failed to extract '{extraction_path}' for variable '{var_name}' on host '{host.name}': {e}")
++                        logger.error(
++                            f"Failed to extract '{extraction_path}' for variable '{var_name}' "
++                            f"on host '{host.name}': {e}"
++                        )
+         except Exception as e:
+             logger.error(f"Error in set_to hook for host '{host.name}': {e}")
+             raise
+@@ -177,20 +208,20 @@ class SetToHook(Hook):
+     def _extract_data_from_result(self, result: Result, extraction_path: str) -> Any:
+         """
+         Extract data from Result object using dotted notation and bracket indexing.
+-        
++
+         Special prefixes:
+         - "_failed" - returns result.failed
+         - "_changed" - returns result.changed
+         - "_result" - returns the entire result.result dict
+         - Otherwise, extracts from result.result dict
+-        
++
+         Args:
+             result: The Result object to extract from
+             extraction_path: The path specification
+-            
++
+         Returns:
+             The extracted data
+-            
++
+         Raises:
+             HookValidationError: If extraction fails
+         """
+@@ -198,43 +229,44 @@ class SetToHook(Hook):
+             current_obj = self._handle_special_prefixes(result, extraction_path)
+             if current_obj is not None:
+                 return current_obj
+-            
++
+             current_obj = result.result
+-            
++
+             if current_obj is None:
+                 raise HookValidationError(
+                     "SetToHook",
+-                    [("null_result", f"Task result is None for extraction path '{extraction_path}'")]
++                    [("null_result", f"Task result is None for extraction path '{extraction_path}'")],
+                 )
+-            
++
+             segments = self._parse_extraction_path(extraction_path)
+             return self._extract_from_segments(current_obj, segments, extraction_path)
+-            
++
+         except HookValidationError:
+             raise
+         except Exception as e:
+             raise HookValidationError(
+-                "SetToHook",
+-                [("extraction_error", f"Failed to extract '{extraction_path}': {e}")]
++                "SetToHook", [("extraction_error", f"Failed to extract '{extraction_path}': {e}")]
+             ) from e
+ 
+     def _handle_special_prefixes(self, result: Result, extraction_path: str) -> Any | None:
+         """Handle special extraction path prefixes."""
+         if extraction_path == "_failed":
+             return result.failed
+-        elif extraction_path == "_changed":
++        if extraction_path == "_changed":
+             return result.changed
+-        elif extraction_path == "_result":
++        if extraction_path == "_result":
+             return result.result
+         return None
+ 
+-    def _extract_from_segments(self, current_obj: Any, segments: list[dict[str, str]], extraction_path: str) -> Any:
++    def _extract_from_segments(
++        self, current_obj: Any, segments: list[dict[str, str]], extraction_path: str
++    ) -> Any:
+         """Extract data by iterating through path segments."""
+         for segment in segments:
+-            if segment['type'] == 'key':
+-                current_obj = self._handle_key_segment(current_obj, segment['value'], extraction_path)
+-            elif segment['type'] == 'index':
+-                current_obj = self._handle_index_segment(current_obj, segment['value'], extraction_path)
++            if segment["type"] == "key":
++                current_obj = self._handle_key_segment(current_obj, segment["value"], extraction_path)
++            elif segment["type"] == "index":
++                current_obj = self._handle_index_segment(current_obj, segment["value"], extraction_path)
+         return current_obj
+ 
+     def _handle_key_segment(self, current_obj: Any, key: str, extraction_path: str) -> Any:
+@@ -242,20 +274,30 @@ class SetToHook(Hook):
+         if isinstance(current_obj, dict):
+             if key in current_obj:
+                 return current_obj[key]
+-            elif key.isdigit() and int(key) in current_obj:
++            if key.isdigit() and int(key) in current_obj:
+                 return current_obj[int(key)]
+-            else:
+-                available = self._get_available_keys(current_obj)
+-                raise HookValidationError(
+-                    "SetToHook",
+-                    [("extraction_key_error", f"Key '{key}' not found in extraction path '{extraction_path}'. Available: {available}")]
+-                )
+-        else:
+             available = self._get_available_keys(current_obj)
+             raise HookValidationError(
+                 "SetToHook",
+-                [("extraction_key_error", f"Cannot access key '{key}' on non-dict object in path '{extraction_path}'. Object type: {type(current_obj).__name__}")]
++                [
++                    (
++                        "extraction_key_error",
++                        f"Key '{key}' not found in extraction path '{extraction_path}'. "
++                        f"Available: {available}",
++                    )
++                ],
+             )
++        available = self._get_available_keys(current_obj)
++        raise HookValidationError(
++            "SetToHook",
++            [
++                (
++                    "extraction_key_error",
++                    f"Cannot access key '{key}' on non-dict object in path '{extraction_path}'. "
++                    f"Object type: {type(current_obj).__name__}",
++                )
++            ],
++        )
+ 
+     def _handle_index_segment(self, current_obj: Any, index_str: str, extraction_path: str) -> Any:
+         """Handle index access for lists, tuples, or dicts."""
+@@ -266,10 +308,16 @@ class SetToHook(Hook):
+             try:
+                 return current_obj[index_str]
+             except Exception:
+-                length = len(current_obj) if hasattr(current_obj, '__len__') else "unknown"
++                length = len(current_obj) if hasattr(current_obj, "__len__") else "unknown"
+                 raise HookValidationError(
+                     "SetToHook",
+-                    [("extraction_index_error", f"Index [{index_str}] not accessible in extraction path '{extraction_path}'. Length: {length}")]
++                    [
++                        (
++                            "extraction_index_error",
++                            f"Index [{index_str}] not accessible in extraction path "
++                            f"'{extraction_path}'. Length: {length}",
++                        )
++                    ],
+                 ) from e
+ 
+     def _parse_extraction_path(self, path: str) -> list[dict[str, str]]:
+@@ -284,12 +332,13 @@ class SetToHook(Hook):
+             path: The extraction path string to parse (e.g., "dict.key[0].nested").
+ 
+         Returns:
+-            A list of segment dictionaries, each with 'type' ('key' or 'index') and 'value' (the segment string).
++            A list of segment dictionaries, each with 'type' ('key' or 'index')
++            and 'value' (the segment string).
+ 
+         Examples:
+             - "hostname" -> [{'type': 'key', 'value': 'hostname'}]
+             - "interfaces[0]" -> [
+-                    {'type': 'key', 'value': 'interfaces'}, 
++                    {'type': 'key', 'value': 'interfaces'},
+                     {'type': 'index', 'value': '0'}
+                 ]
+             - "dict.nested_list[1].another_dict" -> [
+@@ -302,28 +351,28 @@ class SetToHook(Hook):
+         segments = []
+         current_segment = ""
+         in_brackets = False
+-        
++
+         for char in path:
+-            if char == '[':
++            if char == "[":
+                 if current_segment:
+-                    segments.append({'type': 'key', 'value': current_segment})
++                    segments.append({"type": "key", "value": current_segment})
+                     current_segment = ""
+                 in_brackets = True
+-            elif char == ']':
++            elif char == "]":
+                 if in_brackets and current_segment:
+-                    segments.append({'type': 'index', 'value': current_segment})
++                    segments.append({"type": "index", "value": current_segment})
+                     current_segment = ""
+                 in_brackets = False
+-            elif char == '.' and not in_brackets:
++            elif char == "." and not in_brackets:
+                 if current_segment:
+-                    segments.append({'type': 'key', 'value': current_segment})
++                    segments.append({"type": "key", "value": current_segment})
+                     current_segment = ""
+             else:
+                 current_segment += char
+-                
++
+         if current_segment:
+-            segments.append({'type': 'key', 'value': current_segment})
+-            
++            segments.append({"type": "key", "value": current_segment})
++
+         return segments
+ 
+     def _get_available_keys(self, obj: Any) -> str:
+@@ -340,10 +389,10 @@ class SetToHook(Hook):
+             A formatted string of available keys/attributes, truncated if over 10.
+         """
+         available = []
+-        
++
+         if isinstance(obj, dict):
+-            available.extend(str(k) for k in obj.keys())
+-        elif hasattr(obj, '__dict__'):
+-            available.extend([attr for attr in dir(obj) if not attr.startswith('_')])
+-            
+-        return ', '.join(sorted(available)[:10]) + ('...' if len(available) > 10 else '')
+\ No newline at end of file
++            available.extend(str(k) for k in obj)
++        elif hasattr(obj, "__dict__"):
++            available.extend([attr for attr in dir(obj) if not attr.startswith("_")])
++
++        return ", ".join(sorted(available)[:10]) + ("..." if len(available) > 10 else "")  # noqa: PLR2004
+diff --git a/nornflow/builtins/hooks/shush.py b/nornflow/builtins/hooks/shush.py
+index 960278d..26f45c0 100644
+--- a/nornflow/builtins/hooks/shush.py
++++ b/nornflow/builtins/hooks/shush.py
+@@ -1,3 +1,4 @@
++# ruff: noqa: SLF001, T201
+ import re
+ 
+ from nornflow.hooks import Hook, register_hook
+@@ -7,25 +8,25 @@ from nornflow.hooks.exceptions import HookValidationError
+ @register_hook
+ class ShushHook(Hook):
+     """Hook to suppress task output printing.
+-    
++
+     The shush hook allows conditional suppression of task output based on
+     boolean values or Jinja2 expressions that evaluate to boolean.
+-    
++
+     Supported values:
+         - Boolean: True/False for static suppression control
+         - Jinja2 expression: Dynamic suppression based on variables
+         - None: No suppression (default)
+-    
++
+     The hook works in conjunction with processors that support output
+     suppression by marking tasks in a special set on the Nornir instance.
+     """
+-    
++
+     hook_name = "shush"
+     run_once_per_task = True
+ 
+     def __init__(self, value: bool | str | None = None):
+         """Initialize the shush hook.
+-        
++
+         Args:
+             value: Boolean, Jinja2 expression string, or None
+         """
+@@ -34,87 +35,86 @@ class ShushHook(Hook):
+ 
+     def _detect_jinja2_expression(self, value: bool | str | None) -> bool:
+         """Detect if value is a Jinja2 expression.
+-        
++
+         Args:
+             value: The value to check
+-            
++
+         Returns:
+             True if value contains Jinja2 markers
+         """
+         if not isinstance(value, str):
+             return False
+-        jinja2_patterns = [r'\{\{.*?\}\}', r'\{%.*?%\}', r'\{#.*?#\}']
++        jinja2_patterns = [r"\{\{.*?\}\}", r"\{%.*?%\}", r"\{#.*?#\}"]
+         return any(re.search(pattern, value) for pattern in jinja2_patterns)
+ 
+     def _evaluate_suppression(self, task: "Task") -> bool:
+         """Evaluate whether output should be suppressed.
+-        
++
+         Args:
+             task: The Nornir task
+-            
++
+         Returns:
+             True if output should be suppressed
+         """
+         if isinstance(self.value, bool):
+             return self.value
+-        
++
+         if self.value is None:
+             return False
+-        
++
+         if self.is_jinja2_expression:
+             vars_manager = self.context.get("vars_manager")
+             if vars_manager:
+                 host = next(iter(task.nornir.inventory.hosts.values()))
+                 resolved = vars_manager.resolve_string(self.value, host)
+-                return resolved.lower() in ('true', 'yes', '1')
++                return resolved.lower() in ("true", "yes", "1")
+             return False
+-        
++
+         return bool(self.value)
+ 
+     def task_started(self, task: "Task") -> None:
+         """Mark task for output suppression if conditions are met.
+-        
++
+         Args:
+             task: The Nornir task
+         """
+         should_suppress = self._evaluate_suppression(task)
+-        
++
+         if not should_suppress:
+             return
+ 
+         has_compatible_processor = any(
+-            getattr(proc, 'supports_shush_hook', False) 
+-            for proc in task.nornir.processors
++            getattr(proc, "supports_shush_hook", False) for proc in task.nornir.processors
+         )
+ 
+         if not has_compatible_processor:
+             print(
+-                f"Warning: 'shush' hook has no effect - "
+-                f"no compatible processor found in chain. "
+-                f"Outputs are not going to be suppressed."
++                "Warning: 'shush' hook has no effect - "
++                "no compatible processor found in chain. "
++                "Outputs are not going to be suppressed."
+             )
+             return
+ 
+-        if not hasattr(task.nornir, '_nornflow_suppressed_tasks'):
++        if not hasattr(task.nornir, "_nornflow_suppressed_tasks"):
+             task.nornir._nornflow_suppressed_tasks = set()
+         task.nornir._nornflow_suppressed_tasks.add(task.name)
+ 
+     def task_completed(self, task: "Task", result: "AggregatedResult") -> None:
+         """Remove task from suppression set after completion.
+-        
++
+         Args:
+             task: The Nornir task
+             result: The aggregated result
+         """
+-        if hasattr(task.nornir, '_nornflow_suppressed_tasks'):
++        if hasattr(task.nornir, "_nornflow_suppressed_tasks"):
+             task.nornir._nornflow_suppressed_tasks.discard(task.name)
+ 
+     def execute_hook_validations(self, task_model: "TaskModel") -> None:
+         """Validate shush hook configuration.
+-        
++
+         Args:
+             task_model: The task model being validated
+-            
++
+         Raises:
+             HookValidationError: If string value lacks Jinja2 markers
+         """
+@@ -126,7 +126,7 @@ class ShushHook(Hook):
+                         "value",
+                         f"Task '{task_model.name}': 'shush' hook received string value "
+                         f"'{self.value}' without Jinja2 markers. Use boolean values "
+-                        f"(true/false) or Jinja2 expressions (e.g., '{{{{ condition }}}}')"
++                        f"(true/false) or Jinja2 expressions (e.g., '{{{{ condition }}}}')",
+                     )
+-                ]
+-            )
+\ No newline at end of file
++                ],
++            )
+diff --git a/nornflow/builtins/processors/__init__.py b/nornflow/builtins/processors/__init__.py
+index d5240d6..7398b14 100644
+--- a/nornflow/builtins/processors/__init__.py
++++ b/nornflow/builtins/processors/__init__.py
+@@ -7,4 +7,4 @@ from .default_processor import DefaultNornFlowProcessor
+ from .failure_strategy_processor import NornFlowFailureStrategyProcessor
+ from .hook_processor import NornFlowHookProcessor
+ 
+-__all__ = ["DefaultNornFlowProcessor", "NornFlowFailureStrategyProcessor", "NornFlowHookProcessor"]
+\ No newline at end of file
++__all__ = ["DefaultNornFlowProcessor", "NornFlowFailureStrategyProcessor", "NornFlowHookProcessor"]
+diff --git a/nornflow/builtins/processors/decorators.py b/nornflow/builtins/processors/decorators.py
+index 4e731a9..6f052c1 100644
+--- a/nornflow/builtins/processors/decorators.py
++++ b/nornflow/builtins/processors/decorators.py
+@@ -1,41 +1,44 @@
++# ruff: noqa: SLF001
++from collections.abc import Callable
+ from functools import wraps
+-from typing import TYPE_CHECKING, Callable
++from typing import Any, TYPE_CHECKING
+ 
+ if TYPE_CHECKING:
+-    from nornflow.hooks import Hook
++    pass
+ 
+ 
+ def hook_delegator(func: Callable) -> Callable:
+     """Decorator that automatically delegates to hooks based on the method name.
+-    
++
+     This decorator extracts the method name from the decorated function
+     and delegates to the corresponding hook methods.
+     """
++
+     @wraps(func)
+-    def wrapper(self, *args, **kwargs):
++    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
+         method_name = func.__name__
+-        
+-        task = args[0] if args else kwargs.get('task')
+-        
++
++        task = args[0] if args else kwargs.get("task")
++
+         if not task:
+             return func(self, *args, **kwargs)
+-        
++
+         hooks = self.task_hooks
+         context = self.context
+-        
++
+         for hook in hooks:
+             if hasattr(hook, method_name):
+                 hook_method = getattr(hook, method_name)
+-                
++
+                 if not hook.should_execute(task):
+                     continue
+-                    
++
+                 hook._current_context = context
+-                
++
+                 try:
+                     hook_method(*args, **kwargs)
+                 except Exception as e:
+-                    if hasattr(hook, 'exception_handlers') and hook.exception_handlers:
++                    if hasattr(hook, "exception_handlers") and hook.exception_handlers:
+                         for exc_class, handler_name in hook.exception_handlers.items():
+                             if isinstance(e, exc_class):
+                                 if hasattr(hook, handler_name):
+@@ -46,7 +49,7 @@ def hook_delegator(func: Callable) -> Callable:
+                             raise
+                     else:
+                         raise
+-        
++
+         return func(self, *args, **kwargs)
+-    
++
+     return wrapper
+diff --git a/nornflow/builtins/processors/default_processor.py b/nornflow/builtins/processors/default_processor.py
+index 9368d9b..0f60785 100644
+--- a/nornflow/builtins/processors/default_processor.py
++++ b/nornflow/builtins/processors/default_processor.py
+@@ -1,11 +1,11 @@
+-# ruff: noqa: T201
++# ruff: noqa: T201, SLF001
+ import threading
+ from datetime import datetime
+ 
+-from colorama import Back, Fore, Style, init
++from colorama import Back, Fore, init, Style
++from nornir.core.inventory import Host
+ from nornir.core.processor import Processor
+ from nornir.core.task import Result, Task
+-from nornir.core.inventory import Host
+ 
+ # Initialize colorama
+ init(autoreset=True)
+@@ -21,87 +21,71 @@ output_lock = threading.Lock()
+ 
+ class DefaultNornFlowProcessor(Processor):
+     """Default processor for NornFlow that tracks execution time and statistics."""
+-    
++
+     supports_shush_hook = True
+ 
+     def __init__(self):
+         """Initialize processor with tracking variables for timing and statistics."""
+         super().__init__()
+-        
++
+         # Dictionary to track start times for each (task_name, host) pair for timing calculations
+         self.start_times = {}
+-        
++
+         # Timestamp when the entire workflow started, used for overall duration
+         self.workflow_start_time = None
+-        
++
+         # Number of unique tasks that have started (incremented once per task in task_started)
+         self.task_count = 0
+-        
+-        # Total number of task-host executions (incremented for each host that actually runs a task, excluding predicate-skipped hosts)
++
++        # Total number of task-host executions
++        # (incremented for each host that actually runs a task, excluding predicate-skipped hosts)
+         self.task_executions = 0
+-        
++
+         # Number of unique tasks that have completed (incremented once per task in task_completed/task_failed)
+         self.tasks_completed = 0
+-        
++
+         # Number of successful task-host executions (hosts that completed without failure)
+         self.successful_executions = 0
+-        
++
+         # Number of failed task-host executions (hosts that failed during execution)
+         self.failed_executions = 0
+-        
++
+         # Number of skipped task-host executions (hosts skipped due to predicates or result.skipped)
+         self.skipped_executions = 0
+-        
++
+         # Total number of hosts in the inventory (set once from the first task)
+         self.total_hosts = None
+-        
++
+         # Flag to enable printing workflow summary after each task completion
+         self.print_summary_after_each_task = False
+ 
+     def _is_output_suppressed(self, task: Task) -> bool:
+         """Check if output should be suppressed for the given task.
+-        
++
+         Args:
+             task: The Nornir task to check
+-            
++
+         Returns:
+             True if output should be suppressed, False otherwise
+         """
+         return (
+-            hasattr(task.nornir, '_nornflow_suppressed_tasks') and 
+-            task.name in task.nornir._nornflow_suppressed_tasks
++            hasattr(task.nornir, "_nornflow_suppressed_tasks")
++            and task.name in task.nornir._nornflow_suppressed_tasks
+         )
+ 
+-    def _is_host_skipped(self, task: Task, host: Host) -> tuple[bool, str]:
+-        """Check if a host was skipped for a given task.
+-
+-        Args:
+-            task: The Nornir task
+-            host: The host to check
+-
+-        Returns:
+-            Tuple of (is_skipped, skip_reason)
+-        """
+-        if not hasattr(task.nornir, "_nornflow_skipped_hosts"):
+-            return (False, "")
+-
+-        task_skips = task.nornir._nornflow_skipped_hosts.get(task.name, {})
+-        reason = task_skips.get(host.name, "")
+-        return (bool(reason), reason)
+-
+     def _format_task_output(self, result: Result, suppress_output: bool) -> str:
+         """Format the output section of a task result.
+-        
++
+         Args:
+             result: The task result containing output data
+             suppress_output: Whether to suppress the actual output content
+-            
++
+         Returns:
+             Formatted output string with appropriate styling
+         """
+         if not suppress_output and result.result:
+             return f"\n{Fore.WHITE}Output:\n{result.result}"
+-        elif suppress_output:
++        if suppress_output:
+             return f"\n{Fore.WHITE}Output: {Style.DIM}[Shushed!]{Style.RESET_ALL}"
+         return ""
+ 
+@@ -125,11 +109,6 @@ class DefaultNornFlowProcessor(Processor):
+ 
+     def task_instance_started(self, task: Task, host: Host) -> None:
+         """Record start time for a specific task on a specific host."""
+-        is_skipped_by_predicate, _ = self._is_host_skipped(task, host)
+-        
+-        if is_skipped_by_predicate:
+-            return
+-
+         start_time = datetime.now()
+         with output_lock:
+             self.start_times[(task.name, host)] = start_time
+@@ -137,15 +116,10 @@ class DefaultNornFlowProcessor(Processor):
+ 
+     def task_instance_completed(self, task: Task, host: Host, result: Result) -> None:
+         """Process task completion and print results for a specific host."""
+-        is_skipped, skip_reason = self._is_host_skipped(task, host)
+-        if is_skipped:
+-            self._print_skipped_host(task, host, skip_reason)
+-            return
+-
+         finish_time = datetime.now()
+-        
++
+         # Determine status based on result attributes
+-        if getattr(result, 'skipped', False):
++        if getattr(result, "skipped", False):
+             status = "Skipped"
+             status_color = Fore.YELLOW
+             self.skipped_executions += 1
+@@ -178,45 +152,10 @@ class DefaultNornFlowProcessor(Processor):
+                 f"{Fore.WHITE}| {status_color}Status: {status}"
+             )
+             print(f"{Fore.BLUE}{start_str} - {finish_str} ({duration_ms:.0f}ms)")
+-            
++
+             if output_section:
+                 print(output_section)
+-                
+-            print(f"{Fore.WHITE}{'-' * 80}")
+-
+-            if (task.name, host) in self.start_times:
+-                del self.start_times[(task.name, host)]
+-
+-    def _print_skipped_host(self, task: Task, host: Host, reason: str) -> None:
+-        """Print a skipped host entry with consistent formatting.
+-
+-        Args:
+-            task: The Nornir task.
+-            host: The host that was skipped.
+-            reason: The reason for skipping.
+-        """
+-        finish_time = datetime.now()
+-        start_time = self.start_times.get((task.name, host), finish_time)
+-
+-        start_str = start_time.strftime("%H:%M:%S.%f")[:-3]
+-        finish_str = finish_time.strftime("%H:%M:%S.%f")[:-3]
+-
+-        duration = finish_time - start_time
+-        duration_ms = duration.total_seconds() * 1000
+ 
+-        self.skipped_executions += 1
+-
+-        with output_lock:
+-            print(f"{Fore.WHITE}{'-' * 80}")
+-            print(
+-                f"{Style.BRIGHT}{Fore.CYAN}Task: {task.name} "
+-                f"{Fore.WHITE}| {Fore.YELLOW}Host: {host} "
+-                f"{Fore.WHITE}| {Fore.MAGENTA}Hostname: {task.host.hostname or 'N/A'} "
+-                f"{Fore.WHITE}| {Fore.YELLOW}Status: Skipped"
+-            )
+-            print(f"{Fore.BLUE}{start_str} - {finish_str} ({duration_ms:.0f}ms)")
+-            if reason:
+-                print(f"{Fore.YELLOW}Reason: {reason}")
+             print(f"{Fore.WHITE}{'-' * 80}")
+ 
+             if (task.name, host) in self.start_times:
+@@ -311,7 +250,8 @@ class DefaultNornFlowProcessor(Processor):
+             print(f"  {Fore.RED}Failed:      {Style.BRIGHT}{self.failed_executions} ({failure_percent:.1f}%)")
+             if self.skipped_executions > 0:
+                 print(
+-                    f"  {Fore.YELLOW}Skipped:     {Style.BRIGHT}{self.skipped_executions} ({skipped_percent:.1f}%)"
++                    f"  {Fore.YELLOW}Skipped:     {Style.BRIGHT}"
++                    f"{self.skipped_executions} ({skipped_percent:.1f}%)"
+                 )
+             print()
+ 
+@@ -323,4 +263,4 @@ class DefaultNornFlowProcessor(Processor):
+                 f"{Style.RESET_ALL}"
+             )
+             print(f"  {bar}")
+-            print()
+\ No newline at end of file
++            print()
+diff --git a/nornflow/builtins/processors/failure_strategy_processor.py b/nornflow/builtins/processors/failure_strategy_processor.py
+index 5bdf0e9..48c5efb 100644
+--- a/nornflow/builtins/processors/failure_strategy_processor.py
++++ b/nornflow/builtins/processors/failure_strategy_processor.py
+@@ -1,10 +1,10 @@
+ # ruff: noqa: T201
+ import threading
+ 
+-from colorama import Fore, Style, init
++from colorama import Fore, init, Style
++from nornir.core.inventory import Host
+ from nornir.core.processor import Processor
+ from nornir.core.task import Result, Task
+-from nornir.core.inventory import Host
+ from tabulate import tabulate
+ 
+ from nornflow.constants import FailureStrategy
+@@ -109,4 +109,4 @@ class NornFlowFailureStrategyProcessor(Processor):
+                     error_table.append([task_name, host_name, error_msg])
+                 if error_table:
+                     print(tabulate(error_table, headers=["Task", "Host", "Error"], tablefmt="simple"))
+-                print()
+\ No newline at end of file
++                print()
+diff --git a/nornflow/builtins/processors/hook_processor.py b/nornflow/builtins/processors/hook_processor.py
+index 8970455..8aa4cad 100644
+--- a/nornflow/builtins/processors/hook_processor.py
++++ b/nornflow/builtins/processors/hook_processor.py
+@@ -1,4 +1,4 @@
+-from typing import TYPE_CHECKING, Any
++from typing import Any, TYPE_CHECKING
+ 
+ from nornir.core.inventory import Host
+ from nornir.core.processor import Processor
+@@ -12,39 +12,39 @@ if TYPE_CHECKING:
+ 
+ class NornFlowHookProcessor(Processor):
+     """Orchestrator processor that delegates to registered hooks.
+-    
++
+     This processor is attached to the Nornir instance and manages all
+     hook executions. It extracts hook information from task context
+     and calls appropriate hook methods at each lifecycle point.
+-    
++
+     Context Management:
+     ==================
+     The processor manages two types of context:
+-    
++
+     1. Workflow Context (set once during initialization):
+        - vars_manager: Variable resolution system
+        - nornir_manager: Nornir operations manager
+        - tasks_catalog: Available tasks
+        - filters_catalog: Available inventory filters
+        - workflows_catalog: Available workflows
+-    
++
+     2. Task-Specific Context (set once per task execution):
+        - task_model: The current TaskModel being executed
+        - hooks: List of Hook instances for this task
+-    
++
+     The `context` property always returns the merged dictionary of both contexts.
+     Task-specific context is set at task start and cleared at task completion.
+-    
++
+     Hook Retrieval:
+     ==============
+     Hooks are retrieved from the current task-specific context. The processor
+     calls hook methods at appropriate lifecycle points, injecting the merged
+     context into each hook's _current_context before execution.
+     """
+-    
++
+     def __init__(self, workflow_context: dict[str, Any] | None = None):
+         """Initialize the hook processor.
+-        
++
+         Args:
+             workflow_context: Optional workflow-level context to set during initialization
+         """
+@@ -52,82 +52,82 @@ class NornFlowHookProcessor(Processor):
+         self.workflow_context = workflow_context or {}
+         # task_specific_context is ephemeral and re-set with each new task
+         self.task_specific_context = {}
+-    
++
+     @property
+     def workflow_context(self) -> dict[str, Any]:
+         """Get the workflow-level context shared across all tasks.
+-        
++
+         Returns:
+             The workflow context dictionary
+         """
+         return self._workflow_context
+-    
++
+     @workflow_context.setter
+     def workflow_context(self, value: dict[str, Any]) -> None:
+         """Set the workflow-level context shared across all tasks.
+-        
++
+         Args:
+             value: The workflow context dictionary containing vars_manager, catalogs, etc.
+         """
+         self._workflow_context = value
+-    
++
+     @property
+     def task_specific_context(self) -> dict[str, Any]:
+         """Get the current task-specific context.
+-        
++
+         Returns:
+             The task-specific context dictionary
+         """
+         return self._task_specific_context
+-    
++
+     @task_specific_context.setter
+     def task_specific_context(self, value: dict[str, Any]) -> None:
+         """Set the task-specific context for the current task.
+-        
++
+         Args:
+             value: The task-specific context containing task_model and hooks
+         """
+         self._task_specific_context = value
+-    
++
+     @property
+     def context(self) -> dict[str, Any]:
+         """Get the combined context (workflow + task-specific).
+-        
++
+         Returns:
+             Merged dictionary of workflow and task-specific contexts
+         """
+         return {**self.workflow_context, **self.task_specific_context}
+-    
++
+     @property
+     def task_hooks(self) -> list["Hook"]:
+         """Get active hooks for the current task.
+-        
++
+         Returns:
+             List of Hook instances for this task
+         """
+-        return self.task_specific_context.get('hooks', [])
+-    
++        return self.task_specific_context.get("hooks", [])
++
+     @hook_delegator
+     def task_started(self, task: Task) -> None:
+         """Delegate to hooks' task_started methods."""
+-    
++
+     @hook_delegator
+     def task_completed(self, task: Task, result: AggregatedResult) -> None:
+         """Delegate to hooks' task_completed methods."""
+         self.task_specific_context = {}
+-    
++
+     @hook_delegator
+     def task_instance_started(self, task: Task, host: Host) -> None:
+         """Delegate to hooks' task_instance_started methods."""
+-    
++
+     @hook_delegator
+     def task_instance_completed(self, task: Task, host: Host, result: MultiResult) -> None:
+         """Delegate to hooks' task_instance_completed methods."""
+-    
++
+     @hook_delegator
+     def subtask_instance_started(self, task: Task, host: Host) -> None:
+         """Delegate to hooks' subtask_instance_started methods."""
+-    
++
+     @hook_delegator
+     def subtask_instance_completed(self, task: Task, host: Host, result: MultiResult) -> None:
+         """Delegate to hooks' subtask_instance_completed methods."""
+diff --git a/nornflow/cli/init.py b/nornflow/cli/init.py
+index 0b8c5ca..1175449 100644
+--- a/nornflow/cli/init.py
++++ b/nornflow/cli/init.py
+@@ -9,6 +9,7 @@ from nornflow.cli.constants import (
+     FILTERS_DIR,
+     GREET_USER_TASK_FILE,
+     HELLO_WORLD_TASK_FILE,
++    HOOKS_DIR,
+     INIT_BANNER,
+     NORNFLOW_SETTINGS,
+     NORNIR_DEFAULT_CONFIG_DIR,
+@@ -18,7 +19,6 @@ from nornflow.cli.constants import (
+     SAMPLE_WORKFLOW_FILE,
+     TASKS_DIR,
+     WORKFLOWS_DIR,
+-    HOOKS_DIR,
+ )
+ from nornflow.cli.exceptions import CLIInitError
+ from nornflow.cli.show import show_catalog, show_nornflow_settings
+diff --git a/nornflow/hooks/base.py b/nornflow/hooks/base.py
+index bdda9a7..03ca70a 100644
+--- a/nornflow/hooks/base.py
++++ b/nornflow/hooks/base.py
+@@ -10,7 +10,7 @@ PHILOSOPHY
+ 
+ Hooks provide a clean separation between NornFlow's core execution logic and
+ user-defined behaviors. They implement Nornir's Processor protocol directly,
+-enabling full lifecycle access. Hooks are selective, activating only when 
++enabling full lifecycle access. Hooks are selective, activating only when
+ their `hook_name` is present in a NornFLow task config. From an SW Eng. perspective
+ they follow the Flyweight pattern for memory efficiency.
+ 
+@@ -18,10 +18,10 @@ Exception Handling
+ ==================
+ 
+ Hooks can define custom exception handling for specific exceptions they raise.
+-This allows hooks to signal special conditions without breaking workflow execution. 
+-Each hook subclass can optionally define an `exception_handlers` class attribute 
+-as a dict mapping exception classes to handler method names (strings). When the 
+-NornFlowHookProcessor catches such an exception from a hook method, it calls the 
++This allows hooks to signal special conditions without breaking workflow execution.
++Each hook subclass can optionally define an `exception_handlers` class attribute
++as a dict mapping exception classes to handler method names (strings). When the
++NornFlowHookProcessor catches such an exception from a hook method, it calls the
+ handler on the hook instance with (exception, task, args). Handlers perform custom
+ logic and do not re-raise. Uncaught exceptions bubble up to break execution.
+ 
+@@ -48,35 +48,35 @@ Hooks validate at instantiation and execution:
+ - Task Compatibility: validate_* methods can be used to sanitize parameters passed to hooks
+ - Execution Scope: Enforced via `run_once_per_task` flag
+ """
++
++# ruff: noqa: B027
+ from abc import ABC
+-from typing import Any, TYPE_CHECKING
++from typing import Any, ClassVar, TYPE_CHECKING
+ 
+ from nornir.core.inventory import Host
+ from nornir.core.task import AggregatedResult, MultiResult, Task
+ 
+-from nornflow.hooks.exceptions import HookValidationError
+-
+ if TYPE_CHECKING:
+     from nornflow.models import TaskModel
+ 
+ 
+ class Hook(ABC):
+     """Base class for all NornFlow hooks implementing Nornir's Processor protocol.
+-    
++
+     Hooks are mini-processors that activate when their `hook_name` is present
+     in a task's configuration. They have full access to Nornir's execution
+     lifecycle and are cached globally via Flyweight pattern for performance.
+-    
++
+     Subclasses must define `hook_name` and can override only the lifecycle methods
+     that are relevant to their use cases.
+-    
++
+     Context Injection:
+     ==================
+     The NornFlowHookProcessor automatically injects the complete context into
+     `self._current_context` before calling any hook method. Hooks access this
+     context via the `context` property, which returns the pre-injected dict
+     containing task_model, vars_manager, and other workflow-level data.
+-    
++
+     Exception Handling:
+     ====================
+     Hooks can define custom exception handling via the `exception_handlers` class
+@@ -85,73 +85,73 @@ class Hook(ABC):
+     the handler method on the hook instance with (exception, task, args). Handlers
+     perform custom logic (e.g., skips) without re-raising. Uncaught exceptions
+     bubble up.
+-    
++
+     Example:
+         exception_handlers = {SkipHostError: "_handle_skip"}
+-        
++
+         def _handle_skip(self, exception, task, args):
+             pass
+     """
+-    
++
+     hook_name: str
+-    
++
+     run_once_per_task: bool = False
+-    
+-    exception_handlers: dict[type[Exception], str] = {}
+-    
++
++    exception_handlers: ClassVar[dict[type[Exception], str]] = {}
++
+     def __init__(self, value: Any = None):
+         """Initialize hook with configuration value.
+-        
++
+         Args:
+             value: The value from task's hooks configuration
+         """
+         self.value = value
+         self._execution_count = {}
+         self._current_context: dict[str, Any] | None = None
+-    
++
+     def task_started(self, task: Task) -> None:
+         """Called when task starts across all hosts."""
+         pass
+-    
++
+     def task_completed(self, task: Task, result: AggregatedResult) -> None:
+         """Called when task completes across all hosts."""
+         pass
+-    
++
+     def task_instance_started(self, task: Task, host: Host) -> None:
+         """Called before task executes on specific host."""
+         pass
+-    
++
+     def task_instance_completed(self, task: Task, host: Host, result: MultiResult) -> None:
+         """Called after task executes on specific host."""
+         pass
+-    
++
+     def subtask_instance_started(self, task: Task, host: Host) -> None:
+         """Called before subtask executes on host."""
+         pass
+-    
++
+     def subtask_instance_completed(self, task: Task, host: Host, result: MultiResult) -> None:
+         """Called after subtask executes on host."""
+         pass
+-    
++
+     @property
+     def context(self) -> dict[str, Any]:
+         """Get the complete NornFlow context for this execution.
+-        
++
+         The context is automatically injected by NornFlowHookProcessor before
+         any hook method is called. It contains both workflow-level data
+         (vars_manager, catalogs) and task-specific data (task_model, hooks).
+-            
++
+         Returns:
+             Context dict with task_model, vars_manager, and other execution data.
+         """
+         return self._current_context or {}
+-    
++
+     def should_execute(self, task: Task) -> bool:
+         """Check if this hook should execute for given task.
+-        
++
+         Args:
+             task: The Nornir task
+-            
++
+         Returns:
+             True if hook should execute
+         """
+@@ -162,17 +162,17 @@ class Hook(ABC):
+             self._execution_count[task_id] = 1
+             return True
+         return True
+-    
++
+     def execute_hook_validations(self, task_model: "TaskModel") -> None:
+         """Execute validation logic specific to this hook.
+-        
++
+         This method is called during task preparation to allow hooks to validate
+         their configuration and compatibility with the task.
+-        
++
+         Args:
+             task_model: The task model being validated
+-            
++
+         Raises:
+             HookValidationError: If validation fails
+         """
+-        pass
+\ No newline at end of file
++        pass
+diff --git a/nornflow/hooks/loader.py b/nornflow/hooks/loader.py
+index 542b96e..78febc1 100644
+--- a/nornflow/hooks/loader.py
++++ b/nornflow/hooks/loader.py
+@@ -1,4 +1,4 @@
+-from typing import TYPE_CHECKING, Any
++from typing import Any, TYPE_CHECKING
+ 
+ from nornflow.hooks.registry import HOOK_REGISTRY
+ 
+@@ -27,4 +27,4 @@ def load_hooks(hooks_dict: dict[str, Any]) -> list["Hook"]:
+             hook_instance = hook_class(hook_config)
+             hooks.append(hook_instance)
+ 
+-    return hooks
+\ No newline at end of file
++    return hooks
+diff --git a/nornflow/models/__init__.py b/nornflow/models/__init__.py
+index 1178cc3..27ddbec 100644
+--- a/nornflow/models/__init__.py
++++ b/nornflow/models/__init__.py
+@@ -6,8 +6,8 @@ from .task import TaskModel
+ from .workflow import WorkflowModel
+ 
+ __all__ = [
+-    "NornFlowBaseModel",
+     "HookableModel",
++    "NornFlowBaseModel",
+     "TaskModel",
+     "WorkflowModel",
+-]
+\ No newline at end of file
++]
+diff --git a/nornflow/models/hookable.py b/nornflow/models/hookable.py
+index 293f902..72840d9 100644
+--- a/nornflow/models/hookable.py
++++ b/nornflow/models/hookable.py
+@@ -109,10 +109,7 @@ class HookableModel(NornFlowBaseModel, ABC):
+         return {} if self.args is None else dict(self.args)
+ 
+     def validate_hooks_and_set_task_context(
+-        self,
+-        nornir_manager: NornirManager,
+-        vars_manager: NornFlowVariablesManager,
+-        task_func: Callable
++        self, nornir_manager: NornirManager, vars_manager: NornFlowVariablesManager, task_func: Callable
+     ) -> None:
+         """Validate hooks and set task-specific context in the hook processor.
+ 
+@@ -130,9 +127,9 @@ class HookableModel(NornFlowBaseModel, ABC):
+             ProcessorError: If hooks are configured but hook processor cannot be retrieved.
+         """
+         self.run_hook_validations()
+-        
++
+         hooks = self.get_hooks()
+-        
++
+         if not self._hook_processor_cache:
+             try:
+                 self._hook_processor_cache = nornir_manager.get_processor_by_type(NornFlowHookProcessor)
+@@ -140,9 +137,9 @@ class HookableModel(NornFlowBaseModel, ABC):
+                 raise ProcessorError(
+                     f"Hooks are configured but NornFlowHookProcessor could not be retrieved: {e}"
+                 ) from e
+-        
++
+         task_context = {
+             "task_model": self,
+             "hooks": hooks,
+         }
+-        self._hook_processor_cache.task_specific_context = task_context
+\ No newline at end of file
++        self._hook_processor_cache.task_specific_context = task_context
+diff --git a/nornflow/models/task.py b/nornflow/models/task.py
+index 100adc2..7a474f2 100644
+--- a/nornflow/models/task.py
++++ b/nornflow/models/task.py
+@@ -76,7 +76,7 @@ class TaskModel(HookableModel):
+             raise TaskError(f"Task function for '{self.name}' not found in tasks catalog")
+ 
+         task_args = self.get_task_args()
+-        
++
+         self.validate_hooks_and_set_task_context(nornir_manager, vars_manager, task_func)
+ 
+         result = nornir_manager.nornir.run(task=task_func, **task_args)
+diff --git a/nornflow/nornflow.py b/nornflow/nornflow.py
+index 9edb066..662d5c0 100644
+--- a/nornflow/nornflow.py
++++ b/nornflow/nornflow.py
+@@ -193,21 +193,21 @@ class NornFlow:
+     def _initialize_processors(self) -> None:
+         """
+         Load USER-CONFIGURABLE processors with proper precedence and store them in `self._processors`.
+-        
++
+         This method ONLY handles processors that users can configure via:
+         - CLI arguments (--processors)
+         - Settings file (processors: section)
+         - Default processor (if none specified)
+-        
+-        System processors (NornFlowVariableProcessor, NornFlowHookProcessor, 
++
++        System processors (NornFlowVariableProcessor, NornFlowHookProcessor,
+         NornFlowFailureStrategyProcessor) are NOT initialized here because:
+         1. They require workflow context that may not be available during __init__
+         2. They have fixed positions in the processor chain (first, second, last)
+         3. They are always present and cannot be overridden by users
+-        
++
+         System processors are added later in _with_processors() when a workflow
+         is being executed and all necessary context is available.
+-        
++
+         Precedence for user-configurable processors:
+         1. Processors passed through kwargs (likely from CLI)
+         2. Processors from settings
+@@ -387,7 +387,7 @@ class NornFlow:
+     def var_processor(self) -> NornFlowVariableProcessor | None:
+         """
+         Get the variable processor, creating it lazily if needed.
+-        
++
+         This processor requires workflow context to initialize the variable manager.
+         Returns None if no workflow is set, otherwise creates and caches the processor.
+ 
+@@ -867,22 +867,22 @@ class NornFlow:
+     ) -> None:
+         """
+         Apply processors to the Nornir instance based on configuration.
+-        
++
+         This method handles TWO distinct types of processors:
+-        
++
+         1. SYSTEM PROCESSORS (always present, fixed positions):
+            - NornFlowVariableProcessor: ALWAYS first (provides variable resolution)
+            - NornFlowHookProcessor: ALWAYS second (handles hook execution)
+            - NornFlowFailureStrategyProcessor: ALWAYS last (handles error policies)
+-        
++
+         2. USER-CONFIGURABLE PROCESSORS (optional, middle position):
+            - From workflow definition (self._workflow.processors)
+            - From passed parameter (processors)
+            - From NornFlow settings (self._processors initialized in _initialize_processors)
+-        
++
+         System processors are initialized lazily via their properties when first accessed.
+         The var_processor is special as it requires workflow context to be available.
+-        
++
+         Processor chain order:
+         1. NornFlowVariableProcessor (system - variable resolution)
+         2. NornFlowHookProcessor (system - hook execution)
+@@ -979,7 +979,7 @@ class NornFlow:
+         Iterates through processors to find execution stats (failed_executions and task_executions).
+         This is a FEATURE - the first processor with these attributes provides the stats.
+         Uses the EXACT same calculation as the summary: failed_executions / task_executions * 100.
+-        
++
+         If stats are available and failures occurred, returns the failure percentage (0-100).
+         If no stats but failed hosts exist, returns 101. Otherwise, returns 0 for success.
+ 
+@@ -989,10 +989,10 @@ class NornFlow:
+         for processor in self.nornir_manager.nornir.processors:
+             failed_executions = getattr(processor, "failed_executions", 0)
+             task_executions = getattr(processor, "task_executions", 0)
+-            
++
+             if not task_executions:
+                 continue
+-            
++
+             # Use EXACT same calculation as summary: failed_executions / task_executions * 100
+             failure_percentage = int((failed_executions / task_executions) * 100)
+             return failure_percentage
+@@ -1044,4 +1044,4 @@ class NornFlow:
+         self._print_workflow_overview(effective_dry_run)
+         self._orchestrate_execution(effective_dry_run)
+         self._print_workflow_summary()
+-        return self._get_return_code()
+\ No newline at end of file
++        return self._get_return_code()
+diff --git a/nornflow/nornir_manager.py b/nornflow/nornir_manager.py
+index 951c0c1..7d6c0a2 100644
+--- a/nornflow/nornir_manager.py
++++ b/nornflow/nornir_manager.py
+@@ -58,7 +58,7 @@ class NornirManager:
+         """
+         return self
+ 
+-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
++    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+         """
+         Exit the context manager protocol, ensuring connections are cleaned up.
+ 
+@@ -205,7 +205,5 @@ class NornirManager:
+         for processor in self.nornir.processors:
+             if isinstance(processor, processor_type):
+                 return processor
+-        
+-        raise ProcessorError(
+-            f"No processor of type {processor_type.__name__} found in Nornir instance"
+-        )
+\ No newline at end of file
++
++        raise ProcessorError(f"No processor of type {processor_type.__name__} found in Nornir instance")
+diff --git a/nornflow/utils.py b/nornflow/utils.py
+index edaf8a8..6167ab6 100644
+--- a/nornflow/utils.py
++++ b/nornflow/utils.py
+@@ -110,17 +110,17 @@ def import_modules_recursively(dir_path: Path) -> list[str]:
+         List of successfully imported module names.
+     """
+     imported_modules = []
+-    
++
+     # Ensure we're working with resolved absolute paths to avoid path issues
+     dir_path = dir_path.resolve()
+     cwd = Path.cwd().resolve()
+-    
++
+     for py_file in dir_path.rglob("*.py"):
+         if py_file.name == "__init__.py":
+             continue
+-            
++
+         py_file = py_file.resolve()
+-        
++
+         try:
+             # Try to calculate relative path from CWD first
+             try:
+@@ -129,7 +129,7 @@ def import_modules_recursively(dir_path: Path) -> list[str]:
+             except ValueError:
+                 # If file is outside CWD, create a unique module name
+                 module_name = f"hook_{py_file.stem}_{abs(hash(str(py_file))) % 100000}"
+-            
++
+             # Try direct import first (if module is in sys.path)
+             try:
+                 importlib.import_module(module_name)
+@@ -140,10 +140,10 @@ def import_modules_recursively(dir_path: Path) -> list[str]:
+                 import_module_from_path(module_name, str(py_file))
+                 imported_modules.append(module_name)
+                 logger.debug(f"Imported module from path: {module_name}")
+-                
++
+         except Exception as e:
+             logger.error(f"Failed to import module {py_file}: {e}")
+-    
++
+     return imported_modules
+ 
+ 
+@@ -468,4 +468,4 @@ def print_workflow_overview(
+         width=100,
+     )
+ 
+-    console.print(panel)
+\ No newline at end of file
++    console.print(panel)
+diff --git a/nornflow/vars/__init__.py b/nornflow/vars/__init__.py
+index 3110d63..440a231 100644
+--- a/nornflow/vars/__init__.py
++++ b/nornflow/vars/__init__.py
+@@ -8,19 +8,19 @@ This package provides the variable management functionality for NornFlow, includ
+ - Template rendering with Jinja2
+ """
+ 
++from nornflow.vars.constants import JINJA2_MARKERS
+ from nornflow.vars.context import NornFlowDeviceContext
+ from nornflow.vars.exceptions import TemplateError, VariableError
+ from nornflow.vars.manager import NornFlowVariablesManager
+ from nornflow.vars.processors import NornFlowVariableProcessor
+ from nornflow.vars.proxy import NornirHostProxy
+-from nornflow.vars.constants import JINJA2_MARKERS
+ 
+ __all__ = [
++    "JINJA2_MARKERS",
+     "NornFlowDeviceContext",
+     "NornFlowVariableProcessor",
+     "NornFlowVariablesManager",
+     "NornirHostProxy",
+     "TemplateError",
+     "VariableError",
+-    "JINJA2_MARKERS",
+ ]
+diff --git a/pyproject.toml b/pyproject.toml
+index 2c0323a..4c156be 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -56,6 +56,7 @@ exclude = ["tests/*", "nornflow/cli/tests/*", "nornflow/vars/tests/*"]
+ select = ["ALL"]
+ ignore = [
+     "A",
++    "ANN001",
+     "ANN003",
+     "ANN204",
+     "ANN205",

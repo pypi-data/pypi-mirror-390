@@ -1,0 +1,1078 @@
+commit afa3054f8ce7307fd45d67ccc6e3ad88fcc39e56
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 26 16:34:41 2025 +0000
+
+    tests: added unit tests for SetPrintOutputHook and SetToHook
+
+commit aaac3916b6a471e8a7b1458184ad25cbc6963b62
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 26 16:31:00 2025 +0000
+
+    fix: fixed HookValidationError raised by SetToHook.validate_task_compatibility.
+
+commit c5e9498605d56dcf4d660664d8c87f86389a7e24
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 26 16:14:47 2025 +0000
+
+    tests: refactoring tests to adjust to latest changes to Hook framework & models
+
+commit 23b6ff5b061e80471ec50b219810200a63c3a0a5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 26 14:36:41 2025 +0000
+
+    feat(hooks): add local_hooks_dirs configuration and refactor system processors for lazy initialization
+    
+    - Add local_hooks_dirs to settings and constants for hook module discovery
+    - Implement _initialize_hooks method to recursively import hook modules
+    - Add lazy initialization for var_processor property with workflow context check
+    - Refactor _with_processors to use lazy properties for consistent system processor handling
+    - Update variable precedence documentation and rename _init_variable_manager to _get_variable_manager
+    - Ensure all processors reset on workflow changes for proper context management
+
+commit a45dd6da2a9fe822a1e461d1d3bdd01ccfe58143
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 23 22:25:21 2025 +0100
+
+    refactor(utils): fixed name of nornflow.utils function
+
+commit 454dbad0363f1884e3399e834f693adfcc42d872
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 23 00:37:06 2025 +0100
+
+    feat(hooks): enable context access for hooks to support variable management
+    
+    Add context retrieval and assignment in hook_delegator to set _current_context on hooks
+    Simplify Hook.get_context to use _current_context instead of task params
+    Streamline Hook.should_execute and execute_hook_validations for efficiency
+    Remove unused import in base.py
+
+commit e1eb264a8feb1c2f13cd83b810d214271247fbcf
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 23 00:03:20 2025 +0100
+
+    feat(hooks): refactor hook system to use registration mechanism
+    
+    - Replace context injection via task params with direct processor registration
+    - Add register_task_context and _get_context_for_task to NornFlowHookProcessor
+    - Update RunnableModel to register hook context before task execution
+    - Simplify hook loading and remove global caching
+    - Add get_processor_by_type to NornirManager for processor retrieval
+    - Ensure hook processor is always added second in processor chain
+    - Remove unused imports and clean up hook-related code
+
+commit 7202f1007b445e0a9004f8b94442c4e039d64b39
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 22 21:34:41 2025 +0100
+
+    refactor(processors): restructure into subpackage
+    
+    - Move processors from single file to subpackage with dedicated modules (decorators.py, hook_processor.py, default_processor.py, failure_strategy_processor.py)
+    - Separate hook_delegator decorator into its own module
+    - Maintain backward compatibility via __init__.py exports
+    - Remove old monolithic processors.py file
+    - Improve modularity and maintainability of processor components
+
+commit 06c6952c7c5a713a3b5e89cea688d2decb6cb3bd
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 22 20:54:05 2025 +0100
+
+    refactor(hooks): restructure into subpackage and implement exception handling
+    
+    - Implement new Hook base class with exception_handlers for custom error handling
+    - Update NornFlowHookProcessor to delegate exceptions to hook-defined handlers
+    - Remove old mixin-based hook implementations and replace with new architecture
+    - Add SkipHostError and PredicateHook with built-in skip handling via exceptions
+
+commit 04fd474b32a2ecb239817cddb1e82b43a293097d
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 22 15:13:29 2025 +0100
+
+    refactor(hooks): migrate from mixin-based to processor-based architecture
+    
+    - Remove PreRunHook, PostRunHook, and related mixins (FilterHostsMixin, ConfigureTaskMixin, etc.)
+    - Implement Hook as Nornir Processor protocol with lifecycle methods (task_started, task_instance_completed, etc.)
+    - Add NornFlowHookProcessor class with hook_delegator decorator for delegation to registered hooks
+    - Simplify RunnableModel hook processing: remove complex pre/post hook execution, add prepare_and_validate_task_context method
+    - Update TaskModel.run() to use new parent methods for validation and context preparation
+    - Maintain performance optimizations: Flyweight caching, thread-safe validation, and per-task execution control
+
+commit 7ee7624fedbba821556e741a5b9178dc5f675f17
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Oct 21 20:02:12 2025 +0100
+
+    chore: removed unnecessary variable initialization for DefaultNornFlowProcessor.subtask_instance_failed
+
+commit 9c28f77109d12df148c0c9d98af93fa125d99620
+Merge: d49d83b c0973dd
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 21:52:58 2025 +0100
+
+    Merge pull request #45 from theandrelima/feature/hook-framework-refactor
+    
+    Feature/hook framework refactor
+
+commit c0973dd8d2ae09defd7a40f6aca96729a2137c91
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 21:38:21 2025 +0100
+
+    Update nornflow/builtins/jinja2_filters/py_wrapper_filters.py
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+commit 69957df210cc27b259868800a6f4b8134da445eb
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 21:33:50 2025 +0100
+
+    docs: added new jinj2 python-wrapper filters to the documentation
+
+commit b44489bcfaa3e3d6f61f9688f0260f237c80beb5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 20:08:59 2025 +0100
+
+    fix(tests): fixing tests/unit/hooks/test_loader.py after ruff
+
+commit cf03c68e21d6e987219a87cc8a9f0ceda00f68fe
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 20:00:30 2025 +0100
+
+    style: ruff fixes
+
+commit e290f4a4709c489b31f61451ae5cc7ff8cd57eed
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 17:57:29 2025 +0100
+
+    style: black fixes
+
+commit 51da188abf06c380d0acf45797f54e3cc7fee8a5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 17:56:41 2025 +0100
+
+    refactor(tests): reorganize test structure for hook framework
+    
+    Remove outdated tests and implement comprehensive test suite for the newlye added hook framework.
+    
+    - Delete legacy test files:
+      - nornflow/vars/tests/__init__.py
+      - tests/unit/core/test_models.py
+    
+    - Add organized test directories:
+      - tests/unit/hooks/ - Tests for hook base classes, registry, loader, and specific hooks
+      - tests/unit/models/ - Tests for model classes with new hook integration
+
+commit 85643cc1d613a0b3bde87237ca1a4352741511e5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 20 17:53:32 2025 +0100
+
+    refactor(models): update models to use new hook framework
+    
+    Update TaskModel, WorkflowModel and other model classes to work with the
+    refactored hook framework. This includes:
+    
+    - Update TaskModel to use hooks configuration dictionary instead of direct attributes
+    - Change hook configuration from direct fields to structured hooks dictionary
+    - Fix validators to properly work with the new hook structure
+    - Update model interfaces to properly handle hook loading
+    - Ensure backward compatibility with existing model instances
+    
+    This change complements the previously committed runnable.py changes.
+
+commit 2809e1d5e2051e146c357faee510ba479c6732e1
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:54:19 2025 +0100
+
+    refactor(hooks): removed legacy implementation of SetToHook and SetPrintOutputHook
+
+commit 7a6371368c2408a7532aff0fce03e41e53df8e76
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:52:47 2025 +0100
+
+    chore(deps): update project dependencies
+    
+    - Update black from 25.1.0 to 25.9.0
+    - Update certifi from 2025.8.3 to 2025.10.5
+    - Update charset-normalizer from 3.4.3 to 3.4.4
+    - Update click from 8.2.1 to 8.3.0
+    - Update coverage from 7.10.6 to 7.11.0
+
+commit 3f05fedbda3fc899200bd060bb7ec6d2afc68ae4
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:52:36 2025 +0100
+
+    fix(vars): improve Jinja2 template resolution for nested structures
+    
+    - Add JINJA2_MARKERS check before resolving strings
+    - Preserve list type after resolution (don't convert to tuple)
+    - Handle both lists and tuples in recursive resolution
+    - Improve type consistency in resolved data structures
+
+commit 6dad8e8ace74cd181090ebb16d93d82db78b289b
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:52:27 2025 +0100
+
+    feat(builtins): export SetPrintOutputHook and SetToHook
+    
+    - Add new hooks to __all__ exports
+    - Import hooks from nornflow.builtins.hooks module
+
+commit 2dde00c70c224ba266f325b642f69e4cfdd3e11f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:52:19 2025 +0100
+
+    fix(processors): only display output when result exists
+    
+    - Check if result.result exists before printing output
+    - Prevents printing empty Output: sections
+    - Clean up unnecessary whitespace
+
+commit e709f2d140c85534cab56f38a732ecb992194633
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:52:13 2025 +0100
+
+    feat(tasks): add print_output parameter to set task
+    
+    - Allow controlling whether set task generates output report
+    - Default to True for backward compatibility
+    - Only build report when print_output is enabled
+    - Add utility functions for formatting and building reports
+
+commit 2dfcfb0197c53515401d0ec060a9ba96fb8623cd
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:51:59 2025 +0100
+
+    feat(filters): add Python built-in function wrappers as Jinja2 filters
+    
+    - Add filter_any, filter_all for boolean operations
+    - Add filter_len for length calculations
+    - Add filter_sorted, filter_reversed for sequence operations
+    - Add filter_strip, filter_join for string operations
+    - Register new filters in PY_WRAPPER_FILTERS dictionary
+
+commit c533d0a56c0d0ff77abeed4ca0fd9905aed1eb73
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:51:51 2025 +0100
+
+    refactor: remove deprecated models and validators modules
+    
+    - Remove TaskModel and WorkflowModel classes (moved elsewhere)
+    - Remove associated validation logic
+    - Clean up unused imports and dependencies
+
+commit 5624fc39dcb30067552e3f762633d742936dbf7a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:50:52 2025 +0100
+
+    feat(hooks): add SetPrintOutputHook and SetToHook built-in hooks
+    
+    - SetPrintOutputHook: Control whether set task generates output report
+    - SetToHook: Store task results in runtime variables per host
+    - Both hooks use appropriate mixins for their execution patterns
+    - Auto-register hooks via decorator
+
+commit 8fe12183847d6169c96fdfafc053efd44f9af681
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:50:35 2025 +0100
+
+    feat(models): integrate hook framework with RunnableModel
+    
+    - Add automatic hook discovery from YAML fields
+    - Implement lazy hook loading with global instance caching
+    - Support hook validation at task level (once per task, not per host)
+    - Extract hook fields before Pydantic validation to support extensibility
+
+commit b44b5e48c6e6b7381230347fcb6a2f4b00a954d0
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:50:14 2025 +0100
+
+    feat(hooks): add extensible hook framework with mixin-based composition
+    
+    - Add PreRunHook and PostRunHook base classes with validation
+    - Implement behavior mixins (FilterHostsMixin, ConfigureTaskMixin)
+    - Add execution scope mixins (RunOncePerTaskMixin, RunPerHostMixin)
+    - Create global hook registry with auto-registration decorator
+    - Support thread-safe hook instance caching via Flyweight pattern
+
+commit 628d15601f4af675bf1b28f21431895567bb9f0f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:49:56 2025 +0100
+
+    feat(utils): implement secure variable value formatting with masking
+    
+    - Add _format_variable_value() function to mask sensitive data
+    - Use PROTECTED_KEYWORDS to identify and mask sensitive values
+    - Fix tuple display format to use square brackets for consistency
+    - Sort variables lexicographically in workflow overview display
+
+commit 2b6e442c393c2ef5be852ebd2ee38c953d5c4249
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 19 20:49:36 2025 +0100
+
+    feat(constants): add protected keywords list for sensitive data masking
+    
+    - Add comprehensive list of keywords that indicate sensitive data
+    - Include authentication, cloud credentials, database, SSH/TLS, 2FA/OTP patterns
+    - Support for environment variables and generic secret patterns
+
+commit d49d83b2e4762487e271fbfb6901af50ac35506c
+Merge: 099c574 456d4c1
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 18:15:43 2025 +0100
+
+    Merge pull request #44 from theandrelima/refactor/set-task-processing
+    
+    refactor(set-task-processing): refactor set task processing logic
+    
+    Move variable resolution and setting logic from processor to task function
+    Remove special-case handling from NornFlowVariableProcessor
+    Update utility functions to raise exceptions instead of returning None
+    Update filters to include a wrapper around python's 'type' fuction.
+
+commit 456d4c143657eec648df12e930ff11fbea639e7a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 16:45:13 2025 +0100
+
+    style: ruff fixes
+
+commit 5c6cfe8992dedb78738f818acb6eb7b63438c46a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 16:44:45 2025 +0100
+
+    style: black fixes
+
+commit 40c897fb0fd2d5bf283a2a218551119e83b44c2f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 16:44:09 2025 +0100
+
+    tests: fixed tests to the new 'set' task processing
+
+commit 427dde213f3e42a7193182bd0aa5203dbdbe99e0
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 16:31:25 2025 +0100
+
+    feat(jinja2-filters): added a new python wrapper filter for the 'type' function
+
+commit 54b9f7f41ee0ba52f5dc9f0ea3bd2b5215bbe814
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 16:30:30 2025 +0100
+
+    refactor(set-task): move variable processing logic from processor to task function
+    
+    - Move variable resolution and setting logic from processor to task function
+    - Remove special-case handling from NornFlowVariableProcessor
+    - Update utility functions to raise exceptions instead of returning None
+
+commit 099c5742ad8fc919e9fe3f89109b27392c1d13ef
+Merge: 6a1526f 7a7fbe4
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 14:06:11 2025 +0100
+
+    Merge pull request #43 from theandrelima/refactor/core/streamline-workflow-code
+    
+    Refactor/core/streamline workflow code
+
+commit 7a7fbe4c43da2e373f3b151f285451871b9a2422
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 14:05:11 2025 +0100
+
+    docs: minor adjustment to README.md
+
+commit e31b22f0e92d042339137dbb0f822e36582c7270
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 12 14:02:34 2025 +0100
+
+    copilot: accepting copilot's suggestions for docstring fixes
+
+commit fc5ad7e8b505c35eae101b9dfffba628a1e6a732
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 11 15:23:44 2025 +0100
+
+    style: ruff fixes
+
+commit b320f8267c8f702b2105531ddd2e5850b444272d
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 11 15:23:06 2025 +0100
+
+    style/ruff rule change: getting rid of possibly the stupidiest ever Ruff rule
+
+commit 0b72523b252b22c3bfdc1b4578088fb8497a8120
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 11 15:05:28 2025 +0100
+
+    style: black fixes
+
+commit b43339e10c45955c58f93eeb334880fadfd52187
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 11 15:04:51 2025 +0100
+
+    refactor: massive unittests rework to acommodate new architecture
+
+commit 1f39adbed12d7be807bc182083098b26f07de9c7
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 11 12:06:25 2025 +0100
+
+    refactor: further improvements to nornflow.cli.run
+
+commit 5165658209be352cd716974d39e9b8596f7c379d
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 11 12:06:02 2025 +0100
+
+    refactor: further improvements to nornflow.utils.print_workflow_overview
+
+commit 975f07b82a423758c251025cff10a7ff5312d51d
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 9 17:31:36 2025 +0100
+
+    refactor: docs
+
+commit 90bebcde69e013086245806449dd1cf8a2674a56
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 9 16:13:36 2025 +0100
+
+    refactor: renaming NornFlowBaseModel's _exclude_from_global_validator to _exclude_from_universal_validations
+
+commit 692b3ab2a20686e6ebe72b87446fbe813c7b7403
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 6 12:03:50 2025 +0100
+
+    refactor: streamlined Nornflow init process
+
+commit 0896f6e401969640d71d2da961d9c6ddc4ce09d7
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Oct 6 12:03:23 2025 +0100
+
+    refactor: minor change to comment documenting NORNFLOW_INVALID_INIT_KWARGS
+
+commit 4a8e41159f7f17ca6269177d35e3d0adaf92cbf2
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 5 17:55:02 2025 +0100
+
+    readability WIP
+
+commit 803426fd0ba938c979926f2f10efc3e5f980f68a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 5 17:35:49 2025 +0100
+
+    refactor: renamed PythonEntityCatalog to CallableCatalog
+
+commit 4059791dd1ff965affbff31e5a32bb2926ca3b5a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 5 17:29:56 2025 +0100
+
+    refactor: added custom Exception to support immutable attribute setting in nornflow.py
+
+commit fb333d1f098fc5534550e8809fdbc8d05089cc53
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sun Oct 5 17:21:50 2025 +0100
+
+    refactor: further minor improvements to readability in nornflow.py
+
+commit 3e3d2758ee3e1fd9b490742b5d3f563a6ec553a0
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 22:11:47 2025 +0100
+
+    refactor: splitted NornFlow and NornFlowBuilder into different modules
+
+commit 7e58184aa3e31ee7d45ab2c3488ef5d2329ec693
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 22:03:48 2025 +0100
+
+    refactor: further optimizations to NornFlow.run()
+
+commit ea2134180c616e3262ddd6694a40c9963bb574e6
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 21:27:50 2025 +0100
+
+    refactor: improved nornflow.utils.print_workflow_overview
+
+commit 4ed0ef3d141d5d840811d3ad891adfb62abe71f7
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 18:28:16 2025 +0100
+
+    refactor: improved attr names in NornFlow
+
+commit 2393f00e58d862b59cd058fdf57cc6b41b5dbc55
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 15:14:48 2025 +0100
+
+    refactor: phase 3 - WIP - seems to be working
+
+commit 76fcf88906431329b4d6f27be4cbd690ea5a5ee8
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 12:16:42 2025 +0100
+
+    refactor: phase 2 - wip
+
+commit acc542129642af24aa7b40d27e964a992c1387fc
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Sat Oct 4 11:47:54 2025 +0100
+
+    refactor: phase 1 - WIP
+
+commit 6a1526f69ecba96f24797a2c05c563c36f0ec279
+Merge: 54389c3 9287f89
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 2 20:52:47 2025 +0100
+
+    Merge pull request #42 from theandrelima/chore/fixing_typos
+    
+    fixed some typos
+
+commit 9287f898c15739b5dd636a248b45ef9a46f52212
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 2 20:50:54 2025 +0100
+
+    chore: fixed typos
+
+commit 54389c33b03942aec9f8f75290733c957b1f462f
+Merge: 3bd4eb5 74552af
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 2 20:24:26 2025 +0100
+
+    Merge branch 'main' into develop
+
+commit 3bd4eb58111d18abdcd2e13ee4129a0946f63245
+Merge: b319f64 647ac4a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 2 20:22:50 2025 +0100
+
+    Merge pull request #40 from theandrelima/chore/version_bump_040
+    
+    chore: version bump to v0.4.0
+
+commit 647ac4a8f65f1fe1a5e3dccfcb87ed60edf7b88b
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Oct 2 20:21:23 2025 +0100
+
+    chore: version bump to v0.4.0
+
+commit b319f64dab023f903e6b374e27fd3ab024c2db0d
+Merge: 860af82 5b58ea9
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 21:12:48 2025 +0100
+
+    Merge pull request #39 from theandrelima/feat/add-error-handling-policies
+    
+    - added failure strategies to skip-failed, fail-fast and run-all
+    - added communicative exit codes
+    - fixed bugs
+    - added tests
+    - improved docs
+
+commit 5b58ea909e6d809d889fcd933956d9ca682bceb5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 21:03:40 2025 +0100
+
+    style: black fixes AGAIN
+
+commit ab53d8c1ded92d9ffc775431675f6b409064e353
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 21:03:00 2025 +0100
+
+    style: ruff fixes
+
+commit 280b7d23f1405edcb897aecc660c3da6bc054da5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 20:36:09 2025 +0100
+
+    style: black fixes
+
+commit d3517118d82d0475b32e7e515b233ee0f6ca0866
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 20:35:32 2025 +0100
+
+    fix: added custom StrEnum implementation for python < 3.11
+
+commit ebc2e98f201634edd6058829dd7771e08eef0a42
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 20:21:45 2025 +0100
+
+    docs: improved api_refece.md
+
+commit 3e462bfa53afe6a11f49e69c75c9bc351fda75da
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 17:45:34 2025 +0100
+
+    tests: improved and added unittests
+
+commit 9d1cd7b7c490fc5101e545859767f5122b1c3222
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 15:43:27 2025 +0100
+
+    feat(cli): introduce exit codes based on task failure percentage
+    
+    - Exit with 0-100 reflecting failure percentage (e.g., 42 for 42% failed tasks)
+    - Exit with 101+ for internal errors or exceptions
+    - No error banner for expected failure codes 0-100, only for actual errors
+
+commit 6b566cdc2a1933de3ebf88b014594975fd31d9c2
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Oct 1 10:49:57 2025 +0100
+
+    refactor: minor improvement of processor loading code in NornFlow
+
+commit 601086d77fa5607763d8289a11315cdc510e7cd9
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 30 20:56:01 2025 +0100
+
+    fix/docs: corrected documentation for 'echo' builtin task usage
+
+commit e6f9c9edce91697f1903f3cbef9d806439e26501
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 30 20:45:55 2025 +0100
+
+    docs: updated documentation about failure strategies
+
+commit e62efb6e48f8f618cc96a8c58b66d7cfceedffc9
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 30 20:45:18 2025 +0100
+
+    feat: added failure strategies: skip, fail-fast and run-all
+
+commit 74c73f61439b998377292ceaaee31b43472e3e3e
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Fri Sep 26 15:31:36 2025 +0100
+
+    chore: placing nornir-napalm and norni-netmiko in the 'manual-tests' dependency group
+
+commit 860af82c01edcea1852e6fe1601538579ba63d81
+Merge: 5368843 2d2760d
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Fri Sep 26 12:06:44 2025 +0100
+
+    Merge pull request #38 from theandrelima/refactor/restructure-test-directories
+    
+    merge(refactor/restructure-test-directories): merge test restructuring and catalog tests
+    
+    - Consolidate unit tests under root tests/unit/ with subdirs for core, cli, vars
+    - Add comprehensive tests for catalogs, including built-in override prevention
+    - Fix import paths and remove obsolete fixtures in conftest.py files
+    - Ensure all tests pass with updated structure
+
+commit 2d2760d55a7e3095286e92168d055acec58ccdeb
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Fri Sep 26 12:03:35 2025 +0100
+
+    refactor(test): removing references to TestProcessor2 from tests/unit/cli/conftest.py
+
+commit 1eea63595ca59f75a7df327445489d92307c8cf3
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Fri Sep 26 11:42:02 2025 +0100
+
+    refactor(test): restructure test directories to root-level and add catalog tests
+    
+    - Move CLI and vars unit tests from package subdirs to root tests/unit/cli/ and tests/unit/vars/
+    - Add test_catalogs.py with tests for catalog registration, including prevention of overriding built-ins
+    - Ensure all tests pass with the new structure
+
+commit 536884339024afa1ccf8a886b6d5ee3e8c167378
+Merge: b1a0419 3517b73
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Fri Sep 19 11:57:11 2025 +0100
+
+    Merge pull request #36 from theandrelima/docs/improvements
+    
+    docs: updated documentation
+
+commit 3517b7341e610d16da8a318320778535a5ce21ee
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Fri Sep 19 11:54:07 2025 +0100
+
+    docs: updated documentation
+
+commit 74552af6e10937b257448d2920b095c76b6154e0
+Merge: 90123e7 b1a0419
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 23:15:44 2025 +0100
+
+    Merge pull request #35 from theandrelima/develop
+    
+    0.3.1 release
+
+commit b1a04198099ed7491f9ed751bdfd74af4ff63f2f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 23:09:07 2025 +0100
+
+    chore(release): bump version to 0.3.1
+
+commit 13bedfdace81a9d676b184efd39d8fbd5ea3f854
+Merge: f875376 8615f73
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 23:05:09 2025 +0100
+
+    Merge pull request #33 from theandrelima/dependabot/github_actions/actions/setup-python-6
+    
+    chore(deps): bump actions/setup-python from 5 to 6
+
+commit 8615f73f75f045ac122db7a39603d612d601e92b
+Merge: e8b6c21 f875376
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 23:04:03 2025 +0100
+
+    Merge branch 'develop' into dependabot/github_actions/actions/setup-python-6
+
+commit f8753761c2c31687976a378936f6874e21ccfc8d
+Merge: 0ee5d15 d216f0f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 23:03:20 2025 +0100
+
+    Merge pull request #32 from theandrelima/dependabot/github_actions/actions/checkout-5
+    
+    chore(deps): bump actions/checkout from 4 to 5
+
+commit d216f0f5eee5713b0dab9ccb7a12e976be7ba2db
+Merge: 6d98eae 0ee5d15
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 23:02:32 2025 +0100
+
+    Merge branch 'develop' into dependabot/github_actions/actions/checkout-5
+
+commit 0ee5d15d8d0ad502aa6b8df1f315df1711805c34
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 22:49:08 2025 +0100
+
+    chore: added py3.13 to the covered tests
+
+commit ab8ac6fca9d6550bfae174dc257d2948de764065
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 22:46:58 2025 +0100
+
+    chore: removed isort from the project
+
+commit 4f1b5a723f8bb66089a7bc7dd56ad600f533504a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 22:29:23 2025 +0100
+
+    tests: fixing tests after changes made for black and ruff
+
+commit 35ce767a85336fa3afa0e46b894ef036a0da5a2c
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 22:25:28 2025 +0100
+
+    style: ruff fixes
+
+commit 5929592fde11ebdf16628792ea3a49a634f40ea1
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 21:52:05 2025 +0100
+
+    style: black fixes
+
+commit cecbdc94bf8e5ca2939de72d127066875accdc41
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 20:27:20 2025 +0100
+
+    tests: fixed nornflow.cli.test_show to accomodate latest changes to the show CLI
+
+commit 5274bd223bb38b584fff5574afbc2f45b81e5351
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 17:42:10 2025 +0100
+
+    feat: added granular options to 'nornflow show' CLI
+
+commit 0862af4ecd93c042d77624bdb96fdc3c4008447e
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 17 17:29:16 2025 +0100
+
+    refactor: cleaned up utils.py after moving code to Catalogs specific classes
+
+commit 425e5d31a66b1acb49f6a2765e1f5d0baeda58f3
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 16 22:15:49 2025 +0100
+
+    refactor: reworked 'show --catalog' output and source processing
+
+commit e58506cac1f53d1eaad8329cd6121c3101d180e7
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 16 11:11:16 2025 +0100
+
+    refactor: removed nornir_netmiko and nornir_napalm tasks from builtins.tasks & removed ''optional_plugins' key from pyproject.toml
+
+commit 93ecdffbbe2ab18d8fb347878b7df7ba433f83b7
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Mon Sep 15 16:32:03 2025 +0100
+
+    refactor: implementing catalogs as custom dicts
+
+commit 2dadb5e1c2a76c5b8b8bc87f8f0c6d8ad86eceba
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 23:31:12 2025 +0100
+
+    refactor: massive trim-down of Exceptions and refactored tests accordingly
+
+commit 11441bc6112fd864b5f9a6de113f4473d021bc17
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 17:07:15 2025 +0100
+
+    tests: added coverage for NornirManager as a context manager object
+
+commit 63350fccbad4c543f1cc7592ab0ccce52339dfc6
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 16:56:16 2025 +0100
+
+    chore: removed wrongfully added builtin filter function
+
+commit cf9747146a36aeb410c4443632e110071e22743b
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 16:54:54 2025 +0100
+
+    feat(nornflow): use context manager for automatic connection cleanup
+
+commit 5a280917cf64fa64cb479bc610791eab53400a93
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 16:52:59 2025 +0100
+
+    feat(nornir_manager): add context manager protocol for connection management
+
+commit e8b6c217dca81f6ecee23b88210364997f364cd2
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Sep 15 21:16:27 2025 +0000
+
+    chore(deps): bump actions/setup-python from 5 to 6
+    
+    Bumps [actions/setup-python](https://github.com/actions/setup-python) from 5 to 6.
+    - [Release notes](https://github.com/actions/setup-python/releases)
+    - [Commits](https://github.com/actions/setup-python/compare/v5...v6)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/setup-python
+      dependency-version: '6'
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 6d98eae67141c021d62cec86983fe657a457990e
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Mon Sep 15 21:16:23 2025 +0000
+
+    chore(deps): bump actions/checkout from 4 to 5
+    
+    Bumps [actions/checkout](https://github.com/actions/checkout) from 4 to 5.
+    - [Release notes](https://github.com/actions/checkout/releases)
+    - [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/actions/checkout/compare/v4...v5)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/checkout
+      dependency-version: '5'
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 0d1a936b3d858a4e7335b507beeb8b4af3f796fc
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 15:42:19 2025 +0100
+
+    tests: fixed test_setup_sample_content
+
+commit 6ddad10c38f262d7d5005b678ab2752c0912538c
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 15:37:06 2025 +0100
+
+    chore: black and ruff fixes
+
+commit 216b9f5b5faa77e601829a3a341f43d691994908
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 15:34:59 2025 +0100
+
+    making NORNFLOW_SUPPORTED_YAML_EXTENSIONS tuples
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+commit 51de2004677357f1962f086e3a9c9ffd93b8d947
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 15:33:53 2025 +0100
+
+    moving JINJA_PATTERN back to previous pattern
+    
+    during the rework of constants, the JINJA_PATTERN was changed and it would only match double-brace expressions but ignores Jinja2 statement blocks like {%- if ... -%} and {% for ... %}. The original pattern r'({{.*?}}|{%-?.*?-%?})' should be restored to properly detect all Jinja2 syntax.
+    
+    Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+
+commit 6b7c53cd93fb2196c9e1fc175263659bb3b197f3
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 15:29:46 2025 +0100
+
+    fix(cli): ensure required directories exist before NornFlow initialization
+
+commit 6861222c6869da5d749f6339aae700d9ff900548
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 15:18:17 2025 +0100
+
+    chore(exports): ensure __all__ includes NornFlow and Workflow classes
+
+commit c6a6e2da0ddbd243e1456f614c57f41a6075a4ac
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 14:50:57 2025 +0100
+
+    chore: ruff fixes
+
+commit d98022f367d2cfa5465da6d852d228f9cf52862c
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 14:41:18 2025 +0100
+
+    chore: black fixes
+
+commit c5ddb456ec2cbccd3a39fa09d3dd9653a54cf92a
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 14:40:47 2025 +0100
+
+    chore: updated pyproject.toml with directive for black to ignore tests code
+
+commit 4b1a4d7cfa45d37919901f542083a06475155106
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 13:47:18 2025 +0100
+
+    tests: adjusted tests after fixing inventory-filters
+
+commit c7d6ba2d2bce5fd8e39c04dc16a82d27ac9f30d2
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Thu Sep 11 11:53:00 2025 +0100
+
+    fix: fixed filtering through CLI and in YAML
+
+commit 8404428bd306ae2ec00162a73479e398624cfb19
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Sep 10 12:25:42 2025 +0100
+
+    tests: adjusted tests after changing constants, and streamlining settings
+
+commit 78a3a85c26e0d26ce821bff91c71385ad9d37df5
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 9 22:13:58 2025 +0100
+
+    fix: streamlined settings usage; removed redundant constants; fixed use of vars_dir
+
+commit 0c00db8b51908600a5ff9d42f8f8d79f5c8a9a9e
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 9 21:27:54 2025 +0100
+
+    chore: expand python versions test coverage
+
+commit 77060529afd3d8fad2b5f33451983781383ad418
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 21:06:57 2025 +0100
+
+    chore: added obnoxious 'NornFlow' banner to 'nornflow init' command
+
+commit 3a87bf786de1dff3c2087a34491df862c3fb930d
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 20:44:00 2025 +0100
+
+    chore: changing how sumary printing of 'nornflow run' command
+
+commit 7c753ff0bcdcbe26ea810fec76eb41c79b6ebd2f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 16:27:59 2025 +0100
+
+    chore(deps): update package dependencies
+
+commit baa046553eace4469bf8af1b8b7110ed3fa5c28c
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 15:37:37 2025 +0100
+
+    fix: fixing dry_run support for builtin write_file task
+
+commit 39e790265215535407f62d984668f6782cb87d80
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 14:59:57 2025 +0100
+
+    fix: fixing default behavior for NornirManager.set_dry_run
+
+commit 6436229f967946ad8f9e3f461ddd50dfcb9e7133
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 14:17:48 2025 +0100
+
+    feat: added support to 'dry_run' into builtin 'write_file' task
+
+commit 7cdbec170d1af3ccbc61f41c9eabc07805272edd
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 14:15:57 2025 +0100
+
+    fix: added 'vars' field to WorkflowModel class explicitly & changing validations to use 'pydantic_serdes.utils.convert_to_hashable'
+
+commit 037d74aab1af0a37ad0103664e203ddf82593b1f
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 10:54:46 2025 +0100
+
+    test: update CLI and nornir_manager tests for dry_run execution-time migration
+    
+    - Remove dry_run argument from get_nornflow_builder calls in CLI tests
+    - Update processor integration and workflow override tests to match new function signatures
+    - Remove dry_run usage from NornirManager tests and assertions
+    - Ensure all tests reflect dry_run as an execution-time parameter, not a constructor argument
+
+commit 9dede112de035f87ea73efff5f5ccc5b9c3c6184
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Jul 29 23:46:05 2025 +0100
+
+    refactor: migrate dry_run from constructor-time to execution-time parameter
+    
+    - Remove dry_run parameter from NornFlow, NornFlowBuilder, and NornFlowSettings constructors
+    - Add dry_run parameter to NornFlow.run() and Workflow.run() methods
+    - Update CLI to pass dry_run to execution methods instead of constructors
+    - Introduced NornirManager.set_dry_run() with type validation and proper error handling
+    - Implement effective dry_run logic combining CLI and workflow-defined values
+    
+    BREAKING CHANGE: dry_run parameter moved from constructors to run() methods
+
+commit 0d44df8b7f1254abd6759b2fceb4dad88ef25019
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Jul 29 21:14:47 2025 +0100
+
+    chore: updated .gitignore
+
+commit 7d994ec48f388a392530ceb8f61b22117da52d5a
+Merge: 53a939c 7655b6e
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Tue Sep 9 21:04:20 2025 +0100
+
+    Merge pull request #29 from theandrelima/dependabot/github_actions/actions/checkout-5
+    
+    chore(deps): bump actions/checkout from 4 to 5
+
+commit 7655b6e7202dde6225431132eb7c9f1707ac0780
+Merge: f3d6f3a 53a939c
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Aug 20 18:30:22 2025 +0100
+
+    Merge branch 'develop' into dependabot/github_actions/actions/checkout-5
+
+commit f3d6f3a95ff52d63d0316f1930b5a2b13499abbb
+Author: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Date:   Tue Aug 12 05:47:35 2025 +0000
+
+    chore(deps): bump actions/checkout from 4 to 5
+    
+    Bumps [actions/checkout](https://github.com/actions/checkout) from 4 to 5.
+    - [Release notes](https://github.com/actions/checkout/releases)
+    - [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+    - [Commits](https://github.com/actions/checkout/compare/v4...v5)
+    
+    ---
+    updated-dependencies:
+    - dependency-name: actions/checkout
+      dependency-version: '5'
+      dependency-type: direct:production
+      update-type: version-update:semver-major
+    ...
+    
+    Signed-off-by: dependabot[bot] <support@github.com>
+
+commit 53a939cc9cc77e9f4d53017b7bc9de5d6926c76b
+Merge: 90123e7 c05ea3b
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 18:42:22 2025 +0100
+
+    Merge pull request #28 from theandrelima/feat/github-ci-extra-checks
+    
+    chore(pipelines): adding checks for 'develop' and making sure merges …
+
+commit c05ea3b33c8219ee1e4a43f8f9542bd0534c86c6
+Author: André Lima <39955130+theandrelima@users.noreply.github.com>
+Date:   Wed Jul 30 18:40:18 2025 +0100
+
+    chore(pipelines): adding checks for 'develop' and making sure merges to main comes only from 'develop'
