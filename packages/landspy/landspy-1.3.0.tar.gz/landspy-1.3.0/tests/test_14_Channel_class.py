@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on 09 february, 2021
+Testing suite for BNetwork class
+@author: J. Vicente Perez
+@email: geolovic@hotmail.com
+@last_modified: 15 october, 2025
+"""
+
+import unittest
+import numpy as np
+from landspy import Network, Channel
+from osgeo import ogr
+
+import sys, os
+# Forzar el directorio actual al del archivo
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.getcwd())
+infolder = "data/in"
+outfolder = "data/out"
+
+class ChannelClassTest(unittest.TestCase):
+
+    def test_get_channel(self):
+        """
+        Test Obtiene shapefile con canales, selecciona 5 grupos de 10 canales
+        aleaorios y crea objeto Channel (con puntos inicial y final de línea)
+        """
+        files = ["small25", "jebja30", "tunez"]
+        for file in files:
+            
+            net = Network("{}/{}_net.dat".format(outfolder, file))
+            shp_path = outfolder + "/canales_{}.shp".format(file)
+            net.exportShp(shp_path, False)
+            
+            dataset = ogr.Open(shp_path)
+            layer = dataset.GetLayer(0)
+            canales = []
+            for n in range(5):
+                for n in np.random.randint(0, layer.GetFeatureCount(), 10):
+                    feat = layer.GetFeature(n)
+                    geom = feat.GetGeometryRef()
+                    head = geom.GetPoint(0)
+                    mouth = geom.GetPoint(geom.GetPointCount() - 1)
+                    canal = net.getChannel(head, mouth)
+                    canales.append(canal)
+                    # Verificamos que canal se ha creado bien
+                    self.assertIsInstance(canal, Channel)
+           
+    def test_get_channel2(self):
+        """
+        Test crea los canales hasta outlet para todas las cabeceras (sin mouth)
+        """
+        files = ["small25", "jebja30", "tunez"]
+
+        for file in files:
+            net = Network("{}/{}_net.dat".format(outfolder, file))
+            heads = net.streamPoi(kind="heads", coords="XY")
+            for head in heads:
+                canal = net.getChannel(head)
+                # Verificamos que canal se ha creado bien
+                self.assertIsInstance(canal, Channel)
+
+if __name__ == "__main__":
+    unittest.main()
