@@ -1,0 +1,50 @@
+Metadata-Version: 2.4
+Name: django-payroll-ve
+Version: 0.1.0
+Summary: Employee payroll processing and accounting integration for Django (works with django-finacc).
+Author-email: "Verified Enquiries / Tushar K." <support@verifiedenquiries.com>
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: Django>=5.0
+Requires-Dist: djangorestframework>=3.15
+Requires-Dist: django-finacc>=0.1.0
+Dynamic: license-file
+
+# django-payroll-ve
+
+
+## Install
+```
+pip install django-payroll-ve
+```
+
+## Settings
+```
+INSTALLED_APPS += ["rest_framework", "finacc", "payroll"]
+PAYROLL = {"AUTO_POST": True}
+```
+
+## URLs
+```
+path("api/payroll/", include("payroll.api.urls"))
+```
+
+## Create & Post Payslip
+```
+POST /api/payroll/payslips/
+{ "company": 1, "employee": 1, "period": "2025-11", "date": "2025-11-30", "currency": "INR",
+"lines": [
+{"component": 1, "amount": "50000.00"},
+{"component": 2, "amount": "20000.00"},
+{"component": 3, "amount": "1800.00"}
+]
+}
+```
+
+
+## Download PDF
+```
+GET /api/payroll/payslips/<id>/pdf/
+```
