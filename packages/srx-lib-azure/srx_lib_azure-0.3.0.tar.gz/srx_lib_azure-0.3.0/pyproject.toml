@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "srx-lib-azure"
+version = "0.3.0"
+description = "Azure helpers for SRX services: Blob, Email, Table, Document Intelligence, Speech Services"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "SRX", email = "dev@srx.id" }]
+dependencies = [
+  "loguru>=0.7.2",
+  "azure-storage-blob>=12.22.0",
+  "azure-communication-email>=1.0.0",
+  "azure-data-tables>=12.7.0",
+  "azure-ai-documentintelligence>=1.0.0",
+]
+
+[project.optional-dependencies]
+# Optional extra for Document Intelligence (OCR)
+document = [
+  "azure-ai-documentintelligence>=1.0.0",
+]
+# Optional extra for Speech Services (audio transcription)
+speech = [
+  "azure-cognitiveservices-speech>=1.41.1",
+]
+# Install all optional dependencies
+all = [
+  "azure-ai-documentintelligence>=1.0.0",
+  "azure-cognitiveservices-speech>=1.41.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/srx_lib_azure"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
