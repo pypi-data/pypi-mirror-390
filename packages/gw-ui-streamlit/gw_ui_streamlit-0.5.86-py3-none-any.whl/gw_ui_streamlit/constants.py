@@ -1,0 +1,230 @@
+from enum import Enum
+
+
+class KeyType(Enum):
+    INPUT = "input"
+    BUTTON = "button"
+    TAB = "tab"
+    STORAGE = "storage"
+    TABLE = "table"
+    OTHER = "other"
+
+
+class ButtonVariantType(Enum):
+    primary = "primary"
+    secondary = "secondary"
+
+
+class ButtonLevel(Enum):
+    application = "application"
+    tab = "tab"
+    table = "table"
+
+BORDER = "border: 1px solid #bfc5d2 !important;"
+
+
+DEFAULT_BUTTONS = [
+    {
+        "label": "Submit",
+        "on_click": "gw_ui_streamlit.utils:button_submit",
+        "type": "submit",
+        "variant": "primary",
+    },
+    {
+        "label": "Cancel",
+        "on_click": "gw_ui_streamlit.utils:button_cancel",
+        "type": "cancel",
+        "variant": "secondary",
+    },
+]
+
+DEFAULT_TABLE_BUTTONS = [
+    {
+        "label": "Add",
+        "on_click": "gw_ui_streamlit.utils:button_submit",
+        "type": "submit",
+        "variant": "primary",
+    },
+    {
+        "label": "Edit",
+        "on_click": "gw_ui_streamlit.utils:button_cancel",
+        "type": "cancel",
+        "variant": "secondary",
+    },
+    {
+        "label": "Remove",
+        "on_click": "gw_ui_streamlit.utils:button_cancel",
+        "type": "cancel",
+        "variant": "secondary",
+    },
+]
+
+YAML_UI_LOCATION = "./resources/yaml_ui"
+LOCAL_DBM_LOCATION = "./resources/local_dbm"
+LOGO_LOCATION = "./resources/logo"
+DEFAULT_DATE_FORMAT = "YYYY-MM-DD"
+DIALOG_TYPE = {"add": "Add", "edit": "Edit", "search": "Search", "individual": "Individual"}
+CURRENCY_SYMBOLS = {
+    "AED": "د.إ",
+    "AFN": "؋",
+    "ALL": "L",
+    "AMD": "֏",
+    "ANG": "ƒ",
+    "AOA": "Kz",
+    "ARS": "$",
+    "AUD": "$",
+    "AWG": "ƒ",
+    "AZN": "₼",
+    "BAM": "KM",
+    "BBD": "$",
+    "BDT": "৳",
+    "BGN": "лв",
+    "BHD": ".د.ب",
+    "BIF": "FBu",
+    "BMD": "$",
+    "BND": "$",
+    "BOB": "Bs.",
+    "BRL": "R$",
+    "BSD": "$",
+    "BTN": "Nu.",
+    "BWP": "P",
+    "BYN": "Br",
+    "BZD": "$",
+    "CAD": "$",
+    "CDF": "FC",
+    "CHF": "Fr.",
+    "CLP": "$",
+    "CNY": "¥",
+    "COP": "$",
+    "CRC": "₡",
+    "CUC": "$",
+    "CUP": "$",
+    "CVE": "$",
+    "CZK": "Kč",
+    "DJF": "Fdj",
+    "DKK": "kr",
+    "DOP": "RD$",
+    "DZD": "دج",
+    "EGP": "£",
+    "ERN": "Nkf",
+    "ETB": "Br",
+    "EUR": "€",
+    "FJD": "$",
+    "FKP": "£",
+    "GBP": "£",
+    "GEL": "ლ",
+    "GGP": "£",
+    "GHS": "₵",
+    "GIP": "£",
+    "GMD": "D",
+    "GNF": "FG",
+    "GTQ": "Q",
+    "GYD": "$",
+    "HKD": "$",
+    "HNL": "L",
+    "HRK": "kn",
+    "HTG": "G",
+    "HUF": "Ft",
+    "IDR": "Rp",
+    "ILS": "₪",
+    "IMP": "£",
+    "INR": "₹",
+    "IQD": "ع.د",
+    "IRR": "﷼",
+    "ISK": "kr",
+    "JEP": "£",
+    "JMD": "J$",
+    "JOD": "د.ا",
+    "JPY": "¥",
+    "KES": "KSh",
+    "KGS": "сом",
+    "KHR": "៛",
+    "KMF": "CF",
+    "KPW": "₩",
+    "KRW": "₩",
+    "KWD": "د.ك",
+    "KYD": "$",
+    "KZT": "₸",
+    "LAK": "₭",
+    "LBP": "£",
+    "LKR": "Rs",
+    "LRD": "$",
+    "LSL": "L",
+    "LYD": "ل.د",
+    "MAD": "د.م.",
+    "MDL": "L",
+    "MGA": "Ar",
+    "MKD": "ден",
+    "MMK": "K",
+    "MNT": "₮",
+    "MOP": "MOP$",
+    "MRU": "UM",
+    "MUR": "Rs",
+    "MVR": "Rf",
+    "MWK": "MK",
+    "MXN": "$",
+    "MYR": "RM",
+    "MZN": "MT",
+    "NAD": "$",
+    "NGN": "₦",
+    "NIO": "C$",
+    "NOK": "kr",
+    "NPR": "Rs",
+    "NZD": "$",
+    "OMR": "ر.ع.",
+    "PAB": "B/.",
+    "PEN": "S/",
+    "PGK": "K",
+    "PHP": "₱",
+    "PKR": "Rs",
+    "PLN": "zł",
+    "PYG": "₲",
+    "QAR": "ر.ق",
+    "RON": "lei",
+    "RSD": "дин.",
+    "RUB": "₽",
+    "RWF": "FRw",
+    "SAR": "﷼",
+    "SBD": "$",
+    "SCR": "Rs",
+    "SDG": "ج.س.",
+    "SEK": "kr",
+    "SGD": "$",
+    "SHP": "£",
+    "SLL": "Le",
+    "SOS": "Sh.so.",
+    "SPL": "∑",  # unofficial code for some currencies
+    "SRD": "$",
+    "STN": "Db",
+    "SVC": "$",
+    "SYP": "£",
+    "SZL": "E",
+    "THB": "฿",
+    "TJS": "SM",
+    "TMT": "T",
+    "TND": "د.ت",
+    "TOP": "T$",
+    "TRY": "₺",
+    "TTD": "TT$",
+    "TVD": "$",
+    "TWD": "NT$",
+    "TZS": "TSh",
+    "UAH": "₴",
+    "UGX": "USh",
+    "USD": "$",
+    "UYU": "$U",
+    "UZS": "лв",
+    "VEF": "Bs",
+    "VND": "₫",
+    "VUV": "VT",
+    "WST": "WS$",
+    "XAF": "FCFA",
+    "XCD": "$",
+    "XDR": "SDR",
+    "XOF": "CFA",
+    "XPF": "₣",
+    "YER": "﷼",
+    "ZAR": "R",
+    "ZMW": "ZK",
+    "ZWD": "Z$"
+}
