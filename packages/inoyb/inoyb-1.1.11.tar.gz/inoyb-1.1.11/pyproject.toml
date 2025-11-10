@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inoyb"
+version = "1.1.11"
+authors = [
+    {name = "DiChen", email = "ldicccccc@gmail.com"},
+]
+description = "极其友好的地理空间AI模型服务框架 - Docker化部署，支持Gradio界面"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["gradio", "model", "service", "framework", "ml", "ai", "docker", "geospatial", "rasterio", "gdal", "openGMS"]
+
+dependencies = [
+    "gradio>=4.0.0",
+    "rasterio>=1.3.0", 
+    "matplotlib>=3.5.0,<4.0.0",
+    "Pillow>=8.0.0",
+    "docker>=7.0.0",
+    "pathlib2>=2.3.0;python_version<'3.8'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+    "twine>=4.0.0",
+    "build>=0.8.0",
+]
+gpu = [
+    "torch>=1.12.0",
+    "torchvision>=0.13.0", 
+    "torchaudio>=0.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ldichen/It-is-none-of-your-business"
+Repository = "https://github.com/ldichen/It-is-none-of-your-business"
+Documentation = "https://github.com/ldichen/It-is-none-of-your-business#readme"
+"Bug Reports" = "https://github.com/ldichen/It-is-none-of-your-business/issues"
+Changelog = "https://github.com/ldichen/It-is-none-of-your-business/releases"
+
+[project.scripts]
+inoyb = "inoyb.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["inoyb*"]
+exclude = ["tests*", "examples*", "docs*"]
+
+[tool.setuptools.package-data]
+"inoyb" = ["static/*", "templates/*", "docker/templates/*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
