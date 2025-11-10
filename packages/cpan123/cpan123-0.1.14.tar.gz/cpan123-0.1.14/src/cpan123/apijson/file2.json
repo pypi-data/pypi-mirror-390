@@ -1,0 +1,126 @@
+{
+	"create": {
+		"method": "POST",
+		"url": "/upload/v2/file/create",
+		"data": {
+			"parentFileID": "number: required",
+			"filename": "string: required",
+			"etag": "string: required",
+			"size": "number: required",
+			"duplicate": "number: optional",
+			"containDir": "boolean: optional"
+		},
+		"schema_": {
+			"type": "object",
+			"properties": {
+				"fileID": {
+					"type": "number"
+				},
+				"preuploadID": {
+					"type": "string"
+				},
+				"reuse": {
+					"type": "boolean"
+				},
+				"sliceSize": {
+					"type": "number"
+				},
+                "servers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+			},
+			// 预上传ID(如果 reuse 为 true 时,该字段不存在, 这里文档有误,  当reuse为true时, preuploadID 字段为空
+			// 更改下面的逻辑
+			// 当 reuse == true 时,允许 preuploadID 可以完全不出现； 或者出现,但值是空字符串 "".
+			"required": ["reuse", "sliceSize"],
+			"if": {
+				"properties": {
+					"reuse": { "const": false }
+				}
+			},
+			"then": {
+				"required": ["preuploadID"]
+			},
+			"else": {
+				"properties": {
+					"preuploadID": {
+						"type": "string",
+						"maxLength": 0
+					}
+				},
+				"additionalProperties": true
+			}
+		},
+		"comment": "response_schema 是对响后的json数据进行检查,检查字段是否存在和类型是否正确,是递归的,只要含有这个字段且类型正确就可以了, schema_ 也是对响应后的json数据中的data字段进行检查, 不递归, 需要编写jsonschema_, 二者同时存在优先schema_, 参数 data, params json 至少应该有一个 "
+	},
+    "slice": {
+        "method": "POST",
+        "url": "/upload/v2/file/slice",
+        "data": {
+            "preuploadID": "number: required",
+            "sliceNo": "number: required",
+            "sliceMD5": "string: required",
+            "slice": "binary: required"
+        },
+    },
+    "upload_complete": {
+        "method": "POST",
+        "url": "/upload/v2/file/upload_complete",
+        "data": {
+            "preuploadID": "number: required"
+        },
+        "schema_": {
+            "type": "object",
+            "properties": {
+                "completed": {
+                    "type": "boolean"
+                },
+                "fileID": {
+                    "type": "number"
+                },
+            },
+            "required": ["completed", "fileID"]
+        }
+    },
+    "domain": {
+        "method": "GET",
+        "url": "/upload/v2/file/domain",
+        "schema_": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array"
+                }
+            },
+            "required": ["data"]
+        }
+    },
+    "single_create": {
+        "method": "POST",
+        "url": "/upload/v2/file/single/create",
+        "data": {
+            "parentFileID": "number: required",
+            "filename": "string: required",
+            "etag": "string: required",
+            "size": "number: required",
+            "file": "binary: required",
+            "duplicate": "number: optional",
+            "containDir": "boolean: optional"
+        },
+        "schema_": {
+            "type": "object",
+            "properties": {
+                "fileID": {
+                    "type": "number"
+                },
+                "completed": {
+                    "type": "boolean"
+                }
+            },
+            "required": ["fileID", "completed"]
+        }
+    }
+}
