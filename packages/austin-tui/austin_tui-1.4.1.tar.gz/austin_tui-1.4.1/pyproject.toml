@@ -1,0 +1,129 @@
+# This file is part of "austin-tui" which is released under GPL.
+#
+# See file LICENCE or go to http://www.gnu.org/licenses/ for full license
+# details.
+#
+# austin-tui is a Python wrapper around Austin, the CPython frame stack
+# sampler.
+#
+# Copyright (c) 2018-2020 Gabriele N. Tornetta <phoenix1987@gmail.com>.
+# All rights reserved.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+[project]
+authors = [{ name = "Gabriele N. Tornetta", email = "phoenix1987@gmail.com" }]
+description = "The top-like text-based user interface for Austin"
+license = "GPL-3.0-or-later"
+name = "austin-tui"
+readme = "README.md"
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+keywords = ["performance", "profiling", "testing", "development"]
+
+dependencies = [
+  "austin-python~=2.1",
+  "importlib_resources~=5.10",
+  "lxml~=5.0",
+  "psutil",
+  "windows-curses~=2.1; sys_platform == 'win32'",
+]
+requires-python = ">=3.9"
+
+dynamic = ["version"]
+
+[project.urls]
+documentation = "https://austin-tui.readthedocs.io"
+homepage = "https://github.com/P403n1x87/austin-tui"
+issues = "https://github.com/P403n1x87/austin-tui/issues"
+repository = "https://github.com/P403n1x87/austin-tui"
+
+[project.scripts]
+austin-tui = "austin_tui.__main__:main"
+
+[tool.hatch.envs.tests]
+dependencies = ["pytest>=5.4.2", "pytest-cov>=2.8.1"]
+template = "tests"
+[tool.hatch.envs.tests.scripts]
+tests = "pytest --cov=austin --cov-report=term-missing --cov-report=xml {args}"
+
+[[tool.hatch.envs.tests.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+[tool.hatch.envs.checks]
+dependencies = [
+  "mypy~=1.0",
+  "flake8~=5.0.4",
+  "flake8-annotations~=2.9.1",
+  "flake8-black",
+  "flake8-bugbear~=22.9.23",
+  "flake8-docstrings~=1.6.0",
+  "flake8-import-order~=0.18.1",
+  "flake8-isort~=5.0.0",
+]
+python = "3.12"
+template = "checks"
+
+[tool.hatch.envs.checks.scripts]
+linting = "flake8 {args} austin_tui/ test/ "
+typing = "mypy --show-error-codes --install-types --non-interactive {args} austin_tui/ tests/"
+
+[tool.hatch.envs.coverage]
+dependencies = ["coverage[toml]", "codecov"]
+python = "3.12"
+template = "coverage"
+
+[tool.hatch.envs.coverage.scripts]
+cov = "coverage xml --fail-under=0"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github", "/docs"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["austin_tui"]
+
+[tool.coverage.run]
+branch = true
+source = ["austin_tui"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.isort]
+force_single_line = true
+lines_after_imports = 2
+profile = "black"
+
+[tool.mypy]
+exclude = []
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+ignore_errors = true
+module = []
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling", "hatch-vcs"]

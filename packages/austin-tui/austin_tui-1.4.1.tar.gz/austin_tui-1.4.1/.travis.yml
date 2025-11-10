@@ -1,0 +1,35 @@
+language: python
+os: linux
+
+git:
+  depth: 1
+
+osx_image: xcode10
+
+dist: bionic
+
+jobs:
+  include:
+    # Linux
+    - os: linux
+
+before_script:
+  # Install required Python versions
+  - sudo add-apt-repository ppa:deadsnakes/ppa -y
+  - sudo apt-get install -y python3.{6..9} python3.{6..9}-dev python3.9-venv;
+
+  # Clone Austin development branch
+  - git clone --branch devel --depth 1 https://github.com/P403n1x87/austin.git ../austin
+
+  # Compile Austin
+  - cd ../austin
+  - gcc -Wall -O3 -Os -s -pthread src/*.c -o src/austin
+  - cd -
+
+  - pip install nox
+  - pip install poetry
+
+script:
+  - export PATH="../austin/src:$PATH"
+  - nox
+  # nox -rs coverage
