@@ -1,0 +1,17 @@
+<p align="center">
+  <img src="https://private-user-images.githubusercontent.com/129134964/508392065-6e1ee6c5-bba1-48f6-bc4c-62407fb0cd12.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NjIwMTk5NDgsIm5iZiI6MTc2MjAxOTY0OCwicGF0aCI6Ii8xMjkxMzQ5NjQvNTA4MzkyMDY1LTZlMWVlNmM1LWJiYTEtNDhmNi1iYzRjLTYyNDA3ZmIwY2QxMi5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUxMTAxJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MTEwMVQxNzU0MDhaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT0xYWJjOWJiYjg2ODNlZDg0YzRiNWI0YmVmNDYwMTQxNzJhYWRiM2IzNjI1MTA2YzU2OTAxMjMyMDVmYjMyYzY5JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.4wTtlTcMOEQkZYdyyj0uiOAB6tbRS0VbUnjr0ZiaXFA" width="385" height="223" alt="TOFFEE_Logo" />
+</p>
+
+# TOFFEE
+
+Software to detrend and detect flares in TESS lightcurves. Effective in separately detecting overlapping flare events to be complete down to short waiting times.
+
+Read more on the project at: https://github.com/JasonReeves702/TOFFEE
+
+Install using pip with:
+
+pip install star-toffee
+
+Import into Python with:
+
+import toffee
