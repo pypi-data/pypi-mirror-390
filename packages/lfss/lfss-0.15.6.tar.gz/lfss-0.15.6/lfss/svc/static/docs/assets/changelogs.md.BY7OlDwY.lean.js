@@ -1,0 +1,1 @@
+import{_ as e,c as a,o as i,a2 as l}from"./chunks/framework.DGhb03gm.js";const b=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"changelogs.md","filePath":"changelogs.md"}'),o={name:"changelogs.md"},t=l("",67),r=[t];function d(n,s,c,h,u,f){return i(),a("div",null,r)}const p=e(o,[["render",d]]);export{b as __pageData,p as default};
