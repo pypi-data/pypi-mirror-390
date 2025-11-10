@@ -1,0 +1,211 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "graph-api-python"
+version = "0.4.1"
+description = "A fluent graph query library for Python with ElementStore and graph operations"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "damylen", email = "damylen@users.noreply.github.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/damylen/graph-api-python"
+Repository = "https://github.com/damylen/graph-api-python"
+Documentation = "https://github.com/damylen/graph-api-python#readme"
+Issues = "https://github.com/damylen/graph-api-python/issues"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21.0",
+    "coverage[toml]>=7.0",
+]
+lint = [
+    "ruff>=0.1.0",
+    "black>=23.0",
+    "isort>=5.12",
+    "mypy>=1.0",
+    "bandit[toml]>=1.7.0",
+    "safety>=2.0.0",
+    "pip-audit>=2.0.0",
+]
+dev = [
+    "graph-api-python[test,lint]",
+    "pre-commit>=3.0",
+    "build>=1.0",
+    "twine>=4.0",
+]
+all = [
+    "graph-api-python[test,lint,dev]",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --tb=short --cov=graph_api --cov-report=term-missing --cov-report=html --cov-report=xml --ignore=copilot"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["graph_api"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    # "I",   # isort - handled by isort separately
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "PTH", # flake8-use-pathlib
+    "S",   # bandit (security)
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "W191",  # indentation contains tabs
+    "S101",  # use of assert (allowed in tests)
+    "B023",  # function definition does not bind loop variable
+    "S324",  # probable use of insecure hash functions
+    "ARG001", # unused function argument (fallback functions)
+    "ARG002", # unused method argument (interface compatibility)
+    "B019",  # use of lru_cache on methods
+    "B904",  # within except clause, raise exceptions with raise ... from
+    "E722",  # do not use bare except
+    "S110",  # try-except-pass detected
+    "E721",  # use is/is not for type comparisons
+    "SIM105", # use contextlib.suppress
+    "PTH123", # open() should be replaced by Path.open()
+    "E402",  # module level import not at top of file
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["PTH", "S101", "ARG", "S", "E721", "SIM105"]
+"examples/**/*" = ["ARG001", "E402", "E722"]
+
+[tool.black]
+target-version = ["py38"]
+line-length = 88
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+line_length = 88
+known_first_party = ["graph_api"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = false
+disallow_any_generics = false
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = false
+strict_optional = false
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.hatch.version]
+path = "graph_api/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["graph_api"]
+
+[tool.bandit]
+# Configuration for bandit security linter
+exclude_dirs = ["tests", "build", "dist"]
+skips = ["B101"]  # Skip assert_used test
+[tool.bandit.assert_used]
+skips = ["*_test.py", "test_*.py"]
+
+[dependency-groups]
+dev = [
+    "black>=24.8.0",
+    "isort>=5.13.2",
+    "ruff>=0.13.0",
+]
+
+# Security configuration
+[tool.security]
+# Additional security tools configuration
+ignore-nosec = true
