@@ -1,0 +1,62 @@
+Metadata-Version: 2.3
+Name: simple-tsp
+Version: 0.2.0
+Summary: Solving the Traveling Salesman Problem
+Author: Saito Tsutomu
+Author-email: Saito Tsutomu <tsutomu7@hotmail.co.jp>
+Classifier: Development Status :: 1 - Planning
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development
+Classifier: Topic :: Scientific/Engineering
+Requires-Dist: pyvrp>=0.12.1
+Requires-Python: >=3.12
+Project-URL: homepage, https://github.com/SaitoTsutomu/simple-tsp
+Description-Content-Type: text/markdown
+
+# Solving the Traveling Salesman Problem
+
+This package uses PyVRP to solve the traveling salesman problem.
+It can handle distance data in the following three ways.
+
+* A dictionary whose keys are tuples of two cities and whose values are integer distances
+  * A dictionary whose city type is an integer (pattern 1)
+  * A dictionary whose key is a tuple of cities and whose value is a string (Pattern 2)
+* Nested lists whose values are distances (pattern 3)
+
+## Functions
+
+* `tsp(distances, depot, max_iterations)`: Solve a traveling salesman problem and return a list of cities
+  * `distances`: Dictionary or list of distances
+  * `depot`: First city
+  * `max_iterations`: Number of iterations to use in PyVRP
+
+```python
+tsp(distances: dict[tuple[int, int], int], depot: int = 0, max_iterations: int = 100) -> list[int]
+tsp(distances: dict[tuple[str, str], int], depot: str, max_iterations: int = 100) -> list[str]
+tsp(distances: list[list[int]], depot: int = 0, max_iterations: int = 100) -> list[str]
+```
+
+* `distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float`: Return the great circle distance (km) between two points
+  * `lat1`: Latitude of location 1
+  * `lon1`: Longitude of location 1
+  * `lat2`: Latitude of location 2
+  * `lon2`: Longitude of location 2
+
+## Usage
+
+```python
+from simple_tsp import tsp
+
+# Pattern 1
+distances1 = {(0, 2): 1, (2, 3): 1, (3, 1): 1, (1, 0): 1}
+print(tsp(distances1, 0))  # [0, 2, 3, 1]
+
+# Pattern 2
+distances2 = {("a", "c"): 1, ("c", "d"): 1, ("d", "b"): 1, ("b", "a"): 1}
+print(tsp(distances2, "a"))  # ['a', 'c', 'd', 'b']
+
+# Pattern 3
+distances3 = [[0, 9, 1, 9], [1, 0, 9, 9], [9, 9, 0, 1], [9, 1, 9, 0]]
+print(tsp(distances3))  # [0, 2, 3, 1]
+```
