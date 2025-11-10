@@ -1,0 +1,123 @@
+Metadata-Version: 2.4
+Name: arc-adaptors
+Version: 0.1.0
+Summary: Adaptors for the Agent Remote Communication (ARC) Protocol
+Home-page: https://github.com/arcprotocol/arc-adaptors
+Author: ARC Protocol Team
+Author-email: moein.roghani@proton.me
+License: Apache-2.0
+Project-URL: Homepage, https://arc-protocol.org
+Project-URL: Documentation, https://docs.arc-protocol.org
+Project-URL: Repository, https://github.com/arcprotocol/arc-adaptors
+Project-URL: Bug Tracker, https://github.com/arcprotocol/arc-adaptors/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Communications
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: arc-sdk>=1.2.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: httpx>=0.25.0
+Requires-Dist: openai>=1.0.0
+Requires-Dist: anthropic>=0.5.0
+Requires-Dist: mistralai>=0.0.7
+Requires-Dist: langchain>=0.0.267
+Requires-Dist: llama-index>=0.8.0
+Provides-Extra: openai
+Requires-Dist: openai>=1.0.0; extra == "openai"
+Provides-Extra: anthropic
+Requires-Dist: anthropic>=0.5.0; extra == "anthropic"
+Provides-Extra: mistral
+Requires-Dist: mistralai>=0.0.7; extra == "mistral"
+Provides-Extra: langchain
+Requires-Dist: langchain>=0.0.267; extra == "langchain"
+Provides-Extra: llama-index
+Requires-Dist: llama-index>=0.8.0; extra == "llama-index"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Dynamic: author-email
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# ARC Adaptors
+
+Adaptors for the Agent Remote Communication (ARC) Protocol.
+
+## Overview
+
+ARC Adaptors connects the ARC Protocol with common AI frameworks and services:
+
+- LangChain
+- LlamaIndex
+- OpenAI API
+- Anthropic API
+- Mistral AI
+
+## Installation
+
+```bash
+# Full installation
+pip install arc-adaptors
+
+# Specific adaptor only
+pip install arc-adaptors[langchain]
+pip install arc-adaptors[openai]
+pip install arc-adaptors[anthropic]
+pip install arc-adaptors[mistral]
+pip install arc-adaptors[llama-index]
+```
+
+## Usage
+
+### LangChain Adaptor
+
+```python
+from arc_adaptors.langchain import ARCLangChainAdaptor
+
+# Create adaptor
+adaptor = ARCLangChainAdaptor(
+    arc_endpoint="https://api.example.com/arc",
+    ledger_url="https://ledger.example.com",
+    agent_ids=["math-agent", "weather-agent"]
+)
+
+# Load handoff tools
+tools = await adaptor.load_tools()
+
+# Use with LangChain
+from langchain.agents import create_react_agent, AgentExecutor
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI()
+agent = create_react_agent(llm, tools, prompt)
+result = await agent.ainvoke({"input": "What's 25 * 16?"})
+```
+
+## Adaptors
+
+| Name | Description | Status | Package |
+|------|-------------|--------|---------|
+| LangChain | Creates handoff tools for LangChain agents | ✅ Ready | `arc-adaptors[langchain]` |
+| OpenAI | Connects OpenAI API with ARC Protocol | 🚧 Under development | `arc-adaptors[openai]` |
+| Anthropic | Connects Anthropic API with ARC Protocol | 🚧 Under development | `arc-adaptors[anthropic]` |
+| Mistral | Connects Mistral AI with ARC Protocol | 🚧 Under development | `arc-adaptors[mistral]` |
+| LlamaIndex | Connects LlamaIndex with ARC Protocol | 🚧 Under development | `arc-adaptors[llama-index]` |
+
+## License
+
+Apache License 2.0
