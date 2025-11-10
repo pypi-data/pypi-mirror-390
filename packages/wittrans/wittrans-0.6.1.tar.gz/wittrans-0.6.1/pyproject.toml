@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wittrans"
+version = "0.6.1"
+description = "Search for translation strings in Linux distributions"
+authors = [{name = "Jiri Grönroos", email = "jiri.gronroos@iki.fi"}]
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "polib>=1.2.0",
+    "rich>=14.1.0",
+]
+keywords = ["translation", "localization", "l10n", "linux", "gettext"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Localization",
+]
+
+[project.urls]
+Homepage = "https://codeberg.org/artnay/wittrans"
+Issues = "https://codeberg.org/artnay/wittrans/issues"
+Repository = "https://codeberg.org/artnay/wittrans"
+Changelog = "https://codeberg.org/artnay/wittrans/src/branch/main/CHANGELOG.md"
+
+[project.scripts]
+wittrans = "wittrans.main:main"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.7",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.13.2",
+    "twine>=6.2.0",
+]
+
+[tool.setuptools]
+packages = ["wittrans"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+pythonpath = [".", "wittrans"]
+testpaths = [
+    "tests",
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+show-fixes = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = ["E4", "E7", "E9", "F", "I", "W", "B"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"

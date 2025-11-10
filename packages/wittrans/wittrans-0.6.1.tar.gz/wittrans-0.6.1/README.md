@@ -1,0 +1,181 @@
+# wittrans
+
+A command-line tool to search for translated strings and source messages in localization files used by Linux distributions.
+
+## Overview
+
+`wittrans` is a command-line utility designed to search through compiled `.mo` localization files in Linux distributions. Finding and verifying translations in Linux systems can be tedious, especially when dealing with inconsistent translations, spelling errors, or locating the source of a specific translation. The main use case is to simplify this process by enabling fast, comprehensive searches across installed `.mo` files in a specified language.
+
+> The project name comes from the common question: "Where is that translation?"
+
+## Key Features
+
+- ✨ Fast search through compiled `.mo` files in system-wide programs and Flatpak apps
+- 🔍 Case-insensitive search functionality
+- 📝 Search capability in both English source text and translations
+- 🌍 Support for all system-available language codes
+- 📊 Search results can be displayed in the console or exported to a TSV file
+- 🐛 Find spelling mistakes easily!
+
+## Installation
+
+### Prerequisites
+
+- Linux distribution
+- Python >= 3.12 (runtime)
+- uv >= 0.8.11 or pipx >= 1.7.1 (for installation)
+
+### Install via uv
+
+Install wittrans as a standalone command-line tool using uv:
+
+```bash
+uv tool install wittrans
+```
+
+### Install via pipx
+
+Install wittrans as a standalone command-line tool using pipx:
+
+```bash
+pipx install wittrans
+```
+
+### Install via pip
+
+Install wittrans as a standalone command-line tool using pip:
+
+```bash
+pip install wittrans
+```
+
+## Usage
+
+### Search
+
+After installation, use wittrans as a command:
+
+```bash
+wittrans "search_term" language_code
+```
+
+If you wish to generate a TSV file out of search results, use option `-o`:
+
+```bash
+wittrans "search_term" language_code -o tsv
+```
+
+### Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|----------|
+| `search_term` | Text to search for (in quotes) | `"maanantai"` |
+| `language_code` | Two-letter ISO-639 Set-1 language code, or three-letter ISO-639 Set-2 or Set-3 language code, or locale code as in GNU C Library  | `fi`, `fin`, `fi_FI` for Finnish |
+
+### Options
+
+| Option | Description | Example |
+|--------|-------------|----------|
+| `-i`, `--indicate` | Highlight search term matches in output | `-i` |
+| `-f`, `--no-flatpak` | Skip searching Flatpak applications (faster search) | `-f` |
+| `-o`, `--output` | Output format. Supports `tsv` for tab-separated values | `-o tsv` |
+| `--output-file` | Custom output filename (used with `-o` option). If not specified, auto-generated filename is used | `--output-file my_results.tsv` |
+| `--version` | Show version number and exit | `--version` |
+| `-h`, `--help` | Show help message and exit | `-h` |
+
+
+### Examples
+
+Find "maanantai" (Monday) in Finnish translations:
+
+```bash
+wittrans "maanantai" fi
+```
+
+Find "måndag" (Monday) in Swedish translations with result highlighting:
+
+```bash
+wittrans "måndag" sv -i
+```
+
+Find "lunes" (Monday) in Spanish translations, skipping Flatpak for faster search:
+
+```bash
+wittrans "lunes" es -f
+```
+
+Find "segunda-feira" (Monday) in Brazilian Portuguese translations and export to a TSV file:
+
+```bash
+wittrans "segunda-feira" pt_BR -o tsv
+```
+
+Find "星期一" (Monday) in Chinese translations and export to a TSV file with a custom name:
+
+```bash
+wittrans "星期一" zh_CN -o tsv --output-file chinese_monday.tsv
+```
+
+## Documentation
+
+### Search Paths
+
+To locate .mo translation files, the following 14 standard paths are used, covering system-wide and user-specific directories:
+
+| Path | Description |
+|-----------|-------------|
+| `/usr/share/locale/{lang_code}/LC_MESSAGES` | Primary system-wide translations directory. Contains the original .mo files installed by application packages through the system's package manager. |
+| `/usr/share/locale-langpack/{lang_code}/LC_MESSAGES` | Supplementary system-wide translations directory used by Ubuntu and some derivatives. Contains additional translations that can be installed separately via language packs. |
+| `/usr/local/share/locale/{lang_code}/LC_MESSAGES` | System-wide translations for manually installed software. Contains translations for applications installed by administrators outside the package manager (e.g., compiled from source). |
+| `~/.local/share/locale/{lang_code}/LC_MESSAGES` | User-specific translations directory. Contains translations for applications compiled and installed by the current user in their home directory. |
+| `/var/lib/flatpak/app` | System-wide Flatpak application translations, accessible to all users. Each Flatpak app maintains its own locale directory within its sandbox, typically under `{app_id}/{arch}/stable/active/files/share/locale/{lang_code}/LC_MESSAGES` or `{app_id}/{arch}/stable/active/files/locale/{lang_code}/LC_MESSAGES`. |
+| `/var/lib/flatpak/runtime` | System-wide Flatpak runtime translations, accessible to all users. Runtime translations are typically found under paths like `{runtime_id}.Locale/{arch}/stable/active/files/{lang_code}/share/{lang_code}/LC_MESSAGES`. |
+| `~/.local/share/flatpak/app` | User-specific Flatpak application translations, only accessible to the current user. Follows the same directory structure as system-wide Flatpak applications. |
+| `~/.local/share/flatpak/runtime` | User-specific Flatpak runtime translations, only accessible to the current user. Follows the same directory structure as system-wide Flatpak runtimes. |
+| `/usr/share/gnome-shell/extensions/{extension_name}/locale/{lang_code}/LC_MESSAGES` | System-wide GNOME Shell extensions. Contains translations for extensions installed system-wide by the package manager or administrator. |
+| `/usr/local/share/gnome-shell/extensions/{extension_name}/locale/{lang_code}/LC_MESSAGES` | User-specific GNOME Shell extensions in system location. Extensions manually installed to the system-wide location by users with appropriate permissions. |
+| `~/.local/share/gnome-shell/extensions/{extension_name}/locale/{lang_code}/LC_MESSAGES` | User-specific GNOME Shell extensions. Contains translations for extensions installed by current user through GNOME Extensions website or manual installation. |
+| `/usr/share/plasma/plasmoids/{plasmoid_name}/contents/locale/{lang_code}/LC_MESSAGES` | System-wide KDE Plasmoids (widgets). Contains translations for KDE widgets and plasmoids installed to all users. |
+| `/usr/local/share/plasma/plasmoids/{plasmoid_name}/contents/locale/{lang_code}/LC_MESSAGES` | System-wide KDE Plasmoids (widgets). Contains translations for KDE widgets installed to all users by an administrator outside the package manager. |
+| `~/.local/share/plasma/plasmoids/{plasmoid_name}/contents/locale/{lang_code}/LC_MESSAGES` | User-specific KDE Plasmoids (widgets). Contains translations for KDE widgets installed by current user. |
+
+### TSV Output Format
+
+When using `-o tsv`, the output file contains the following tab-separated columns:
+
+| Column | Description |
+|--------|-------------|
+| `Source Type` | Source category of translation, e.g. "System Locale or "System Flatpak". There are eight different categories |
+| `File Path` | Full path to the translation file |
+| `Context` | Translation context (if available) |
+| `Original Text` | English source text |
+| `[Language] Translation` | Translated text in the specified language |
+
+TSV files can be opened in spreadsheet applications (LibreOffice Calc, etc.).
+
+### Notes
+
+- Results include matches in both source text and translations
+- `.mo` files are the compiled binary versions of `.po` files used by the system
+- [ISO-639 Set-1](https://en.wikipedia.org/wiki/ISO_639-1) language codes are the primary, supported way for setting language code
+- While there is a preliminary support for [ISO-639 Set-3](https://en.wikipedia.org/wiki/ISO_639-3) codes and locale codes, such as zh_CN and pt_BR, provided by GNU C Library, all the system-available locale codes have not been tested and might not work as reliably as Set-1 codes. Run `locale -a` in command line to see available locales.
+
+### External Links
+
+- [GNU gettext](https://www.gnu.org/software/gettext/manual/index.html)
+- [The Format of GNU MO Files](https://www.gnu.org/software/gettext/manual/html_node/MO-Files.html)
+- [GNU C Library locales](https://sourceware.org/git/?p=glibc.git;a=tree;f=localedata/locales;hb=HEAD)
+- [ISO 639 Code Tables](https://iso639-3.sil.org/code_tables/639/data)
+- [Filesystem Hierarchy Standard](https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html)
+
+## Contributing
+
+Code contributions of all kinds are welcome: bug fixes, new features, and more. See [CONTRIBUTING.md](https://codeberg.org/artnay/wittrans/src/branch/main/CONTRIBUTING.md) for development setup, code guidelines, and how to submit changes.
+
+### Reporting Issues
+
+Report issues to Codeberg [issue tracking system](https://codeberg.org/artnay/wittrans/issues).
+
+## License
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See the [LICENSE](https://codeberg.org/artnay/wittrans/src/branch/main/LICENSE) file for details.
