@@ -1,0 +1,175 @@
+name: Microservices Architecture
+description: Microservices architecture with Docker Compose
+version: 1.0.0
+author: Keniding
+
+variables:
+  PYTHON_VERSION: "3.11"
+  COMPOSE_VERSION: "3.8"
+
+structure:
+  - services/
+  - services:
+      - gateway/
+      - gateway:
+          - __init__.py
+          - main.py
+          - requirements.txt
+          - Dockerfile
+      - auth/
+      - auth:
+          - __init__.py
+          - main.py
+          - requirements.txt
+          - Dockerfile
+      - api/
+      - api:
+          - __init__.py
+          - main.py
+          - requirements.txt
+          - Dockerfile
+  - shared/
+  - shared:
+      - __init__.py
+      - models.py
+      - utils.py
+  - docker-compose.yml
+  - README.md
+  - .env.example
+  - .gitignore
+
+files:
+  README.md: |
+    # {{PROJECT_NAME}}
+    
+    Microservices architecture created with TentyPy Builder
+    
+    ## Services
+    
+    - Gateway: API Gateway
+    - Auth: Authentication Service
+    - API: Main API Service
+    
+    ## Run
+    
+    ```bash
+    docker-compose up -d
+    ```
+    
+    Author: {{AUTHOR}}
+
+  docker-compose.yml: |
+    version: '{{COMPOSE_VERSION}}'
+    
+    services:
+      gateway:
+        build: ./services/gateway
+        ports:
+          - "8000:8000"
+        environment:
+          - AUTH_SERVICE_URL=http://auth:8001
+          - API_SERVICE_URL=http://api:8002
+      
+      auth:
+        build: ./services/auth
+        ports:
+          - "8001:8001"
+        environment:
+          - DATABASE_URL=postgresql://user:pass@db:5432/auth
+      
+      api:
+        build: ./services/api
+        ports:
+          - "8002:8002"
+        environment:
+          - DATABASE_URL=postgresql://user:pass@db:5432/api
+      
+      db:
+        image: postgres:15
+        environment:
+          - POSTGRES_USER=user
+          - POSTGRES_PASSWORD=pass
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+    
+    volumes:
+      postgres_data:
+
+  .env.example: |
+    PROJECT_NAME={{PROJECT_NAME}}
+    ENVIRONMENT=development
+
+  .gitignore: |
+    __pycache__/
+    *.py[cod]
+    .env
+    .venv
+    venv/
+    *.db
+    .pytest_cache/
+
+  services/gateway/main.py: |
+    from fastapi import FastAPI
+    
+    app = FastAPI(title="Gateway Service")
+    
+    @app.get("/")
+    async def root():
+        return {"service": "gateway", "status": "running"}
+
+  services/gateway/requirements.txt: |
+    fastapi==0.104.1
+    uvicorn[standard]==0.24.0
+    httpx==0.25.0
+
+  services/gateway/Dockerfile: |
+    FROM python:{{PYTHON_VERSION}}-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  services/auth/main.py: |
+    from fastapi import FastAPI
+    
+    app = FastAPI(title="Auth Service")
+    
+    @app.get("/")
+    async def root():
+        return {"service": "auth", "status": "running"}
+
+  services/auth/requirements.txt: |
+    fastapi==0.104.1
+    uvicorn[standard]==0.24.0
+    pyjwt==2.8.0
+
+  services/auth/Dockerfile: |
+    FROM python:{{PYTHON_VERSION}}-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  services/api/main.py: |
+    from fastapi import FastAPI
+    
+    app = FastAPI(title="API Service")
+    
+    @app.get("/")
+    async def root():
+        return {"service": "api", "status": "running"}
+
+  services/api/requirements.txt: |
+    fastapi==0.104.1
+    uvicorn[standard]==0.24.0
+    sqlalchemy==2.0.23
+
+  services/api/Dockerfile: |
+    FROM python:{{PYTHON_VERSION}}-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]

@@ -1,0 +1,189 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tentypy-builder"
+version = "1.0.0"
+description = "Professional project structure generator with JSON and YAML template support"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Keniding", email = "kenidingh@gmail.com"}
+]
+keywords = [
+    "project-generator",
+    "template",
+    "builder",
+    "architecture",
+    "clean-architecture",
+    "ddd",
+    "microservices",
+    "fastapi",
+    "django"
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "rich>=13.7.0",
+    "click>=8.1.7"
+]
+
+[project.optional-dependencies]
+yaml = ["pyyaml>=6.0.1"]
+interactive = ["inquirer>=3.1.3"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.7.0",
+    "flake8>=6.1.0",
+    "isort>=5.13.0",
+    "mypy>=1.5.0",
+    "types-PyYAML>=6.0.12",
+    "pre-commit>=3.5.0",
+    "build>=0.10.0",
+    "twine>=4.0.2"
+]
+all = [
+    "pyyaml>=6.0.1",
+    "inquirer>=3.1.3"
+]
+
+[project.scripts]
+tentypy-builder = "tentypy.builder.cli:main"
+tentypy = "tentypy.builder.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/keniding/tentypy-builder"
+Repository = "https://github.com/keniding/tentypy-builder"
+Issues = "https://github.com/keniding/tentypy-builder/issues"
+Documentation = "https://github.com/keniding/tentypy-builder#readme"
+
+[tool.setuptools]
+packages = [
+    "tentypy",
+    "tentypy.builder",
+    "tentypy.builder.core",
+    "tentypy.builder.templates",
+    "tentypy.utils"
+]
+
+[tool.setuptools.package-data]
+"tentypy.builder" = ["templates/*.json", "templates/*.yaml", "templates/*.yml"]
+
+# ========================================
+# BLACK - Formateo de código
+# ========================================
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+  | \.eggs
+  | \.pytest_cache
+  | \.mypy_cache
+)/
+'''
+
+# ========================================
+# ISORT - Ordenamiento de imports
+# ========================================
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_gitignore = true
+known_first_party = ["tentypy"]
+known_third_party = ["rich", "click", "pytest", "yaml"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+# ========================================
+# PYTEST - Testing
+# ========================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = """
+    -v
+    --cov=tentypy
+    --cov-report=html
+    --cov-report=term-missing:skip-covered
+    --cov-report=xml
+    --cov-branch
+    --tb=short
+    --strict-markers
+    -ra
+"""
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "cli: marks tests for CLI functionality",
+    "edge: marks edge case tests"
+]
+
+# ========================================
+# MYPY - Type checking
+# ========================================
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = ["yaml", "yaml.*"]
+ignore_missing_imports = true
+
+# ========================================
+# COVERAGE - Code coverage
+# ========================================
+[tool.coverage.run]
+source = ["tentypy"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod"
+]

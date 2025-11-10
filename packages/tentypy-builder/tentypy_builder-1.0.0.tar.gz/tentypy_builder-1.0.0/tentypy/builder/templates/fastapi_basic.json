@@ -1,0 +1,66 @@
+{
+  "name": "FastAPI Basic",
+  "description": "Basic FastAPI project structure",
+  "version": "1.0.0",
+  "author": "Keniding",
+  "variables": {
+    "PYTHON_VERSION": "3.11",
+    "FASTAPI_VERSION": "0.104.1"
+  },
+  "structure": [
+    "app/",
+    {
+      "app": [
+        "__init__.py",
+        "main.py",
+        {
+          "api": [
+            "__init__.py",
+            {
+              "v1": [
+                "__init__.py",
+                "endpoints.py"
+              ]
+            }
+          ]
+        },
+        {
+          "core": [
+            "__init__.py",
+            "config.py"
+          ]
+        },
+        {
+          "models": [
+            "__init__.py"
+          ]
+        },
+        {
+          "schemas": [
+            "__init__.py"
+          ]
+        }
+      ]
+    },
+    {
+      "tests": [
+        "__init__.py",
+        "test_main.py"
+      ]
+    },
+    "requirements.txt",
+    "README.md",
+    ".env.example",
+    ".gitignore",
+    "Dockerfile"
+  ],
+  "files": {
+    "README.md": "# {{PROJECT_NAME}}\n\nFastAPI project created with TentyPy Builder\n\n## Installation\n\n```bash\npip install -r requirements.txt\n```\n\n## Run\n\n```bash\nuvicorn app.main:app --reload\n```\n\nAuthor: {{AUTHOR}}\n",
+    "requirements.txt": "fastapi=={{FASTAPI_VERSION}}\nuvicorn[standard]==0.24.0\npydantic==2.5.0\npydantic-settings==2.1.0\npython-dotenv==1.0.0\n",
+    ".env.example": "PROJECT_NAME={{PROJECT_NAME}}\nDEBUG=True\nAPI_V1_PREFIX=/api/v1\n",
+    ".gitignore": "__pycache__/\n*.py[cod]\n*$py.class\n.env\n.venv\nvenv/\n.pytest_cache/\n.coverage\n*.db\n",
+    "app/main.py": "from fastapi import FastAPI\nfrom app.core.config import settings\n\napp = FastAPI(\n    title=settings.PROJECT_NAME,\n    version=\"1.0.0\"\n)\n\n@app.get(\"/\")\nasync def root():\n    return {\"message\": \"Welcome to {{PROJECT_NAME}}\"}\n\n@app.get(\"/health\")\nasync def health_check():\n    return {\"status\": \"healthy\"}\n",
+    "app/core/config.py": "from pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    PROJECT_NAME: str = \"{{PROJECT_NAME}}\"\n    DEBUG: bool = True\n    API_V1_PREFIX: str = \"/api/v1\"\n    \n    class Config:\n        env_file = \".env\"\n\nsettings = Settings()\n",
+    "Dockerfile": "FROM python:{{PYTHON_VERSION}}-slim\n\nWORKDIR /app\n\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n\nCOPY . .\n\nCMD [\"uvicorn\", \"app.main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]\n"
+  }
+}
