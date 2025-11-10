@@ -1,0 +1,63 @@
+"""Moore perceive module."""
+
+from itertools import product
+
+import jax.numpy as jnp
+
+from cax.core import State
+
+from .perceive import Perceive, Perception
+
+
+class MoorePerceive(Perceive):
+	"""Moore perceive class.
+
+	This class implements perception based on the Moore neighborhood.
+	The Moore neighborhood includes cells that are within a certain distance from the central cell
+	in all dimensions simultaneously.
+	"""
+
+	def __init__(self, num_spatial_dims: int, radius: int):
+		"""Initialize Moore perceive.
+
+		Args:
+			num_spatial_dims: Number of spatial dimensions.
+			radius: Radius for Manhattan distance to compute the Moore neighborhood.
+
+		"""
+		self.num_spatial_dims = num_spatial_dims
+		self.radius = radius
+
+	def __call__(self, state: State) -> Perception:
+		"""Apply Moore perception to the input state.
+
+		The input is assumed to have shape `(..., *spatial_dims, channel_size)` where `spatial_dims`
+		is a tuple of `num_spatial_dims` dimensions and `channel_size` is the number of channels.
+		This method concatenates the central cell and all neighbors within the Moore neighborhood
+		along the channel axis, yielding an output with shape `(..., *spatial, channel_size * N)`,
+		where `N = (2 * radius + 1) ** num_spatial_dims`.
+
+		Args:
+			state: State of the cellular automaton.
+
+		Returns:
+			The Moore neighborhood for each state, with the central cell first.
+
+		"""
+		# Init neighbors
+		neighbors = [state]
+
+		# Get Moore shifts
+		moore_shifts = [
+			shift
+			for shift in product(range(-self.radius, self.radius + 1), repeat=self.num_spatial_dims)
+			if shift != (0,) * self.num_spatial_dims
+		]
+
+		# Compute the neighbors
+		for shift in moore_shifts:
+			neighbors.append(
+				jnp.roll(state, shift, axis=tuple(range(-self.num_spatial_dims - 1, -1)))
+			)
+
+		return jnp.concatenate(neighbors, axis=-1)
