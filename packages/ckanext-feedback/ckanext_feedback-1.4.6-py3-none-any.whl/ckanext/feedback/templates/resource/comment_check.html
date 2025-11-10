@@ -1,0 +1,112 @@
+{% if h.is_enabled_resources() %}
+
+  {% extends "package/base.html" %}
+
+  {% block styles %}
+    {{ super() }}
+    {% asset 'feedback/feedback-comment-css' %}
+  {% endblock %}
+
+  <!-- {% block breadcrumb_content_selected %} class="inactive"{% endblock %} -->
+
+  {% block title %}{{ _('Comment on Resource') }} - {{ pkg_dict.title }} - {{ resource.name }} - CKAN{% endblock %}
+
+  {% block primary %}
+    <div class="module-content">
+      <input type="hidden" id="current-type" name="current-type" value="confirm">
+      <div>
+        <h1 class="p-2">{{ _('Check comment content') }}</h1>
+        <br>
+        <p class="wrap-text">{{ _('Would you like to post a comment with the following content?') }}</p>
+        <br>
+        <hr class="divider">
+        <h4>
+          {% for category in categories %}
+            {% if category.name == selected_category %}
+              <span>
+                {{ h.create_category_icon(category.value) | safe }}
+                {{ _(category.value) }}
+              </span>
+            {% endif %}
+          {% endfor %}
+
+          {% if h.is_enabled_rating(pkg_dict.owner_org) %}
+            {% if rating %}
+              <span class="group-stars">
+                {% for i in range(rating) %}
+                  <i class="rating-star fa-solid fa-star"></i>
+                {% endfor %}
+                {% for i in range(5 - rating) %}
+                  <i class="rating-star fa-regular fa-star"></i>
+                {% endfor %}
+              </span>
+            {% endif %}
+          {% endif %}
+        </h4>
+        <div class="wrap-text comment-container">
+          <span class="comment-content" >{{ content }}</span>
+        </div>
+        {% if attached_image_filename %}
+          <div>
+            <a href="{{ h.url_for('resource_comment.check_attached_image', resource_id=resource.id, attached_image_filename=attached_image_filename) }}" target="_blank">
+              <img src="{{ h.url_for('resource_comment.check_attached_image', resource_id=resource.id, attached_image_filename=attached_image_filename) }}" alt="{{ _('Attached Image') }}" class="attached-image">
+            </a>
+          </div>
+        {% endif %}
+        <hr class="divider">
+        <form id="comment_form" name="comment_form" action="{{ h.url_for('resource_comment.create_comment', resource_id=resource.id ) }}" method="post">
+          <div style="display: flex; flex-direction: column; align-items: stretch;">
+            <div class="select-button ml-2" style="display: flex; justify-content: center;">
+              <input type="hidden" name="package_name" value="{{ pkg_dict.name }}">
+              <input type="hidden" name="category" value="{{ selected_category }}">
+              <input type="hidden" name="rating" value="{{ rating }}"/>
+              <input type="hidden" id="input-comment" name="comment-content" value="{{ content }}">
+              {% if attached_image_filename %}
+              <input type="hidden" name="attached_image_filename" value="{{ attached_image_filename }}">
+              {% endif %}
+            </div>
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-default" type="button" onclick="window.history.back();">
+                <i class="fa-solid fa-chevron-left"></i>
+                {{ _('Previous') }}
+              </button>
+              {% if h.is_base_public_folder_bs3() %}
+              <button class="btn btn-primary ms-2 pull-right" id="comment-button">
+                <i class="fa-solid fa-paper-plane"></i>
+                {{ _('Send') }}
+              </button>
+              {% else%}
+              <button class="btn btn-primary ms-2" id="comment-button">
+                <i class="fa-solid fa-paper-plane"></i>
+                {{ _('Send') }}
+              </button>
+              {% endif%}
+            </div>
+          </div>
+        </form>
+        <br>
+        <div class="return-button ml-2" style="display: flex; justify-content: center;">
+        </div>
+      </div>
+    </div>
+  {% endblock -%}
+
+  {% block secondary %}{% endblock %}
+
+  {%- block scripts %}
+    {{ super() }}
+    {% asset 'feedback/feedback-comment-js' %}
+    {% set is_admin = c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(resource.package.owner_org)) %}
+    {% if h.is_enabled_feedback_recaptcha() and (h.is_feedback_recaptcha_force_all() or not is_admin) %}
+    {% asset 'feedback/feedback-moral_check_log-js' %}
+      <script src="https://www.google.com/recaptcha/api.js?render={{ h.get_feedback_recaptcha_publickey() }}"></script>
+      <script>
+        window.feedbackRecaptchaTargetForm = 'comment_form'
+        window.feedbackRecaptchaAction = 'resource_comment_check'
+        window.feedbackRecaptchaPublickey = '{{ h.get_feedback_recaptcha_publickey() }}'
+      </script>
+      {% asset 'feedback/feedback-recaptcha-js'%}
+    {% endif %}
+  {% endblock -%}
+
+{% endif %}

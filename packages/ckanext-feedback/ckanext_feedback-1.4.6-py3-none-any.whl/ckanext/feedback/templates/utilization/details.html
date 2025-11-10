@@ -1,0 +1,496 @@
+{% if h.is_enabled_utilizations() %}
+
+  {% extends "page.html" %}
+
+  {% block styles %}
+    {{ super() }}
+    {% asset 'feedback/feedback-details-css' %}
+    {% asset 'feedback/feedback-comment-css' %}
+  {% endblock %}
+
+  {% block breadcrumb_content %}
+    <li class="inactive"><a href="{{ h.url_for('utilization.search') }}">{{ _('Utilization') }}</a></li>
+    <li class="active"><a href="{{ h.url_for('utilization.details', utilization_id=utilization_id) }}">{{ _('Details') }}</a></li>
+  {% endblock %}
+
+  {% block title %}{{ _('Details on Utilization') }} - {{ utilization.title }} - {{ utilization.package_name }} - {{ utilization.resource_name }} - CKAN{% endblock %}
+
+  {% block primary %}
+    <article class="module" role="main">
+      <input type="hidden" id="utilization-id" value="{{ utilization_id }}">
+      <input type="hidden" id="current-type" name="current-type" value="comment">
+      <div class="module-content">
+        {% set row = utilization %}
+        {% set owner_org = utilization.owner_org %}
+        <div>
+          {% if c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(owner_org)) %}
+            <form name="admin_form" action="{{h.url_for('utilization.approve', utilization_id=utilization_id ) }}" method="post">
+              <a class="btn btn-primary right-aligned spaced-left" href="{{ h.url_for('utilization.edit', utilization_id=utilization_id) }}">
+                <i class="fa-solid fa-pen"></i>
+                {{ _('Edit') }}
+              </a>
+              {% if row.approval == false %}
+                <button class="btn btn-primary right-aligned" onclick="setButtonDisable(this);">
+                  <i class="fa-solid fa-check"></i>
+                  {{ _('Approve') }}
+                </button>
+              {% endif %}
+              <br>
+            </form>
+            <hr class="divider">
+          {% endif %}
+          <div class="wrap-text">
+            <h1>{{ row.title }}</h1>
+            <hr>
+            <h4>{{ _('Dataset') }}</h4>
+            <a href="{{ h.url_for('dataset.search') }}{{ row.package_name }}">{{ row.package_title }}</a>
+            <hr>
+            <h4>{{ _('Resource') }}</h4>
+            <a href="{{ h.url_for('dataset.search') }}{{ row.package_name }}/resource/{{ row.resource_id }}">{{ row.resource_name }}</a>
+            <hr>
+            <h4>{{ _('URL') }}</h4>
+            <a href="{{ row.url }}" target="_blank">{{ row.url }}</a>
+            <hr>
+            <h4>{{ _('Utilization description') }}</h4>
+            <p class="multiple-line">{{ row.description }}</p>
+            <hr>
+          </div>
+          <h4>{{ _('Issue Resolutions') }}</h4>
+          {% if h.is_base_public_folder_bs3() %}
+            <a href="#issue-resolution-detail" data-toggle="modal">
+          {% else %}
+            <a href="#issue-resolution-detail" data-bs-toggle="modal">
+          {% endif %}
+            {% if issue_resolutions|length > 0 %}
+              <i class="issue-resolution fa-solid fa-award" style="vertical-align: middle;"></i>
+            {% endif %}
+            {{ issue_resolutions|length }}
+          </a>
+          {% if c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(owner_org)) %}
+            {% if h.is_base_public_folder_bs3() %}
+              <button class="btn btn-primary right-aligned" data-toggle="modal" data-target="#issue-resolution-form">
+                <i class="fa-solid fa-award"></i>
+                {{ _('Resolve issue') }}
+              </button>
+            {% else %}
+              <button class="btn btn-primary right-aligned" data-bs-toggle="modal" data-bs-target="#issue-resolution-form">
+                <i class="fa-solid fa-award"></i>
+                {{ _('Resolve issue') }}
+              </button>
+            {% endif %}
+          {% endif %}
+          <br>
+          <hr>
+          <h4>{{ _('Comments') }}</h4>
+          <p>{{ row.comment }}</p>
+          <hr>
+          <form id="comment_form" name="comment_form" action="{{ h.url_for('utilization.check_comment', utilization_id=utilization_id ) }}" method="post" enctype="multipart/form-data">
+            <h4>{{ _('Comment') }}</h4>
+            {% for category in categories %}
+            <label class="radio">
+              <input type="radio" name="category" value="{{ category.name }}" {% if category.name == selected_category %}checked{% endif %}>
+              {{ h.create_category_icon(category.value) | safe }}
+              {{ _(category.value) }}
+            </label>
+            {% endfor %}
+            <br>
+            <br>
+            <textarea class="form-control resize-vertical" cols="20" rows="5" id="comment-content" name="comment-content" maxlength="1000">{{ content }}</textarea>
+            <div class="char-count text-end"><span name="comment-count">0</span>/1000</div>
+            <div>
+              <p id="comment-none-error" class="alert alert-error" style="display: none;">{{ _('Please enter your comment') }}</p>
+              <p id="comment-over-error" class="alert alert-error" style="display: none;">{{ _('Please keep the comment length below 1000') }}</p>
+            </div>
+            <div class="comment-form-footer">
+              {% if h.is_enabled_utilization_comment_image_attachment(owner_org) %}
+                <div class="image-upload-section">
+                  <button id="uploadBtn" type="button" class="btn btn-default" onclick="uploadClicked();">
+                    <i class="fa-solid fa-image"></i>
+                    {{ _('Image Attachment') }}
+                  </button>
+                  <div id="previewContainer"></div>
+                  <input type="file" id="imageUpload" class="imageUpload" name="attached_image" accept="image/*">
+                </div>
+              {% endif %}
+              <div class="form-actions">
+                {% if h.is_base_public_folder_bs3() %}
+                <button class="btn btn-primary right-aligned" id="comment-button" name="send-button" onclick="return checkCommentExists(this, bs3=true);">
+                  <i class="fa-solid fa-chevron-right"></i>
+                  {{ _('Review') }}
+                </button>
+                {% else %}
+                <button class="btn btn-primary right-aligned" id="comment-button" name="send-button" onclick="return checkCommentExists(this);">
+                  <i class="fa-solid fa-chevron-right"></i>
+                  {{ _('Review') }}
+                </button>
+                {% endif %}
+              </div>
+            </div>
+            <div class="notice-container">
+              <h3>
+                <span><i class="fa-solid fa-triangle-exclamation"></i></span>
+                <span>{{ _('Please check before sending') }}</span>
+              </h3>
+              <h4>{{ _('Comment Policy') }}</h4>
+              <ul>
+                <li><strong>{{ _('Constructive criticism') }}: </strong>{{ _('When seeking improvements, provide constructive and specific criticism. Including alternative suggestions or problem-solving proposals can lead to improvements that meet the needs.') }}</li>
+                <li><strong>{{ _('Respect Privacy and Ethics') }}: </strong>{{ _('When posting comments, remember to protect personal information and consider ethical implications.') }}</li>
+                <li><strong>{{ _('Positive Feedback') }}: </strong>{{ _('Positive comments contribute more to the motivation of data providers and provide valuable deta than aggressive negative comments.') }}</li>
+              </ul>
+            </div>
+            <br>
+            <br>
+          </form>
+          {% if page.collection|length %}
+            <hr class="divider">
+          {% endif %}
+          {% for comment in page.collection %}
+            <div class="custom-rounded-padding {{'unapproved' if not comment.approval }}">
+              <div class="comment-top-section">
+                <div id="comment-header-{{ comment.id }}" class="d-flex align-items-center">
+                  {% if not comment.approval %}
+                    <span class="font-bold me-2">({{ _('Unapproved') }})</span>
+                  {% endif %}
+                  {% if comment.category %}
+                    <span id="comment-category-{{ comment.id }}" class="font-bold me-2">
+                      {{ h.create_category_icon(comment.category.value) | safe }}
+                      {{ _(comment.category.value) }}
+                    </span>
+                  {% endif %}
+                  <span id="comment-created-{{ comment.id }}" class="automatic-local-datetime me-2" data-datetime="{{ h.render_datetime(comment.created, date_format='%Y-%m-%dT%H:%M:%S%z') }}">
+                    {{ h.render_datetime(comment.created, with_hours=True) }}
+                  </span>
+                </div>
+                <div id="comment-action-buttons" class="comment-action-buttons">
+                  {% if c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(owner_org)) and comment.approval == false %}
+                    <form class="inline-form pull-left float-start" name="approval_form" style="margin-bottom: 0;" action="{{h.url_for('utilization.approve_comment', utilization_id=utilization_id, comment_id=comment.id) }}" method="post">
+                      <button class="btn btn-primary" onclick="setButtonDisable(this);">
+                        <i class="fa-solid fa-check"></i>
+                        {{ _('Approve') }}
+                      </button>
+                    </form>
+                  {% endif %}
+                  {% set reply_open = h.is_utilization_reply_open(owner_org) %}
+                  {% if comment.approval and (reply_open or (c.userobj and c.userobj.sysadmin) or h.has_organization_admin_role(owner_org)) %}
+                    {% if h.is_base_public_folder_bs3() %}
+                      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#reply-form-window" onclick="setReplyFormContent('{{ comment.id }}')">
+                        <i class="fa-solid fa-reply"></i>
+                        {{ _('Reply') }}
+                      </button>
+                    {% else %}
+                      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reply-form-window" onclick="setReplyFormContent('{{ comment.id }}')">
+                        <i class="fa-solid fa-reply"></i>
+                        {{ _('Reply') }}
+                      </button>
+                    {% endif %}
+                  {% endif %}
+                </div>
+              </div>
+              <div class="wrap-text">
+                {% if comment.content %}
+                  <div class="comment-container">
+                    <span class="multiple-line" id="comment-content-{{ comment.id }}">{{ comment.content }}</span>
+                  </div>
+                {% endif %}
+                {% if comment.attached_image_filename %}
+                  <div>
+                    <a href="{{h.url_for('utilization.attached_image', utilization_id=utilization_id, comment_id=comment.id, attached_image_filename=comment.attached_image_filename ) }}" target="_blank">
+                      <img src="{{h.url_for('utilization.attached_image', utilization_id=utilization_id, comment_id=comment.id, attached_image_filename=comment.attached_image_filename ) }}" alt="{{ _('Attached Image') }}" class="attached-image">
+                    </a>
+                  </div>
+                {% endif %}
+
+                {# replies block #}
+                {% set replies = h.get_utilization_comment_replies_for_display(comment.id, owner_org) %}
+                {% if replies and replies|length %}
+                  <hr>
+                  <div class="reply">
+                    {% if replies|length > 3 %}
+                      <div id="replies-hidden-{{ comment.id }}" style="display: none;">
+                        {% for reply in replies %}
+                          <div class="{{ 'unapproved' if not reply.approval }}">
+                            <div class="comment-top-section">
+                              {% set is_admin_reply = h.user_has_organization_admin_role(reply.creator_user_id, owner_org) %}
+                              <i class="fa-solid fa-reply"></i>
+                              {% if is_admin_reply %}
+                                <i class="fa-solid fa-user-tie"></i>
+                              {% endif %}
+                              <span class="font-bold">
+                                {% if is_admin_reply %}
+                                  {{ _('Reply from the Administrator') }}
+                                {% else %}
+                                  {{ _('Reply') }}
+                                {% endif %}
+                              </span>
+                              {% if not reply.approval %}
+                                <span class="font-bold me-2">({{ _('Unapproved') }})</span>
+                              {% endif %}
+                              <span class="automatic-local-datetime" data-datetime="{{ h.render_datetime(reply.created, date_format='%Y-%m-%dT%H:%M:%S%z') }}">
+                                {{ h.render_datetime(reply.created, with_hours=True) }}
+                              </span>
+                              {% if c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(owner_org)) %}
+                                <div class="comment-action-buttons">
+                                  {% if not reply.approval %}
+                                    <form class="inline-form" name="approve_reply_form" style="margin-bottom: 0;" action="{{ h.url_for('utilization.approve_reply', utilization_id=utilization_id, reply_id=reply.id) }}" method="post">
+                                      <button class="btn btn-primary" onclick="setButtonDisable(this);">
+                                        <i class="fa-solid fa-check"></i>
+                                        {{ _('Approve') }}
+                                      </button>
+                                    </form>
+                                  {% endif %}
+                                </div>
+                              {% endif %}
+                            </div>
+                            <div class="comment-container">
+                              <span class="comment-content">{{ reply.content }}</span>
+                            </div>
+                            {% if reply.attached_image_filename %}
+                              <div>
+                                <a href="{{h.url_for('utilization.reply_attached_image', utilization_id=utilization_id, reply_id=reply.id, attached_image_filename=reply.attached_image_filename ) }}" target="_blank">
+                                  <img src="{{h.url_for('utilization.reply_attached_image', utilization_id=utilization_id, reply_id=reply.id, attached_image_filename=reply.attached_image_filename ) }}" alt="{{ _('Attached Image') }}" class="attached-image">
+                                </a>
+                              </div>
+                            {% endif %}
+                          </div>
+                          {% if not loop.last %}<hr>{% endif %}
+                        {% endfor %}
+                      </div>
+                      <div>
+                        <button type="button"
+                                id="replies-toggle-{{ comment.id }}"
+                                class="btn btn-link p-0"
+                                data-count="{{ replies|length }}"
+                                data-show-text="{{ _('Show replies') }}"
+                                data-hide-text="{{ _('Hide replies') }}"
+                                onclick="toggleReplies('{{ comment.id }}')">
+                          {{ _('Show replies') }} ({{ replies|length }})
+                        </button>
+                      </div>
+                    {% else %}
+                      {% for reply in replies %}
+                        <div class="{{ 'unapproved' if not reply.approval }}">
+                          <div class="comment-top-section">
+                            {% set is_admin_reply = h.user_has_organization_admin_role(reply.creator_user_id, owner_org) %}
+                            <i class="fa-solid fa-reply"></i>
+                            {% if is_admin_reply %}
+                              <i class="fa-solid fa-user-tie"></i>
+                            {% endif %}
+                            <span class="font-bold">
+                              {% if is_admin_reply %}
+                                {{ _('Reply from the Administrator') }}
+                              {% else %}
+                                {{ _('Reply') }}
+                              {% endif %}
+                            </span>
+                            {% if not reply.approval %}
+                              <span class="font-bold me-2">({{ _('Unapproved') }})</span>
+                            {% endif %}
+                            <span class="automatic-local-datetime" data-datetime="{{ h.render_datetime(reply.created, date_format='%Y-%m-%dT%H:%M:%S%z') }}">
+                              {{ h.render_datetime(reply.created, with_hours=True) }}
+                            </span>
+                            {% if c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(owner_org)) %}
+                              <div class="comment-action-buttons">
+                                {% if not reply.approval %}
+                                  <form class="inline-form" name="approve_reply_form" style="margin-bottom: 0;" action="{{ h.url_for('utilization.approve_reply', utilization_id=utilization_id, reply_id=reply.id) }}" method="post">
+                                    <button class="btn btn-primary" onclick="setButtonDisable(this);">
+                                      <i class="fa-solid fa-check"></i>
+                                      {{ _('Approve') }}
+                                    </button>
+                                  </form>
+                                {% endif %}
+                              </div>
+                            {% endif %}
+                          </div>
+                          <div class="comment-container">
+                            <span class="comment-content">{{ reply.content }}</span>
+                          </div>
+                          {% if reply.attached_image_filename %}
+                            <div>
+                              <a href="{{h.url_for('utilization.reply_attached_image', utilization_id=utilization_id, reply_id=reply.id, attached_image_filename=reply.attached_image_filename ) }}" target="_blank">
+                                <img src="{{h.url_for('utilization.reply_attached_image', utilization_id=utilization_id, reply_id=reply.id, attached_image_filename=reply.attached_image_filename ) }}" alt="{{ _('Attached Image') }}" class="attached-image">
+                              </a>
+                            </div>
+                          {% endif %}
+                        </div>
+                        {% if not loop.last %}<hr>{% endif %}
+                      {% endfor %}
+                    {% endif %}
+                  </div>
+                {% endif %}
+
+                
+              </div>
+            </div>
+            <hr class="divider">
+          {% endfor %}
+          {% block page_pagination %}
+            {{ page.pager(utilization_id=utilization_id) }}
+          {% endblock %}
+        </div>
+      </div>
+    </article>
+
+    <div id="reply-form-window" class="modal fade" tabindex="-1">
+      <div class="modal-dialog reply-modal">
+        <div class="modal-content">
+          <form id="reply-form" name="reply_form" action="{{h.url_for('utilization.reply', utilization_id=utilization_id ) }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" id="reply-comment-id" name="utilization_comment_id">
+            <div class="modal-header">
+              {% if h.is_base_public_folder_bs3() %}
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+              {% else %}
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              {% endif %}
+            </div>
+            <div class="modal-body">
+              <div id="reply-comment-header"></div>
+              <div class="comment-container">
+                <span class="comment-content" id="reply-comment"></span>
+              </div>
+              <hr>
+              <div class="form-group control-full">
+                <label class="control-label" for="code">{{ _('Input') }}</label>
+                <div class="controls">
+                  <textarea id="reply_content" name="reply_content" cols="20" rows="3" placeholder="" class="form-control resize-vertical" maxlength="1000"></textarea>
+                  <div class="char-count text-end"><span id="reply-count">0</span>/1000</div>
+                </div>
+                <div>
+                  <p id="reply-error" class="alert alert-error" style="display: none;">{{ _('Please enter your reply') }}</p>
+                  <p id="reply-over-error" class="alert alert-error" style="display: none;">{{ _('Please keep the comment length below 1000') }}</p>
+                </div>
+              </div>
+              {% if h.is_enabled_utilization_comment_image_attachment(owner_org) %}
+                <div id="replyPreviewContainer" class="reply-preview-container" style="display: none;">
+                  <span class="text-muted">{{ _('Image preview will appear here') }}</span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="modal-footer {% if not h.is_base_public_folder_bs3() %}d-flex justify-content-between align-items-center{% endif %}">
+              {% if h.is_enabled_utilization_comment_image_attachment(owner_org) %}
+                <div class="reply-image-upload {% if not h.is_base_public_folder_bs3() %}d-flex align-items-center{% else %}pull-left{% endif %}">
+                  <button id="replyUploadBtn" type="button" class="btn btn-default" onclick="utilizationReplyUploadClicked();">
+                    <i class="fa-solid fa-image"></i>
+                    {{ _('Image Attachment') }}
+                  </button>
+                  <input type="file" id="replyImageUpload" class="imageUpload" name="attached_image" accept="image/*">
+                </div>
+              {% else %}
+                <div></div>
+              {% endif %}
+              <div class="reply-send-buttons {% if not h.is_base_public_folder_bs3() %}d-flex align-items-center{% else %}pull-right{% endif %}">
+                {% if h.is_base_public_folder_bs3() %}
+                <button class="btn btn-primary" onclick="return checkReplyExists(this, bs3=true);">
+                  <i class="fa-solid fa-paper-plane"></i>
+                  {{ _('Send') }}
+                </button>
+                {% else %}
+                <button class="btn btn-primary" onclick="return checkReplyExists(this);">
+                  <i class="fa-solid fa-paper-plane"></i>
+                  {{ _('Send') }}
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="issue-resolution-form" class="modal fade" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form name="issue_resolution_form" action="{{h.url_for('utilization.create_issue_resolution', utilization_id=utilization_id ) }}" method="post">
+            <div class="modal-header">
+              {% if h.is_base_public_folder_bs3() %}
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h2 class="modal-title">{{ _('Certification of issue resolution') }}</h2>
+              {% else %}
+                <h2 class="modal-title">{{ _('Certification of issue resolution') }}</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              {% endif %}
+            </div>
+            <div class="modal-body">
+              <div>
+                <p><small>{{ _('What is certification of issue resolution?') }}</small></p>
+                <p><small>{{ _('If it is determined that the content of the utilization method leads to the solution of the problem, it can be certified as a problem solution.') }}</small></p>
+              </div>
+              <div class="form-group control-full">
+                <label class="control-label" for="code">{{ _('Resolved Issue') }}</label>
+                <div class="controls">
+                  <textarea id="description" name="description" cols="20" rows="3" placeholder="" class="form-control resize-vertical"></textarea>
+                </div>
+                <div>
+                  <p id="description-error" class="alert alert-error" style="display: none;">{{ _('Please enter your issue resolution content') }}</p>
+                </div>
+              </div>
+            </div>
+            <br>
+            <div class="modal-footer">
+              <button class="btn btn-primary" onclick="return checkDescriptionExists(this)">
+                <i class="fa-solid fa-paper-plane"></i>
+                {{ _('Send') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="issue-resolution-detail" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            {% if h.is_base_public_folder_bs3() %}
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+              <h2 class="modal-title">{{ _('Resolved Issue details') }}</h2>
+            {% else %}
+              <h2 class="modal-title">{{ _('Resolved Issue details') }}</h2>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            {% endif %}
+          </div>
+          <div id="issue-resolution-table" class="modal-body">
+            <div>
+              <table class="table table-bordered table-striped table-responsive">
+                <thead class="table-header">
+                  <tr>
+                    <th class="col-md-3">{{ _('Certificated') }}</th>
+                    <th>{{ _('Resolved Issue') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for issue_resolution in issue_resolutions %}
+                    <tr>
+                      <td>{{ issue_resolution.created.strftime('%Y/%m/%d %H:%M:%S') }}</td>
+                      <td class="multiple-line">{{ issue_resolution.description }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endblock %}
+
+  {% block secondary %}{% endblock %}
+
+  {%- block scripts %}
+    {{ super() }}
+    {% asset 'feedback/feedback-detail-js' %}
+    {% asset 'feedback/feedback-comment-js' %}
+    {% if h.is_enabled_feedback_recaptcha() and (h.is_feedback_recaptcha_force_all() or not (c.userobj and (c.userobj.sysadmin or h.has_organization_admin_role(owner_org)))) %}
+    {% asset 'feedback/feedback-moral_check_log-js' %}
+      <script src="https://www.google.com/recaptcha/api.js?render={{ h.get_feedback_recaptcha_publickey() }}"></script>
+      <script>
+        window.feedbackRecaptchaForms = [
+          { name: 'comment_form', action: 'utilization_comment' },
+          { name: 'reply_form', action: 'utilization_comment_reply' }
+        ];
+        window.feedbackRecaptchaPublickey = '{{ h.get_feedback_recaptcha_publickey() }}'
+      </script>
+      {% asset 'feedback/feedback-recaptcha-js'%}
+    {% endif %}
+  {% endblock -%}
+
+{% endif %}
