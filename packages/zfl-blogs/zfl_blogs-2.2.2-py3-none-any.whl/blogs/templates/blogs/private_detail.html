@@ -1,0 +1,227 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+{% load mark %}
+
+{% block blogs-style %}
+<!-- Original CSS -->
+<link rel="stylesheet" href="{% static 'blogs/css/detail-style.css' %}">
+<link rel="stylesheet" href="{% static 'blogs/css/markdown-style.css' %}">
+<link rel="stylesheet" href="{% static 'blogs/css/nnfx-dark.css' %}">
+{% endblock blogs-style %}
+
+{% block content %}
+<!-- コンテナ -->
+<div id="container">
+  <!-- BootStrapのグリッドシステム -->
+  <div class="row">
+    <!-- メインバー -->
+    <div class="col-lg-8 col-md-12 blogs-mainbar">
+      <!-- 看板 -->
+      <figure class="text-left">
+	<blockquote class="blockquote">
+	  <h1 class="display-6">
+	    {% block title %}{{ private_blog.title }}{% endblock %}
+	  </h1>
+	</blockquote>
+	<br>
+	<p><button type="button" class="btn btn-sm disabled" style="font-size:60%; background-color: {{ private_blog.category.color }}; color: white;">
+	  {{ private_blog.category.title }}
+	</button></p>
+	<strong class="text-black-50">投稿日 {{ private_blog.created_at }}</strong> >> <strong>更新日 {{ private_blog.updated_at }}</strong>
+      </figure>
+      <!-- 看板終了 -->
+
+      <!-- 記事詳細 -->
+      <div class="blogs-markdown-style">
+	{{ private_blog.text | markdown_to_html }}
+      </div>
+
+      <!-- ナビバーボトム -->
+      <nav class="navbar sticky-bottom">
+	<div class="container-fluid">
+	  <!-- 非公開ページに戻るリンク -->
+	  <a href="{% url 'blogs:private_index' %}">
+	    <button type="button" class="btn btn-dark btn-smdisabled">非公開</button>
+	  </a>
+	  <!-- 管理人だけ表示 -->
+	  {% if request.user.is_superuser %}
+	  <!-- 記事編集用ボタン -->
+	  <a title="編集" href="{% url 'blogs:edit' private_blog.id %}">
+	    <i class="bi bi-pencil-square"></i>
+	  </a>
+	  {% endif %}
+	</div>
+      </nav>
+      <!-- ナビバーボトム終 -->
+
+    </div>
+    <!-- メインバー終 -->
+
+    <!-- サイドバー -->
+    <!-- 目次・新着or関連・検索のタブバーを設定し、デフォルトとして目次にする構想 -->
+    <div class="col-lg-4 col-md-12 blogs-sidebar">
+      <!-- ブログのサムネイル -->
+      <div class="text-center">
+	{% if private_blog.thumbnail %}
+	<img src="{{ private_blog.thumbnail.url }}" class="img-thumbnail" alt="...">
+	{% elif private_blog.category.thumbnail %}
+	<img src="{{ private_blog.category.thumbnail.url }}" class="img-thumbnail" alt="...">
+	{% endif %}
+      </div>
+      <!-- ブログのサムネイル終 -->
+
+      <!-- Markdownのtoc要素 -->
+      <!-- マークダウンのtoc要素をBootstrapの要素に置き換える -->
+      <div class="stick">  
+	{{ private_blog.get_toc | markdown_to_html }}
+      </div>
+      <!-- Markdownのtoc要素終 -->
+
+    </div>
+    <!-- サイドバー終 -->
+
+  </div>
+  <!-- BootStrapのグリッドシステム END -->
+
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+<script>
+
+  // 画面切り替えによるレスポンシブ対応
+  // こちらはアクセスされた際の処理
+  if(window.matchMedia("(max-width:767px)").matches){
+    // スマホ処理
+    // 両脇の余白を無くすため、Bootstrapのクラスcontainerを削除する
+    var sampleElement = document.getElementById('container');
+    sampleElement.classList.remove('container');
+    sampleElement.classList.add('container-fluid');
+  }else if (window.matchMedia('(min-width:768px)').matches) {
+    // PC処理
+    // 両脇の余白を空けるため、Bootstrapのクラスcontainerを削除する
+    var sampleElement = document.getElementById('container');
+    sampleElement.classList.add('container');
+
+    // スクロールに連動して目次をアクティブにする
+    // 応急的だが取りあえず処理完了
+
+    $(window).on("scroll", function () {
+      $(".blogs-markdown-style .headerlink").each(function (i) { // 繰り返し処理（.each）
+	i += 0; // 何番目の要素かカウント。(1~n)
+
+	var index = $(this).index(),　// 何番目のボックスか
+	elPos = $(this).offset().top, // ヘッダーリンクのY座標
+	  scroll = $(window).scrollTop(), // スクロール量
+	  windowHeight = $(window).height(), // ウィンドウの高さ
+	  nextElPos = $(document).height(); // サイト全体の高さ
+
+	if (i != $(".blogs-markdown-style .headerlink").length) {
+	  // 最後の要素でない場合
+	  // 次の要素のY座標を設定
+	  href_text = $(this).attr('href');
+	  nextElPos = $(href_text).next().offset().top;
+	}
+
+	// スクロール量 < ヘッダーリンクの座標 - ウィンドウの高さ ÷ ２
+	if (scroll >= nextElPos - 110) {
+	  // スクロール量が目的のヘッダーリンクに到達したら
+
+	  // 手前の目次項目のリンクを削除
+	  $(".blogs-sidebar .toc li a").eq(i-1).removeClass("link-danger");
+	  // 目的の目次項目にリンクを追加
+	  $(".blogs-sidebar .toc li a").eq(i).addClass("link-danger");
+	} else { // --------------- ここから下は不要？ -----------
+
+	  // ヘッダーリンクがウインドウ内部~上部に位置しているとき
+	  if (scroll < nextElPos) {
+	    // 次の要素がウインドウ上に現れていない場合
+	    $(".blogs-sidebar .toc li a").eq(i).removeClass("link-danger");
+	  } else {
+	    // 次の要素がウインドウ上に現れた場合
+	    $(".blogs-sidebar .toc li a").eq(i).removeClass("link-danger");
+	  }
+	}
+      });
+    });
+  }
+
+
+// 画面切り替えによるレスポンシブ対応
+// こちらはリアルタイム処理
+$(function(){
+  var timer = false;
+  $(window).resize(function() {
+    if (timer !== false) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(function() {
+      if(window.matchMedia("(max-width:767px)").matches){
+	//スマホ処理
+	// 両脇の余白を無くすため、Bootstrapのクラスcontainerを削除する
+	var sampleElement = document.getElementById('container');
+	sampleElement.classList.remove('container');
+        sampleElement.classList.add('container-fluid');
+
+      }else if (window.matchMedia('(min-width:768px)').matches) {
+	// PC処理
+	// 両脇の余白を空けるため、Bootstrapのクラスcontainerを設定する
+	var sampleElement = document.getElementById('container');
+	sampleElement.classList.add('container');
+      }
+    }, 200);
+  });
+});
+
+
+// Markdown デザイン
+
+
+// 目次要素にBootstrapの要素で囲む（jQuery）
+$('.blogs-mainbar .toc').wrap("<div id='flush-collapseTwo' class='accordion-collapse collapse' data-bs-parent='#accordionFlushExample'><div class='accordion-body'>");
+
+// toc要素の直前にボタンを追加
+$('.accordion-collapse').before("<button class='accordion-button collapsed' type='button' data-bs-toggle='collapse' data-bs-target='#flush-collapseTwo' aria-expanded='false' aria-controls='flush-collapseTwo'><strong>目次</strong></button>");
+
+// h2タグを囲む
+$('.accordion-button').wrap("<h2 class='accordion-header'>");
+
+// 目次ヘッダーとtocを囲む
+$('.accordion-header, .accordion-collapse').wrapAll("<div class='accordion-item'>")
+
+// Bootstrapの要素ですべての要素を囲む
+$('.accordion-item').wrap("<div class='accordion accordion-flush' id='accordionFlushExample'>")
+// 目次処理終
+
+
+// テキスト内のテーブル要素を全て取得し、クラスにBootstrapの要素を追加
+const childElement = document.querySelectorAll('.blogs-markdown-style table');
+childElement.forEach(element => {
+  element.classList.add("table"); 
+});
+childElement.forEach(element => {
+  element.classList.add("table-success"); 
+});
+childElement.forEach(element => {
+  element.classList.add("table-striped-columns"); 
+});
+
+// MathJax 
+MathJax = {
+  chtml: {
+    matchFontHeight: false
+  },
+  tex: {
+    inlineMath: [['$', '$']]
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<!-- シンタックスハイライト -->
+<script type="text/javascript" src="{% static 'blogs/js/highlight.js' %}"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+{% endblock %}

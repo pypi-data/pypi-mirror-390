@@ -1,0 +1,107 @@
+﻿{% extends 'base.html' %}
+{% load static %}
+{% load mark %}
+
+{% block blogs-style %}
+<!-- Original CSS -->
+<link rel="stylesheet" href="{% static 'blogs/css/index-style.css' %}">
+{% endblock blogs-style %}
+
+{% block content %}
+
+<!-- ナビバーを読み込み -->
+{% include 'blogs/include_navbar.html' %}
+
+<!-- 看板 -->
+<figure class="text-center" style="background-color: gainsboro;">
+  
+  {% if messages %}
+  <!-- messagesに要素があれば繰り返し処理を実行する -->
+  {% for message in messages %}
+  <blockquote class="blockquote">
+    <h1 class="display-2">{{ message }} {{ blogs.count }}件</h1>
+  </blockquote>
+  <br>
+  {% if category.overview %}
+  <figcaption class="blockquote-footer">
+    {{ category.overview }}
+  </figcaption>
+  {% endif %}
+  {% endfor %}
+  {% else %}
+  <!-- messagesに要素がなければ以下を表示する -->
+  <blockquote class="blockquote">
+    <h1 class="display-2">Blogトップ</h1>
+  </blockquote>
+  <br>
+  {% endif %}
+</figure>
+<!-- 看板終了 -->
+
+<!-- コンテナ -->
+<div class="container-fluid">
+  <!-- グリッドシステム -->
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    <!-- 記事のリストカード -->
+    {% for blog in blogs %}
+    <div class="col">
+      <a style="text-decoration:none;" href="{% url 'blogs:detail' blog.pk %}">
+	<div class="card h-100 border-0">
+	  {% if blog.thumbnail %}
+	  <img src="{{ blog.thumbnail.url }}" class="card-img-top" alt="...">
+	  {% elif blog.category.thumbnail %}
+	  <img src="{{ blog.category.thumbnail.url }}" class="card-img-top" alt="#">
+	  {% endif %}
+	  <div class="card-body">
+	    <h5 class="card-title">{{ blog.title }}</h5>
+	    <p class="card-text">{{ blog.text | markdown_to_html | striptags | truncatechars:'150' }}</p>
+	    <p><button type="button" class="btn btn-sm disabled" style="font-size:60%; background-color: {{blog.category.color }}; color: white;">
+	      {{ blog.category.title }}
+	    </button></p>
+	    <p>更新日：{{ blog.updated_at | date:'Y/m/d' }}</p>
+	  </div>
+	</div>
+      </a>
+    </div>
+    {% endfor %}
+    <!-- 記事のリストカード終了 -->
+  </div>
+  <!-- グリッドシステム終 -->
+
+  <!-- ページネーション -->
+  <div class="pagination">
+    {% include 'blogs/page.html' %}
+  </div>
+  <!-- ページネーション終 -->
+</div>
+<!-- コンテナ終 -->
+
+{% endblock %}
+
+<!--script>
+
+  // こちらは機能しないので保留中
+  // スクロールしたら要素が表示する処理
+  //スクロール時のイベントを追加
+  window.addEventListener('scroll', function(){
+
+    //すべての.itemを取得
+    const card = document.querySelectorAll('.card');
+
+    //querySelectorAll('.item')は配列になるので、for構文で取得
+    //配列は0から始まるのでi = 0
+    //i < item.lengthで配列の要素よりも数が小さい時　i++(インクリメント)1つずつ増加
+    for(let i = 0; i < card.length; i++){
+
+      //.itemのオフセットの高さを取得
+      var targetTop = card[i].offsetTop;
+
+      //画面のスクロール量 + 300px > .itemのオフセットの高さを取得
+      if(window.scrollY + 300 > targetTop){
+
+	//書くitemにクラスshowを追加
+	card[i].classList.add('show');
+      }
+    }
+  });
+</script-->
