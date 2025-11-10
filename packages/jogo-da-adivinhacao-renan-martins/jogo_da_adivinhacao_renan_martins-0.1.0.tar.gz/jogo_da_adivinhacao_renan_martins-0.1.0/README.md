@@ -1,0 +1,6 @@
+# Jogo da Adivinhacao
+
+Funcionamento: 
+1. O usuário deve pensar em um número inteiro entre 1 e 63.
+2. Em seguida, serão exibidas 6 cartelas. O usuário informará se o número que pensou está presente em cada uma delas.
+3. Ao final da exibição das 6 cartelas, o programa revelará o número que o usuário havia pensado.
