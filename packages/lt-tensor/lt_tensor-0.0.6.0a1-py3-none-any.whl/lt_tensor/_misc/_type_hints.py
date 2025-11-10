@@ -1,0 +1,37 @@
+__all__ = ["ACTIV_NAMES_TP"]
+from lt_utils.common import *
+
+
+ACTIV_NAMES_TP: TypeAlias = Literal[
+    "relu",
+    "leaky_relu",
+    "relu6",
+    "rrelu",
+    "tanh",
+    "hardtanh",
+    "sigmoid",
+    "logsigmoid",
+    "hardsigmoid",
+    "softmin",
+    "softmax",
+    "logsoftmax",
+    "softmax2d",
+    "multiheadattention",
+    "mish",
+    "gelu",
+    "celu",
+    "elu",
+    "prelu",
+    "silu",
+    "glu",
+    "hardswish",
+    "softplus",
+    "hardshrink",
+    "softshrink",
+    "tanhshrink",
+    "aliasfree1d",
+    "aliasfree2d",
+    "snake",
+    "snakebeta",
+    "threshold",
+]
