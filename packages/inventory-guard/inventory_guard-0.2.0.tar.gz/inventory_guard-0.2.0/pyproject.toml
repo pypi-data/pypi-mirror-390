@@ -1,0 +1,89 @@
+[project]
+name = "inventory-guard"
+version = "0.2.0"
+description = "Semantic change guard for Ansible inventories - detect unexpected infrastructure changes"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Maarten", email = "ikmaarten@gmail.com"}
+]
+keywords = ["ansible", "inventory", "guard", "ci-cd", "testing", "devops"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "ruamel-yaml>=0.18,<0.19",
+]
+
+[project.urls]
+Homepage = "https://github.com/maartenq/inventory-guard"
+Repository = "https://github.com/maartenq/inventory-guard"
+Issues = "https://github.com/maartenq/inventory-guard/issues"
+
+[project.scripts]
+inventory-guard = "inventory_guard.main:main"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.7",
+    "hypothesis>=6.147.0",
+    "mypy>=1.18.2",
+    "pytest",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.4",
+    "ty>=0.0.1a22",
+]
+
+[build-system]
+requires = ["uv-build"]
+build-backend = "uv_build"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", ".*", "*/site-packages/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
