@@ -1,0 +1,14 @@
+from bluer_options.env import load_config, load_env, get_env
+
+load_env(__name__)
+load_config(__name__)
+
+
+ARVANCLOUD_PRIVATE_KEY = get_env("ARVANCLOUD_PRIVATE_KEY")
+
+BLUER_VILLAGE_OBJECT = get_env("BLUER_VILLAGE_OBJECT")
+BLUER_VILLAGE_TEST_OBJECT = get_env("BLUER_VILLAGE_TEST_OBJECT")
+
+BLUER_SANDBOX_V2RAY_TEST_VLESS = get_env("BLUER_SANDBOX_V2RAY_TEST_VLESS")
+
+BLUER_SANDBOX_V2RAY_VLMESS = get_env("BLUER_SANDBOX_V2RAY_VLMESS")
