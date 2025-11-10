@@ -1,0 +1,56 @@
+
+\begin{table}[htbp]
+\centering
+\caption{Parameters for \texttt{MEHC-curation} pipelines.}
+\label{tab:parameters}
+\footnotesize
+\begin{tabular}{@{}llcp{5.5cm}c@{}}
+\toprule
+\textbf{Parameter} & \textbf{Type} & \textbf{Default} & \textbf{Description} & \textbf{Stage} \\
+\midrule
+\multicolumn{5}{l}{\textit{Stage control parameters}} \\
+\midrule
+\texttt{validate} & bool & \texttt{True} & Run validation before the current step or pipeline & V,C,N,R \\
+\texttt{rm\_mixture} & bool & \texttt{True} & Remove mixtures during the refinement workflow & R \\
+\texttt{rm\_inorganic} & bool & \texttt{True} & Remove inorganic compounds during refinement & R \\
+\texttt{rm\_organometallic} & bool & \texttt{True} & Remove organometallic compounds during refinement & R \\
+\texttt{cl\_salt} & bool & \texttt{True} & Execute salt cleaning within refinement & R \\
+\texttt{neutralize} & bool & \texttt{True} & Execute charge neutralization within refinement & R \\
+\texttt{destereoisomerize} & bool & \texttt{True} & Normalize stereochemistry within refinement & R \\
+\texttt{detautomerize} & bool & \texttt{True} & Standardize tautomers within refinement & R \\
+\texttt{validate\_post\_neutr} & bool & \texttt{True} & Re-validate SMILES after neutralization & R \\
+\texttt{rm\_dup\_between\_stages} & bool & \texttt{True} & Remove duplicates between refinement stages & R \\
+\texttt{param\_deduplicate} & bool & \texttt{True} & Remove duplicates after a step & V,C,N,R \\
+\midrule
+\multicolumn{5}{l}{\textit{Reporting and return options}} \\
+\midrule
+\texttt{return\_format\_data} & bool & \texttt{False} & Return template formatting data for reports & V,C,N,R \\
+\texttt{get\_diff} & bool & \texttt{False} & Return diff tables for normalization/cleaning steps & C,N \\
+\texttt{get\_invalid\_smi\_idx} & bool & \texttt{False} & Return indices of invalid SMILES & V \\
+\texttt{get\_isomeric\_smi} & bool & \texttt{True} & Preserve isomeric SMILES during validation & V \\
+\texttt{show\_dup\_smi\_and\_idx} & bool & \texttt{False} & Return duplicate SMILES with indices (utility \texttt{deduplicate}) & U \\
+\midrule
+\multicolumn{5}{l}{\textit{Method configuration}} \\
+\midrule
+\texttt{method} & str & \texttt{"boyle"} & Neutralization method for \texttt{neutralize} step & C \\
+\texttt{neutralizing\_method} & str & \texttt{"boyle"} & Neutralization method for complete cleaning/refinement & C,R \\
+\midrule
+\multicolumn{5}{l}{\textit{Output and logging}} \\
+\midrule
+\texttt{output\_dir} & str & \texttt{None} & Target directory for CSV outputs; if omitted, reports are written to the working directory and data stays in memory & V,C,N,R,U \\
+\texttt{get\_report} & bool & \texttt{False} & Persist rendered text reports (uses working directory when \texttt{output\_dir} is omitted) & V,C,N,R,U \\
+\texttt{print\_logs} & bool & \texttt{True} & Print formatted report content to console & V,C,N,R,U \\
+\midrule
+\multicolumn{5}{l}{\textit{Parallel processing}} \\
+\midrule
+\texttt{n\_cpu} & int & \texttt{-1} & Number of CPU cores ($-1$ uses all available cores) & V,C,N,R,U \\
+\texttt{split\_factor} & int & \texttt{1} & Data partition factor for parallel processing (defaults to \texttt{None} for \texttt{destereoisomerize}) & V,C,N,R,U \\
+\texttt{partial\_dup\_cols} & list & \texttt{None} & Columns used to detect partial duplicates & V,C,N,R,U \\
+\bottomrule
+\end{tabular}
+\vspace{0.5em}
+\begin{minipage}{0.9\linewidth}
+\footnotesize Stage codes: Validation (V), Cleaning (C), Normalization (N), Refinement (R), Shared utility (\texttt{deduplicate}) (U).
+\end{minipage}
+\end{table}
+
