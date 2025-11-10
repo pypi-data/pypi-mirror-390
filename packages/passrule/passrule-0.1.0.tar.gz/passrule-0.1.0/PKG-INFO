@@ -1,0 +1,78 @@
+Metadata-Version: 2.4
+Name: passrule
+Version: 0.1.0
+Summary: 可配置的密码校验库
+Project-URL: Homepage, https://github.com/yourusername/passrule
+Project-URL: Repository, https://github.com/yourusername/passrule
+Author-email: Your Name <chouhong2021@163.com>
+License-Expression: MIT
+License-File: LICENSE
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+
+# PassRule
+
+可配置的密码校验库，支持自定义校验规则。
+
+## 安装
+
+```bash
+pip install passrule
+```
+
+## 使用方法
+
+### 基本使用
+
+```python
+from passrule import PasswordValidator
+
+# 使用默认规则
+validator = PasswordValidator()
+is_valid, errors = validator.validate("MyPassword123!")
+print(is_valid)  # True
+print(errors)    # []
+```
+
+### 自定义规则
+
+```python
+from passrule import PasswordValidator, ValidationRule
+
+# 自定义规则
+rule = ValidationRule(
+    min_length=6,
+    max_length=20,
+    require_digits=True,
+    require_uppercase=False,
+    require_lowercase=True,
+    require_special_chars=True,
+    special_chars="!@#$%"
+)
+
+validator = PasswordValidator(rule)
+is_valid, errors = validator.validate("password123!")
+```
+
+## 校验规则
+
+- `min_length`: 最小长度（默认8）
+- `max_length`: 最大长度（默认无限制）
+- `require_digits`: 是否需要数字（默认True）
+- `require_uppercase`: 是否需要大写字母（默认True）
+- `require_lowercase`: 是否需要小写字母（默认True）
+- `require_special_chars`: 是否需要特殊字符（默认True）
+- `special_chars`: 允许的特殊字符（默认"!@#$%^&*()_+-=[]{}|;:,.<>?"）
+
+## 许可证
+
+MIT
