@@ -1,0 +1,68 @@
+import streamlit as st
+
+import sskeys as kz
+
+
+def getIntInput(i, key, thing, defval=0):
+    nkey = key + str(i)
+    kz.initCaseKey(nkey, defval)
+    inamex = kz.getCaseKey("iname" + str(i))
+    st.number_input(
+        f"{inamex}'s {thing}", min_value=0, value=kz.getCaseKey(nkey),
+        on_change=kz.setpull, args=[nkey], key=kz.genCaseKey(nkey),
+    )
+
+
+def getFloatInput(i, key, thing, defval=0.0):
+    nkey = key + str(i)
+    kz.initCaseKey(nkey, defval)
+    inamex = kz.getCaseKey("iname" + str(i))
+    st.number_input(
+        f"{inamex}'s {thing}",
+        min_value=0.0,
+        help=kz.help1000,
+        value=float(kz.getCaseKey(nkey)),
+        format="%.1f",
+        step=10.0,
+        on_change=kz.setpull,
+        args=[nkey],
+        key=kz.genCaseKey(nkey),
+    )
+
+
+def getToggleInput(i, key, thing):
+    nkey = key + str(i)
+    kz.initCaseKey(nkey, False)
+    defval = kz.getCaseKey(nkey)
+    st.toggle(thing, on_change=kz.setpull, value=defval, args=[nkey], key=kz.genCaseKey(nkey))
+
+
+ret = kz.titleBar(":material/currency_exchange: Fixed Income")
+
+if ret is None or kz.caseHasNoPlan():
+    st.info("Case(s) must be first created before running this page.")
+else:
+    st.write("#### :orange[Social Security]")
+    col1, col2, col3 = st.columns(3, gap="large", vertical_alignment="top")
+    with col1:
+        getFloatInput(0, "ssAmt", "social security annual amount (\\$k)")
+        getIntInput(0, "ssAge", "social security age", 67)
+
+    with col2:
+        if kz.getCaseKey("status") == "married":
+            getFloatInput(1, "ssAmt", "social security annual amount (\\$k)")
+            getIntInput(1, "ssAge", "social security age", 67)
+
+    st.divider()
+    st.write("#### :orange[Pension]")
+    col1, col2, col3 = st.columns(3, gap="large", vertical_alignment="top")
+    with col1:
+        getFloatInput(0, "pAmt", "pension annual amount (\\$k)")
+        getIntInput(0, "pAge", "pension age", 65)
+        getToggleInput(0, "pIdx", "Inflafion adjusted")
+
+    with col2:
+        if kz.getCaseKey("status") == "married":
+            getFloatInput(1, "pAmt", "pension annual amount (\\$k)")
+            getIntInput(1, "pAge", "pension age", 65)
+            getToggleInput(1, "pIdx", "Inflafion adjusted")
