@@ -1,0 +1,83 @@
+Metadata-Version: 2.4
+Name: splitlog
+Version: 4.1.1
+Summary: Utility to split aggregated logs from Apache Hadoop Yarn applications into a folder hierarchy
+License-Expression: MIT
+License-File: LICENSE
+Author: Sebastian Klemke
+Author-email: pypi@nerdheim.de
+Requires-Python: >=3.11, <4.0
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Topic :: System :: Distributed Computing
+Classifier: Topic :: System :: Logging
+Classifier: Topic :: Utilities
+Requires-Dist: python-dateutil (>=2.9.0,<3.0.0)
+Requires-Dist: pytz (>=2025.2)
+Project-URL: Bug Tracker, https://github.com/splitlog/splitlog/issues
+Project-URL: Repository, https://github.com/splitlog/splitlog.git
+Description-Content-Type: text/markdown
+
+splitlog
+========
+ 
+Hadoop Yarn application logs aggregate all container logs of a Yarn application into a single file. This makes it very
+difficult to use Unix command line tools to analyze these logs: Grep will search over all containers and context
+provided for hits often does not include Yarn container name or host name. `splitlog` splits a combined logfile for all
+containers of an application into a file system hierarchy suitable for further analysis:
+
+```
+out
+└── hadoopnode
+    ├── container_1671326373437_0001_01_000001
+    │   ├── directory.info
+    │   ├── launch_container.sh
+    │   ├── prelaunch.err
+    │   ├── prelaunch.out
+    │   ├── stderr
+    │   ├── stdout
+    │   └── syslog
+    ├── container_1671326373437_0001_01_000002
+    │   ├── directory.info
+    │   ├── launch_container.sh
+    │   ├── prelaunch.err
+    │   ├── prelaunch.out
+    │   ├── stderr
+    │   ├── stdout
+    │   └── syslog
+    └── container_1671326373437_0001_01_000003
+        ├── directory.info
+        ├── launch_container.sh
+        ├── prelaunch.err
+        ├── prelaunch.out
+        ├── stderr
+        ├── stdout
+        └── syslog
+
+4 directories, 21 files
+```
+ 
+Installation
+------------
+Python 3.11+ must be available. Installation via [pipx](https://pypi.org/project/pipx/):
+
+```shell script
+pipx install splitlog
+```
+ 
+How to use
+----------
+
+Read logs from standard input:
+```shell script
+yarn logs -applicationId application_1582815261257_232080 | splitlog
+```
+
+Read logs from file `application_1582815261257_232080.log`:
+```shell script
+splitlog -i application_1582815261257_232080.log
+```
+
