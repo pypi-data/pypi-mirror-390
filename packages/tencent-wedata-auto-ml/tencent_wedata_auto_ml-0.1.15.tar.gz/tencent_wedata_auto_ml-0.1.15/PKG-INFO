@@ -1,0 +1,81 @@
+Metadata-Version: 2.4
+Name: tencent-wedata-auto-ml
+Version: 0.1.15
+Summary: AutoML SDK for Tencent Cloud WeData using FLAML with MLflow integration.
+Author-email: ZhangChunLin <blueszzhang@tencent.com>
+License: MIT
+Project-URL: Homepage, https://git.woa.com/WeDataOS/wedata-automl
+Project-URL: Repository, https://git.woa.com/WeDataOS/wedata-automl.git
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: flaml==2.3.6
+Requires-Dist: mlflow<3,>=2.6
+Requires-Dist: scikit-learn<1.7,>=1.5
+Requires-Dist: pandas<3.0,>=1.5
+Requires-Dist: numpy<3.0,>=1.24
+Requires-Dist: matplotlib>=3.5
+Requires-Dist: seaborn>=0.11
+Provides-Extra: xgboost
+Requires-Dist: xgboost>=1.6; extra == "xgboost"
+Provides-Extra: lightgbm
+Requires-Dist: lightgbm>=3.3; extra == "lightgbm"
+Provides-Extra: wedata
+Requires-Dist: tencent-wedata-feature-engineering; extra == "wedata"
+Provides-Extra: shap
+Requires-Dist: shap>=0.41; extra == "shap"
+Provides-Extra: full
+Requires-Dist: xgboost>=1.6; extra == "full"
+Requires-Dist: lightgbm>=3.3; extra == "full"
+Requires-Dist: tencent-wedata-feature-engineering; extra == "full"
+Requires-Dist: shap>=0.41; extra == "full"
+Provides-Extra: notebook
+Requires-Dist: jupyterlab; extra == "notebook"
+Requires-Dist: ipykernel; extra == "notebook"
+Requires-Dist: ipywidgets; extra == "notebook"
+Requires-Dist: matplotlib; extra == "notebook"
+Requires-Dist: seaborn; extra == "notebook"
+Dynamic: license-file
+
+# wedata-automl
+
+AutoML SDK for Tencent Cloud WeData, powered by FLAML and integrated with MLflow for experiment tracking and model registry.
+
+## Features
+- FLAML-based AutoML with graceful fallback to RandomForest
+- MLflow integration: experiment tracking, model logging, and Model Registry registration
+- Quiet, production-friendly logging helpers
+- Simple pipeline API and CLI demo
+
+## Installation
+
+```bash
+pip install wedata-automl
+# Optional extras
+pip install "wedata-automl[xgboost]"
+pip install "wedata-automl[lightgbm]"
+```
+
+## Quickstart (Python API)
+
+```python
+from wedata_automl import run_pipeline
+
+# Uses a demo dataset by default, and creates/uses the specified MLflow experiment
+result = run_pipeline(experiment_name="blueszzhang-test-automl")
+print(result)
+```
+
+## Quickstart (CLI)
+
+```bash
+wedata-automl-demo
+```
+
+## Notes
+- Ensure MLflow Tracking/Registry is configured in your environment (MLFLOW_TRACKING_URI, credentials, etc.)
+- XGBoost/LightGBM are optional; install via extras if you want those estimators considered
+- Python >= 3.8
+
+## License
+MIT
