@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling", "hatch-regex-commit"]
+build-backend = "hatchling.build"
+
+[project]
+name = "atpbar"
+dynamic = ["version"]
+description = "Progress bars for threading and multiprocessing tasks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Tai Sakuma", email = "tai.sakuma@gmail.com" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = ["typing_extensions>=4.12; python_version < '3.10'"]
+[project.optional-dependencies]
+jupyter = ["ipywidgets>=8.1"]
+tests = [
+    "pytest-console-scripts>=1.4",
+    "pytest-cov>=5.0",
+    "pytest>=8.2",
+    "hypothesis>=6.102.6",
+]
+doc = ["mkdocs-material>=9.5", "pymdown-extensions>=10.8"]
+
+[project.urls]
+Homepage = "https://github.com/alphatwirl/atpbar"
+
+[tool.hatch.version]
+source = "regex_commit"
+path = "atpbar/__about__.py"
+tag_sign = false
+
+[tool.hatch.build.targets.sdist]
+include = ["/atpbar"]
+
+[tool.pytest.ini_options]
+addopts = """
+--doctest-modules
+--doctest-glob='*.md'
+--ignore=examples/
+--ignore=atpbar/presentation/
+"""
+# doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE",]
+doctest_optionflags = ["ELLIPSIS"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "I", # isort
+]
+ignore = [
+    "E203", # Whitespace before '{symbol}'
+    "E265", # Block comment should start with #
+    "E266", # Too many leading # before block comment
+    "E501", # Line too long ({width} > {limit})
+    "E741", # Ambiguous variable name '{name}'
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 20
+
+[tool.ruff.lint.isort]
+#
+
+[tool.coverage.run]
+branch = true
+source = ["atpbar", "tests"]
+concurrency = ["multiprocessing"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    'if __name__ == "__main__":',
+    "if TYPE_CHECKING:",
+]
+
+[[tool.mypy.overrides]]
+module = ["ipywidgets"]
+ignore_missing_imports = true
