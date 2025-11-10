@@ -1,0 +1,98 @@
+"""
+Utils for setting symbols on chemical elements.
+
+Utilities for choosing appropriate element symbols for a chemical element.
+"""
+
+from __future__ import annotations
+
+import requests
+from lxml import html
+
+VERSION = {
+    'latest': {
+        'version': '5.2',
+        'url': 'http://cms.mpi.univie.ac.at/vasp/vasp/Recommended_PAW_potentials_DFT_calculations_using_vasp_5_2.html',
+        'gw-url': 'http://cms.mpi.univie.ac.at/vasp/vasp/Recommended_GW_PAW_potentials_vasp_5_2.html',
+    }
+}
+
+
+def get_recommendations(version_nr: str = 'latest', use_gw: bool = False) -> dict[str, str]:
+    """
+    Get recommendations for a certain type of PAW.
+
+    :param version_nr: VASP version number
+    :param use_gw: get recommendations for GW instead LDA pseudopotentials
+    :return: recommendations dict
+    """
+    urlkey: str = 'gw-url' if use_gw else 'url'
+    page = requests.get(VERSION[version_nr][urlkey], timeout=10)
+    tree = html.fromstring(page.text)
+    tags = tree.xpath('//table//td[1]/b')
+    rec: dict[str, str] = {}
+    for tag in tags:
+        item: list[str] = tag.text.strip().split(' ')
+        element: str = item[0]
+        symbol: str = '_'.join([i for i in item if i])
+        rec[element] = symbol
+    return rec
+
+
+# pylint: disable=too-few-public-methods
+class PawInfo:  # pylint: disable=useless-object-inheritance
+    """Simple class to bundle and pass around info about a PAW."""
+
+    def __init__(self, symbol: str, default_enmax: int, valency: float) -> None:
+        self.symbol: str = symbol
+        self.default_enmax: int = default_enmax
+        self.valency: float = valency
+
+    def __str__(self) -> str:
+        return self.symbol
+
+    def __repr__(self) -> str:
+        return f'<paw: {self.symbol} at {hex(id(self))}>'
+
+
+def get_all(version_nr: str = 'latest', use_gw: bool = False) -> dict[str, dict[str, PawInfo]]:
+    """
+    Get recommendations for all symbols.
+
+    :param version_nr: VASP version number
+    :param use_gw:  Get recommendations for GW (default: LDA)
+    :return: recommendations dict
+    """
+    urlkey = 'gw-url' if use_gw else 'url'
+    page = requests.get(VERSION[version_nr][urlkey], timeout=10)
+    tree = html.fromstring(page.text)
+    tags = tree.xpath('//table/tr')
+    syms = {}
+    for tag in tags:
+        row = tag.text_content().strip().split('\n')
+        if row[1].isdigit():
+            symboll = [i for i in row[0].strip().split(' ') if i]
+            element = symboll[0]
+            symbol = '_'.join(symboll)
+            suffix = symboll[1] if len(symboll) > 1 else '_'
+            if suffix == 'GW':
+                suffix = '_'
+            if not syms.get(element):
+                syms[element] = {}
+            row[0] = symbol
+            row[1] = int(row[1])
+            row[2] = float(row[2])
+            syms[element][suffix] = PawInfo(*row)
+    return syms
+
+
+if __name__ == '__main__':
+    DEF_PAW: dict[str, str] = get_recommendations()
+    DEF_GW: dict[str, str] = get_recommendations(use_gw=True)
+    with open('default_paws.py', 'w', encoding='utf8') as defaults:
+        defaults.write('lda = {\n')
+        defaults.writelines([f'"{k}": "{v}",\n' for k, v in DEF_PAW.items()])
+        defaults.write('}\n\n')
+        defaults.write('gw = {\n')
+        defaults.writelines([f'"{k}": "{v.replace("_GW", "")}",\n' for k, v in DEF_GW.items()])
+        defaults.write('}\n\n')
