@@ -1,0 +1,105 @@
+[tool.poetry]
+name = "utils-devops"
+version = "0.1.28"
+description = "Lightweight DevOps utilities for automation scripts"
+authors = ["Hamed Sheikhan <sh.sheikhan.m@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+#homepage = "https://github.com/yourusername/utils-devops"  # Optional: add if public
+#repository = "https://github.com/yourusername/utils-devops"  # Optional
+#documentation = "https://github.com/yourusername/utils-devops#readme"
+keywords = ["devops", "automation", "nginx", "cli", "jinja2", "logging"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+packages = [{ include = "utils_devops", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^1.0"
+pyyaml = "^6.0"
+psutil = "^6.0"
+requests = "^2.32"
+tenacity = "^9.0"
+rich = "^13.9"
+packaging = "^24.1"
+jinja2 = "^3.1"
+typer = { version = "^0.12.5", extras = ["all"] }  
+filelock = "^3.20.0"
+python-dateutil = "^2.9.0.post0"
+inquirer = "^3.4.1"
+slack-sdk = "^3.37.0"
+ruamel-yaml = "^0.18.6"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-mock = "^3.0"
+mypy = "^1.8"
+black = "^24.0"
+ruff = "^0.12"
+pre-commit = "^4.0"
+tox = "^4.0"
+bandit = "^1.8"
+twine = "^4.0"
+shiv = "^0.4"
+
+[tool.poetry.scripts]
+utils-devops = "utils_devops.cli:app"  # Optional: if you plan to expose CLI
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# Optional: Tool configurations (recommended to keep in pyproject.toml)
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "BLE", "A", "COM", "ISC", "PIE", "T20", "Q", "RET", "SIM", "TID", "ARG", "PTH", "PL", "TRY", "FLY", "NPY", "PERF"]
+ignore = ["E501"]  # Let black handle line length
+line-length = 100
+target-version = "py310"
+src = ["src"]
+extend-exclude = ["__pycache__", "*.egg-info", "build", "dist"]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert in tests
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+exclude = ["build", "dist"]
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
