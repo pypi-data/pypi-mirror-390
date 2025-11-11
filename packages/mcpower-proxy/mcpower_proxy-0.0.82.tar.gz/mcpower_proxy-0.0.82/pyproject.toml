@@ -1,0 +1,61 @@
+[project]
+name = "mcpower-proxy"
+version = "0.0.82"
+description = "MCPower Security proxy"
+readme = "README.md"
+requires-python = "~=3.11.0"
+keywords = ["mcp", "security", "proxy", "monitoring", "audit", "redaction", "policy-enforcement"]
+authors = [
+  { name = "MCPower Security", email = "support@mcpower.tech" }
+]
+dependencies = [
+  "fastmcp==2.13.0.2",
+  "httpx>=0.25.0",
+  "mcp>=1.0.0",
+  "watchdog>=3.0.0",
+  "jsonc-parser>=1.1.5",
+  "jsonpath-ng>=1.7.0",
+  "pydantic>=2.8.0",
+  "mcpower-shared==0.1.5",
+  "bashlex>=0.18",
+]
+
+[project.license]
+file = "src/LICENSE"
+
+[project.scripts]
+mcpower-proxy = "main:cli_main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = [
+    "modules",
+    "modules.apis",
+    "modules.logs",
+    "modules.redaction",
+    "modules.ui",
+    "modules.ui.xdialog",
+    "modules.utils",
+    "wrapper",
+    "ide_tools",
+    "ide_tools.common",
+    "ide_tools.common.hooks",
+    "ide_tools.cursor"
+]
+py-modules = ["main"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-anyio>=0.0.0",
+]
+
+[tool.uv]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
