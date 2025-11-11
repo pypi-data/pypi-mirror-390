@@ -1,0 +1,28 @@
+name: Manual release-drafter update
+
+on:
+  workflow_dispatch:
+    inputs:
+      comments:
+        description: "Update release drafter notes"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print workflow information
+        run: |
+          echo "Author: ${{ github.triggering_actor }}"
+          echo "Comments: ${{ github.event.inputs.comments }}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Update changelog
+        uses: release-drafter/release-drafter@v6
+        id: release-drafter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commitish: ${{ github.head_ref || github.ref_name }}

@@ -1,0 +1,111 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Test workflow
+
+on:
+  push:
+    branches:
+      - '*'
+      - '!push-action/*'
+  pull_request:
+    branches:
+      - '*'
+      - '!push-action/*'
+    paths:
+      - snakebids/**
+      - scripts/**
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install
+        uses: ./.github/actions/install-uv
+
+      - name: Quality
+        run: uv run poe quality
+
+      # Check that running update-bids doesn't change any files
+      - name: update-bids check
+        run: |
+          uv run poe update-bids
+          git diff --quiet || (
+            git diff
+            echo 'bids specs out of date, run `uv run poe update-bids`'
+            exit 1
+          )
+
+  build-cache-env:
+    runs-on: ubuntu-latest
+    needs: [ 'quality'  ]
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+    - uses: actions/checkout@v5
+    - name: Install
+      uses: ./.github/actions/install-uv
+      id: setup
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: setup docker
+      uses: ./.github/actions/build-test-container
+      with:
+        python-version: ${{ steps.setup.outputs.python-version }}
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [ 'build-cache-env'  ]
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        split: ['1', '2', '3', '4', '5']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install
+        uses: ./.github/actions/install-uv
+        id: setup
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: build docker test container
+        uses: ./.github/actions/build-test-container
+        with:
+          python-version: ${{ steps.setup.outputs.python-version }}
+          load: true
+
+      - name: Test with pytest
+        env:
+          HYPOTHESIS_PROFILE: pr
+        run: >-
+          uv run pytest -n auto --splits 5 --group ${{ matrix.split }}
+          --cov=src --cov-report=xml
+          --doctest-modules --ignore=docs
+          --ignore=src/snakebids/project_template --benchmark-disable
+
+      - name: save coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}-${{ matrix.split }}
+          path: ./coverage.xml
+
+  upload_coverage:
+    runs-on: ubuntu-latest
+    needs: [ test ]
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: download coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          verbose: true
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

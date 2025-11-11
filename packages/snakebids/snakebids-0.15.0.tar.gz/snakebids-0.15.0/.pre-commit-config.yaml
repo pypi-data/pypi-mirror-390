@@ -1,0 +1,40 @@
+---
+default_language_version:
+  python: python3
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: format
+        entry: uv run ruff format
+        name: Ruff Format
+        language: system
+        types_or: [cython, pyi, python]
+  - repo: local
+    hooks:
+      - id: system
+        name: Ruff Lint
+        entry: uv run ruff check
+        language: system
+        exclude: \._py\}\}$
+        types_or: [cython, pyi, python]
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: uv run pyright
+        language: system
+        exclude: ^docs
+        types_or: [cython, pyi, python]
+  - repo: https://github.com/codespell-project/codespell
+    # Configuration for codespell is in pyproject.toml
+    rev: v2.2.6
+    hooks:
+    - id: codespell
+      additional_dependencies:
+      - tomli
