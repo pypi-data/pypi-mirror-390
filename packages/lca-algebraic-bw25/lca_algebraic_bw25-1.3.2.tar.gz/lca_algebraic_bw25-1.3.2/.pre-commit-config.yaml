@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/asmeurer/removestar
+    rev: "1.5"
+    hooks:
+        - id: removestar
+          exclude: ^((doc|test|notebooks)/.*)$
+          args: [ -i ] # See docs for all args (-i edits file in-place)
+          additional_dependencies: # The libraries or packages your code imports
+            - . # Should be . if running inside a library (to install the library itself in the environment)
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+        name: black
+        entry: black
+        exclude: ^((doc|test|notebooks)/.*)$
+        files: \.py$
+        args: [ "--line-length", "130", "." ]
+        language_version: python3.9
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v1.2.3
+    hooks:
+      - id: flake8
+        exclude: ^((doc|test|notebooks)/.*)$
+        name: flake8
+        files: \.py$
+        additional_dependencies: [pyproject-flake8]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile=black"]
+        name: isort
+        exclude: ^((doc|test|notebooks)/.*)$
+        files: \.py$
