@@ -1,0 +1,131 @@
+# Reference: https://googleapis.dev/python/cloudtasks/latest/tasks_v2/cloud_tasks.html
+from datetime import datetime, timedelta
+from typing import Dict, Union
+import uuid
+
+from google.api_core.exceptions import FailedPrecondition, NotFound
+from google.cloud import tasks_v2
+from google.protobuf import timestamp_pb2
+from googleapiclient.discovery import Resource
+
+from . import exceptions
+from .base import GoogleCloudPilotAPI
+
+
+class CloudTasks(GoogleCloudPilotAPI):
+    _client_class = tasks_v2.CloudTasksClient
+    DEFAULT_METHOD = tasks_v2.HttpMethod.POST
+
+    def _build_client(self, **kwargs) -> Union[Resource, _client_class]:
+        kwargs.update(self._get_client_extra_kwargs())
+        # Add credentials unless using a custom transport (where they should be supplied directly)
+        if "transport" not in kwargs.keys():
+            kwargs["credentials"] = self.credentials
+        return self._client_class(**kwargs)
+
+    def _parent_path(self, project_id: str = None) -> str:
+        return f"projects/{project_id or self.project_id}/locations/{self.location}"
+
+    def _queue_path(self, queue: str, project_id: str = None) -> str:
+        return self.client.queue_path(
+            project=project_id or self.project_id,
+            location=self.location,
+            queue=queue,
+        )
+
+    def _task_path(self, task: str, queue: str, project_id: str = None) -> str:
+        return self.client.task_path(
+            project=project_id or self.project_id,
+            location=self.location,
+            queue=queue,
+            task=task,
+        )
+
+    async def push(
+        self,
+        queue_name: str,
+        url: str,
+        payload: str = "",
+        method: int = DEFAULT_METHOD,
+        delay_in_seconds: int = 0,
+        project_id: str = None,
+        task_name: str = None,
+        unique: bool = True,
+        use_oidc_auth: bool = True,
+        content_type: str = None,
+        headers: Dict[str, str] = None,
+    ) -> tasks_v2.Task:
+        queue_path = self.client.queue_path(
+            project=project_id or self.project_id,
+            location=self.location,
+            queue=queue_name,
+        )
+        if unique and task_name:
+            task_name = f"{task_name}-{str(uuid.uuid4())}"
+
+        task_path = (
+            self.client.task_path(
+                project=project_id or self.project_id,
+                location=self.location,
+                queue=queue_name,
+                task=task_name,
+            )
+            if task_name
+            else None
+        )
+
+        headers = headers or {}
+        if content_type:
+            headers["Content-Type"] = content_type
+
+        task = tasks_v2.Task(
+            name=task_path,
+            http_request=tasks_v2.HttpRequest(
+                http_method=method,
+                url=url,
+                body=payload.encode(),
+                headers=headers,
+                **(self.get_oidc_token(audience=url) if use_oidc_auth else {}),
+            ),
+        )
+
+        if delay_in_seconds:
+            target_date = datetime.utcnow() + timedelta(seconds=delay_in_seconds)
+            timestamp = timestamp_pb2.Timestamp()
+            timestamp.FromDatetime(target_date)
+
+            task.schedule_time = timestamp
+
+        resource = f"Queue {queue_path}"
+        try:
+            response = self.client.create_task(parent=queue_path, task=task)
+
+        except NotFound as exc:
+            raise exceptions.DoesNotExist(resource) from exc
+
+        except FailedPrecondition as exc:
+            resource = f"Queue {queue_name}"
+            if "a queue with this name existed recently" in exc.message:
+                raise exceptions.DeletedRecently(resource) from exc
+            raise
+
+        return response
+
+    def _create_queue(
+        self,
+        queue_name: str,
+        project_id: str = None,
+    ) -> tasks_v2.Queue:
+        parent = self._parent_path(project_id=project_id)
+        queue_path = self._queue_path(queue=queue_name, project_id=project_id)
+
+        queue = tasks_v2.Queue(
+            name=queue_path,
+        )
+        return self.client.create_queue(
+            parent=parent,
+            queue=queue,
+        )
+
+
+__all__ = ("CloudTasks",)
