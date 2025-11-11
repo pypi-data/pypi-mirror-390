@@ -1,0 +1,115 @@
+TEMPLATE_YAML = """
+settings:
+  width: 1920
+  height: 1080
+  fps: 30
+  output_file: output.mp4
+  # Default font for all text elements. Can be a font name your system
+  # recognizes (e.g., "Arial") or a path to a .ttf file.
+  font: DejaVuSans
+  # Default sub-folder for storing newly recorded audio.
+  audio_recording_path: audio
+
+scenes:
+  - type: template
+    name: title_and_subtitle
+    id: intro_card
+    with:
+      title: My Awesome Video
+      subtitle: A subtitle describing the content
+      # You can optionally override the default accent color
+      # accent_color: "#FFC300"
+      duration: 5
+    cache:
+      max-size: 1GB
+    # To record audio for this scene, run:
+    # sceneweaver scene audio spec.yaml:intro_card
+    audio:
+      - file: audio/intro_card.wav
+        shift: -0.5 # Start audio 0.5s before scene begins
+
+  - type: image
+    id: main_content
+    duration: 10
+    image: ~/path/to/your/screenshot.png
+    stretch: false   # retain aspect ratio
+    width: 80  # percent of screen
+    position: center
+    annotations:
+      - type: highlight
+        rect: [20, 20, 25, 10] # [x, y, width, height] in percent
+        color: "#f0f0f0"
+        opacity: 0.4
+      - type: text
+        location: bottom
+        content: This caption uses the default font.
+      - type: text
+        position: [10, 10]
+        content: This one uses a custom font.
+        # You can also override the font for a specific annotation
+        font: Courier-New
+        color: yellow
+        fontsize: 48
+    transition:
+      type: cross-fade
+      duration: 2
+
+  - type: image
+    id: short_image
+    frames: 90 # This will be 3 seconds at 30fps
+    image: ~/path/to/your/second_image.png
+
+  - type: video
+    id: clip_1
+    file: ~/path/to/your/video.mp4
+    cache:
+      max-size: 5GB
+    # Audio specified here will REPLACE the video's original audio.
+    # audio:
+    #   - file: audio/my_narration.mp3
+
+  - type: video-images
+    id: image_sequence
+    fps: 25
+    file: ~/path/to/frames/*.png
+    cache: true
+    effects:
+      - type: fade-out
+        duration: 1
+"""
+
+TEMPLATE_BOILERPLATE_YAML = """
+# This is the main definition file for a new SceneWeaver template.
+# It contains one or more scenes that will be rendered when this
+# template is used.
+#
+# KEY CONCEPTS:
+# 1. Use Jinja2 variables (e.g., `{{ title }}`) to accept user input.
+# 2. These variables must be defined in a corresponding `params.yaml` file.
+# 3. The user provides values for these variables in a `with:` block in
+#    their main spec file.
+#
+# EXAMPLE:
+# A user's spec might contain this:
+#
+#   - type: template
+#     name: this_template_name
+#     id: my_title_scene
+#     with:
+#       title: "Hello from my spec!"
+#       duration: 5
+#
+# This `template.yaml` receives `title` and `duration` as Jinja2 variables.
+
+# A template should NOT define an 'id'. The user provides this.
+
+- type: svg
+  id: my_svg_svene
+  duration: "{{ duration | default(3) }}"
+  template: template.svg  # relative to template
+
+  # Pass the 'title' variable from the `with:` block into the SVG's own
+  # parameters.
+  params:
+    text_content: "{{ title }}"
+"""
