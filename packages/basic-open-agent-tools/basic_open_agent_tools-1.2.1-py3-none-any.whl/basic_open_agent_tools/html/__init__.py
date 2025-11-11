@@ -1,0 +1,66 @@
+"""HTML processing tools for AI agents."""
+
+from .generation import (
+    append_to_html_body,
+    create_html_list,
+    create_html_table,
+    create_html_with_head,
+    create_simple_html,
+    html_to_markdown_file,
+    markdown_to_html_file,
+    prettify_html,
+    wrap_in_html_tag,
+)
+from .parsing import (
+    count_html_elements,
+    extract_html_forms,
+    extract_html_headings,
+    extract_html_images,
+    extract_html_links,
+    extract_html_lists,
+    extract_html_metadata,
+    extract_html_tables,
+    extract_html_text,
+    get_html_element_count_by_type,
+    get_html_structure,
+    get_html_tag_attributes,
+    get_html_text_at_tag,
+    get_html_title,
+    html_to_plain_text,
+    parse_html_to_dict,
+    preview_html_tags,
+    search_html_text,
+)
+
+__all__: list[str] = [
+    # Parsing functions (18 - includes 10 token-saving inspection tools)
+    "parse_html_to_dict",
+    "extract_html_text",
+    "extract_html_links",
+    "extract_html_images",
+    "extract_html_tables",
+    "extract_html_headings",
+    "extract_html_metadata",
+    "html_to_plain_text",
+    # Token-saving inspection tools
+    "get_html_text_at_tag",
+    "count_html_elements",
+    "get_html_structure",
+    "search_html_text",
+    "extract_html_lists",
+    "extract_html_forms",
+    "preview_html_tags",
+    "get_html_title",
+    "get_html_tag_attributes",
+    "get_html_element_count_by_type",
+    # Generation functions (9)
+    "create_simple_html",
+    "create_html_with_head",
+    "create_html_table",
+    "create_html_list",
+    "wrap_in_html_tag",
+    "append_to_html_body",
+    "markdown_to_html_file",
+    "html_to_markdown_file",
+    "prettify_html",
+]
