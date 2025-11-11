@@ -1,0 +1,129 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+<!-- <START NEW CHANGELOG ENTRY> -->
+
+## [1.2.35] - 2025-11-10
+
+**Tag**: RELEASE_1.2.35
+
+### Added
+
+- **Refresh Data Command**: Added ability to refresh tabular data view from file
+  - New `refresh()` method in `TabularDataViewer` widget
+  - Preserves scroll position during refresh
+  - Maintains current filters and sorting settings
+  - Reloads metadata to detect file structure changes
+  - Available via context menu: right-click on viewer and select "Refresh Tabular Data"
+  - Command ID: `tabular-data-viewer:refresh`
+
+## [1.2.30] - 2025-11-04
+
+**Tag**: RELEASE_1.2.30
+
+### Fixed
+
+- **Column Resize Index Offset**: Fixed off-by-one error when resizing columns
+  - Column resize was targeting wrong columns after row number column addition
+  - Row number column is first DOM child but not in `_columns` array
+  - Added +1 offset when accessing `headerRow` and `filterRow` children
+  - Fixed table width calculation to include 60px row number column
+
+- **CI/CD Build Failures**: Resolved dependency lock file conflicts
+  - Removed `package-lock.json` (using yarn/jlpm exclusively)
+  - Regenerated clean `yarn.lock` with fresh `jlpm install`
+  - Fixes post-resolution validation errors in CI pipeline
+
+### Changed
+
+- **Info Icon**: Replaced unicode character with Font Awesome icon
+  - Switched from unicode '🛈' to Font Awesome's `fa-info-circle`
+  - Added Font Awesome CSS import for consistent cross-platform rendering
+  - Updated CSS to use opacity transitions for smoother fade effect
+  - Reduced icon size to 14px for better proportions
+
+- **Documentation**: Updated RELEASE.md with version 1.2 feature summary
+  - Added "What's New in Version 1.2" section documenting major features
+  - Column Statistics Modal (1.2.8) overview
+  - Absolute Row Indices (1.2.20) explanation
+  - Enhanced Row Number Column Styling (1.2.20) details
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
+## [1.2.20] - 2025-11-04
+
+**Tag**: RELEASE_1.2.20
+
+### Fixed
+
+- **Row Index Display**: Row numbers now show absolute position in original file instead of view-relative position
+  - Previously, when filters or sorting were applied, row numbers would restart from 1 (showing position in filtered view)
+  - Backend now tracks original row indices throughout filtering and sorting operations
+  - Added internal `__original_row_index__` column to maintain absolute position through all transformations
+  - Frontend displays these absolute indices, making it easy to identify exact row location in source file
+  - Context menu "Copy Row as JSON" excludes internal `__row_index__` metadata field
+  - Affects all file types (Parquet, CSV, TSV, Excel)
+
+### Changed
+
+- **Row Number Column Styling**: Enhanced visual separation with borders
+  - Added vertical right border to separate row numbers from data columns
+  - Added horizontal borders between rows in row number column for improved readability
+  - Borders use `var(--jp-border-color0)` for subtle, consistent appearance
+  - Borders scoped to data rows only (tbody), excluding filter and header rows for clean appearance
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
+## [1.2.8] - 2025-11-03
+
+**Tag**: RELEASE_1.2.8
+
+### Added
+
+- **Column Statistics Modal**: Interactive statistics viewer for detailed column analysis
+  - Hover over any column header to reveal info icon (brand color on hover, transparent otherwise)
+  - Click icon to open modal dialog with comprehensive statistics
+  - Data summary section - total rows, non-null count/percentage, null count/percentage, unique values count/percentage
+  - Type-specific statistics:
+    - Numeric (int/float) - min, max, mean, median, standard deviation, outlier detection with count and percentage
+    - String - most common value with count, minimum/maximum/average string length in characters
+    - Date/datetime - earliest date, latest date, date range span in days
+  - Copy Stats as JSON button with clipboard API integration and visual feedback ("Copied!" confirmation)
+  - Keyboard shortcut (ESC) and backdrop click to close modal
+  - Backend implementation using PyArrow compute functions (pc.mode, pc.utf8_length, pc.min_max, pc.quantile, pc.stddev)
+  - Created stats.py module with calculate_column_stats() function and simplify_type() helper
+  - Added ColumnStatsHandler API endpoint at /column-stats accepting POST requests with file path and column name
+  - Created modal.ts Lumino Widget component with organized stat sections and formatting
+  - Added IColumnStats TypeScript interface and fetchColumnStats() function in request.ts
+  - Updated widget.ts to add info icon to column headers with click event handling
+  - Supports all file types (Parquet, CSV, TSV, Excel)
+
+### Changed
+
+- **String Statistics Calculation**: Improved reliability for string column analysis
+  - Filter out null values using pc.drop_null() before computing string statistics
+  - Separate try/except blocks for mode calculation and string length operations
+  - Only display String Statistics section in modal when stats are successfully calculated
+  - Prevents empty section headers from appearing when calculations fail
+
+- **Documentation**: Reorganized README for better visual flow and comprehensiveness
+  - Consolidated all screenshots into introduction section before Features section
+  - Added screenshot-stats-icon.png showing info icon hover interaction on column header
+  - Added screenshot-stats.png showing statistics modal dialog with numeric column example
+  - Added screenshot-copy-json.png showing right-click context menu for copying row as JSON
+  - Each screenshot preceded by brief descriptive sentence (Opening files, Column statistics, Context menu)
+  - Removed duplicate screenshots from Additional features section
+  - Simplified feature descriptions to text-only format
+
+### Fixed
+
+- **Info Icon Color**: Corrected hover state styling for column info icon
+  - Changed from `var(--jp-ui-font-color3)` (muted gray) to `var(--jp-brand-color1)` (accent color) when hovering over header cell
+  - Icon now consistently uses brand color for both header hover and icon hover states
+  - Updated style/base.css line 286 with proper color variable
+
+<!-- <END NEW CHANGELOG ENTRY> -->
