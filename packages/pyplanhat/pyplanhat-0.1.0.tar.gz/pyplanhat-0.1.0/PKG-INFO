@@ -1,0 +1,197 @@
+Metadata-Version: 2.4
+Name: pyplanhat
+Version: 0.1.0
+Summary: Pythonic wrapper for the Planhat REST API
+Project-URL: Homepage, https://github.com/ddlaws0n/pyplanhat
+Project-URL: Documentation, https://github.com/ddlaws0n/pyplanhat#readme
+Project-URL: Repository, https://github.com/ddlaws0n/pyplanhat.git
+Project-URL: Bug Tracker, https://github.com/ddlaws0n/pyplanhat/issues
+Author-email: David D Lawson <david@lawson.dev>
+License-Expression: MIT
+License-File: LICENSE
+Keywords: api,crm,planhat,rest,sdk,wrapper
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Internet :: WWW/HTTP
+Classifier: Topic :: Office/Business
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: dev
+Requires-Dist: coverage; extra == 'dev'
+Requires-Dist: ipython; extra == 'dev'
+Requires-Dist: mypy; extra == 'dev'
+Requires-Dist: pytest; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest-cov; extra == 'dev'
+Requires-Dist: pytest-httpx>=0.30.0; extra == 'dev'
+Requires-Dist: ruff; extra == 'dev'
+Requires-Dist: twine; extra == 'dev'
+Requires-Dist: unasync>=0.5.0; extra == 'dev'
+Provides-Extra: test
+Requires-Dist: pytest; extra == 'test'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest-httpx>=0.30.0; extra == 'test'
+Description-Content-Type: text/markdown
+
+# PyPlanhat SDK
+
+Modern async-first Python SDK for the Planhat API.
+
+## Features
+
+- 🚀 **Async-first architecture** with auto-generated sync support
+- 📦 **Built with modern Python tooling** (httpx, pydantic, uv)
+- 🔒 **Type-safe** with full mypy support
+- ✨ **Comprehensive error handling** with custom exception hierarchy
+- 🧪 **Extensively tested** with 90%+ coverage
+
+## Installation
+
+```bash
+pip install pyplanhat
+```
+
+## Quick Start
+
+### Async Usage
+
+```python
+import asyncio
+from pyplanhat import AsyncPyPlanhat
+
+async def main():
+    async with AsyncPyPlanhat(api_key="your-api-key") as client:
+        # API calls here (Phase 1+)
+        pass
+
+asyncio.run(main())
+```
+
+### Sync Usage
+
+```python
+from pyplanhat import PyPlanhat
+
+with PyPlanhat(api_key="your-api-key") as client:
+    # API calls here (Phase 1+)
+    pass
+```
+
+## Configuration
+
+Set environment variables for convenient testing:
+
+```bash
+export PLANHAT_API_KEY="your-api-key"
+export PLANHAT_API_BASE_URL="https://api.planhat.com"  # optional
+```
+
+Or pass directly to the client:
+
+```python
+client = AsyncPyPlanhat(
+    api_key="your-api-key",
+    base_url="https://api.planhat.com"
+)
+```
+
+## Development
+
+This project is currently in **Phase 0** development. The foundation is being built using a phased approach with OpenCode agents.
+
+### Setup
+
+```bash
+# Clone repository
+git clone https://github.com/ddlaws0n/pyplanhat.git
+cd pyplanhat
+
+# Install dependencies
+uv sync --all-groups
+
+# Run tests
+uv run pytest -v
+
+# Format code
+uv run ruff format .
+
+# Lint code
+uv run ruff check .
+
+# Type check
+uv run mypy src/
+```
+
+### Architecture
+
+PyPlanhat uses an **async-first DRY architecture**:
+
+1. ✏️ Write async code in `src/pyplanhat/_async/`
+2. 🔄 Generate sync code: `python scripts/generate_sync.py`
+3. ✅ Both versions tested identically
+4. 📦 Zero duplication of business logic
+
+The synchronous version is automatically generated from the async source using `unasync`, ensuring perfect parity between both APIs.
+
+### Development Guidelines
+
+See [CLAUDE.md](CLAUDE.md) for detailed development guidelines and workflow.
+
+Key principles:
+- **Never edit** files in `_sync/` directories (they're auto-generated)
+- **Always run** `python scripts/generate_sync.py` after modifying async code
+- **Maintain test parity** between async and sync test suites
+- **Follow the phased plan** in `docs/pyplanhat/PLAN.md`
+
+### Project Structure
+
+```
+src/pyplanhat/
+├── _async/              # Async source code (write here)
+│   ├── client.py        # Main async client
+│   └── resources/       # Async resource implementations
+├── _sync/               # Generated sync code (never edit)
+│   ├── client.py        # Generated sync client
+│   └── resources/       # Generated sync resources
+├── _exceptions.py       # Custom exception hierarchy
+└── __init__.py         # Public API exports
+
+tests/
+├── _async/             # Async tests (write here)
+└── _sync/              # Generated sync tests (never edit)
+```
+
+## Roadmap
+
+- **Phase 0**: Foundation (exception hierarchy, client shell, code generation) ✅ **In Progress**
+- **Phase 1**: Companies resource implementation
+- **Phase 2**: EndUsers and Conversations resources
+- **Phase 3**: Documentation (mkdocs, API reference)
+- **Phase 4**: Release to PyPI
+
+## Contributing
+
+This project follows strict architectural patterns and phased development. Please review:
+
+1. [CLAUDE.md](CLAUDE.md) - Development workflow and commands
+2. [docs/pyplanhat/PLAN.md](docs/pyplanhat/PLAN.md) - Phased development plan
+3. [docs/pyplanhat/ARCHITECTURE.md](docs/pyplanhat/ARCHITECTURE.md) - Architecture details
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Support
+
+For issues, questions, or contributions, please open an issue on GitHub.
