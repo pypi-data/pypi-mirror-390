@@ -1,0 +1,89 @@
+\chapter{HTTP utilities with retry policy}% ===> this file was generated automatically by noweave --- better not edit it
+\chapterprecis{%
+  This chapter was written by Anthropic's Claude
+  under supervision by Daniel Bosk.
+}
+
+This module provides HTTP utilities with built-in retry logic for resilient
+network requests.
+We configure requests to automatically retry failed requests with exponential
+backoff.
+
+\section{Overview}
+
+The module uses Python's {\Tt{}requests\nwendquote} library with {\Tt{}urllib3\nwendquote}'s built-in retry
+mechanism.
+We configure a retry policy that:
+\begin{itemize}
+\item Retries up to 10 times with exponential backoff
+\item Starts with 1 second delay, doubling each time (1s, 2s, 4s, 8s, 16s, 32s,
+64s, 128s, 256s)
+\item Retries on server errors (500, 502, 503, 504)
+\item Retries on rate limiting (429)
+\item Retries on connection and network errors
+\end{itemize}
+
+\section{Module structure}
+
+The module consists of a single file {\Tt{}httputils.py\nwendquote}.
+\nwfilename{httputils.nw}\nwbegincode{1}\sublabel{NW1B0DFB-SvUOn-1}\nwmargintag{{\nwtagstyle{}\subpageref{NW1B0DFB-SvUOn-1}}}\moddef{httputils.py~{\nwtagstyle{}\subpageref{NW1B0DFB-SvUOn-1}}}\endmoddef\nwstartdeflinemarkup\nwenddeflinemarkup
+\LA{}imports~{\nwtagstyle{}\subpageref{NW1B0DFB-1n4S18-1}}\RA{}
+\LA{}configure retry policy~{\nwtagstyle{}\subpageref{NW1B0DFB-3PqjYS-1}}\RA{}
+\LA{}export session~{\nwtagstyle{}\subpageref{NW1B0DFB-4J5M6y-1}}\RA{}
+\nwnotused{httputils.py}\nwendcode{}\nwbegindocs{2}\nwdocspar
+
+\section{Implementation}
+
+\subsection{Imports}
+
+We need the {\Tt{}requests\nwendquote} library for HTTP requests, {\Tt{}urllib3.util.retry\nwendquote} for
+the retry mechanism, and {\Tt{}requests.adapters.HTTPAdapter\nwendquote} to integrate them.
+\nwenddocs{}\nwbegincode{3}\sublabel{NW1B0DFB-1n4S18-1}\nwmargintag{{\nwtagstyle{}\subpageref{NW1B0DFB-1n4S18-1}}}\moddef{imports~{\nwtagstyle{}\subpageref{NW1B0DFB-1n4S18-1}}}\endmoddef\nwstartdeflinemarkup\nwusesondefline{\\{NW1B0DFB-SvUOn-1}}\nwenddeflinemarkup
+import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+\nwused{\\{NW1B0DFB-SvUOn-1}}\nwendcode{}\nwbegindocs{4}\nwdocspar
+
+\subsection{Retry configuration}
+
+We configure the retry policy with the specified parameters.
+The {\Tt{}backoff{\_}factor\nwendquote} of 1 means the delay between retries follows the formula:
+\texttt{\{backoff factor\} * (2 ** (\{retry number\} - 1))}, which gives us
+1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s for retries 1-9.
+
+The {\Tt{}status{\_}forcelist\nwendquote} specifies which HTTP status codes should trigger a retry.
+We include server errors (5xx) and rate limiting (429).
+
+The {\Tt{}raise{\_}on{\_}status\nwendquote} parameter set to {\Tt{}False\nwendquote} means that we won't
+automatically raise exceptions for bad status codes---we let the calling code
+handle that.
+\nwenddocs{}\nwbegincode{5}\sublabel{NW1B0DFB-3PqjYS-1}\nwmargintag{{\nwtagstyle{}\subpageref{NW1B0DFB-3PqjYS-1}}}\moddef{configure retry policy~{\nwtagstyle{}\subpageref{NW1B0DFB-3PqjYS-1}}}\endmoddef\nwstartdeflinemarkup\nwusesondefline{\\{NW1B0DFB-SvUOn-1}}\nwenddeflinemarkup
+retry_strategy = Retry(
+    total=10,
+    backoff_factor=1,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"],
+    raise_on_status=False
+)
+
+adapter = HTTPAdapter(max_retries=retry_strategy)
+\nwused{\\{NW1B0DFB-SvUOn-1}}\nwendcode{}\nwbegindocs{6}\nwdocspar
+
+\subsection{Session creation}
+
+We create a configured {\Tt{}requests.Session\nwendquote} with the retry policy applied to
+both HTTP and HTTPS requests.
+This session can be imported and used anywhere in the codebase for resilient
+HTTP requests.
+\nwenddocs{}\nwbegincode{7}\sublabel{NW1B0DFB-4J5M6y-1}\nwmargintag{{\nwtagstyle{}\subpageref{NW1B0DFB-4J5M6y-1}}}\moddef{export session~{\nwtagstyle{}\subpageref{NW1B0DFB-4J5M6y-1}}}\endmoddef\nwstartdeflinemarkup\nwusesondefline{\\{NW1B0DFB-SvUOn-1}}\nwenddeflinemarkup
+http_session = requests.Session()
+http_session.mount("http://", adapter)
+http_session.mount("https://", adapter)
+\nwused{\\{NW1B0DFB-SvUOn-1}}\nwendcode{}
+
+\nwixlogsorted{c}{{configure retry policy}{NW1B0DFB-3PqjYS-1}{\nwixu{NW1B0DFB-SvUOn-1}\nwixd{NW1B0DFB-3PqjYS-1}}}%
+\nwixlogsorted{c}{{export session}{NW1B0DFB-4J5M6y-1}{\nwixu{NW1B0DFB-SvUOn-1}\nwixd{NW1B0DFB-4J5M6y-1}}}%
+\nwixlogsorted{c}{{httputils.py}{NW1B0DFB-SvUOn-1}{\nwixd{NW1B0DFB-SvUOn-1}}}%
+\nwixlogsorted{c}{{imports}{NW1B0DFB-1n4S18-1}{\nwixu{NW1B0DFB-SvUOn-1}\nwixd{NW1B0DFB-1n4S18-1}}}%
+\nwbegindocs{8}\nwdocspar
+\nwenddocs{}
