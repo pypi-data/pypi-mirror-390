@@ -1,0 +1,143 @@
+Metadata-Version: 2.4
+Name: ccflow
+Version: 0.7.0
+Summary: ccflow is a collection of tools for workflow configuration, orchestration, and dependency injection
+Project-URL: Repository, https://github.com/Point72/ccflow
+Project-URL: Homepage, https://github.com/Point72/ccflow
+Author-email: "Point72, L.P." <OpenSource@point72.com>
+License: Apache-2.0
+License-File: LICENSE
+Keywords: configuration,dag,flow,hydra,pydantic
+Classifier: Development Status :: 4 - Beta
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Requires-Python: >=3.10
+Requires-Dist: cloudpathlib
+Requires-Dist: cloudpickle
+Requires-Dist: dask
+Requires-Dist: hydra-core
+Requires-Dist: ipython
+Requires-Dist: jinja2
+Requires-Dist: narwhals
+Requires-Dist: numpy<3
+Requires-Dist: orjson
+Requires-Dist: pandas
+Requires-Dist: pyarrow
+Requires-Dist: pydantic<3,>=2.6
+Requires-Dist: smart-open
+Requires-Dist: tenacity
+Provides-Extra: develop
+Requires-Dist: beautifulsoup4; extra == 'develop'
+Requires-Dist: build; extra == 'develop'
+Requires-Dist: bump-my-version; extra == 'develop'
+Requires-Dist: cexprtk; extra == 'develop'
+Requires-Dist: check-manifest; extra == 'develop'
+Requires-Dist: codespell<2.5,>=2.4; extra == 'develop'
+Requires-Dist: csp<1,>=0.8.0; extra == 'develop'
+Requires-Dist: duckdb; extra == 'develop'
+Requires-Dist: hatchling; extra == 'develop'
+Requires-Dist: httpx; extra == 'develop'
+Requires-Dist: mdformat-tables>=1; extra == 'develop'
+Requires-Dist: mdformat<1.1,>=0.7.22; extra == 'develop'
+Requires-Dist: pandas; extra == 'develop'
+Requires-Dist: plotly; extra == 'develop'
+Requires-Dist: polars; extra == 'develop'
+Requires-Dist: pytest; extra == 'develop'
+Requires-Dist: pytest-asyncio; extra == 'develop'
+Requires-Dist: pytest-cov; extra == 'develop'
+Requires-Dist: pytest-mock; extra == 'develop'
+Requires-Dist: pytest-sugar; extra == 'develop'
+Requires-Dist: ray; extra == 'develop'
+Requires-Dist: ruff<0.15,>=0.9; extra == 'develop'
+Requires-Dist: scipy; extra == 'develop'
+Requires-Dist: toml; extra == 'develop'
+Requires-Dist: twine; extra == 'develop'
+Requires-Dist: uv; extra == 'develop'
+Requires-Dist: wheel; extra == 'develop'
+Requires-Dist: xarray; extra == 'develop'
+Provides-Extra: full
+Requires-Dist: cexprtk; extra == 'full'
+Requires-Dist: duckdb; extra == 'full'
+Requires-Dist: pandas; extra == 'full'
+Requires-Dist: plotly; extra == 'full'
+Requires-Dist: polars; extra == 'full'
+Requires-Dist: ray; extra == 'full'
+Requires-Dist: scipy; extra == 'full'
+Requires-Dist: xarray; extra == 'full'
+Provides-Extra: test
+Requires-Dist: beautifulsoup4; extra == 'test'
+Requires-Dist: httpx; extra == 'test'
+Requires-Dist: pytest; extra == 'test'
+Requires-Dist: pytest-asyncio; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest-sugar; extra == 'test'
+Description-Content-Type: text/markdown
+
+<a href="https://github.com/point72/ccflow">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/point72/ccflow/raw/main/docs/img/dark.png?raw=true">
+    <img alt="ccflow logo, 'ccflow' with letters in color" src="https://github.com/point72/ccflow/raw/main/docs/img/light.png?raw=true" width="400">
+  </picture>
+</a>
+
+<br/>
+<br/>
+
+[![Build Status](https://github.com/Point72/ccflow/actions/workflows/build.yaml/badge.svg?branch=main&event=push)](https://github.com/Point72/ccflow/actions/workflows/build.yaml)
+[![codecov](https://codecov.io/gh/Point72/ccflow/branch/main/graph/badge.svg)](https://codecov.io/gh/Point72/ccflow)
+[![GitHub issues](https://img.shields.io/github/issues/point72/ccflow.svg)](https://github.com/point72/ccflow/issues)
+[![License](https://img.shields.io/github/license/Point72/ccflow)](https://github.com/Point72/ccflow)
+[![PyPI Version](https://img.shields.io/pypi/v/ccflow.svg)](https://pypi.python.org/pypi/ccflow)
+
+`ccflow` (Composable Configuration Flow) is a collection of tools for workflow configuration, orchestration, and dependency injection.
+It is intended to be flexible enough to handle diverse use cases, including data retrieval, validation, transformation, and loading (i.e. ETL workflows), model training, microservice configuration, and automated report generation.
+
+The framework provides:
+
+- a way to manage hierarchical, strongly typed configurations and the relationships between them through composition
+- a way to associate user-defined functions with configurations, and in doing so, to define and name configurable workflow graphs
+- a way to manage dependency injection and inversion of control for objects in these graphs
+- flexibility in how to interact with configurations and workflows, including files/command line, native python/Jupyter notebook, Airflow/job scheduler, REST API, etc (in progress)
+
+It heavily leverages [pydantic](https://docs.pydantic.dev/latest/), and users are expected to implement their own configuration and workflow building blocks by implementing pydantic models.
+
+It also integrates closely with [hydra](https://hydra.cc/) for file-based configuration and command line interaction, but can also be used natively from Python without it.
+
+This library was partially inspired by this [blog post](https://towardsdatascience.com/configuration-management-for-model-training-experiments-using-pydantic-and-hydra-d14a6ae84c13) by Suneeta Mall ([@suneeta-mall](https://github.com/suneeta-mall)).
+We have taken these ideas a step further by introducing the concept of the `ModelRegistry`, which allows for the configs to be managed without `hydra`, and also allows us to implement dependency injection.
+
+We aim to provide additional (and optional) tools for workflow orchestration on top of the configuration framework.
+
+[More information is available in our wiki](https://github.com/Point72/ccflow/wiki)
+
+## Installation
+
+`ccflow` can be installed via [pip](https://pip.pypa.io) or [conda](https://docs.conda.io/en/latest/), the two primary package managers for the Python ecosystem.
+
+To install `ccflow` via **pip**, run this command in your terminal:
+
+```bash
+pip install ccflow
+```
+
+To install `ccflow` via **conda**, run this command in your terminal:
+
+```bash
+conda install ccflow -c conda-forge
+```
+
+## Community
+
+- [Contribute](https://github.com/Point72/ccflow/wiki/Contribute) to `ccflow` and help improve the project
+
+## License
+
+This software is licensed under the Apache 2.0 license. See the [LICENSE](https://github.com/Point72/ccflow/blob/main/LICENSE) file for details.
