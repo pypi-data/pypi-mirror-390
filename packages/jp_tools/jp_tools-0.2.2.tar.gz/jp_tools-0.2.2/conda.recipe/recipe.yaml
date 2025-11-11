@@ -1,0 +1,37 @@
+context:
+  version: 0.2.1
+
+package:
+  name: jp_tools
+  version: ${{ version }}
+
+source:
+- url: https://pypi.org/packages/source/j/jp_tools/jp_tools-${{ version }}.tar.gz
+  sha256: 3030afff1ab6aeefa4a55a5fbbe2b5bddced8f9f15a7ca064bd81090f5832878
+
+build:
+  script: ${{ PYTHON }} -m pip install .
+  python:
+    entry_points:
+    - jp-utils = jp_tools:main
+  noarch: python
+
+requirements:
+  host:
+  - python >=3.12
+  - hatchling
+  - pip
+  run:
+  - python >=3.12
+  - requests >=2.32.5
+  - tqdm >=4.67.1
+
+tests:
+- python:
+    imports:
+    - jp_tools
+    pip_check: true
+
+about:
+  summary: A simple download hellper to pull files
+  description: ''
