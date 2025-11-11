@@ -1,0 +1,133 @@
+[project]
+name = 'scanpydoc'
+dynamic = ['version']
+description = 'A series of Sphinx extensions to get maintainable numpydoc style documentation.'
+authors = [
+    { name = 'Philipp Angerer', email = 'phil.angerer@gmail.com' },
+]
+urls.Source = 'https://github.com/theislab/scanpydoc/'
+urls.Documentation = 'https://icb-scanpydoc.readthedocs-hosted.com/'
+readme = 'README.rst'
+license = 'GPL-3.0-or-later'
+classifiers = [
+    'Intended Audience :: Developers',
+    'Programming Language :: Python :: 3',
+    'Topic :: Documentation :: Sphinx',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Framework :: Sphinx :: Extension',
+    'Typing :: Typed',
+]
+requires-python = '>=3.12'
+dependencies = [
+    'sphinx>=7.0',
+]
+
+[project.optional-dependencies]
+dev = ['pre-commit']
+test = [
+    'pytest',
+    'coverage',
+    'legacy-api-wrap',
+    'defusedxml',  # sphinx[test] would also pull in cython
+    'sphinx>=8.1.0' # https://github.com/sphinx-doc/sphinx/pull/12743
+]
+doc = [
+    'scanpydoc[typehints,myst,theme]',
+    'sphinx',
+]
+typehints = ['sphinx-autodoc-typehints>=1.15.2']
+theme = ['sphinx-book-theme>=1.1.0']
+myst = ['myst-parser']
+
+[project.entry-points.'sphinx.html_themes']
+scanpydoc = 'scanpydoc.theme'
+
+[tool.ruff.lint]
+select = ['ALL']
+allowed-confusables = ['’', '×', 'l']
+ignore = [
+    'E741',   # Ambiguous variable name
+    'C408',   # `dict` calls are useful
+    'D203',   # No blank lines before class body
+    'D213',   # Docstring summary on first line
+    'D407',   # We’re not using Numpydoc style
+    'FIX002', # TODOs are OK
+    'PD',     # False positives
+    'PLC0415', # Non-top-level imports are OK
+    'COM812', # Conflicts with formatting
+    'ISC001', # Conflicts with formatting
+]
+[tool.ruff.lint.per-file-ignores]
+'example.py' = ['ALL']
+'docs/conf.py' = [
+    'INP001', # `docs` is not a namespace package
+]
+'tests/**/*.py' = [
+    'INP001', # test directories are not namespace packages
+    'D103', # Test functions don’t need docstrings
+    'S101', # Pytest tests use `assert`
+    'RUF018', # Assignment expressions in assert are fine here
+    'PLR0913', # Tests should be able to use as many fixtures as they want
+]
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+exempt-modules = []
+[tool.ruff.lint.isort]
+length-sort = true
+lines-after-imports = 2
+known-first-party = ['scanpydoc']
+required-imports = ['from __future__ import annotations']
+[tool.ruff.lint.pydocstyle]
+convention = 'numpy'
+
+[tool.mypy]
+strict = true
+explicit_package_bases = true
+disallow_untyped_defs = false  # handled by Ruff
+mypy_path = ['$MYPY_CONFIG_FILE_DIR/src']
+
+[tool.hatch.version]
+source = 'vcs'
+[tool.hatch.build.hooks.vcs]
+version-file = 'src/scanpydoc/_version.py'
+
+[tool.hatch.envs.default]
+dependencies = ['types-docutils']
+[tool.hatch.envs.docs]
+python = '3.13'
+features = ['doc']
+[tool.hatch.envs.docs.scripts]
+build = 'sphinx-build -M html docs docs/_build'
+clean = 'git clean -fdX docs'
+
+[tool.hatch.envs.hatch-test]
+features = ['test', 'typehints', 'myst']
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ['3.12', '3.14']
+
+[tool.pytest.ini_options]
+addopts = [
+    '--import-mode=importlib',
+    '-psphinx.testing.fixtures',
+]
+filterwarnings = [
+    'error',
+    'ignore:The frontend.Option:DeprecationWarning',
+]
+
+[tool.coverage.run]
+source_pkgs = ['scanpydoc']
+concurrency = ['multiprocessing']
+patch = ['subprocess']
+[tool.coverage.paths]
+source = ['src']
+[tool.coverage.report]
+exclude_lines = [
+  'no cov',
+  'if __name__ == .__main__.:',
+  'if TYPE_CHECKING:',
+]
+
+[build-system]
+requires = ['hatchling', 'hatch-vcs']
+build-backend = 'hatchling.build'
