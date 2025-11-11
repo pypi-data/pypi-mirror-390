@@ -1,0 +1,62 @@
+# PutPlace Server Configuration
+# Copy this file to ppserver.toml and customize for your environment
+
+[database]
+mongodb_url = "mongodb://localhost:27017"
+mongodb_database = "putplace"
+mongodb_collection = "file_metadata"
+
+[api]
+title = "PutPlace API"
+description = "File metadata storage API"
+
+[storage]
+# Storage backend: "local" or "s3"
+backend = "local"
+
+# Local storage settings (used when backend = "local")
+path = "./storage/files"
+
+# S3 storage settings (used when backend = "s3")
+# Uncomment and configure if using S3:
+# s3_bucket_name = "your-bucket-name"
+# s3_region_name = "us-east-1"
+# s3_prefix = "files/"
+
+[aws]
+# AWS credentials (optional - will use AWS credential chain if not specified)
+# Recommended: Use IAM roles or AWS CLI config instead of hardcoding credentials
+# profile = "your-aws-profile"
+# access_key_id = "your-access-key"
+# secret_access_key = "your-secret-key"
+
+[oauth]
+# Google OAuth Configuration
+# To enable Google Sign-In:
+# 1. Go to https://console.cloud.google.com/
+# 2. Create a new project (or select existing)
+# 3. Enable "Google Sign-In API"
+# 4. Create OAuth 2.0 credentials (Web application)
+# 5. Add authorized JavaScript origins: http://localhost:8000
+# 6. Copy the Client ID below
+google_client_id = ""  # e.g., "123456789-abcdefghijk.apps.googleusercontent.com"
+# Note: google_client_secret is not needed for ID token verification
+
+# =============================================================================
+# Usage Notes
+# =============================================================================
+#
+# 1. Copy this file to ppserver.toml:
+#    cp ppserver.toml.example ppserver.toml
+#
+# 2. Edit ppserver.toml with your configuration
+#
+# 3. Or use the configuration wizard:
+#    putplace-configure
+#    (or: invoke configure)
+#
+# 4. Never commit ppserver.toml to version control (already in .gitignore)
+#
+# 5. Set restrictive file permissions:
+#    chmod 600 ppserver.toml
+#
