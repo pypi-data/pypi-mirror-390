@@ -1,0 +1,204 @@
+[build-system]
+requires = ["setuptools>=68", "wheel", "build"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jps-code-repository-utils"
+version = "0.1.0"
+description = "Collection of utility Pythhon scripts to manage code repositories."
+readme = "README.md"
+authors = [{ name = "Jaideep Sundaram", email = "jsundaram@baylorgenetics.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["code-repository", "git", "gitflow", "version-control"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+
+dependencies = [
+    "typer>=0.12.3",
+    "openpyxl~=3.1.5"
+]
+
+[project.urls]
+Homepage = "https://github.com/jai-python3/jps-code-repository-utils"
+Repository = "https://github.com/jai-python3/jps-code-repository-utils"
+Issues = "https://github.com/jai-python3/jps-code-repository-utils/issues"
+
+[project.scripts]
+jps-code-repository-utils-standardize = "scripts.standardize_branches:app"
+
+[project.optional-dependencies]
+dev = [
+    # Linting & style
+    "flake8>=7.1.1,<8.0.0",
+    "black==24.10.0",                # latest 24.x – rock solid
+    "isort==5.13.2",
+
+    # Type checking
+    "mypy==1.13.0",                   # Nov 2025 latest
+
+    # Docstyle & argument linting
+    "pydocstyle==6.3.0",
+    "darglint==1.8.1",
+    "flake8-docstrings==1.7.0",
+
+    # Security & dead code
+    "bandit==1.7.10",
+    "vulture==2.11",
+
+    # Code quality
+    "autoflake==2.3.1",
+    "flynt==1.0.1",
+    "flake8-bugbear==24.8.19",
+    "flake8-comprehensions==3.15.0",
+    "flake8-simplify==0.21.0",
+    "pep8-naming==0.14.0",
+
+    # Testing
+    "pytest==8.3.3",
+    "pytest-cov==5.0.0",
+    "pytest-git==1.8.0",
+
+    # Packaging & upload
+    "build==1.2.2.post1",
+    "twine==5.1.1",
+
+    # Pre-commit
+    "pre-commit==4.0.1",
+
+    # Reporting
+    "codecov==2.1.13",
+
+    # Excel verification in tests
+    "pandas==2.2.3",
+    "openpyxl==3.1.5",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# -----------------------------
+# Formatting Tools
+# -----------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+src_paths = ["src", "tests"]
+
+# -----------------------------
+# Testing & Coverage
+# -----------------------------
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-v --disable-warnings"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+# -----------------------------
+# Type Checking
+# -----------------------------
+[tool.mypy]
+python_version = "3.12"
+
+# --- Strictness for production code ---
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+strict_optional = true
+warn_unused_ignores = true
+warn_unreachable = true
+warn_return_any = true
+show_error_codes = true
+
+# --- Paths to exclude from main analysis ---
+exclude = [
+    "build/",
+    "dist/",
+]
+
+# --- Override: Relax typing rules for test modules ---
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+ignore_missing_imports = true
+
+# -----------------------------
+# Linting
+# -----------------------------
+[tool.flake8]
+max-line-length = 120
+
+# E203: Black disagrees with slice whitespace rules
+# W503: Black prefers line breaks before binary operators
+# W292: Black intentionally removes trailing newline at EOF (Black behavior)
+extend-ignore = ["E203", "W503", "W292"]
+
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+    ".venv",
+    ".tox",
+    ".pytest_cache",
+    "docs"
+]
+
+# -----------------------------
+# Security (Bandit)
+# -----------------------------
+[tool.bandit]
+# Rules intentionally skipped because they are either safe in this context or false positives.
+# Skipped rules:
+#   B101 - assert_used: Safe since assertions are not used for security enforcement.
+#   B110 - try_except_pass: Handled via code review standards instead.
+#   B404 - import_subprocess: subprocess used safely for CLI operations (no user input).
+#   B603 - subprocess_without_shell_equals_true: All subprocess calls use shell=False.
+#   B607 - start_process_with_partial_path: Safe usage of 'gh' (GitHub CLI) in developer tools.
+#   B108 - hardcoded_tmp_directory: Acceptable since temp dirs are user- and timestamp-specific.
+
+skips = ["B101", "B110", "B404", "B603", "B607", "B108"]
+
+# Bandit target directories (recursive)
+targets = ["src"]
+recursive = true
+
+# Exclude test code from Bandit scans
+exclude = ["tests"]
+
+# -----------------------------
+# Docstring Style Checkers
+# -----------------------------
+[tool.pydocstyle]
+convention = "google"
+add-ignore = [
+    "D107",  # Missing docstring in __init__
+    "D203",  # 1 blank line required before class docstring
+]
+match-dir = "src"
+
+[tool.darglint]
+docstring_style = "google"
+strictness = "short"
+ignore_regex = "(^test_)"
+message_template = "{path}:{line}: {msg_id} {msg}"
+
