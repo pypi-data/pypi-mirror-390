@@ -1,0 +1,84 @@
+Metadata-Version: 2.4
+Name: pytradingview
+Version: 0.4.0
+Summary: A Python client for TradingView WebSocket API. It's a lightweight library capable of providing real-time data on stocks, cryptocurrencies, indices etc.
+Author-email: Onesimus Graves-Sampson <onesimusgravessampson1@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/kwesy/pytradingview.git
+Keywords: tradingview,trading,forex,stocks,crypto
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: websocket-client>=1.5.1
+Requires-Dist: requests>=2.32.3
+Dynamic: license-file
+
+# pytradingview
+
+A lightweight, open-source Python client for connecting to TradingView's WebSocket API.
+
+## Features
+
+- WebSocket connection management
+- Easy to extend for custom signals and data
+- Download data
+- Search for symbols
+
+## Dependencies
+```bash
+websocket-client
+```
+
+## Installation
+
+```bash
+pip install pytradingview
+```
+
+## Usage
+```python
+# example.py
+from pytradingview import TVclient
+
+# Create the client and chart
+client = TVclient()
+chart = client.chart
+
+# Set up the chart
+chart.set_up_chart()
+
+# Set the market
+chart.set_market("BINANCE:BTCUSD", {
+    "timeframe": "1",  # 1-minute chart
+    "currency": "USD",
+})
+
+# Event: When the symbol data is loaded
+chart.on_symbol_loaded(lambda _: print("✅ Market loaded:", chart.get_infos['description']))
+
+# Event: When price data is updated
+def handle_update(_):
+    if chart.get_periods:
+        print(f"🟢 New Price: {chart.get_periods['close']}")
+
+chart.on_update(handle_update)
+
+# Start the WebSocket connection
+client.create_connection()
+
+```
+
+#### Command line (CLI)
+```bash
+python -m pytradingview -d -s '2025-04-24 00:00' -e '2025-04-25 00:00' -p 'FX:EURUSD' 
+```
+```bash
+python -m pytradingview -d -s '2025-04-24 00:00' -e 'now' -p 'FX:EURUSD'
+```
+```bash
+python -m pytradingview --search EURUSD --max 50
+```
+
+## Contributing
+
+Contributions are welcome! Please open issues or PRs to collaborate.
