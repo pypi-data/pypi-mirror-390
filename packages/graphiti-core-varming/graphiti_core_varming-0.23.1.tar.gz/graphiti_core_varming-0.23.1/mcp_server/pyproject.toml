@@ -1,0 +1,134 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "config"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project]
+name = "graphiti-mcp-varming"
+version = "1.0.5"
+description = "Graphiti MCP Server - Enhanced fork with additional tools by Varming"
+readme = "README.md"
+requires-python = ">=3.10,<4"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Varming", email = "varming@example.com"}
+]
+keywords = ["mcp", "graphiti", "knowledge-graph", "llm", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "mcp>=1.21.0",
+    "openai>=1.91.0",
+    "graphiti-core-varming>=0.23.1",  # Varming fork with database parameter fix (0.23.1+varming.1)
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+graphiti-mcp-varming = "src.graphiti_mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/Varming73/graphiti"
+Repository = "https://github.com/Varming73/graphiti"
+Issues = "https://github.com/Varming73/graphiti/issues"
+
+[project.optional-dependencies]
+# FalkorDB support (Neo4j is included in graphiti-core-varming by default)
+falkordb = ["graphiti-core-varming[falkordb]>=0.23.1"]
+
+# Azure support
+azure = [
+    "azure-identity>=1.21.0",
+]
+
+# LLM/Embedder providers (lightweight - no sentence-transformers)
+api-providers = [
+    "google-genai>=1.8.0",
+    "anthropic>=0.49.0",
+    "groq>=0.2.0",
+    "voyageai>=0.2.3",
+]
+
+# LLM/Embedder providers (includes heavy sentence-transformers for local embeddings)
+providers = [
+    "google-genai>=1.8.0",
+    "anthropic>=0.49.0",
+    "groq>=0.2.0",
+    "voyageai>=0.2.3",
+    "sentence-transformers>=2.0.0",
+]
+
+# All optional features
+all = [
+    "graphiti-core-varming[falkordb]>=0.23.1",
+    "azure-identity>=1.21.0",
+    "google-genai>=1.8.0",
+    "anthropic>=0.49.0",
+    "groq>=0.2.0",
+    "voyageai>=0.2.3",
+    "sentence-transformers>=2.0.0",
+]
+
+dev = [
+    "graphiti-core-varming>=0.23.1",
+    "httpx>=0.28.1",
+    "mcp>=1.21.0",
+    "pyright>=1.1.404",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.7.1",
+]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
+
+# Note: For local development, you can override graphiti-core-varming source:
+# [tool.uv.sources]
+# graphiti-core-varming = { path = "../", editable = true }
+
+[dependency-groups]
+dev = [
+    "faker>=37.12.0",
+    "psutil>=7.1.2",
+    "pytest-timeout>=2.4.0",
+    "pytest-xdist>=3.8.0",
+]
