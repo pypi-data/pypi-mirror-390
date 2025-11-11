@@ -1,0 +1,6 @@
+from collections.abc import Callable
+from typing import Any
+
+class UserProperty[T]:
+    def __init__(self, method: Callable[[Any], T], /) -> None: ...
+    def __get__(self, obj: Any, objtype: type[Any] = ...) -> T: ...

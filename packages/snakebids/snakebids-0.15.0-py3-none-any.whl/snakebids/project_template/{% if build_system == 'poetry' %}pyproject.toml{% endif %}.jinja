@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "{{ app_full_name }}"
+version = {{ app_version | toml_string }}
+description = {{ app_description | toml_string }}
+readme = "README.md"
+{% if license -%}
+license = {{ license | toml_string }}
+{%- endif %}
+{% if full_name -%}
+authors = [
+    {% if email -%}
+        {{ (full_name + " <" + email + ">") | toml_string }}
+    {%- else -%}
+    {{ full_name | toml_string }}
+    {%- endif %}
+]
+{%- endif %}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[tool.poetry.dependencies]
+python = "{{ python_version }}"
+snakemake = [
+    { version=">={{ snakemake_version }},<8", python = "<3.11" },
+    { version=">=8.1.2", python = ">=3.11" },
+]
+snakebids = {{ snakebids_version | format_poetry }}
+{#- newer pulps are incompatible with old snakemakes, and we need to support
+old snakemakes for python versions <3.11. So cap pulp to the last working
+version
+#}
+pulp = { version="<2.8.0", python = "<3.11" }
+
+[tool.poetry.scripts]
+{{ name_slug }} = "{{ name_slug }}.run:app.run"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,60 @@
+[project]
+name = {{ app_full_name | toml_string }}
+version = {{ app_version | toml_string }}
+description = {{ app_description | toml_string }}
+readme = "README.md"
+{% if license -%}
+license = {{ license | toml_string }}
+{%- endif %}
+{% if full_name or email -%}
+authors = [
+    { {{ '' }}
+        {%- if full_name -%}
+            name = {{ full_name | toml_string }}
+        {%- endif -%}
+        {%- if full_name and email -%}
+            ,{{ ' ' }}
+        {%- endif -%}
+        {%- if email -%}
+            email = {{ email | toml_string }}
+        {%- endif -%}
+    {{ ' ' }}}
+]
+{%- endif %}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+requires-python = "{{ python_version }}"
+dependencies = [
+    "snakebids {{ snakebids_version | toml_encode }}",
+    "snakemake>={{ snakemake_version }},<8; python_version < \"3.11\"",
+    "snakemake>=8.1.2; python_version >= \"3.11\"",
+    {#- newer pulps are incompatible with old snakemakes, and we need to support
+    old snakemakes for python versions <3.11. So cap pulp to the last working
+    version
+    #}
+    "pulp < 2.8.0; python_version < \"3.11\"",
+]
+
+[project.scripts]
+{{ name_slug }} = "{{ name_slug }}.run:app.run"
+
+[build-system]
+{% if build_system == "flit" -%}
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+{%- elif build_system == "hatch" -%}
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+{%- else -%}
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+{%- endif %}
+
+{%- if snakebids_is_direct_reference == "True" and build_system == "hatch" %}
+
+[tool.hatch.metadata]
+allow-direct-references = true
+{%- endif %}
