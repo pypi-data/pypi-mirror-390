@@ -1,0 +1,85 @@
+[project]
+name = "os-normalizer"
+version = "0.5.1"
+description = "Normalize raw OS strings/metadata into structured data (family, product, version, arch)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+license = { file = "LICENSE" }
+keywords = ["os", "normalize", "cpe", "fingerprint", "parsing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Operating System",
+]
+
+[project.urls]
+Homepage = "https://github.com/johnscillieri/os-normalizer"
+Repository = "https://github.com/johnscillieri/os-normalizer"
+Issues = "https://github.com/johnscillieri/os-normalizer/issues"
+Changelog = "https://github.com/johnscillieri/os-normalizer/releases"
+
+[dependency-groups]
+dev = [
+    "ipython>=9.5.0",
+    "nox>=2025.5.1",
+    "nox-uv>=0.6.2",
+    "pytest>=8.4.2",
+    "ruff>=0.12.10",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "ALL", # include all the rules, including new ones
+]
+ignore = [
+    "D203",
+    "D213",
+    "D400",
+    "D415",
+    "S101",
+    "T201",
+    "COM812",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  ".nox",
+  ".ruff_cache",
+  ".pytest_cache",
+  ".venv",
+  "noxfile.py",
+  "uv.lock",
+  "os_normalizer.egg-info",
+  "tests",
+]
+
+# pyproject.toml
+[tool.uv-ship]
+release-branch = "main"
+tag-prefix = "v"
+allow-dirty = false
+changelog-path = "CHANGELOG.md"
+changelog-template = "- {message} [{hash}]"
+unreleased-tag = "Unreleased"
