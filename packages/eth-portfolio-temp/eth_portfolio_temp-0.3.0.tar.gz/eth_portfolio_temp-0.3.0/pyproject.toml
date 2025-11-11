@@ -1,0 +1,33 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+    "mypy[mypyc]>=1.18.2,<1.18.3",
+    "types-aiofiles",
+    "eth-brownie==1.22.0.dev0; sys_platform=='linux' and platform_machine != 'i686'",
+    "eth-typing==5.2.1",
+    "ez-a-sync>=0.32.7,<0.33",
+    "faster-async-lru==2.0.5",
+]
+
+[tool.mypy]
+exclude = ["build/","cache/","env/"]
+ignore_missing_imports = true
+disable_error_code = ["return"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hypothesis
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.venv
+  | cache
+  | dist
+  | env
+)/
+'''
