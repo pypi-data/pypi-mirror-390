@@ -1,0 +1,206 @@
+# Centralized Workflow Dependencies Specification
+#
+# This file defines all dependencies used in GitHub Actions workflows.
+# It serves as the single source of truth for workflow dependency management.
+#
+# Usage:
+#   - Reference this file when updating workflow dependencies
+#   - Validate dependencies: python scripts/validate_dependencies.py
+#   - Update this file when making changes
+
+version: "1.0"
+last_updated: "2024-10-23"
+python_versions:
+  - "3.12"
+  - "3.13"
+
+dependencies:
+  validation:
+    description: "Dependencies for validation phase"
+    installation_command: "pip install requests tomli-w"
+    packages:
+      - name: requests
+        version: ">=2.25.0"
+        latest_tested: "2.32.5"
+        purpose: "HTTP requests for API validation and PyPI interaction"
+        required: true
+        security_critical: false
+
+      - name: tomli-w
+        version: ">=1.0.0"
+        latest_tested: "1.2.0"
+        purpose: "Writing TOML files for configuration updates (pyproject.toml)"
+        required: true
+        security_critical: false
+        notes: |
+          IMPORTANT: The correct package name is 'tomli-w' (with hyphen), not 'tomllib-w'.
+          For reading TOML files, use built-in 'tomllib' module (Python 3.11+).
+
+  build:
+    description: "Dependencies for building packages"
+    installation_command: "pip install build twine wheel setuptools"
+    packages:
+      - name: build
+        version: "latest"
+        latest_tested: "1.3.0"
+        purpose: "Building Python packages (source distribution and wheel)"
+        required: true
+        security_critical: false
+
+      - name: twine
+        version: "latest"
+        latest_tested: "6.2.0"
+        purpose: "Uploading packages to PyPI and validating distributions"
+        required: true
+        security_critical: true
+        notes: |
+          Security: Use API tokens stored in GitHub Secrets.
+          Always use --non-interactive flag in CI/CD.
+
+      - name: wheel
+        version: "latest"
+        latest_tested: "0.45.1"
+        purpose: "Building wheel distributions"
+        required: true
+        security_critical: false
+
+      - name: setuptools
+        version: "latest"
+        latest_tested: "80.9.0"
+        purpose: "Package building and installation utilities"
+        required: true
+        security_critical: false
+
+  security:
+    description: "Dependencies for security scanning and quality checks"
+    installation_command: "pip install bandit safety"
+    packages:
+      - name: bandit
+        version: ">=1.7.0"
+        latest_tested: "1.8.6"
+        purpose: "Security vulnerability scanning for Python code"
+        required: true
+        security_critical: true
+
+      - name: safety
+        version: "latest"
+        latest_tested: "3.6.2"
+        purpose: "Checking dependencies for known security vulnerabilities"
+        required: true
+        security_critical: true
+        notes: |
+          Run before every release to check for CVEs.
+          Keep vulnerability database updated.
+
+maintenance:
+  schedule:
+    security_updates: "monthly"
+    dependency_review: "quarterly"
+    major_upgrades: "annually"
+
+  procedures:
+    validation: |
+      1. Run: python scripts/validate_dependencies.py --verbose
+      2. Check Python compatibility for target versions
+      3. Review security scan results
+      4. Test in isolated environment
+
+    upgrade: |
+      1. Check for updates: python scripts/update_dependency.py {package-name} --check-only
+      2. Test update: python scripts/update_dependency.py {package-name} --verbose
+      3. Review release notes and breaking changes
+      4. Update this file with new version
+      5. Update this file with new version information
+      6. Test workflow in dry-run mode
+      7. Commit changes with descriptive message
+
+      Follow the upgrade helper commands above for detailed procedures.
+
+    upgrade_helper: |
+      Use the update helper script for semi-automated updates:
+
+      # Check for updates
+      python scripts/update_dependency.py {package-name} --check-only
+
+      # Test update with all Python versions
+      python scripts/update_dependency.py {package-name} --verbose
+
+      # Test specific version
+      python scripts/update_dependency.py {package-name} --test-version 2.0.0 --verbose
+
+      # Dry run to see what would happen
+      python scripts/update_dependency.py {package-name} --dry-run
+
+  rollback: |
+    If a dependency update causes issues:
+    1. Revert to previous version in workflow files
+    2. Document the issue in this file
+    3. Create issue to track resolution
+    4. Test rollback in dry-run mode
+
+    Use the rollback steps above for detailed procedures.
+
+security:
+  token_management:
+    pypi_token:
+      secret_name: "PYPI_API_TOKEN"
+      format: "pypi-*"
+      scope: "project-specific"
+      permissions: "upload-only"
+      rotation_period: "90 days"
+
+  best_practices:
+    - "Only install packages from PyPI"
+    - "Verify package integrity with checksums"
+    - "Run security scans before every release"
+    - "Use HTTPS for all package downloads"
+    - "Validate SSL certificates"
+    - "Set reasonable network timeouts"
+    - "Minimize number of dependencies"
+    - "Review package maintainer reputation"
+
+troubleshooting:
+  common_issues:
+    - issue: "Package not found on PyPI"
+      causes:
+        - "Incorrect package name (e.g., tomllib-w vs tomli-w)"
+        - "Package removed from PyPI"
+        - "Typo in package name"
+      resolution:
+        - "Verify package name on https://pypi.org/"
+        - "Run validation script"
+        - "Check for alternative packages"
+
+    - issue: "Version compatibility problems"
+      causes:
+        - "Python version incompatibility"
+        - "Conflicting dependency versions"
+        - "Breaking changes in new version"
+      resolution:
+        - "Check package Python version requirements"
+        - "Review package changelog"
+        - "Pin to last known working version"
+        - "Test in isolated environment"
+
+    - issue: "Security vulnerabilities detected"
+      causes:
+        - "Outdated package versions"
+        - "Known CVEs in dependencies"
+        - "Insecure code patterns"
+      resolution:
+        - "Review vulnerability details"
+        - "Update to patched version"
+        - "Consider alternative packages"
+        - "Document risk acceptance if needed"
+
+references:
+  - name: "PyPI Package Index"
+    url: "https://pypi.org/"
+  - name: "Python Packaging Guide"
+    url: "https://packaging.python.org/"
+  - name: "Twine Documentation"
+    url: "https://twine.readthedocs.io/"
+  - name: "Security Setup Guide"
+    url: "../docs/SECURITY_SETUP.md"
+  - name: "Workflow Dependencies Specification"
+    url: "../.github/workflow-dependencies.yml"

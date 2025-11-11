@@ -1,0 +1,82 @@
+#!/bin/bash
+# Pre-commit hook to validate version consistency
+# This hook ensures that IF version files are being modified, they remain consistent
+
+set -e
+
+echo "🔍 Running pre-commit version consistency check..."
+
+# Check if sync_versions.py exists
+if [ ! -f "scripts/sync_versions.py" ]; then
+    echo "⚠️ Version sync script not found, skipping version check"
+    exit 0
+fi
+
+# Check if Python is available
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️ Python 3 not found, skipping version check"
+    exit 0
+fi
+
+# Check if tomli is available
+if ! python3 -c "import tomli" 2>/dev/null; then
+    echo "⚠️ tomli not available, installing..."
+    pip3 install tomli --user || {
+        echo "⚠️ Could not install tomli, skipping version check"
+        exit 0
+    }
+fi
+
+# Check if version-related files are being modified
+version_files_changed=false
+
+# Check staged files for version-related changes
+if git diff --cached --name-only | grep -E "(pyproject\.toml|src/riveter/cli\.py|\.rb$)" > /dev/null; then
+    version_files_changed=true
+    echo "📝 Version-related files are being modified"
+fi
+
+# If no version files are being changed, skip validation
+if [ "$version_files_changed" = false ]; then
+    echo "ℹ️ No version-related files modified, skipping version consistency check"
+    exit 0
+fi
+
+# Check if this is a version bump commit (look for version changes in pyproject.toml)
+if git diff --cached pyproject.toml | grep -E "^\+.*version.*=" > /dev/null 2>&1; then
+    echo "🔄 Version bump detected in pyproject.toml"
+    
+    # For version bump commits, we expect some inconsistency that will be fixed by sync
+    echo "ℹ️ Version bump commit detected - consistency will be validated in CI"
+    echo "💡 After this commit, run: python3 scripts/sync_versions.py --sync"
+    exit 0
+fi
+
+# For other changes to version files, validate consistency
+echo "🔍 Validating version consistency for non-version-bump changes..."
+
+if python3 scripts/sync_versions.py --validate 2>/dev/null; then
+    echo "✅ Version consistency check passed"
+else
+    echo "⚠️ Version inconsistency detected"
+    echo ""
+    echo "This appears to be a change to version-related files without updating pyproject.toml."
+    echo "Please ensure version consistency:"
+    echo ""
+    echo "1. If you're making a version bump:"
+    echo "   - Update pyproject.toml version first"
+    echo "   - Then run: python3 scripts/sync_versions.py --sync"
+    echo ""
+    echo "2. If you're not making a version bump:"
+    echo "   - Ensure your changes don't affect version reporting"
+    echo "   - Or run: python3 scripts/sync_versions.py --sync"
+    echo ""
+    echo "3. To bypass this check (not recommended):"
+    echo "   - git commit --no-verify"
+    
+    # Don't fail the commit, just warn
+    echo ""
+    echo "⚠️ Proceeding with commit, but please address version consistency"
+fi
+
+echo "✅ Pre-commit version check completed"

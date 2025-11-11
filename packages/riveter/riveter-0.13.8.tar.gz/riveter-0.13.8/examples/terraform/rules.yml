@@ -1,0 +1,111 @@
+rules:
+  - id: vpc-dns-enabled
+    description: VPCs must have DNS hostnames and support enabled
+    resource_type: aws_vpc
+    assert:
+      enable_dns_hostnames: true
+
+  - id: subnet-az-spread
+    description: Production subnets must be spread across multiple AZs
+    resource_type: aws_subnet
+    filter:
+      tags:
+        Environment: production
+    assert:
+      availability_zone: us-west-2a
+
+  - id: ec2-instance-size
+    description: Production EC2 instances must be at least t3.large
+    resource_type: aws_instance
+    filter:
+      tags:
+        Environment: production
+    assert:
+      instance_type: t3.large
+
+  - id: ec2-ebs-encryption
+    description: All EBS volumes must be encrypted
+    resource_type: aws_instance
+    assert:
+      root_block_device:
+        - volume_size: 100
+          volume_type: gp3
+          encrypted: true
+
+  - id: rds-production-settings
+    description: Production RDS instances must meet security and HA requirements
+    resource_type: aws_db_instance
+    filter:
+      tags:
+        Environment: production
+    assert:
+      storage_encrypted: true
+      multi_az: true
+      publicly_accessible: false
+      backup_retention_period: 30
+      storage_type: gp3
+
+  - id: s3-bucket-versioning
+    description: S3 buckets must have versioning enabled
+    resource_type: aws_s3_bucket_versioning
+    assert:
+      versioning_configuration:
+        - status: Enabled
+
+  - id: s3-bucket-encryption
+    description: S3 buckets must have encryption enabled
+    resource_type: aws_s3_bucket_server_side_encryption_configuration
+    assert:
+      rule:
+        - apply_server_side_encryption_by_default:
+            - sse_algorithm: AES256
+
+  - id: s3-bucket-public-access
+    description: S3 buckets must block public access
+    resource_type: aws_s3_bucket_public_access_block
+    assert:
+      block_public_acls: true
+      block_public_policy: true
+      ignore_public_acls: true
+      restrict_public_buckets: true
+
+  - id: security-group-allowed-ports
+    description: Security groups must only allow HTTP and HTTPS from 0.0.0.0/0
+    resource_type: aws_security_group
+    assert:
+      ingress:
+        - from_port: 443
+          to_port: 443
+          protocol: tcp
+          cidr_blocks: ["0.0.0.0/0"]
+        - from_port: 80
+          to_port: 80
+          protocol: tcp
+          cidr_blocks: ["0.0.0.0/0"]
+
+  - id: required-tags
+    description: All resources must have required tags
+    resource_type: "*"
+    filter:
+      tags:
+        Environment: present
+    assert:
+      tags:
+        Name: present
+        Owner: present
+        Project: present
+        CostCenter: present
+
+  # This rule will be skipped since there's no EKS cluster in the main.tf file
+  - id: eks-cluster-version
+    description: EKS clusters must use at least version 1.27
+    resource_type: aws_eks_cluster
+    assert:
+      version: "1.27"
+
+  # This rule will also be skipped - no EKS node groups in main.tf
+  - id: eks-node-group-disk-size
+    description: EKS node groups must have at least 50GB disk size
+    resource_type: aws_eks_node_group
+    assert:
+      disk_size: 50

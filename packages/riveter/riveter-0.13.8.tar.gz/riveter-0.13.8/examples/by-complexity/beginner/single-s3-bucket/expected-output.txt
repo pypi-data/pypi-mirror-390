@@ -1,0 +1,105 @@
+# Expected Output Examples
+
+## Successful Validation (All Rules Pass)
+
+```
+$ riveter scan -r s3-security-rules.yml -t main.tf
+
+Scanning Terraform configuration...
+Found 4 resources to validate
+
+✅ S3 bucket must have versioning enabled
+   Resource: aws_s3_bucket_versioning.example
+   Status: PASS
+
+✅ S3 bucket must have encryption enabled
+   Resource: aws_s3_bucket_server_side_encryption_configuration.example
+   Status: PASS
+
+✅ S3 bucket must block public access
+   Resource: aws_s3_bucket_public_access_block.example
+   Status: PASS
+
+✅ S3 bucket must follow naming convention
+   Resource: aws_s3_bucket.example
+   Status: PASS
+
+✅ S3 bucket must have required tags
+   Resource: aws_s3_bucket.example
+   Status: PASS
+
+Summary: 5 rules passed, 0 failed
+Validation completed successfully!
+```
+
+## Failed Validation Example (Versioning Disabled)
+
+If you comment out the versioning configuration:
+
+```
+$ riveter scan -r s3-security-rules.yml -t main.tf
+
+Scanning Terraform configuration...
+Found 3 resources to validate
+
+❌ S3 bucket must have versioning enabled
+   Resource: aws_s3_bucket_versioning.example
+   Status: FAIL
+   Error: Resource not found - versioning configuration missing
+
+✅ S3 bucket must have encryption enabled
+   Resource: aws_s3_bucket_server_side_encryption_configuration.example
+   Status: PASS
+
+✅ S3 bucket must block public access
+   Resource: aws_s3_bucket_public_access_block.example
+   Status: PASS
+
+✅ S3 bucket must follow naming convention
+   Resource: aws_s3_bucket.example
+   Status: PASS
+
+✅ S3 bucket must have required tags
+   Resource: aws_s3_bucket.example
+   Status: PASS
+
+Summary: 4 rules passed, 1 failed
+Validation failed - please fix the issues above
+```
+
+## Partial Failure Example (Missing Tags)
+
+If you remove the tags from the bucket:
+
+```
+$ riveter scan -r s3-security-rules.yml -t main.tf
+
+Scanning Terraform configuration...
+Found 4 resources to validate
+
+✅ S3 bucket must have versioning enabled
+   Resource: aws_s3_bucket_versioning.example
+   Status: PASS
+
+✅ S3 bucket must have encryption enabled
+   Resource: aws_s3_bucket_server_side_encryption_configuration.example
+   Status: PASS
+
+✅ S3 bucket must block public access
+   Resource: aws_s3_bucket_public_access_block.example
+   Status: PASS
+
+✅ S3 bucket must follow naming convention
+   Resource: aws_s3_bucket.example
+   Status: PASS
+
+❌ S3 bucket must have required tags
+   Resource: aws_s3_bucket.example
+   Status: FAIL
+   Details:
+     - Missing required tag: Name
+     - Missing required tag: Environment
+
+Summary: 4 rules passed, 1 failed
+Validation failed - please fix the issues above
+```

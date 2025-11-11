@@ -1,0 +1,44 @@
+# CI/CD Riveter Configuration
+# This configuration is optimized for continuous integration and deployment pipelines.
+
+# Comprehensive rule coverage for CI/CD
+rule_packs:
+  - aws-security      # AWS security best practices
+  - cis-aws          # CIS compliance
+  - soc2-security    # SOC 2 compliance
+
+# No custom rule directories in CI/CD (use rule packs only)
+rule_dirs: []
+
+# JUnit XML output for CI/CD integration
+output_format: junit
+
+# Only fail on errors and warnings
+min_severity: warning
+
+# Include all rules except development-specific ones
+include_rules: []
+exclude_rules:
+  - "*dev*"           # Exclude development rules
+  - "*local*"         # Exclude local-only rules
+
+# CI/CD optimized settings
+debug: false
+parallel: true                          # Enable parallel processing for speed
+cache_dir: /tmp/riveter-cache          # Temporary cache directory
+baseline: null                         # No baseline in CI/CD (scan everything)
+
+# Structured logging for CI/CD systems
+log_level: INFO
+log_format: json
+
+# CI/CD environment context
+environment: ci
+
+# Performance settings for CI/CD
+max_workers: 2                         # Limit workers in CI environment
+timeout: 180                           # 3-minute timeout for CI jobs
+
+# Exit behavior
+fail_on_warnings: true                 # Fail CI/CD pipeline on warnings
+fail_on_errors: true                   # Fail CI/CD pipeline on errors

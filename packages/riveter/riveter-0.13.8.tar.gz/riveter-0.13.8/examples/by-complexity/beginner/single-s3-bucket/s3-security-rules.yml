@@ -1,0 +1,66 @@
+# Basic S3 security validation rules for learning Riveter
+
+rules:
+  - name: "S3 bucket must have versioning enabled"
+    description: "Ensures S3 bucket has versioning enabled for data protection"
+    resource_type: "aws_s3_bucket_versioning"
+    severity: "high"
+    assertions:
+      - key: "versioning_configuration.0.status"
+        operator: "equals"
+        value: "Enabled"
+        message: "S3 bucket versioning must be enabled to protect against accidental deletion or modification"
+
+  - name: "S3 bucket must have encryption enabled"
+    description: "Ensures S3 bucket has server-side encryption configured"
+    resource_type: "aws_s3_bucket_server_side_encryption_configuration"
+    severity: "high"
+    assertions:
+      - key: "rule.0.apply_server_side_encryption_by_default.0.sse_algorithm"
+        operator: "in"
+        value: ["AES256", "aws:kms"]
+        message: "S3 bucket must use either AES256 or KMS encryption"
+
+  - name: "S3 bucket must block public access"
+    description: "Ensures S3 bucket has public access blocked for security"
+    resource_type: "aws_s3_bucket_public_access_block"
+    severity: "critical"
+    assertions:
+      - key: "block_public_acls"
+        operator: "equals"
+        value: true
+        message: "S3 bucket must block public ACLs"
+      - key: "block_public_policy"
+        operator: "equals"
+        value: true
+        message: "S3 bucket must block public policies"
+      - key: "ignore_public_acls"
+        operator: "equals"
+        value: true
+        message: "S3 bucket must ignore public ACLs"
+      - key: "restrict_public_buckets"
+        operator: "equals"
+        value: true
+        message: "S3 bucket must restrict public bucket access"
+
+  - name: "S3 bucket must follow naming convention"
+    description: "Ensures S3 bucket follows organizational naming standards"
+    resource_type: "aws_s3_bucket"
+    severity: "medium"
+    assertions:
+      - key: "bucket"
+        operator: "matches"
+        value: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        message: "S3 bucket name must be lowercase, start and end with alphanumeric characters"
+
+  - name: "S3 bucket must have required tags"
+    description: "Ensures S3 bucket has required tags for governance"
+    resource_type: "aws_s3_bucket"
+    severity: "low"
+    assertions:
+      - key: "tags.Name"
+        operator: "exists"
+        message: "S3 bucket must have a Name tag"
+      - key: "tags.Environment"
+        operator: "exists"
+        message: "S3 bucket must have an Environment tag"
