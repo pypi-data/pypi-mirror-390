@@ -1,0 +1,258 @@
+Metadata-Version: 2.4
+Name: livekit-plugins-talklabs
+Version: 1.0.2
+Summary: TalkLabs TTS plugin for LiveKit Agents
+Home-page: https://github.com/talklabs/livekit-plugins-talklabs
+Author: TalkLabs
+Author-email: TalkLabs <support@talklabs.com.br>
+License: MIT
+Project-URL: Homepage, https://github.com/talklabs/livekit-plugins-talklabs
+Project-URL: Documentation, https://docs.talklabs.com.br
+Project-URL: Repository, https://github.com/talklabs/livekit-plugins-talklabs
+Project-URL: Issues, https://github.com/talklabs/livekit-plugins-talklabs/issues
+Keywords: livekit,webrtc,realtime,tts,text-to-speech,talklabs,portuguese
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Multimedia :: Sound/Audio :: Speech
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: livekit-agents>=1.2.0
+Requires-Dist: talklabs>=2.0.0
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# livekit-plugins-talklabs
+
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![LiveKit](https://img.shields.io/badge/LiveKit-Compatible-green)](https://livekit.io)
+[![PyPI version](https://badge.fury.io/py/livekit-plugins-talklabs.svg)](https://badge.fury.io/py/livekit-plugins-talklabs)
+
+TalkLabs TTS plugin for [LiveKit Agents](https://github.com/livekit/agents). Provides high-quality Brazilian Portuguese text-to-speech synthesis with streaming support.
+
+## Installation
+
+```bash
+pip install livekit-plugins-talklabs
+```
+
+## Compatibility
+
+This plugin is compatible with LiveKit Agents Framework and can be used as a drop-in TTS provider alongside other LiveKit plugins:
+- ✅ Works with LiveKit Voice Assistant
+- ✅ Compatible with all LiveKit STT providers (Deepgram, OpenAI, etc.)
+- ✅ Compatible with all LiveKit LLM providers (OpenAI, Anthropic, etc.)
+
+## Usage
+
+### Basic Example
+
+```python
+from livekit.plugins.talklabs import TalkLabsTTS
+
+# Initialize TTS (same pattern as other LiveKit plugins)
+tts = TalkLabsTTS(
+    api_key="your-api-key"  # Get from https://talklabs.com.br
+)
+
+# Use with default voice (adam_rocha)
+tts = TalkLabsTTS(api_key="your-api-key")
+
+# Or specify custom settings
+tts = TalkLabsTTS(
+    api_key="your-api-key",
+    voice="maria_silva",    # Female voice
+    language="pt",          # Portuguese
+    speed=1.2,             # Slightly faster
+    sample_rate=24000      # High quality
+)
+```
+
+### With LiveKit Voice Assistant
+
+```python
+from livekit.agents import JobContext, WorkerOptions, cli
+from livekit.agents.voice_assistant import VoiceAssistant
+from livekit.plugins.openai import LLM
+from livekit.plugins.deepgram import STT
+from livekit.plugins.silero import VAD
+from livekit.plugins.talklabs import TalkLabsTTS
+import os
+
+async def entrypoint(ctx: JobContext):
+    # Create a voice assistant with TalkLabs TTS
+    assistant = VoiceAssistant(
+        vad=VAD.load(),
+        stt=STT(),
+        llm=LLM(),
+        tts=TalkLabsTTS(api_key=os.environ["TALKLABS_API_KEY"])  # Same as other plugins
+    )
+
+    await assistant.start(ctx.room)
+
+if __name__ == "__main__":
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+### Complete Integration Example
+
+```python
+from livekit.agents import JobContext, WorkerOptions, cli
+from livekit.agents.voice_assistant import VoiceAssistant
+from livekit.plugins.openai import LLM
+from livekit.plugins.deepgram import STT
+from livekit.plugins.silero import VAD
+from livekit.plugins.talklabs import TalkLabsTTS
+import os
+
+async def entrypoint(ctx: JobContext):
+    """LiveKit Voice Assistant with Brazilian Portuguese support."""
+
+    # Initialize plugins - all follow same pattern
+    vad = VAD.load()
+    stt = STT(language="pt-BR")  # Portuguese speech recognition
+    llm = LLM(model="gpt-4")
+    tts = TalkLabsTTS(api_key=os.environ["TALKLABS_API_KEY"])  # Portuguese TTS
+
+    # Create voice assistant
+    assistant = VoiceAssistant(
+        vad=vad,
+        stt=stt,
+        llm=llm,
+        tts=tts,  # TalkLabs as TTS provider
+    )
+
+    # Set Portuguese context
+    assistant.llm_context.append({
+        "role": "system",
+        "content": "You are a helpful assistant. Respond in Portuguese (pt-BR)."
+    })
+
+    await assistant.start(ctx.room)
+
+    # Greet in Portuguese
+    await assistant.say("Olá! Como posso ajudá-lo hoje?")
+
+if __name__ == "__main__":
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+## Available Voices
+
+| Voice | Gender | Description |
+|-------|--------|-------------|
+| `adam_rocha` | Male | Default voice, natural Brazilian accent |
+| `maria_silva` | Female | Clear and professional |
+| `carlos_santos` | Male | Deep and authoritative |
+| `ana_costa` | Female | Young and friendly |
+
+## Configuration
+
+### Environment Variables
+
+Set your API key as an environment variable:
+
+```bash
+export TALKLABS_API_KEY="your-api-key"
+```
+
+Then use it in your code:
+
+```python
+tts = TalkLabsTTS(api_key=os.environ["TALKLABS_API_KEY"])
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `api_key` | str | Required | Your TalkLabs API key |
+| `voice` | str | `"adam_rocha"` | Voice identifier |
+| `language` | str | `"pt"` | Language code |
+| `speed` | float | `1.0` | Speech speed (0.5-2.0) |
+| `sample_rate` | int | `24000` | Audio sample rate |
+| `base_url` | str | `"https://api.talklabs.com.br"` | API endpoint |
+
+## Comparison with Other LiveKit TTS Plugins
+
+| Plugin | Languages | Streaming | Best For |
+|--------|-----------|-----------|----------|
+| **livekit-plugins-talklabs** | Portuguese (pt-BR) | ✅ | Brazilian Portuguese applications |
+| livekit-plugins-openai | Multiple | ✅ | General purpose, English |
+| livekit-plugins-elevenlabs | Multiple | ✅ | High quality English voices |
+| livekit-plugins-cartesia | English | ✅ | Low latency English |
+
+## Working Example
+
+```python
+import asyncio
+import os
+from livekit.agents import JobContext, WorkerOptions, cli
+from livekit.agents.voice_assistant import VoiceAssistant
+from livekit.plugins.openai import LLM
+from livekit.plugins.deepgram import STT
+from livekit.plugins.silero import VAD
+from livekit.plugins.talklabs import TalkLabsTTS
+
+async def entrypoint(ctx: JobContext):
+    """Minimal working example."""
+
+    # Simple one-line TTS initialization like other plugins
+    assistant = VoiceAssistant(
+        vad=VAD.load(),
+        stt=STT(),
+        llm=LLM(),
+        tts=TalkLabsTTS(api_key=os.environ["TALKLABS_API_KEY"])
+    )
+
+    await assistant.start(ctx.room)
+
+if __name__ == "__main__":
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+## Features
+
+- 🎯 **Native LiveKit Integration**: Works seamlessly with LiveKit Agents Framework
+- 🔄 **Streaming Support**: Real-time audio streaming for low latency
+- 🇧🇷 **Brazilian Portuguese**: Optimized for pt-BR pronunciation
+- ⚡ **Low Latency**: < 200ms to first byte
+- 🎵 **High Quality**: 24kHz sample rate
+- 🔌 **Plugin Architecture**: Drop-in replacement for any LiveKit TTS provider
+
+## Requirements
+
+- Python 3.9+
+- LiveKit Agents 0.8.0+
+- TalkLabs API key (get from [talklabs.com.br](https://talklabs.com.br))
+
+## Support
+
+- 📧 **Email**: support@talklabs.com.br
+- 📖 **Documentation**: [docs.talklabs.com.br](https://docs.talklabs.com.br)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/talklabs/livekit-plugins-talklabs/issues)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+<div align="center">
+Made with ❤️ by <a href="https://talklabs.com.br">TalkLabs</a> for the LiveKit community
+</div>
