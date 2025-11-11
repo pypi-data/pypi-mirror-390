@@ -1,0 +1,2 @@
+class ShopifyRequestException(Exception):
+    pass
