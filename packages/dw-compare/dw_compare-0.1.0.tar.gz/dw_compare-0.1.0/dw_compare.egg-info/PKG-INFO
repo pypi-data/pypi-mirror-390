@@ -1,0 +1,206 @@
+Metadata-Version: 2.4
+Name: dw-compare
+Version: 0.1.0
+Summary: A Python CLI tool that compares two tabular datasets and reports what truly changed
+Author: Mohd Azmat
+Author-email: azmat.siddique.98@gmail.com
+License: MIT
+Project-URL: Source Repository, https://github.com/azmatsiddique/dw-compare
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: pandas
+Requires-Dist: numpy
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: summary
+
+# Data Whisperer 🔍
+
+A Python CLI tool that compares two tabular datasets and produces a concise, structured report highlighting what truly changed. Perfect for data analysts, ML engineers, and anyone who needs to understand how their data evolved between versions.
+
+## Features
+
+- **Structural Analysis**: Detects added, removed, and renamed columns with intelligent similarity matching
+- **Statistical Comparisons**: Tracks mean, median, standard deviation, and range changes for numeric columns
+- **Categorical Insights**: Identifies new and dropped categories, top value shifts
+- **Data Quality Metrics**: Reports on null ratios, duplicate rows, and outlier counts
+- **Multiple Output Formats**: Generate markdown reports and/or machine-readable JSON
+- **Smart Column Detection**: Automatically classifies columns as numeric, categorical, text, or datetime
+
+## Installation
+
+### Prerequisites
+
+- Python 3.7 or higher
+- pip
+
+### Install Dependencies
+
+```bash
+pip install pandas numpy
+```
+
+Or use a requirements file:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Basic Comparison
+
+```bash
+python dw_compare.py dataset_a.csv dataset_b.csv
+```
+
+This prints a markdown report to stdout comparing the two datasets.
+
+### Save Report to File
+
+```bash
+python dw_compare.py dataset_a.csv dataset_b.csv --output-save --output report.md
+```
+
+### Generate JSON Output
+
+```bash
+python dw_compare.py dataset_a.csv dataset_b.csv --json
+```
+
+### Combine Options
+
+```bash
+python dw_compare.py old_data.csv new_data.csv --output-save --output comparison.md --json
+```
+
+This saves both `comparison.md` and `comparison.json`.
+
+### Adjust Rename Detection Sensitivity
+
+```bash
+python dw_compare.py dataset_a.csv dataset_b.csv --rename-threshold 0.9
+```
+
+Higher values (closer to 1.0) require more similarity to detect renames. Default is 0.82.
+
+## Supported File Formats
+
+- CSV (`.csv`, `.txt`)
+- Excel (`.xls`, `.xlsx`)
+- JSON (`.json`)
+
+## Command-Line Arguments
+
+| Argument | Short | Description | Default |
+|----------|-------|-------------|---------|
+| `a` | - | Path to dataset A (older version) | Required |
+| `b` | - | Path to dataset B (newer version) | Required |
+| `--output` | `-o` | Markdown output filename | `dw_report.md` |
+| `--output-save` | - | Save output to files instead of printing | `False` |
+| `--json` | `-j` | Also generate JSON report | `False` |
+| `--rename-threshold` | - | Similarity threshold for rename detection (0-1) | `0.82` |
+
+## Report Contents
+
+The generated report includes:
+
+### Summary Section
+- Row count changes (delta)
+- Total null counts and percentages
+- Duplicate row counts
+
+### Structural Changes
+- Added columns
+- Removed columns
+- Probable column renames with similarity scores
+
+### Column-Level Analysis
+For each significant column, reports:
+
+**Numeric Columns:**
+- Mean, median, standard deviation
+- Percentage changes in mean values
+- Min/max range shifts
+- Outlier counts using IQR method
+- Null value changes
+
+**Categorical Columns:**
+- Unique value counts
+- Top categories and their frequencies
+- New categories in dataset B
+- Categories removed from dataset A
+
+### Renamed Column Comparisons
+Detailed comparison of columns that appear to be renamed, showing statistics from both old and new names.
+
+## Example Output
+
+```markdown
+# Data Whisperer Report
+
+## Summary
+- Row count A: 10000, B: 10500, Δ: 500
+- Total nulls A: 250 (2.50%) , B: 315 (3.00%)
+- Duplicate rows A: 12 , B: 8 , Δ: -4
+
+## Structural Changes
+- Added columns (2): email_verified, registration_date
+- Removed columns (1): user_status
+- Probable renames (1):
+  - usr_age -> user_age (similarity 0.875)
+
+## Column Level Changes (selected)
+
+### revenue
+- Type A: numeric, Type B: numeric
+- Mean: A: 45.23K , B: 48.76K
+- Mean % change: 7.80%
+- Std A: 12.34K , Std B: 13.21K
+- Outliers A: 45 , B: 52
+- Nulls A: 12 , B: 8
+```
+
+## Use Cases
+
+- **Version Control for Data**: Track changes between data pipeline runs
+- **A/B Test Analysis**: Compare control and treatment datasets
+- **Data Quality Monitoring**: Identify drift in production datasets
+- **Migration Validation**: Verify data transformations during ETL
+- **Model Retraining**: Understand how training data has evolved
+
+## Tips
+
+1. **Column Names Matter**: Use consistent naming conventions. The tool detects renames but works best with stable column names.
+2. **Focus on Top Changes**: The report prioritizes columns with the most significant statistical changes.
+3. **Large Files**: For very large datasets, consider sampling first or using the tool on aggregated summaries.
+4. **JSON for Automation**: Use `--json` output to build automated data quality pipelines.
+
+## Limitations
+
+- Designed for tabular data (rows and columns)
+- Does not perform row-level matching or diff
+- Column rename detection is heuristic-based
+- Very large files (>1GB) may require significant memory
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+## License
+
+MIT License - feel free to use and modify for your needs.
+
+## Author
+
+Data Whisperer
+
+---
+
+**Made for data analysts who want clarity, not clutter. Focus on what truly changed.** 📊
