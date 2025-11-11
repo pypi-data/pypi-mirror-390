@@ -1,0 +1,46 @@
+### Schema for fine-tuning configuration file
+
+train:                      ### ANCHOR: Training ML model
+  type: dict
+  required: True
+  schema:
+    num_models:               # Number of models to train. Default is 1
+      type: integer
+    init_data_paths:          # List of paths to initial data.
+      type: list
+      required: True
+
+    trainset_ratio:           # Ratio of training set. Default is 0.9
+      type: float
+    validset_ratio:           # Ratio of validation set. Default is 0.1
+      type: float
+    num_cores_buildgraph:     # number of cores for building graph data
+      type: integer
+
+    init_checkpoints:           # list of checkpoint files, each for each model
+      type: list
+
+    num_grad_updates:         # Maximum number of updates to guess num_epochs. Default is None
+      type: integer
+
+    distributed:
+      type: dict
+      schema:
+        distributed_backend:  # choices: 'mpi' or 'nccl'  'gloo'
+          type: string
+        cluster_type:         # choices: 'slurm' or 'sge'
+          type: string
+        gpu_per_node:         # only need in SGE batch type. Default is 1
+          type: integer
+
+    mlp_engine:               # ML engine. Default is 'sevenn'. Choices: 'sevenn'
+      type: string
+    sevenn_args:              ### See: https://github.com/MDIL-SNU/SevenNet/blob/main/example_inputs/training/input_full.yml
+      type: dict
+      schema:
+        model:
+          type: dict
+        train:
+          type: dict
+        data:
+          type: dict
