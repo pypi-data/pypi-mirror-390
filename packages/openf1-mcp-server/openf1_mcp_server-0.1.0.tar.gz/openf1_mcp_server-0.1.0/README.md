@@ -1,0 +1,436 @@
+# OpenF1 MCP Server
+
+A Model Context Protocol (MCP) server that provides AI assistants with access to real-time and historical Formula 1 data through the [OpenF1 API](https://openf1.org/).
+
+## Features
+
+- **15 comprehensive tools** for querying F1 data
+- **Real-time and historical data** access
+- **Flexible filtering** with comparison operators (=, >=, <=, >, <)
+- **MCP-compliant** for use with any MCP-compatible AI assistant
+- **Async operations** for optimal performance
+- **No authentication required** - OpenF1 API is public
+
+## Available Tools
+
+The server provides 16 comprehensive tools for querying F1 data:
+
+### Event Information
+- **`get_meetings`** - Query Grand Prix events and race weekends
+  - Filter by year, country, circuit, or date range
+  - Use `meeting_key="latest"` for the most recent event
+
+- **`get_sessions`** - Query practice, qualifying, sprint, and race sessions
+  - Filter by meeting, session type, or date range
+  - Use `session_key="latest"` for the most recent session
+
+### Driver Data
+- **`get_drivers`** - Query driver information and statistics
+  - Get driver details, team affiliations, and headshots
+  - Filter by driver number, name acronym, or team
+
+- **`get_laps`** - Query lap timing data
+  - Get lap times, sector times, and pit out laps
+  - Filter by driver, lap number, or lap duration range
+
+- **`get_position`** - Query driver positions during sessions
+  - Track position changes throughout the session
+  - Filter by driver, position range, or time period
+
+### Telemetry
+- **`get_car_data`** - Query car telemetry (speed, throttle, brake, DRS, gear, RPM)
+  - High-frequency telemetry data for performance analysis
+  - Filter by speed range, gear, throttle, brake, or DRS status
+
+- **`get_location`** - Query car location coordinates on track
+  - 3D position data (X, Y, Z coordinates)
+  - Useful for visualizing racing lines and overtakes
+
+### Race Events
+- **`get_race_control`** - Query race control messages and flags
+  - Official race direction communications
+  - Filter by flag type, category, or scope
+
+- **`get_pit`** - Query pit stop data
+  - Pit stop timing and duration
+  - Filter by driver, lap, or duration range
+
+- **`get_intervals`** - Query gap/interval data between drivers
+  - Time gaps to leader and car ahead
+  - Track battle intensity and field spread
+
+- **`get_overtakes`** - Query overtake information
+  - Position changes and overtaking maneuvers
+  - Filter by drivers involved or position
+
+### Strategy
+- **`get_stints`** - Query tyre stint and compound data
+  - Tyre compound choices and stint lengths
+  - Filter by compound, tyre age, or lap range
+
+- **`get_team_radio`** - Query team radio communications
+  - Audio recordings of driver-team communications
+  - Filter by driver or time period
+
+### Conditions
+- **`get_weather`** - Query weather conditions and track temperature
+  - Air/track temperature, humidity, wind, rainfall
+  - Updated every minute during sessions
+
+### Results
+- **`get_session_result`** - Query session results and final standings
+  - Final classification with times and gaps
+  - Filter by position, DNF/DNS/DSQ status
+
+- **`get_starting_grid`** - Query starting grid positions
+  - Grid positions and qualifying times
+  - Filter by position or lap time range
+
+## Installation
+
+### Using pip (recommended)
+
+```bash
+pip install openf1-mcp-server
+```
+
+### From source
+
+```bash
+git clone https://github.com/openf1/openf1-mcp-server.git
+cd openf1-mcp-server
+pip install -e .
+```
+
+### Development installation
+
+```bash
+git clone https://github.com/openf1/openf1-mcp-server.git
+cd openf1-mcp-server
+pip install -e ".[dev]"
+```
+
+## Usage
+
+### Running the server
+
+#### With uvx (recommended)
+
+```bash
+uvx openf1-mcp-server
+```
+
+#### With Python
+
+```bash
+python -m openf1_mcp.server
+```
+
+### MCP Client Configuration
+
+Add the following to your MCP client configuration file:
+
+#### Claude Desktop (macOS)
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "openf1": {
+      "command": "uvx",
+      "args": ["openf1-mcp-server"]
+    }
+  }
+}
+```
+
+#### Claude Desktop (Windows)
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "openf1": {
+      "command": "uvx",
+      "args": ["openf1-mcp-server"]
+    }
+  }
+}
+```
+
+#### Other MCP Clients
+
+Refer to your MCP client's documentation for configuration instructions. The server uses standard MCP protocol over stdio.
+
+## Example Queries
+
+Once configured, you can ask your AI assistant natural language questions like:
+
+### Basic Queries
+
+- "Show me the drivers in the latest F1 session"
+- "What was Max Verstappen's fastest lap in the last race?"
+- "Get the weather conditions for the Monaco Grand Prix 2024"
+- "Show me all overtakes in the latest race"
+- "What were the pit stop times for Lewis Hamilton in the last race?"
+
+### Advanced Queries
+
+- "Compare the lap times of Verstappen and Hamilton in the last race"
+- "Show me all yellow flag periods in the latest session"
+- "What tyre compounds did each driver use in their stints?"
+- "Get telemetry data showing speed and throttle for the fastest lap"
+- "Show me the gap between P1 and P2 throughout the race"
+- "Which drivers had pit stops under 3 seconds?"
+- "Get all team radio messages from the last 30 minutes of the race"
+
+### Tool-Specific Examples
+
+#### Meetings and Sessions
+```
+"Get all F1 meetings in 2024"
+"Show me the Monaco Grand Prix details"
+"What sessions are part of the latest meeting?"
+```
+
+#### Drivers and Performance
+```
+"List all drivers in session 9158"
+"Show me driver 1's lap times"
+"Get position changes for driver 44 during the race"
+```
+
+#### Telemetry and Location
+```
+"Show me car data for driver 1 when speed was above 300 km/h"
+"Get location coordinates for driver 16 during lap 10"
+"What was the throttle application in the fastest sector?"
+```
+
+#### Race Events
+```
+"Show me all race control messages about safety cars"
+"Get pit stop data for all drivers"
+"What were the intervals between the top 3 drivers?"
+```
+
+#### Strategy and Results
+```
+"Show me the tyre strategy for driver 1"
+"Get the final race results"
+"What was the starting grid for the race?"
+"Show me all overtakes in the first 10 laps"
+```
+
+The AI assistant will automatically use the appropriate tools to fetch and present the data.
+
+## Common Use Cases
+
+### Race Analysis
+```
+1. Get the latest race session
+2. Query lap times for all drivers
+3. Compare fastest laps and sector times
+4. Analyze pit stop strategies
+5. Review overtakes and position changes
+```
+
+### Driver Performance
+```
+1. Get driver information and team
+2. Query all laps for the driver
+3. Get telemetry data for fastest lap
+4. Compare with teammate's performance
+5. Analyze tyre strategy and stint lengths
+```
+
+### Strategy Analysis
+```
+1. Get all pit stops in the session
+2. Query tyre stints and compounds
+3. Analyze lap time degradation
+4. Compare different strategies
+5. Review team radio for strategy calls
+```
+
+### Incident Investigation
+```
+1. Get race control messages for the time period
+2. Query positions to see who was involved
+3. Get telemetry data for the incident location
+4. Review team radio communications
+5. Check for flag periods and safety cars
+```
+
+### Weather Impact
+```
+1. Get weather data throughout the session
+2. Correlate temperature with lap times
+3. Analyze tyre performance in different conditions
+4. Track changing conditions during the race
+5. Compare dry vs wet session performance
+```
+
+## Requirements
+
+- Python 3.10 or higher
+- Internet connection to access the OpenF1 API
+- MCP-compatible client (e.g., Claude Desktop, or any MCP client)
+
+## Development
+
+### Running tests
+
+```bash
+pytest
+```
+
+### Code formatting
+
+```bash
+black src tests
+```
+
+### Linting
+
+```bash
+ruff check src tests
+```
+
+## Data Availability
+
+### What data is available?
+
+The OpenF1 API provides data from the **2023 season onwards**. Historical data from earlier seasons is not available.
+
+### Real-time vs Historical Data
+
+- **Live sessions**: Basic data (positions, lap times) available in real-time
+- **Telemetry data**: Available after the session concludes
+- **Team radio**: Available shortly after broadcast
+- **Results**: Available immediately after session ends
+
+### Data completeness
+
+Not all data is available for all sessions:
+- **Practice sessions**: Limited data compared to races
+- **Testing sessions**: May have incomplete data
+- **Older sessions**: Some endpoints may have gaps
+
+### Best Practices
+
+1. **Use "latest" for recent data**: `session_key="latest"` always gets the most recent session
+2. **Filter large datasets**: Always use filters for telemetry and location data
+3. **Check session type**: Different session types have different data availability
+4. **Handle empty results**: Not all sessions have all data types
+5. **Use specific parameters**: More specific queries return faster results
+
+## API Rate Limits
+
+The OpenF1 API has rate limits of **30 requests per 10 seconds per IP address**. The server will return rate limit errors if exceeded. To avoid rate limiting:
+
+- Use filters to reduce the number of requests needed
+- Avoid rapid-fire queries
+- Cache results when possible
+- Use date ranges and driver filters for large datasets
+
+## Troubleshooting
+
+### Server not starting
+
+**Problem**: Server fails to start or crashes immediately
+
+**Solutions**:
+- Ensure Python 3.10+ is installed: `python --version`
+- Verify dependencies are installed: `pip list | grep mcp`
+- Try reinstalling: `pip install --force-reinstall openf1-mcp-server`
+- Check for port conflicts if running multiple MCP servers
+- Review MCP client logs for error messages
+
+### Connection errors
+
+**Problem**: "Connection refused" or "Cannot connect to API" errors
+
+**Solutions**:
+- Verify internet connectivity
+- Check if OpenF1 API is accessible: `curl https://api.openf1.org/v1/drivers?session_key=latest`
+- Review firewall settings that might block outgoing HTTPS connections
+- Try accessing the API directly in a browser: https://api.openf1.org/v1/drivers?session_key=latest
+- Check if your network requires a proxy configuration
+
+### Empty results
+
+**Problem**: Queries return no data or empty arrays
+
+**Solutions**:
+- Verify the session/meeting exists using the [OpenF1 API documentation](https://openf1.org/)
+- Check parameter values are correct:
+  - Driver numbers are integers (e.g., 1, 44, 16)
+  - Session keys are valid integers or "latest"
+  - Date formats are ISO 8601 (e.g., "2024-03-24T15:00:00Z")
+- Some data may not be available for:
+  - Very old sessions (pre-2023)
+  - Live sessions (telemetry available after session ends)
+  - Practice sessions (limited data compared to races)
+- Try using `session_key="latest"` to test with recent data
+
+### Rate limiting
+
+**Problem**: "Rate limit exceeded" errors
+
+**Solutions**:
+- The OpenF1 API limits requests to 30 per 10 seconds per IP
+- Wait 10 seconds before retrying
+- Reduce the frequency of queries
+- Use more specific filters to reduce the number of requests needed
+- Consider caching results for repeated queries
+
+### Tool not found
+
+**Problem**: AI assistant says tool doesn't exist
+
+**Solutions**:
+- Restart your MCP client (e.g., Claude Desktop)
+- Verify the server is running: check MCP client logs
+- Ensure the configuration file is correct and saved
+- Try removing and re-adding the server configuration
+- Check that the server name in config matches what you're using
+
+### Performance issues
+
+**Problem**: Queries are slow or timeout
+
+**Solutions**:
+- Use filters to limit result size (especially for telemetry and location data)
+- Specify `driver_number` when querying large datasets
+- Use date ranges to limit time periods
+- Avoid querying entire sessions of telemetry data without filters
+- Consider that some endpoints return large amounts of data by design
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [OpenF1](https://openf1.org/) for providing the excellent F1 data API
+- [Model Context Protocol](https://modelcontextprotocol.io/) for the MCP specification
+- The Formula 1 community for their passion and support
+
+## Links
+
+- [OpenF1 API Documentation](https://openf1.org/)
+- [MCP Documentation](https://modelcontextprotocol.io/)
+- [GitHub Repository](https://github.com/openf1/openf1-mcp-server)
