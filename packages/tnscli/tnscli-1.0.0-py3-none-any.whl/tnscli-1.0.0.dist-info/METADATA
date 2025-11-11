@@ -1,0 +1,213 @@
+Metadata-Version: 2.4
+Name: tnscli
+Version: 1.0.0
+Summary: Command-line interface for TAO Name Service - Similar to btcli for Bittensor
+Home-page: https://github.com/taonames/tns-cli
+Author: TNS Team
+Author-email: TNS Team <contact@taonames.com>
+License: MIT
+Project-URL: Homepage, https://github.com/taonames/tns-cli
+Project-URL: Bug Reports, https://github.com/taonames/tns-cli/issues
+Project-URL: Source, https://github.com/taonames/tns-cli
+Keywords: tao,bittensor,blockchain,cli,domain-names,tns
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Topic :: System :: Systems Administration
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click==8.1.7
+Requires-Dist: requests==2.31.0
+Requires-Dist: substrate-interface==1.7.9
+Requires-Dist: rich==13.7.0
+Requires-Dist: python-dotenv==1.0.1
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# TNS CLI Tool
+
+Command-line interface for TAO Name Service - production-ready CLI similar to btcli.
+
+## Quick Installation (Recommended)
+
+### Install from PyPI (Once Published)
+
+```bash
+# Install globally - just like 'pip install btcli' for Bittensor
+pip install tnscli
+
+# Verify installation
+tns --version
+tns --help
+```
+
+### Install from Source
+
+```bash
+# Clone or download the repository
+cd tns/cli
+
+# Install globally (creates 'tns' command)
+pip install .
+
+# Or install in editable mode for development
+pip install -e .
+```
+
+After installation, the `tns` command will be available from any directory:
+```bash
+tns --help
+tns stats
+tns check mydomain
+```
+
+## Alternative: Local Installation
+
+If you prefer to run locally without system-wide installation:
+
+```bash
+# 1. Run the automated install script
+./install.sh
+
+# 2. Activate the virtual environment
+source venv/bin/activate
+
+# 3. Use the CLI
+./tns.py --help
+```
+
+## Commands
+
+### Query Commands (No Wallet Required)
+
+**Check Domain Availability:**
+```bash
+python tns.py check alice
+```
+
+**Resolve Domain:**
+```bash
+python tns.py resolve alice.tao
+```
+
+**Search Domains:**
+```bash
+python tns.py search alice --limit 20
+```
+
+**Lookup by Address:**
+```bash
+python tns.py lookup 5F3sa2TJAbpD9LgKr8WZitnWjExqWXqUhPnK8Mv5S3FQGn8Y
+python tns.py lookup ADDRESS --type coldkey
+python tns.py lookup ADDRESS --type hotkey
+```
+
+**Platform Statistics:**
+```bash
+python tns.py stats
+```
+
+### Blockchain Commands (Require Wallet)
+
+**Register Domain:**
+```bash
+python tns.py register alice 5F3sa2TJAbpD9LgKr8WZitnWjExqWXqUhPnK8Mv5S3FQGn8Y
+# You will be prompted for your mnemonic phrase
+```
+
+**Link Hotkey:**
+```bash
+python tns.py link alice 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+```
+
+**Transfer Domain:**
+```bash
+python tns.py transfer alice 5F3sa2TJAbpD9LgKr8WZitnWjExqWXqUhPnK8Mv5S3FQGn8Y
+```
+
+**Renew Domain:**
+```bash
+python tns.py renew alice
+```
+
+## Features
+
+- Rich terminal output with colors and tables
+- Interactive confirmations for blockchain transactions
+- Secure mnemonic input (hidden)
+- Error handling and validation
+- Support for all TNS operations
+
+## Environment Variables
+
+- `TNS_API_URL`: TNS REST API endpoint
+- `TNS_WS_URL`: Subtensor WebSocket endpoint
+
+Current configuration uses secure Cloudflare tunnel endpoints for production reliability.
+
+## Examples
+
+### Check if domain is available
+```bash
+$ python tns.py check alice
+✓ alice.tao is AVAILABLE
+Registration fee: 0.5 TAO
+```
+
+### Resolve a domain
+```bash
+$ python tns.py resolve alice
+┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Field              ┃ Value                                              ┃
+┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Owner              │ 5F3sa2TJAbpD9LgKr8WZitnWjExqWXqUhPnK8Mv5S3FQGn8Y │
+│ Coldkey            │ 5F3sa2TJAbpD9LgKr8WZitnWjExqWXqUhPnK8Mv5S3FQGn8Y │
+│ Hotkey             │ 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY │
+│ Expires at block   │ 5256000                                            │
+│ Registered at block│ 1000                                               │
+│ Status             │ Active                                             │
+└────────────────────┴────────────────────────────────────────────────────┘
+```
+
+### View statistics
+```bash
+$ python tns.py stats
+╭───────── TNS Platform Statistics ──────────╮
+│ Total Domains: 42                          │
+│ Active Domains: 38                         │
+│ Expired Domains: 4                         │
+│ Total Events: 156                          │
+│ Recent Registrations (24h): 5              │
+╰────────────────────────────────────────────╯
+```
+
+## Security Notes
+
+- Never share your mnemonic phrase
+- The CLI prompts for mnemonic securely (hidden input)
+- Mnemonic is not stored or logged
+- All blockchain transactions require confirmation
+
+## Troubleshooting
+
+**Import Error:**
+Make sure you're in the virtual environment and have installed dependencies.
+
+**Connection Error:**
+Check that the API and blockchain node are running at the configured URLs.
+
+**Transaction Failed:**
+Ensure you have sufficient TAO balance to pay transaction fees.
