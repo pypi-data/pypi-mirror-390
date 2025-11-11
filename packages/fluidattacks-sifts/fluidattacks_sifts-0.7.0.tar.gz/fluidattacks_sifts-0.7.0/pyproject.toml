@@ -1,0 +1,92 @@
+[project]
+name = "fluidattacks-sifts"
+version = "0.7.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "aioboto3>=15.1.0",
+    "aiofiles==24.1.0",
+    "aiosqlite==0.21.0",
+    "asyncache==0.3.1",
+    "bugsnag>=4.8.0",
+    "click>=8.1.8",
+    "diskcache==5.6.3",
+    "fluidattacks-core[sarif,serializers]>=2.15.7",
+    "GitPython==3.1.41",
+    "more-itertools==10.7.0",
+    "openai>=1.109.1",
+    "openai-agents>=0.3.2",
+    "orjson==3.10.18",
+    "platformdirs==4.3.8",
+    "pydantic>=2.11.0",
+    "pydantic-settings>=2.11.0",
+    "pyyaml==6.0.2",
+    "reactivex>=4.0.4",
+    "sarif-om==1.0.4",
+    "starlette==0.49.1",
+    "taxonomy",
+    "thefuzz==0.22.1",
+    "tiktoken>=0.12.0",
+    "tinydb==4.8.2",
+    "types-aioboto3[dynamodb,sqs,s3,bedrock-runtime,batch]==14.3.0",
+    "types-cachetools>=6.0.0.20250525",
+    "voyageai==0.3.2",
+]
+
+[tool.uv.sources]
+generate_cpgs = { workspace = true }
+snowflake-utils = { workspace = true }
+taxonomy = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.0",
+    "types-boto3>=1.37.38",
+    "pytest>=8.3.5",
+    "ruff>=0.14.0",
+    "types-aiofiles>=24.1.0.20241221",
+    "types-requests>=2.32.0.20250306",
+    "types-pyyaml>=6.0.12.20241230",
+]
+
+[project.scripts]
+sifts-cli = "sifts.cli:main_cli"
+
+[tool.setuptools]
+packages = [
+    "sifts",
+    "sifts.analysis",
+    "sifts.analysis.tools",
+    "sifts.cli",
+    "sifts.common_types",
+    "sifts.config",
+    "sifts.core",
+    "sifts.io",
+    "sifts.io.aws",
+    "sifts.io.db",
+    "sifts.io.vcs",
+    "sifts.llm",
+    "sifts.cpg",
+]
+package-data = { "sifts" = ["static/**", "py.typed"] }
+include-package-data = true
+
+[tool.uv.workspace]
+members = [
+    "generate-cpgs",
+    "candidates",
+    "snowflake-utils",
+    "generate-predictions",
+    "analysis-etl",
+    "taxonomy",
+    "model-consumer",
+]
+
+[tool.uv]
+override-dependencies = ["starlette==0.49.1", "numpy>=1.26.4,<2.0.0"]
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
