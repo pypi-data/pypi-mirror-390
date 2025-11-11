@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+
+for check in ping status check_running check_local_alarms check_port_connectivity check_virtual_hosts; do
+    echo "Running rabbitmq-diagnostics $check"
+    rabbitmq-diagnostics -t 5 -q $check || (echo "ERROR: $check failed" && exit 1)
+done

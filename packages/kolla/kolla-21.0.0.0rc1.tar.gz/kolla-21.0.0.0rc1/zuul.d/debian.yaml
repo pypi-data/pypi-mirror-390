@@ -1,0 +1,68 @@
+---
+- job:
+    name: kolla-build-debian-bookworm
+    parent: kolla-base
+    nodeset: kolla-debian-bookworm-8GB
+
+- job:
+    name: kolla-build-debian-bookworm-podman
+    parent: kolla-base-podman
+    nodeset: kolla-debian-bookworm-8GB
+
+- job:
+    name: kolla-build-debian-bookworm-arm64
+    parent: kolla-build-debian-bookworm
+    nodeset: kolla-debian-bookworm-arm64-8GB
+    voting: false
+
+- job:
+    name: kolla-publish-debian-bookworm-quay
+    parent: kolla-build-debian-bookworm
+    post-run: tests/playbooks/publish.yml
+    vars:
+      publisher: true
+      kolla_registry: quay.io
+      kolla_namespace: openstack.kolla
+    secrets:
+      - kolla_quay_io_creds
+      - kolla_quay_io_api_oct_2025
+
+- job:
+    name: kolla-publish-debian-bookworm-arm64-quay
+    parent: kolla-build-debian-bookworm-arm64
+    post-run: tests/playbooks/publish.yml
+    vars:
+      publisher: true
+      kolla_registry: quay.io
+      kolla_namespace: openstack.kolla
+    secrets:
+      - kolla_quay_io_creds
+      - kolla_quay_io_api_oct_2025
+
+- job:
+    name: kolla-build-debian-bookworm-no-infra-wheels
+    parent: kolla-build-no-infra-wheels-base
+    nodeset: kolla-debian-bookworm-8GB
+
+- project-template:
+    name: kolla-build-debian
+    description: |
+      Runs Kolla Debian build jobs.
+    check:
+      jobs:
+        - kolla-build-debian-bookworm
+        - kolla-build-debian-bookworm-podman
+    check-arm64:
+      jobs:
+        - kolla-build-debian-bookworm-arm64
+    gate:
+      jobs:
+        - kolla-build-debian-bookworm
+        - kolla-build-debian-bookworm-podman
+    experimental:
+      jobs:
+        - kolla-build-debian-bookworm-no-infra-wheels
+    periodic:
+      jobs:
+        - kolla-publish-debian-bookworm-quay
+        - kolla-publish-debian-bookworm-arm64-quay
