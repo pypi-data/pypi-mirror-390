@@ -1,0 +1,59 @@
+name: 🚀 Publish to PyPI (Trusted Publishing)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"  # Trigger only on semantic version tags (e.g., v1.2.3)
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC Trusted Publishing to PyPI
+
+jobs:
+  build-and-publish:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    environment: pypi  # Optional: enables manual approval if configured in repo settings
+
+    steps:
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Install all build and test tools
+      - name: 📦 Install build and test tools
+        run: |
+          python -m pip install --upgrade pip
+          # Install from [dev] dependencies + build tools
+          pip install .[dev] build twine codecov
+
+      # 🧪 Run tests and check coverage
+      - name: 🧪 Run tests & generate coverage
+        run: pytest --cov=src --cov-report=xml
+
+      # 📊 Upload coverage to Codecov
+      - name: 📊 Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # Must be set in repo secrets
+          file: ./coverage.xml
+          verbose: true
+          fail_ci_if_error: true # Fail the build if upload fails
+
+      # ⚙️ Build distribution packages
+      - name: ⚙️ Build distribution packages
+        run: python -m build
+
+      - name: ✅ Verify distribution
+        run: twine check dist/*
+
+      - name: 🚀 Publish to PyPI (via OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          skip-existing: false  # Fail if version already exists (prevents accidental overwrites)
+          
