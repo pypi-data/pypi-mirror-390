@@ -1,0 +1,32 @@
+name: Pytest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install project prerequisites
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev libdbus-1-dev libjpeg-dev zlib1g-dev
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[dev,test]
+      - name: Run pytest with coverage
+        run: |
+          pytest --cov=citrascope --cov-report=term-missing --cov-report=xml --cov-branch
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
