@@ -1,0 +1,110 @@
+from __future__ import annotations
+
+import decimal
+import random
+
+import pytest
+from pydantic_fixturegen.core.config import NumberDistributionConfig
+from pydantic_fixturegen.core.providers import numbers as numbers_mod
+from pydantic_fixturegen.core.schema import FieldConstraints, FieldSummary
+
+
+def _summary(type_name: str, **kwargs: object) -> FieldSummary:
+    return FieldSummary(type=type_name, constraints=FieldConstraints(**kwargs))
+
+
+def test_generate_numeric_bool_respects_random_choice(monkeypatch: pytest.MonkeyPatch) -> None:
+    rng = random.Random()
+    sequence = [True, False, True]
+    monkeypatch.setattr(rng, "choice", lambda options: sequence.pop(0))
+
+    values = [
+        numbers_mod.generate_numeric(_summary("bool"), random_generator=rng) for _ in range(3)
+    ]
+
+    assert values == [True, False, True]
+
+
+def test_generate_numeric_int_constraints() -> None:
+    summary = _summary("int", ge=5, lt=8)
+    rng = random.Random(0)
+    values = {numbers_mod.generate_numeric(summary, random_generator=rng) for _ in range(10)}
+
+    assert values <= {5, 6, 7}
+    assert values >= {5}
+
+
+def test_generate_numeric_float_with_bounds() -> None:
+    summary = _summary("float", gt=1.0, le=2.5)
+    rng = random.Random(1)
+    value = numbers_mod.generate_numeric(summary, random_generator=rng)
+
+    assert 1.0 < value <= 2.5
+
+
+def test_generate_numeric_decimal_limits_digits() -> None:
+    constraints = FieldConstraints(
+        ge=1.0,
+        le=2.0,
+        decimal_places=3,
+        max_digits=4,
+    )
+    summary = FieldSummary(type="decimal", constraints=constraints)
+    rng = random.Random(2)
+
+    result = numbers_mod.generate_numeric(summary, random_generator=rng)
+
+    assert isinstance(result, decimal.Decimal)
+    assert decimal.Decimal("1.0") <= result <= decimal.Decimal("2.0")
+    assert abs(result.as_tuple().exponent) <= 3
+
+
+def test_generate_numeric_raises_unknown_type() -> None:
+    with pytest.raises(ValueError):
+        numbers_mod.generate_numeric(_summary("complex"))
+
+
+def test_generate_numeric_int_conflicting_bounds() -> None:
+    summary = _summary("int", ge=5, lt=5)
+    rng = random.Random(0)
+    value = numbers_mod.generate_numeric(summary, random_generator=rng)
+
+    assert value == 4
+
+
+def test_generate_numeric_decimal_respects_max_digits() -> None:
+    constraints = FieldConstraints(ge=-2.5, le=2.5, decimal_places=2, max_digits=3)
+    summary = FieldSummary(type="decimal", constraints=constraints)
+    rng = random.Random(7)
+
+    result = numbers_mod.generate_numeric(summary, random_generator=rng)
+
+    assert isinstance(result, decimal.Decimal)
+    assert len(result.as_tuple().digits) <= 3
+
+
+def test_generate_numeric_int_with_normal_distribution() -> None:
+    summary = _summary("int", ge=0, le=10)
+    rng = random.Random(0)
+    config = NumberDistributionConfig(distribution="normal", normal_stddev_fraction=0.1)
+    values = [
+        numbers_mod.generate_numeric(summary, random_generator=rng, number_config=config)
+        for _ in range(5)
+    ]
+
+    assert all(0 <= value <= 10 for value in values)
+    assert values[0] == 5
+
+
+def test_generate_numeric_float_with_spike_distribution() -> None:
+    summary = _summary("float", ge=0.0, le=1.0)
+    rng = random.Random(1)
+    config = NumberDistributionConfig(
+        distribution="spike", spike_ratio=1.0, spike_width_fraction=0.05
+    )
+    values = [
+        numbers_mod.generate_numeric(summary, random_generator=rng, number_config=config)
+        for _ in range(3)
+    ]
+
+    assert all(0.45 <= value <= 0.55 for value in values)

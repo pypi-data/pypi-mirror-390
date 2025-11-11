@@ -1,0 +1,484 @@
+{
+  "$defs": {
+    "ArraySettingsSchema": {
+      "additionalProperties": false,
+      "description": "Schema describing NumPy array generation settings.",
+      "properties": {
+        "dtypes": {
+          "description": "Allowed NumPy dtypes (strings accepted by numpy.dtype).",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Dtypes",
+          "type": "array"
+        },
+        "max_elements": {
+          "default": 16,
+          "description": "Maximum total element count for generated arrays.",
+          "minimum": 1,
+          "title": "Max Elements",
+          "type": "integer"
+        },
+        "max_ndim": {
+          "default": 2,
+          "description": "Maximum number of dimensions for generated arrays.",
+          "minimum": 1,
+          "title": "Max Ndim",
+          "type": "integer"
+        },
+        "max_side": {
+          "default": 4,
+          "description": "Maximum size per dimension for generated arrays.",
+          "minimum": 1,
+          "title": "Max Side",
+          "type": "integer"
+        }
+      },
+      "title": "ArraySettingsSchema",
+      "type": "object"
+    },
+    "EmittersSchema": {
+      "additionalProperties": false,
+      "description": "Schema for emitter configuration sections.",
+      "properties": {
+        "pytest": {
+          "$ref": "#/$defs/PytestEmitterSchema",
+          "description": "Configuration for the built-in pytest fixture emitter."
+        }
+      },
+      "title": "EmittersSchema",
+      "type": "object"
+    },
+    "FieldPolicyOptionsSchema": {
+      "additionalProperties": false,
+      "description": "Schema describing supported field policy overrides.",
+      "properties": {
+        "enum_policy": {
+          "anyOf": [
+            {
+              "enum": [
+                "first",
+                "random"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Enum selection policy for matching fields.",
+          "title": "Enum Policy"
+        },
+        "p_none": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Probability override for returning None on optional fields.",
+          "title": "P None"
+        },
+        "union_policy": {
+          "anyOf": [
+            {
+              "enum": [
+                "first",
+                "random"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Union selection policy for matching fields.",
+          "title": "Union Policy"
+        }
+      },
+      "title": "FieldPolicyOptionsSchema",
+      "type": "object"
+    },
+    "HeuristicsSchema": {
+      "additionalProperties": false,
+      "description": "Schema describing heuristic mapping configuration.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "description": "Toggle automatic heuristic provider mapping on or off.",
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "title": "HeuristicsSchema",
+      "type": "object"
+    },
+    "IdentifierSettingsSchema": {
+      "additionalProperties": false,
+      "description": "Schema describing identifier provider settings.",
+      "properties": {
+        "mask_sensitive": {
+          "default": false,
+          "description": "Mask email domains, URLs, cards, and IPs with reserved example data.",
+          "title": "Mask Sensitive",
+          "type": "boolean"
+        },
+        "secret_bytes_length": {
+          "default": 16,
+          "description": "Default length for generated SecretBytes values.",
+          "minimum": 1,
+          "title": "Secret Bytes Length",
+          "type": "integer"
+        },
+        "secret_str_length": {
+          "default": 16,
+          "description": "Default length for generated SecretStr values.",
+          "minimum": 1,
+          "title": "Secret Str Length",
+          "type": "integer"
+        },
+        "url_include_path": {
+          "default": true,
+          "description": "Include a path component when generating URLs.",
+          "title": "Url Include Path",
+          "type": "boolean"
+        },
+        "url_schemes": {
+          "description": "Allowed URL schemes used when generating URLs.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Url Schemes",
+          "type": "array"
+        },
+        "uuid_version": {
+          "default": 4,
+          "description": "UUID version to use (1 or 4).",
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Uuid Version",
+          "type": "integer"
+        }
+      },
+      "title": "IdentifierSettingsSchema",
+      "type": "object"
+    },
+    "JsonSchema": {
+      "additionalProperties": false,
+      "description": "Schema for JSON emitter settings.",
+      "properties": {
+        "indent": {
+          "default": 2,
+          "description": "Indentation level for JSON output (0 for compact).",
+          "minimum": 0,
+          "title": "Indent",
+          "type": "integer"
+        },
+        "orjson": {
+          "default": false,
+          "description": "Use orjson for serialization when available.",
+          "title": "Orjson",
+          "type": "boolean"
+        }
+      },
+      "title": "JsonSchema",
+      "type": "object"
+    },
+    "NumbersSettingsSchema": {
+      "additionalProperties": false,
+      "description": "Schema describing numeric distribution controls.",
+      "properties": {
+        "distribution": {
+          "default": "uniform",
+          "description": "Distribution applied to ints/floats/decimals.",
+          "enum": [
+            "uniform",
+            "normal",
+            "spike"
+          ],
+          "title": "Distribution",
+          "type": "string"
+        },
+        "normal_stddev_fraction": {
+          "default": 0.25,
+          "description": "For normal distribution, standard deviation as a fraction of the value range.",
+          "exclusiveMinimum": 0.0,
+          "title": "Normal Stddev Fraction",
+          "type": "number"
+        },
+        "spike_ratio": {
+          "default": 0.7,
+          "description": "Probability of sampling inside the spike window when distribution='spike'.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Spike Ratio",
+          "type": "number"
+        },
+        "spike_width_fraction": {
+          "default": 0.1,
+          "description": "Spike window width expressed as a fraction of the min/max range.",
+          "exclusiveMinimum": 0.0,
+          "title": "Spike Width Fraction",
+          "type": "number"
+        }
+      },
+      "title": "NumbersSettingsSchema",
+      "type": "object"
+    },
+    "PathSettingsSchema": {
+      "additionalProperties": false,
+      "description": "Schema describing filesystem path provider settings.",
+      "properties": {
+        "default_os": {
+          "default": "posix",
+          "description": "Default OS target for generated filesystem paths.",
+          "enum": [
+            "posix",
+            "windows",
+            "mac"
+          ],
+          "title": "Default Os",
+          "type": "string"
+        },
+        "models": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Mapping of glob patterns to OS targets overriding the default (values: 'posix', 'windows', 'mac').",
+          "title": "Models",
+          "type": "object"
+        }
+      },
+      "title": "PathSettingsSchema",
+      "type": "object"
+    },
+    "PytestEmitterSchema": {
+      "additionalProperties": false,
+      "description": "Schema for pytest emitter settings.",
+      "properties": {
+        "scope": {
+          "default": "function",
+          "description": "Default pytest fixture scope.",
+          "enum": [
+            "function",
+            "module",
+            "session"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "style": {
+          "default": "functions",
+          "description": "How emitted pytest fixtures are structured.",
+          "enum": [
+            "functions",
+            "factory",
+            "class"
+          ],
+          "title": "Style",
+          "type": "string"
+        }
+      },
+      "title": "PytestEmitterSchema",
+      "type": "object"
+    }
+  },
+  "$id": "https://raw.githubusercontent.com/CasperKristiansson/pydantic-fixturegen/main/pydantic_fixturegen/schemas/config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "Authoritative schema for `[tool.pydantic_fixturegen]` configuration.",
+  "properties": {
+    "arrays": {
+      "$ref": "#/$defs/ArraySettingsSchema",
+      "description": "Configuration for NumPy array generation: max_ndim, max_side, max_elements, dtypes."
+    },
+    "cycle_policy": {
+      "default": "reuse",
+      "description": "How recursive references are resolved (`reuse`, `stub`, or `null`).",
+      "enum": [
+        "reuse",
+        "stub",
+        "null"
+      ],
+      "title": "Cycle Policy",
+      "type": "string"
+    },
+    "emitters": {
+      "$ref": "#/$defs/EmittersSchema",
+      "description": "Emitter-specific configuration sections."
+    },
+    "enum_policy": {
+      "default": "first",
+      "description": "Strategy for selecting enum members.",
+      "enum": [
+        "first",
+        "random"
+      ],
+      "title": "Enum Policy",
+      "type": "string"
+    },
+    "exclude": {
+      "description": "Glob patterns of fully-qualified model names to exclude by default.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Exclude",
+      "type": "array"
+    },
+    "field_policies": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FieldPolicyOptionsSchema"
+      },
+      "description": "Field policy definitions keyed by glob or regex patterns that may target model names or dotted field paths.",
+      "title": "Field Policies",
+      "type": "object"
+    },
+    "heuristics": {
+      "$ref": "#/$defs/HeuristicsSchema",
+      "description": "Controls the heuristic provider mapping engine."
+    },
+    "identifiers": {
+      "$ref": "#/$defs/IdentifierSettingsSchema",
+      "description": "Configuration for identifier providers (secret lengths, URL schemes, UUID version)."
+    },
+    "include": {
+      "description": "Glob patterns of fully-qualified model names to include by default.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Include",
+      "type": "array"
+    },
+    "json": {
+      "$ref": "#/$defs/JsonSchema",
+      "description": "Settings shared by JSON-based emitters."
+    },
+    "locale": {
+      "default": "en_US",
+      "description": "Default Faker locale used when generating data.",
+      "title": "Locale",
+      "type": "string"
+    },
+    "locales": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Mapping of glob or regex patterns (models or fields) to Faker locale identifiers.",
+      "title": "Locales",
+      "type": "object"
+    },
+    "max_depth": {
+      "default": 5,
+      "description": "Maximum recursion depth before cycle handling policy is applied.",
+      "minimum": 1,
+      "title": "Max Depth",
+      "type": "integer"
+    },
+    "numbers": {
+      "$ref": "#/$defs/NumbersSettingsSchema",
+      "description": "Control numeric distributions (uniform, normal, spike)."
+    },
+    "overrides": {
+      "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "description": "Per-model overrides keyed by fully-qualified model name.",
+      "title": "Overrides",
+      "type": "object"
+    },
+    "p_none": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Probability of sampling `None` for optional fields when unspecified.",
+      "title": "P None"
+    },
+    "paths": {
+      "$ref": "#/$defs/PathSettingsSchema",
+      "description": "Configuration for filesystem path providers."
+    },
+    "preset": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Curated preset name applied before other configuration (e.g., 'boundary').",
+      "title": "Preset"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Privacy profile applied ahead of other configuration (e.g., 'pii-safe').",
+      "title": "Profile"
+    },
+    "rng_mode": {
+      "default": "portable",
+      "description": "Random generator mode (`portable` for cross-platform determinism, `legacy` to use CPython's RNG).",
+      "enum": [
+        "portable",
+        "legacy"
+      ],
+      "title": "Rng Mode",
+      "type": "string"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Global seed controlling deterministic generation. Accepts int or string.",
+      "title": "Seed"
+    },
+    "union_policy": {
+      "default": "first",
+      "description": "Strategy for selecting branches of `typing.Union`.",
+      "enum": [
+        "first",
+        "random",
+        "weighted"
+      ],
+      "title": "Union Policy",
+      "type": "string"
+    }
+  },
+  "title": "pydantic-fixturegen configuration",
+  "type": "object"
+}
