@@ -1,0 +1,83 @@
+Metadata-Version: 2.4
+Name: exchange-sdk
+Version: 0.1.0
+Summary: Python SDK for high-frequency trading competition platform
+Author-email: Your Name <your.email@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/Ngafney/Exchange
+Project-URL: Repository, https://github.com/Ngafney/Exchange
+Project-URL: Documentation, https://github.com/Ngafney/Exchange/tree/main/services/sdk_python
+Keywords: trading,exchange,hft,competition
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Education
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+
+# Python SDK
+
+Minimal asyncio-based client that speaks the exchange binary TCP order protocol and listens for UDP market-data packets. Use this as the reference implementation when onboarding student teams.
+
+## Quick Installation
+
+### Windows
+```bash
+# Double-click install_sdk.bat
+# OR run in PowerShell:
+pip install -e .
+```
+
+### Linux/Mac
+```bash
+# Run the installer:
+./install_sdk.sh
+
+# OR manually:
+pip install -e .
+```
+
+## Verify Installation
+
+```bash
+python -c "from exchange_sdk import ExchangeClient; print('SDK installed!')"
+```
+
+## Usage Example
+
+```python
+from exchange_sdk import ExchangeClient
+from exchange_sdk.client import GatewayConfig, MarketDataConfig
+
+# Connect to exchange
+client = ExchangeClient(
+    team_token="your-team-SECRET",
+    gateway=GatewayConfig(host="159.65.173.202", port=9001),
+    market_data=MarketDataConfig(host="159.65.173.202", port=5001)
+)
+
+# Connect and trade
+await client.connect()
+client.send_new(
+    client_id=1,
+    symbol_id=1,      # XYZ
+    side=0,           # BUY
+    price_ticks=10000,  # $100.00
+    quantity=10
+)
+await client.close()
+```
+
+## What You Need
+
+- Python 3.11 or higher
+- The SDK installed (`pip install -e .`)
+- Your team token (provided by organizers)
+- Exchange host/port (provided by organizers)
+
+## For Competition Participants
+
+See [INSTALL_SDK.md](INSTALL_SDK.md) for detailed installation instructions and troubleshooting.
+
