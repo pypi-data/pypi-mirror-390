@@ -1,0 +1,292 @@
+name: Documentation Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+jobs:
+  doc-review:
+    name: Agent-Based Documentation Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to compare changes
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            llmsbrieftxt/**/*.py
+            tests/**/*.py
+            pyproject.toml
+          files_ignore: |
+            **/__pycache__/**
+            **/*.pyc
+            .git/**
+
+      - name: Get documentation files
+        id: doc-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            README.md
+            CLAUDE.md
+            docs/**/*.md
+            **/*.md
+
+      - name: Check if documentation review needed
+        id: check-review
+        run: |
+          CODE_CHANGED="${{ steps.changed-files.outputs.any_changed }}"
+          DOCS_CHANGED="${{ steps.doc-files.outputs.any_changed }}"
+
+          echo "code_changed=$CODE_CHANGED" >> $GITHUB_OUTPUT
+          echo "docs_changed=$DOCS_CHANGED" >> $GITHUB_OUTPUT
+
+          if [ "$CODE_CHANGED" == "true" ]; then
+            echo "review_needed=true" >> $GITHUB_OUTPUT
+            if [ "$DOCS_CHANGED" == "true" ]; then
+              echo "review_type=validate" >> $GITHUB_OUTPUT
+              echo "📝 Code and documentation changed - will validate accuracy"
+            else
+              echo "review_type=check_missing" >> $GITHUB_OUTPUT
+              echo "⚠️  Code changed but no documentation updates - will check if updates needed"
+            fi
+          else
+            echo "review_needed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No code changes detected - skipping documentation review"
+          fi
+
+      - name: Run Documentation Review Agent
+        if: steps.check-review.outputs.review_needed == 'true'
+        id: doc-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Allow Claude bot to trigger this workflow
+          allowed_bots: '*'
+
+          # Use Haiku model for faster/cheaper reviews
+          claude_args: |
+            --model claude-haiku-4-5-20251001
+            --allowedTools "Glob,Grep,Read,Bash(git:*),Bash(gh:*),Task,TodoWrite"
+
+          # Enable progress tracking
+          track_progress: true
+
+          prompt: |
+            You are reviewing documentation accuracy for a pull request.
+
+            **PR Information**:
+            - Repository: ${{ github.repository }}
+            - PR Number: ${{ github.event.pull_request.number }}
+            - Base Branch: ${{ github.event.pull_request.base.ref }}
+            - Head Branch: ${{ github.event.pull_request.head.ref }}
+
+            **Change Summary**:
+            - Code files changed: ${{ steps.changed-files.outputs.all_changed_files }}
+            - Documentation files changed: ${{ steps.doc-files.outputs.all_changed_files }}
+            - Review Type: ${{ steps.check-review.outputs.review_type }}
+
+            **Task**:
+            Launch the `documentation-accuracy-reviewer` agent to analyze documentation:
+
+            ```
+            Use the Task tool to launch the documentation-accuracy-reviewer agent with this task:
+
+            "Review documentation accuracy for PR #${{ github.event.pull_request.number }}
+
+            Review Type: ${{ steps.check-review.outputs.review_type }}
+
+            Step 1: Analyze Code Changes
+            - Use git diff to see what code changed between base and head branches
+            - Identify files: ${{ steps.changed-files.outputs.all_changed_files }}
+            - Determine what functionality was added, modified, or removed
+            - Note any new CLI flags, options, or behavior changes
+            - Identify any API or function signature changes
+
+            Step 2: Review Documentation Files
+            - Read current README.md
+            - Read current CLAUDE.md
+            - Read any other relevant documentation files
+            - Check if documentation reflects the code changes
+
+            Step 3: Documentation Accuracy Analysis
+
+            ${{ steps.check-review.outputs.review_type == 'validate' && 'Documentation WAS updated - verify accuracy:
+            - Do the documentation updates accurately describe the code changes?
+            - Are new features/flags properly documented?
+            - Are examples correct and working?
+            - Is the documentation complete (no missing features)?
+            - Are there any outdated sections that need updating?
+            - Is the documentation clear and helpful to users?' || '' }}
+
+            ${{ steps.check-review.outputs.review_type == 'check_missing' && 'Documentation WAS NOT updated - check if needed:
+            - Do the code changes require documentation updates?
+            - Are new user-facing features undocumented?
+            - Are CLI changes reflected in usage examples?
+            - Would users be confused by the changes without documentation?
+            - Are internal changes that do not need documentation?' || '' }}
+
+            Step 4: Specific Checks
+            - README.md: Usage examples, CLI flags, installation instructions
+            - CLAUDE.md: Development commands, test instructions, architecture notes
+            - Code comments: Public function docstrings, parameter descriptions
+            - CLI help text: Ensure --help output matches documentation
+
+            Step 5: Report Findings
+
+            Create a detailed review report with:
+
+            **Documentation Review Report**
+
+            **Summary**: [One-line assessment of documentation quality]
+
+            **Code Changes Analyzed**:
+            - [List key changes that might need documentation]
+
+            **Documentation Status**: ✅ Adequate | ⚠️  Needs Updates | ❌ Missing Critical Docs
+
+            **Findings**:
+
+            1. **Issue Title** (Critical/Major/Minor)
+               - Location: [file:line or section]
+               - Problem: [What's wrong or missing]
+               - Impact: [Why it matters to users]
+               - Recommendation: [Specific fix]
+
+            2. [Additional findings...]
+
+            **Positive Findings**:
+            - [What was done well]
+
+            **Recommendations**:
+            1. [High priority]
+            2. [Medium priority]
+            3. [Nice to have]
+
+            **Approval Status**:
+            - ✅ APPROVE: Documentation is accurate and complete
+            - ⚠️  APPROVE WITH SUGGESTIONS: Minor improvements recommended
+            - ❌ REQUEST CHANGES: Critical documentation issues must be addressed
+
+            Provide your report in markdown format suitable for PR comments."
+            ```
+
+            After the agent completes:
+            1. Review the documentation review report
+            2. Post findings as PR comment using gh CLI
+            3. If critical issues found, note that changes are recommended
+            4. If documentation is adequate, approve the documentation aspect
+
+      - name: Post review summary
+        if: always() && steps.check-review.outputs.review_needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEW_STATUS: ${{ steps.doc-review.outcome }}
+        run: |
+          if [ "$REVIEW_STATUS" == "success" ]; then
+            echo "✅ Documentation review completed successfully"
+
+            # Post a summary comment (the agent already posted detailed findings)
+            gh pr comment ${{ github.event.pull_request.number }} --body "
+            ## 📚 Documentation Review Complete
+
+            The documentation-accuracy-reviewer agent has completed its analysis.
+            Please review the detailed findings in the comments above.
+
+            **Status**: ✅ Review completed
+            **Reviewed by**: Claude Code (documentation-accuracy-reviewer agent)
+            "
+          else
+            echo "❌ Documentation review encountered issues"
+
+            gh pr comment ${{ github.event.pull_request.number }} --body "
+            ## 📚 Documentation Review
+
+            ⚠️  The documentation review encountered issues. Please check the workflow logs for details.
+
+            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            "
+          fi
+
+      - name: Generate summary
+        if: always()
+        env:
+          REVIEW_NEEDED: ${{ steps.check-review.outputs.review_needed }}
+          CODE_CHANGED: ${{ steps.check-review.outputs.code_changed }}
+          DOCS_CHANGED: ${{ steps.check-review.outputs.docs_changed }}
+          REVIEW_TYPE: ${{ steps.check-review.outputs.review_type }}
+          REVIEW_STATUS: ${{ steps.doc-review.outcome }}
+        run: |
+          cat <<'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 📚 Documentation Review Summary
+
+          ### Change Analysis
+          - Code files changed: ${{ env.CODE_CHANGED == 'true' && '✅ Yes' || '❌ No' }}
+          - Documentation files changed: ${{ env.DOCS_CHANGED == 'true' && '✅ Yes' || '❌ No' }}
+
+          ### Review Status
+          EOF
+
+          if [ "$REVIEW_NEEDED" == "true" ]; then
+            cat <<'EOF' >> $GITHUB_STEP_SUMMARY
+          **Review Type**: ${{ env.REVIEW_TYPE }}
+          **Status**: ${{ env.REVIEW_STATUS == 'success' && '✅ Completed' || '❌ Failed' }}
+
+          The `documentation-accuracy-reviewer` agent analyzed:
+          - Code changes to identify what needs documentation
+          - Existing documentation for accuracy and completeness
+          - README.md, CLAUDE.md, and other documentation files
+          - Code comments and docstrings
+
+          **Detailed findings** have been posted as PR comments.
+          EOF
+          else
+            cat <<'EOF' >> $GITHUB_STEP_SUMMARY
+          **Review**: ⏭️  Skipped (no code changes)
+
+          No code changes detected in this PR, so documentation review was not necessary.
+          EOF
+          fi
+
+          cat <<'EOF' >> $GITHUB_STEP_SUMMARY
+
+          ---
+
+          🤖 **Automated Review**: This workflow uses the Claude Code `documentation-accuracy-reviewer`
+          agent to ensure documentation stays in sync with code changes.
+          EOF
+
+      - name: Check documentation adequacy
+        if: steps.check-review.outputs.review_needed == 'true'
+        run: |
+          # This step will fail the workflow if critical documentation issues were found
+          # The agent should have posted details in PR comments
+
+          if [ "${{ steps.doc-review.outcome }}" != "success" ]; then
+            echo "❌ Documentation review did not complete successfully"
+            echo "Please check the agent's findings and address any critical issues"
+            exit 1
+          fi
+
+          # If code changed but no docs changed, at least warn
+          if [ "${{ steps.check-review.outputs.code_changed }}" == "true" ] && \
+             [ "${{ steps.check-review.outputs.docs_changed }}" == "false" ]; then
+            echo "⚠️  Code changed but no documentation updates detected"
+            echo "Please verify that documentation updates are not needed"
+            # Don't fail - let the agent's analysis determine if this is acceptable
+          fi
+
+          echo "✅ Documentation review passed"
