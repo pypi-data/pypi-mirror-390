@@ -1,0 +1,118 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elspec"
+version = "0.7.4"
+authors = [
+    { name="Nathan Walsh", email="nwalsh82@gmail.com" }]
+description = "A declarative data ingestion system"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 2 - Pre-Alpha"]
+dependencies = [
+    "anytree>=2.12.1",
+    "duckdb-engine>=0.12.1",
+    "joblib>=1.3.2",
+    "openpyxl>=3.1.2",
+    "pandas>=2.2.3",
+    "pdfminer-six>=20231228",
+    "prqlc>=0.13.3",
+    "pydantic>=2.7.4",
+    "pymssql>=2.3.2",
+    "pyodbc>=4.0.39",
+    "python-calamine>=0.3.1",
+    "pyyaml>=6.0.1",
+    "ruamel-yaml>=0.18.6",
+    "sqlalchemy-utils>=0.41.2",
+    "sqlalchemy>=2.0.31",
+    "typer>=0.15.4",
+    "xlsxwriter>=3.2.2",
+    "azure-identity",
+    "lxml>=5.3.2",]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-xdist",
+    "pytest-testmon",
+    "pytest-watch",
+    "python-lsp-server",
+    "jedi-language-server",
+    "ruff",
+    "Faker",
+    "bmdf",
+    "pytest-cov",]
+
+[project.scripts]
+els = "els.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/NathanDWalsh/els"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = ["stubs"]
+namespaces = false
+
+[tool.semantic_release]
+version_toml = [
+    "pyproject.toml:project.version"]
+
+[tool.semantic_release.commit_parser_options]
+allowed_types = [
+    "build", "chore", "ci", "docs", "feat", "fix",
+    "perf", "style", "refactor", "test"]
+# minor_types = ["feat"]
+patch_types = ["build", "chore", "ci", "docs", "feat", "fix",
+    "perf", "style", "refactor", "test"]
+
+[tool.mypy]
+packages = 'els'
+mypy_path = './stubs'
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = 'pyodbc'
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+addopts = ["--ff",
+    "-rf",
+    "-x",
+    "--cov",
+    "--cov-report=lcov:lcov.info"]
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    env_list =
+        py3{9,10,11,12}-{win,lin,mac}
+        # 3.13 Removing 3.13 due to issue with pymssql on 3.13 Windows
+    minversion = 4.23.0
+
+    [testenv]
+    platform = lin: linux
+            mac: darwin
+            win: win32
+    description = run the tests with pytest
+    package = wheel
+    wheel_build_env = lin: .lin_pkg
+                    mac: .mac_pkg
+                    win: .win_pkg
+    dependency_groups = dev
+    commands =
+        pytest {posargs} -n 1"""
+
+
+[tool.coverage.run]
+data_file = './.coverage/.coverage'
