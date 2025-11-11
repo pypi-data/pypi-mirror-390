@@ -1,0 +1,126 @@
+[project]
+name = "{{ general.slug }}"
+version = "{{ general.version }}"
+description = "{{ general.description }}"
+authors = [{name = "{{ general.author }}", email = "{{ git.email }}"}]
+dependencies = [
+    {% if "async_sqlalchemy" in template.built_in_features %}
+    "sqlalchemy",
+    "asyncpg",
+    "psycopg2-binary",
+    {% endif %}
+    {% if "async_alembic" in template.built_in_features %}
+    "alembic",
+    {% endif %}
+    {% if "event_bus" in template.built_in_features %}
+    "pika",
+    {% endif %}
+    {% if "fastapi_application" in template.built_in_features %}
+    "fastapi[standard]",
+    {% endif %}
+]
+requires-python = "=={{ general.python_version }}.*"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+{% if general.dependency_manager == "pdm" %}
+[tool.pdm]
+distribution = false
+{% endif %}
+
+{% if ["github_actions", "makefile", "precommit_hook"] | is_in(template.built_in_features) or dependencies | has_dependency("pytest") and template.name != template_types.CUSTOM %}
+[dependency-groups]
+{% if "github_actions" in template.built_in_features %}
+release = [
+    "python-semantic-release",
+]
+{% endif %}
+{% if ["github_actions", "makefile", "precommit_hook"] | is_in(template.built_in_features) and dependencies | has_dependency("pytest") %}
+lint = [
+    "mypy",
+    "ruff",
+    "pip-audit",
+    "pre-commit",
+]
+test = [
+    "faker",
+    "pytest",
+    "pytest-asyncio",
+]
+{% elif ["github_actions", "makefile", "precommit_hook"] | is_in(template.built_in_features) %}
+lint = [
+    "mypy",
+    "ruff",
+    "pip-audit",
+    "pre-commit",
+]
+test = [
+    "faker",
+    "pytest",
+    "pytest-asyncio",
+]
+{% elif dependencies | has_dependency("pytest") %}
+test = [
+    "faker",
+    "pytest-asyncio",
+]
+{% elif template.name != template_types.CUSTOM %}
+test = [
+    "faker",
+]
+{% endif %}
+{% endif %}
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "C4", "UP", "I"]
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["{{ general.source_name }}", "test"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+
+{% if "github_actions" in template.built_in_features %}
+[project.optional-dependencies]
+build = ["uv>=0.7.21"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+commit_message = "bump: new version {version} created"
+commit_parser = "conventional"
+major_on_zero = false
+allow_zero_version = true
+no_git_verify = false
+tag_format = "{version}"
+build_command = """
+    pip install -e '.[build]'
+    uv lock --upgrade-package instant-python
+    git add uv.lock
+"""
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf", "refactor", "test", "build"]
+allowed_tags = ["feat", "fix", "refactor", "perf", "build"]
+default_bump_level = 0
+parse_squash_commits = false
+ignore_merge_commits = true
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+exclude_commit_patterns = ['''^Merge pull request #''', '''^Merge branch ''']
+mode = "update"
+#template_dir = "docs/changelog"
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG"
+output_format = "md"
+mask_initial_release = false
+{% endif %}
