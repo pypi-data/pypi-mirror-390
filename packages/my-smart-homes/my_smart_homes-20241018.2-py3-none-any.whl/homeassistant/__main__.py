@@ -1,0 +1,356 @@
+"""Start Home Assistant."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+from contextlib import suppress
+import faulthandler
+import os
+import sys
+import threading
+import requests
+import socket
+import aiohttp
+import logging
+
+from . import msh_utils
+from .backup_restore import restore_backup
+from .const import REQUIRED_PYTHON_VER, RESTART_EXIT_CODE, __version__
+
+FAULT_LOG_FILENAME = "home-assistant.log.fault"
+
+# List of reliable public IP resolution services
+PUBLIC_IP_SERVICES = [
+    "https://ident.me",
+    "https://api.ipify.org",
+    "https://icanhazip.com",
+    "https://checkip.amazonaws.com",
+]
+
+
+async def get_public_internet_ip(
+    max_retries: int = 3, initial_delay_seconds: int = 1
+) -> str:
+    """
+    Robustly retrieves the public IP address of the machine (or its egress point)
+    by querying multiple external services using aiohttp. Returns '127.0.0.1' if all fail.
+    """
+    for retry_attempt in range(max_retries):
+        for service_url in PUBLIC_IP_SERVICES:
+            try:
+                logging.info(
+                    f"Attempting to fetch public IP from: {service_url} (Retry {retry_attempt + 1}/{max_retries})"
+                )
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        service_url, timeout=aiohttp.ClientTimeout(total=5)
+                    ) as response:
+                        response.raise_for_status()
+                        public_ip = (await response.text()).strip()
+                        if not public_ip or not ("." in public_ip or ":" in public_ip):
+                            logging.warning(
+                                f"Service {service_url} returned malformed IP: '{public_ip}'. Trying next service."
+                            )
+                            continue
+                        logging.info(
+                            f"Successfully retrieved public IP: {public_ip} from {service_url}"
+                        )
+                        return public_ip
+            except asyncio.TimeoutError:
+                logging.warning(
+                    f"Timeout occurred fetching IP from {service_url}. Trying next service."
+                )
+            except aiohttp.ClientConnectionError as e:
+                logging.warning(
+                    f"Connection error fetching IP from {service_url}: {e}. Trying next service."
+                )
+            except aiohttp.ClientResponseError as e:
+                logging.warning(
+                    f"HTTP error fetching IP from {service_url}: {e}. Trying next service."
+                )
+            except Exception as e:
+                logging.error(
+                    f"Unexpected error fetching IP from {service_url}: {e}. Trying next service."
+                )
+        if retry_attempt < max_retries - 1:
+            delay = initial_delay_seconds * (2**retry_attempt)
+            logging.info(
+                f"All public IP services failed for this attempt. Retrying in {delay} seconds..."
+            )
+            await asyncio.sleep(delay)
+    logging.error(
+        "Failed to determine public internet IP after multiple attempts and services. Using fallback IP 127.0.0.1."
+    )
+    return "127.0.0.1"
+
+
+def validate_os() -> None:
+    """Validate that Home Assistant is running in a supported operating system."""
+    if not sys.platform.startswith(("darwin", "linux")):
+        print(
+            "Home Assistant only supports Linux, OSX and Windows using WSL",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def validate_python() -> None:
+    """Validate that the right Python version is running."""
+    if sys.version_info[:3] < REQUIRED_PYTHON_VER:
+        print(
+            "Home Assistant requires at least Python "
+            f"{REQUIRED_PYTHON_VER[0]}.{REQUIRED_PYTHON_VER[1]}.{REQUIRED_PYTHON_VER[2]}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def ensure_config_path(config_dir: str) -> None:
+    """Validate the configuration directory."""
+    # pylint: disable-next=import-outside-toplevel
+    from . import config as config_util
+
+    lib_dir = os.path.join(config_dir, "deps")
+
+    # Test if configuration directory exists
+    if not os.path.isdir(config_dir):
+        if config_dir != config_util.get_default_config_dir():
+            if os.path.exists(config_dir):
+                reason = "is not a directory"
+            else:
+                reason = "does not exist"
+            print(
+                f"Fatal Error: Specified configuration directory {config_dir} {reason}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        try:
+            os.mkdir(config_dir)
+        except OSError as ex:
+            print(
+                "Fatal Error: Unable to create default configuration "
+                f"directory {config_dir}: {ex}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    # Test if library directory exists
+    if not os.path.isdir(lib_dir):
+        try:
+            os.mkdir(lib_dir)
+        except OSError as ex:
+            print(
+                f"Fatal Error: Unable to create library directory {lib_dir}: {ex}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+
+def get_arguments() -> argparse.Namespace:
+    """Get parsed passed in arguments."""
+    # pylint: disable-next=import-outside-toplevel
+    from . import config as config_util
+
+    parser = argparse.ArgumentParser(
+        description="Home Assistant: Observe, Control, Automate.",
+        epilog=f"If restart is requested, exits with code {RESTART_EXIT_CODE}",
+    )
+    parser.add_argument("--version", action="version", version=__version__)
+    parser.add_argument(
+        "-c",
+        "--config",
+        metavar="path_to_config_dir",
+        default=config_util.get_default_config_dir(),
+        help="Directory that contains the Home Assistant configuration",
+    )
+    parser.add_argument(
+        "--recovery-mode",
+        action="store_true",
+        help="Start Home Assistant in recovery mode",
+    )
+    parser.add_argument(
+        "--debug", action="store_true", help="Start Home Assistant in debug mode"
+    )
+    parser.add_argument(
+        "--open-ui", action="store_true", help="Open the webinterface in a browser"
+    )
+
+    skip_pip_group = parser.add_mutually_exclusive_group()
+    skip_pip_group.add_argument(
+        "--skip-pip",
+        action="store_true",
+        help="Skips pip install of required packages on startup",
+    )
+    skip_pip_group.add_argument(
+        "--skip-pip-packages",
+        metavar="package_names",
+        type=lambda arg: arg.split(","),
+        default=[],
+        help="Skip pip install of specific packages on startup",
+    )
+
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging to file."
+    )
+    parser.add_argument(
+        "--log-rotate-days",
+        type=int,
+        default=None,
+        help="Enables daily log rotation and keeps up to the specified days",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="Log file to write to.  If not set, CONFIG/home-assistant.log is used",
+    )
+    parser.add_argument(
+        "--log-no-color", action="store_true", help="Disable color logs"
+    )
+    parser.add_argument(
+        "--script", nargs=argparse.REMAINDER, help="Run one of the embedded scripts"
+    )
+    parser.add_argument(
+        "--ignore-os-check",
+        action="store_true",
+        help="Skips validation of operating system",
+    )
+
+    return parser.parse_args()
+
+
+def check_threads() -> None:
+    """Check if there are any lingering threads."""
+    try:
+        nthreads = sum(
+            thread.is_alive() and not thread.daemon for thread in threading.enumerate()
+        )
+        if nthreads > 1:
+            sys.stderr.write(f"Found {nthreads} non-daemonic threads.\n")
+
+    # Somehow we sometimes seem to trigger an assertion in the python threading
+    # module. It seems we find threads that have no associated OS level thread
+    # which are not marked as stopped at the python level.
+    except AssertionError:
+        sys.stderr.write("Failed to count non-daemonic threads.\n")
+
+
+async def on_startup_update_internal_url() -> None:
+    """Function called every time Home Assistant starts."""
+    try:
+        # Get the public IP address of the VM (works in Docker)
+        ip_address = await get_public_internet_ip()
+        print(f"IP Address: {ip_address}")
+        # Read serverId from configuration
+        server_id = await msh_utils.retrieve_value_from_config_file(
+            msh_utils.SERVER_ID
+        )  # Await the coroutine
+        print(f"Server ID: {server_id}")
+        if not server_id:
+            print("Server ID not found in configuration")
+            return
+        # Get the internal URL from the request
+        scheme = "http"  # Default scheme
+        host = f"{ip_address}:8123"  # Default Home Assistant port
+        internal_url = f"{scheme}://{host}"
+        # Prepare the payload
+        payload = {"serverId": server_id, "newInternalUrl": internal_url}
+        print(f"Payload: {payload}")
+        # Make the POST request to update internal URL using aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://us-central1-fourth-return-421315.cloudfunctions.net/updateInternalUrl",
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            ) as response:
+                response_text = await response.text()
+                if response.status == 200:
+                    print(f"Successfully updated internal URL: {internal_url}")
+                    print(f"Response: {response_text}")
+                else:
+                    print(
+                        f"Failed to update internal URL. Status code: {response.status}"
+                    )
+                    print(f"Response: {response_text}")
+    except Exception as exception:
+        print(f"Error in on_startup: {exception}")
+
+
+def main() -> int:
+    """Start Home Assistant."""
+    validate_python()
+
+    args = get_arguments()
+
+    if not args.ignore_os_check:
+        validate_os()
+
+    if args.script is not None:
+        # pylint: disable-next=import-outside-toplevel
+        from . import scripts
+
+        return scripts.run(args.script)
+
+    config_dir = os.path.abspath(os.path.join(os.getcwd(), args.config))
+    if restore_backup(config_dir):
+        return RESTART_EXIT_CODE
+
+    ensure_config_path(config_dir)
+
+    # pylint: disable-next=import-outside-toplevel
+    from . import config, runner
+
+    safe_mode = config.safe_mode_enabled(config_dir)
+
+    runtime_conf = runner.RuntimeConfig(
+        config_dir=config_dir,
+        verbose=args.verbose,
+        log_rotate_days=args.log_rotate_days,
+        log_file=args.log_file,
+        log_no_color=args.log_no_color,
+        skip_pip=args.skip_pip,
+        skip_pip_packages=args.skip_pip_packages,
+        recovery_mode=args.recovery_mode,
+        debug=args.debug,
+        open_ui=args.open_ui,
+        safe_mode=safe_mode,
+    )
+    msh_utils.cf_path.set(config_dir + "/configuration.yaml")
+
+    def run_on_startup_update_internal_url() -> None:
+        asyncio.run(on_startup_update_internal_url())
+
+    threading.Thread(target=run_on_startup_update_internal_url, daemon=True).start()
+
+    def run_ring_dashboard_create() -> None:
+        asyncio.run(msh_utils.ring_dashboard_create())
+
+    threading.Thread(target=run_ring_dashboard_create, daemon=True).start()
+
+    def reverse_proxy_client() -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(msh_utils.reverse_proxy_client())
+
+    threading.Thread(target=reverse_proxy_client, daemon=True).start()
+
+    fault_file_name = os.path.join(config_dir, FAULT_LOG_FILENAME)
+    with open(fault_file_name, mode="a", encoding="utf8") as fault_file:
+        faulthandler.enable(fault_file)
+        exit_code = runner.run(runtime_conf)
+        faulthandler.disable()
+
+    # It's possible for the fault file to disappear, so suppress obvious errors
+    with suppress(FileNotFoundError):
+        if os.path.getsize(fault_file_name) == 0:
+            os.remove(fault_file_name)
+
+    check_threads()
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())
