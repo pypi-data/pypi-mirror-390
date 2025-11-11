@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools >= 70.1.0", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Forking"
+description = "A context manager to fork."
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Julien Palard", email = "julien@palard.fr"},
+]
+requires-python = ">= 3.7"
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://git.afpy.org/mdk/forking"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "tox",
+    "pylint",
+    "mypy",
+    "isort",
+    "black",
+    "ruff",
+    "build",
+    "twine",
+]
+
+[tool.setuptools]
+py-modules = [
+    "forking",
+]
+include-package-data = false
+
+[tool.black]
+
+[tool.pylint]
+disable = [
+    "missing-function-docstring",
+    "no-else-return",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.tox]
+envlist = ["py39", "py310", "py311", "py312", "py313", "py314", "mypy", "black", "pylint", "isort", "ruff", "doctest"]
+skip_missing_interpreters = true
+
+[tool.tox.env_run_base]
+deps = ["pytest"]
+commands = [["pytest", "-s"]]
+
+[tool.tox.env.mypy]
+deps = ["mypy"]
+commands = [["mypy", "forking.py"]]
+
+[tool.tox.env.black]
+deps = ["black"]
+commands = [["black", "--check", "--diff", "forking.py", "tests/"]]
+
+[tool.tox.env.pylint]
+deps = [".[dev]"]
+commands = [["pylint", "forking.py", "tests/"]]
+
+[tool.tox.env.isort]
+deps = ["isort"]
+commands = [["isort", "--check", "forking.py", "tests/"]]
+
+[tool.tox.env.ruff]
+deps = ["ruff"]
+commands = [["ruff", "check", "forking.py", "tests/", "pyproject.toml"]]
+
+[tool.tox.env.doctest]
+deps = []
+commands = [["python", "-m", "doctest", "README.md"]]
