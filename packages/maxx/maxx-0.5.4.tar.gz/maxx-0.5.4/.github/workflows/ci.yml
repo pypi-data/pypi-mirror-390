@@ -1,0 +1,284 @@
+name: CI
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'  # Monthly on the 1st at midnight
+  push:
+    branches: [main]
+  pull_request:
+    types:
+      - opened
+      - closed
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+      - edited
+    branches: [main, development]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      python-versions: ${{ steps.get-versions.outputs.python-versions }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+    
+    - name: Get Python versions from pyproject.toml
+      id: get-versions
+      run: |
+        # Extract Python versions from classifiers
+        versions=$(grep -E "Programming Language :: Python :: 3\.[0-9]+" pyproject.toml | \
+                  sed -E 's/.*Python :: (3\.[0-9]+).*/\1/' | \
+                  sort -V | \
+                  jq -R -s -c 'split("\n")[:-1]')
+        echo "python-versions=$versions" >> $GITHUB_OUTPUT
+        echo "Found Python versions: $versions"
+
+  test:
+    name: Run checks and tests
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJson(needs.setup.outputs.python-versions) }}
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        submodules: true
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+
+    - name: Cache uv
+      id: cache-uv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-qualify-uv-${{ hashFiles('uv.lock') }}
+
+    - name: Install dependencies
+      if: steps.cache-uv.outputs.cache-hit != 'true'
+      run: |
+        uv sync --dev --python ${{ matrix.python-version }} --frozen
+
+    - name: Run ruff linting
+      run: |
+        echo "## 🔍 Ruff Linting Results" >> $GITHUB_STEP_SUMMARY
+        if uv run ruff check --output-format=github .; then
+          echo "✅ No linting errors found" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Linting errors found" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: Run ruff formatting check
+      run: |
+        echo "## 🎨 Code Formatting Check" >> $GITHUB_STEP_SUMMARY
+        if uv run ruff format --check .; then
+          echo "✅ Code formatting is correct" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Code formatting issues found" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: Run Ty type checking
+      run: |
+        echo "## 🔧 Ty Type Checking Results" >> $GITHUB_STEP_SUMMARY
+        if uv run ty check; then
+          echo "✅ No type errors found" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Type errors found" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: Run tests
+      run: |
+        if uv run pytest -v --tb=short --color=yes \
+          --cov maxx --cov-branch --cov-report=xml \
+          --junit-xml=test.xml; then
+          echo '# ✅ Tests passed' >> $GITHUB_STEP_SUMMARY
+        else
+          echo '# ❌ Tests failed' >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: Generate test coverage report
+      if: (!cancelled())
+      run: |
+        echo '### Test Coverage Summary' >> $GITHUB_STEP_SUMMARY
+        uv run coverage report --show-missing --format=markdown >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload Test Results
+      if: (!cancelled())
+      uses: actions/upload-artifact@v5
+      with:
+        name: python${{ matrix.python-version }}
+        path: "*.xml"
+
+  matlab:
+    name: Verify path collection with MATLAB
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+        with:
+          release: R2025b
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Cache uv
+        id: cache-uv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-matlab-uv-${{ hashFiles('pyproject.toml') }}
+      
+      - name: Install dependencies
+        if: steps.cache-uv.outputs.cache-hit != 'true'
+        run: |
+          uv sync --all-groups --python 3.12 # MATLAB supports up to Python 3.12
+
+      - name: Run tests
+        uses: matlab-actions/run-tests@v2
+        with:
+          source-folder: src
+          select-by-folder: tests
+          test-results-junit: test.xml
+          code-coverage-cobertura: coverage.xml
+
+      - name: Upload Test Results
+        if: (!cancelled())
+        uses: actions/upload-artifact@v5
+        with:
+          name: matlab
+          path: "*.xml"
+
+  windows:
+    name: Run checks and tests on Windows
+    needs: [test]
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        submodules: true
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+
+    - name: Cache uv
+      id: cache-uv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-qualify-uv-${{ hashFiles('uv.lock') }}
+
+    - name: Install dependencies
+      if: steps.cache-uv.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        uv sync --dev --python 3.14 --frozen
+
+    - name: Run tests
+      shell: pwsh
+      run: |
+        uv run pytest -v --tb=short --color=yes --junit-xml=test.xml `
+          --cov maxx --cov-branch --cov-report=xml
+        if ($LASTEXITCODE -eq 0) {
+          '# ✅ Tests passed' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+        } else {
+          '# ❌ Tests failed' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          throw "Tests failed"
+        }
+
+    - name: Generate test coverage report
+      if: (!cancelled())
+      shell: pwsh
+      run: |
+        '### Test Coverage Summary' | Out-File -Append $env:GITHUB_STEP_SUMMARY
+        uv run coverage report --show-missing --format=markdown | Out-File -Append $env:GITHUB_STEP_SUMMARY
+
+    - name: Upload Test Results
+      if: (!cancelled())
+      uses: actions/upload-artifact@v5
+      with:
+        name: windows
+        path: "*.xml"
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [setup, test, matlab, windows]
+    if: (!cancelled())
+    permissions:
+      contents: read
+      checks: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: results
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "results/**/test.xml"
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          directory: results
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          use_oidc: true
+          directory: results
+
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.test.result }}" == "success" ]] && [[ "${{ needs.matlab.result }}" == "success" ]] && [[ "${{ needs.windows.result }}" == "success" ]]; then
+            echo "✅ All Python versions passed CI checks"
+            echo "## 🎉 CI Summary" >> $GITHUB_STEP_SUMMARY
+            echo "All tests passed across Python versions: ${{ needs.setup.outputs.python-versions }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some Python versions failed CI checks"
+            echo "## ❌ CI Summary" >> $GITHUB_STEP_SUMMARY
+            echo "Some tests failed. Check individual job results for details." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
