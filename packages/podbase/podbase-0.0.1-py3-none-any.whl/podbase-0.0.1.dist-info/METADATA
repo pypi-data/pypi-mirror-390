@@ -1,0 +1,167 @@
+Metadata-Version: 2.4
+Name: podbase
+Version: 0.0.1
+Summary: Python SDK for PodBase vector database
+Author-email: usamaasfar <usama.asfar@outlook.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/usamaasfar/podbase
+Project-URL: Repository, https://github.com/usamaasfar/podbase.git
+Project-URL: Issues, https://github.com/usamaasfar/podbase/issues
+Keywords: podbase,vector-database,python,sdk
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: httpx>=0.27.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: build>=1.0.0; extra == "dev"
+Dynamic: license-file
+
+# PodBase Python SDK
+
+Python client for PodBase vector database.
+
+## Installation
+
+```bash
+pip install podbase
+```
+
+## Usage
+
+### Initialize Client
+
+```python
+from podbase import PodBase
+
+podbase = PodBase({"baseUrl": "http://localhost:8080"})
+```
+
+### Health Check
+
+Check if server is running.
+
+```python
+await podbase.health()
+# Returns: {"message": "ok"}
+```
+
+### Create Collection
+
+Create a new collection with embedding configuration.
+
+```python
+collection = await podbase.create.collection("my-docs", {
+    "embedding": {
+        "provider": "sbert",
+        "model": "google/embeddinggemma-300m",
+        "dimension": 768,
+    }
+})
+```
+
+### Select Collection
+
+Get reference to existing collection.
+
+```python
+collection = podbase.select.collection("my-docs", {
+    "embedding": {
+        "provider": "sbert",
+        "model": "google/embeddinggemma-300m",
+        "dimension": 768,
+    }
+})
+```
+
+### Check Collection Exists
+
+Check if a collection exists.
+
+```python
+result = await podbase.exist.collection("my-docs")
+exists = result["exists"]
+```
+
+### Delete Collection
+
+Delete a collection and all its data.
+
+```python
+await podbase.delete.collection("my-docs")
+```
+
+### Purge Collection
+
+Remove all records but keep collection structure.
+
+```python
+await podbase.purge.collection("my-docs")
+```
+
+### Insert Records
+
+Add records to a collection.
+
+```python
+await collection.records.insert([
+    {
+        "content": "Python is a dynamic language",
+        "payload": {"category": "programming", "lang": "py"},
+    },
+    {
+        "content": "PodBase is a vector database",
+        "payload": {"category": "database", "type": "vector"},
+    },
+])
+# Returns: {"inserts": 2}
+```
+
+### Search Records
+
+Find similar records using semantic search.
+
+```python
+results = await collection.records.search({
+    "term": "What is Python?",
+    "limit": 5,
+    "payload": {"category": {"$eq": "programming"}},
+})
+# Returns: {"records": [...], "pagination": {...}}
+```
+
+### Unsert Records
+
+Remove records by ID or filter.
+
+```python
+# By IDs
+await collection.records.unsert({
+    "ids": ["record-id-1", "record-id-2"],
+})
+
+# By filter
+await collection.records.unsert({
+    "payload": {"category": {"$eq": "outdated"}},
+})
+# Returns: {"unserted_ids": [...]}
+```
+
+## Filter Operators
+
+Use in `payload` or `metadata` filters:
+
+| Operator                | Description             |
+| ----------------------- | ----------------------- |
+| `$eq`                   | Equal                   |
+| `$neq`                  | Not equal               |
+| `$gt` / `$gte`          | Greater than (or equal) |
+| `$lt` / `$lte`          | Less than (or equal)    |
+| `$in` / `$nin`          | In / not in array       |
+| `$regex`                | Regular expression      |
+| `$and` / `$or` / `$not` | Logical operators       |
