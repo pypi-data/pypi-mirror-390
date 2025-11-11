@@ -1,0 +1,97 @@
+from . import BaseAttribute
+from typing import Literal
+from ..base_types import Resolvable, StrLike
+
+
+class ThAttrs:
+    """
+    This module contains functions for attributes in the 'th' element.
+    Which is inherited by a class so we can generate type hints
+    """
+
+    @staticmethod
+    def abbr(value: StrLike) -> BaseAttribute:
+        """
+        "th" attribute: abbr
+        Alternative label to use for the header cell when referencing the cell in other contexts
+
+        Args:
+            value:
+                Text*
+
+        Returns:
+            An abbr attribute to be added to your element
+
+        """
+
+        return BaseAttribute("abbr", value)
+
+    @staticmethod
+    def colspan(value) -> BaseAttribute:
+        """
+        "th" attribute: colspan
+        Number of columns that the cell is to span
+
+        Args:
+            value:
+                Valid non-negative integer greater than zero
+
+        Returns:
+            An colspan attribute to be added to your element
+
+        """
+
+        return BaseAttribute("colspan", value)
+
+    @staticmethod
+    def headers(value: Resolvable) -> BaseAttribute:
+        """
+        "th" attribute: headers
+        The header cells for this cell
+
+        Args:
+            value:
+                Unordered set of unique space-separated tokens consisting of IDs*
+
+        Returns:
+            An headers attribute to be added to your element
+
+        """
+
+        return BaseAttribute("headers", value)
+
+    @staticmethod
+    def rowspan(value: int) -> BaseAttribute:
+        """
+        "th" attribute: rowspan
+        Number of rows that the cell is to span
+
+        Args:
+            value:
+                Valid non-negative integer
+
+        Returns:
+            An rowspan attribute to be added to your element
+
+        """
+
+        return BaseAttribute("rowspan", value)
+
+    @staticmethod
+    def scope(
+        value: Literal["row", "col", "rowgroup", "colgroup"],
+    ) -> BaseAttribute:
+        """
+        "th" attribute: scope
+        Specifies which cells the header cell applies to
+
+        Args:
+            value:
+                ['row', 'col', 'rowgroup', 'colgroup']
+
+        Returns:
+            An scope attribute to be added to your element
+
+        """
+
+        return BaseAttribute("scope", value)

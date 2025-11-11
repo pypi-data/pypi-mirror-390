@@ -1,0 +1,1889 @@
+from . import BaseAttribute
+from typing import Literal, Callable, Iterable, Mapping
+from ..base_types import Resolvable, StrLike
+
+class GlobalAttrs:
+    """ 
+    This module contains classes for all global attributes.
+    Elements can inherit it so the element can be a reference to our attributes
+    """ 
+    
+    @staticmethod
+    def accesskey(value: Resolvable) -> BaseAttribute:
+        """
+        "global" attribute: accesskey  
+        Keyboard shortcut to activate or focus element  
+
+        Args:
+            value:
+                Ordered set of unique space-separated tokens, none of which are identical to another, each consisting of one code point in length
+        
+        Returns:
+            An accesskey attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("accesskey", value)
+            
+
+
+    @staticmethod
+    def autocapitalize(value: Literal['on', 'off', 'none', 'sentences', 'words', 'characters']) -> BaseAttribute:
+        """
+        "global" attribute: autocapitalize  
+        Recommended autocapitalization behavior (for supported input methods)  
+
+        Args:
+            value:
+                ['on', 'off', 'none', 'sentences', 'words', 'characters']
+        
+        Returns:
+            An autocapitalize attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("autocapitalize", value)
+            
+
+
+    @staticmethod
+    def autocorrect(value: Literal['on', 'off']) -> BaseAttribute:
+        """
+        "global" attribute: autocorrect  
+        Recommended autocorrection behavior (for supported input methods)  
+
+        Args:
+            value:
+                ['on', 'off']
+        
+        Returns:
+            An autocorrect attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("autocorrect", value)
+            
+
+
+    @staticmethod
+    def autofocus(value: bool) -> BaseAttribute:
+        """
+        "global" attribute: autofocus  
+        Automatically focus the element when the page is loaded  
+
+        Args:
+            value:
+                Boolean attribute
+        
+        Returns:
+            An autofocus attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("autofocus", value)
+            
+
+
+    @staticmethod
+    def class_(value: StrLike | Iterable[StrLike]) -> BaseAttribute:
+        """
+        "global" attribute: class  
+        Classes to which the element belongs  
+
+        Args:
+            value:
+                Set of space-separated tokens
+        
+        Returns:
+            An class attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("class", value)
+            
+
+
+    @staticmethod
+    def contenteditable(value: Literal['true', 'plaintext-only', 'false']) -> BaseAttribute:
+        """
+        "global" attribute: contenteditable  
+        Whether the element is editable  
+
+        Args:
+            value:
+                ['true', 'plaintext-only', 'false']
+        
+        Returns:
+            An contenteditable attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("contenteditable", value)
+            
+
+
+    @staticmethod
+    def dir(value: Literal['ltr', 'rtl', 'auto']) -> BaseAttribute:
+        """
+        "global" attribute: dir  
+        The text directionality of the element  
+
+        Args:
+            value:
+                ['ltr', 'rtl', 'auto']
+        
+        Returns:
+            An dir attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("dir", value)
+            
+
+
+    @staticmethod
+    def draggable(value: Literal['true', 'false']) -> BaseAttribute:
+        """
+        "global" attribute: draggable  
+        Whether the element is draggable  
+
+        Args:
+            value:
+                ['true', 'false']
+        
+        Returns:
+            An draggable attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("draggable", value)
+            
+
+
+    @staticmethod
+    def enterkeyhint(value: Literal['enter', 'done', 'go', 'next', 'previous', 'search', 'send']) -> BaseAttribute:
+        """
+        "global" attribute: enterkeyhint  
+        Hint for selecting an enter key action  
+
+        Args:
+            value:
+                ['enter', 'done', 'go', 'next', 'previous', 'search', 'send']
+        
+        Returns:
+            An enterkeyhint attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("enterkeyhint", value)
+            
+
+
+    @staticmethod
+    def hidden(value: Literal['until-found', 'hidden', '']) -> BaseAttribute:
+        """
+        "global" attribute: hidden  
+        Whether the element is relevant  
+
+        Args:
+            value:
+                ['until-found', 'hidden', '']
+        
+        Returns:
+            An hidden attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("hidden", value)
+            
+
+
+    @staticmethod
+    def id(value: StrLike) -> BaseAttribute:
+        """
+        "global" attribute: id  
+        The element's ID  
+
+        Args:
+            value:
+                Text*
+        
+        Returns:
+            An id attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("id", value)
+            
+
+
+    @staticmethod
+    def inert(value: bool) -> BaseAttribute:
+        """
+        "global" attribute: inert  
+        Whether the element is inert.  
+
+        Args:
+            value:
+                Boolean attribute
+        
+        Returns:
+            An inert attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("inert", value)
+            
+
+
+    @staticmethod
+    def inputmode(value: Literal['none', 'text', 'tel', 'email', 'url', 'numeric', 'decimal', 'search']) -> BaseAttribute:
+        """
+        "global" attribute: inputmode  
+        Hint for selecting an input modality  
+
+        Args:
+            value:
+                ['none', 'text', 'tel', 'email', 'url', 'numeric', 'decimal', 'search']
+        
+        Returns:
+            An inputmode attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("inputmode", value)
+            
+
+
+    @staticmethod
+    def is_(value) -> BaseAttribute:
+        """
+        "global" attribute: is  
+        Creates a customized built-in element  
+
+        Args:
+            value:
+                Valid custom element name of a defined customized built-in element
+        
+        Returns:
+            An is attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("is", value)
+            
+
+
+    @staticmethod
+    def itemid(value) -> BaseAttribute:
+        """
+        "global" attribute: itemid  
+        Global identifier for a microdata item  
+
+        Args:
+            value:
+                Valid URL potentially surrounded by spaces
+        
+        Returns:
+            An itemid attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("itemid", value)
+            
+
+
+    @staticmethod
+    def itemprop(value: Resolvable) -> BaseAttribute:
+        """
+        "global" attribute: itemprop  
+        Property names of a microdata item  
+
+        Args:
+            value:
+                Unordered set of unique space-separated tokens consisting of valid absolute URLs, defined property names, or text*
+        
+        Returns:
+            An itemprop attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("itemprop", value)
+            
+
+
+    @staticmethod
+    def itemref(value: Resolvable) -> BaseAttribute:
+        """
+        "global" attribute: itemref  
+        Referenced elements  
+
+        Args:
+            value:
+                Unordered set of unique space-separated tokens consisting of IDs*
+        
+        Returns:
+            An itemref attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("itemref", value)
+            
+
+
+    @staticmethod
+    def itemscope(value: bool) -> BaseAttribute:
+        """
+        "global" attribute: itemscope  
+        Introduces a microdata item  
+
+        Args:
+            value:
+                Boolean attribute
+        
+        Returns:
+            An itemscope attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("itemscope", value)
+            
+
+
+    @staticmethod
+    def itemtype(value: Resolvable) -> BaseAttribute:
+        """
+        "global" attribute: itemtype  
+        Item types of a microdata item  
+
+        Args:
+            value:
+                Unordered set of unique space-separated tokens consisting of valid absolute URLs*
+        
+        Returns:
+            An itemtype attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("itemtype", value)
+            
+
+
+    @staticmethod
+    def lang(value) -> BaseAttribute:
+        """
+        "global" attribute: lang  
+        Language of the element  
+
+        Args:
+            value:
+                Valid BCP 47 language tag or the empty string
+        
+        Returns:
+            An lang attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("lang", value)
+            
+
+
+    @staticmethod
+    def nonce(value: StrLike) -> BaseAttribute:
+        """
+        "global" attribute: nonce  
+        Cryptographic nonce used in Content Security Policy checks [CSP]  
+
+        Args:
+            value:
+                Text
+        
+        Returns:
+            An nonce attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("nonce", value)
+            
+
+
+    @staticmethod
+    def popover(value: Literal['auto', 'manual']) -> BaseAttribute:
+        """
+        "global" attribute: popover  
+        Makes the element a popover element  
+
+        Args:
+            value:
+                ['auto', 'manual']
+        
+        Returns:
+            An popover attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("popover", value)
+            
+
+
+    @staticmethod
+    def slot(value: StrLike) -> BaseAttribute:
+        """
+        "global" attribute: slot  
+        The element's desired slot  
+
+        Args:
+            value:
+                Text
+        
+        Returns:
+            An slot attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("slot", value)
+            
+
+
+    @staticmethod
+    def spellcheck(value: Literal['true', 'false', '']) -> BaseAttribute:
+        """
+        "global" attribute: spellcheck  
+        Whether the element is to have its spelling and grammar checked  
+
+        Args:
+            value:
+                ['true', 'false', '']
+        
+        Returns:
+            An spellcheck attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("spellcheck", value)
+            
+
+
+    @staticmethod
+    def style(value: Resolvable | Mapping[StrLike, StrLike]) -> BaseAttribute:
+        """
+        "global" attribute: style  
+        Presentational and formatting instructions  
+
+        Args:
+            value:
+                CSS declarations*
+        
+        Returns:
+            An style attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("style", value, delimiter='; ')
+            
+
+
+    @staticmethod
+    def tabindex(value: int) -> BaseAttribute:
+        """
+        "global" attribute: tabindex  
+        Whether the element is focusable and sequentially focusable, and the relative order of the element for the purposes of sequential focus navigation  
+
+        Args:
+            value:
+                Valid integer
+        
+        Returns:
+            An tabindex attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("tabindex", value)
+            
+
+
+    @staticmethod
+    def title(value: StrLike) -> BaseAttribute:
+        """
+        "global" attribute: title  
+        Advisory information for the element  
+
+        Args:
+            value:
+                Text
+        
+        Returns:
+            An title attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("title", value)
+            
+
+
+    @staticmethod
+    def translate(value: Literal['yes', 'no']) -> BaseAttribute:
+        """
+        "global" attribute: translate  
+        Whether the element is to be translated when the page is localized  
+
+        Args:
+            value:
+                ['yes', 'no']
+        
+        Returns:
+            An translate attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("translate", value)
+            
+
+
+    @staticmethod
+    def writingsuggestions(value: Literal['true', 'false', '']) -> BaseAttribute:
+        """
+        "global" attribute: writingsuggestions  
+        Whether the element can offer writing suggestions or not.  
+
+        Args:
+            value:
+                ['true', 'false', '']
+        
+        Returns:
+            An writingsuggestions attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("writingsuggestions", value)
+            
+
+
+    @staticmethod
+    def onauxclick(value) -> BaseAttribute:
+        """
+        "global" attribute: onauxclick  
+        auxclick event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onauxclick attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onauxclick", value)
+            
+
+
+    @staticmethod
+    def onbeforeinput(value) -> BaseAttribute:
+        """
+        "global" attribute: onbeforeinput  
+        beforeinput event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onbeforeinput attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onbeforeinput", value)
+            
+
+
+    @staticmethod
+    def onbeforematch(value) -> BaseAttribute:
+        """
+        "global" attribute: onbeforematch  
+        beforematch event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onbeforematch attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onbeforematch", value)
+            
+
+
+    @staticmethod
+    def onbeforetoggle(value) -> BaseAttribute:
+        """
+        "global" attribute: onbeforetoggle  
+        beforetoggle event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onbeforetoggle attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onbeforetoggle", value)
+            
+
+
+    @staticmethod
+    def onblur(value) -> BaseAttribute:
+        """
+        "global" attribute: onblur  
+        blur event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onblur attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onblur", value)
+            
+
+
+    @staticmethod
+    def oncancel(value) -> BaseAttribute:
+        """
+        "global" attribute: oncancel  
+        cancel event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncancel attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncancel", value)
+            
+
+
+    @staticmethod
+    def oncanplay(value) -> BaseAttribute:
+        """
+        "global" attribute: oncanplay  
+        canplay event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncanplay attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncanplay", value)
+            
+
+
+    @staticmethod
+    def oncanplaythrough(value) -> BaseAttribute:
+        """
+        "global" attribute: oncanplaythrough  
+        canplaythrough event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncanplaythrough attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncanplaythrough", value)
+            
+
+
+    @staticmethod
+    def onchange(value) -> BaseAttribute:
+        """
+        "global" attribute: onchange  
+        change event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onchange attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onchange", value)
+            
+
+
+    @staticmethod
+    def onclick(value) -> BaseAttribute:
+        """
+        "global" attribute: onclick  
+        click event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onclick attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onclick", value)
+            
+
+
+    @staticmethod
+    def onclose(value) -> BaseAttribute:
+        """
+        "global" attribute: onclose  
+        close event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onclose attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onclose", value)
+            
+
+
+    @staticmethod
+    def oncontextlost(value) -> BaseAttribute:
+        """
+        "global" attribute: oncontextlost  
+        contextlost event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncontextlost attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncontextlost", value)
+            
+
+
+    @staticmethod
+    def oncontextmenu(value) -> BaseAttribute:
+        """
+        "global" attribute: oncontextmenu  
+        contextmenu event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncontextmenu attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncontextmenu", value)
+            
+
+
+    @staticmethod
+    def oncontextrestored(value) -> BaseAttribute:
+        """
+        "global" attribute: oncontextrestored  
+        contextrestored event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncontextrestored attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncontextrestored", value)
+            
+
+
+    @staticmethod
+    def oncopy(value) -> BaseAttribute:
+        """
+        "global" attribute: oncopy  
+        copy event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncopy attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncopy", value)
+            
+
+
+    @staticmethod
+    def oncuechange(value) -> BaseAttribute:
+        """
+        "global" attribute: oncuechange  
+        cuechange event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncuechange attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncuechange", value)
+            
+
+
+    @staticmethod
+    def oncut(value) -> BaseAttribute:
+        """
+        "global" attribute: oncut  
+        cut event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oncut attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oncut", value)
+            
+
+
+    @staticmethod
+    def ondblclick(value) -> BaseAttribute:
+        """
+        "global" attribute: ondblclick  
+        dblclick event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondblclick attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondblclick", value)
+            
+
+
+    @staticmethod
+    def ondrag(value) -> BaseAttribute:
+        """
+        "global" attribute: ondrag  
+        drag event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondrag attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondrag", value)
+            
+
+
+    @staticmethod
+    def ondragend(value) -> BaseAttribute:
+        """
+        "global" attribute: ondragend  
+        dragend event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondragend attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondragend", value)
+            
+
+
+    @staticmethod
+    def ondragenter(value) -> BaseAttribute:
+        """
+        "global" attribute: ondragenter  
+        dragenter event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondragenter attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondragenter", value)
+            
+
+
+    @staticmethod
+    def ondragleave(value) -> BaseAttribute:
+        """
+        "global" attribute: ondragleave  
+        dragleave event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondragleave attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondragleave", value)
+            
+
+
+    @staticmethod
+    def ondragover(value) -> BaseAttribute:
+        """
+        "global" attribute: ondragover  
+        dragover event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondragover attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondragover", value)
+            
+
+
+    @staticmethod
+    def ondragstart(value) -> BaseAttribute:
+        """
+        "global" attribute: ondragstart  
+        dragstart event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondragstart attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondragstart", value)
+            
+
+
+    @staticmethod
+    def ondrop(value) -> BaseAttribute:
+        """
+        "global" attribute: ondrop  
+        drop event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondrop attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondrop", value)
+            
+
+
+    @staticmethod
+    def ondurationchange(value) -> BaseAttribute:
+        """
+        "global" attribute: ondurationchange  
+        durationchange event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ondurationchange attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ondurationchange", value)
+            
+
+
+    @staticmethod
+    def onemptied(value) -> BaseAttribute:
+        """
+        "global" attribute: onemptied  
+        emptied event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onemptied attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onemptied", value)
+            
+
+
+    @staticmethod
+    def onended(value) -> BaseAttribute:
+        """
+        "global" attribute: onended  
+        ended event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onended attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onended", value)
+            
+
+
+    @staticmethod
+    def onerror(value) -> BaseAttribute:
+        """
+        "global" attribute: onerror  
+        error event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onerror attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onerror", value)
+            
+
+
+    @staticmethod
+    def onfocus(value) -> BaseAttribute:
+        """
+        "global" attribute: onfocus  
+        focus event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onfocus attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onfocus", value)
+            
+
+
+    @staticmethod
+    def onformdata(value) -> BaseAttribute:
+        """
+        "global" attribute: onformdata  
+        formdata event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onformdata attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onformdata", value)
+            
+
+
+    @staticmethod
+    def oninput(value) -> BaseAttribute:
+        """
+        "global" attribute: oninput  
+        input event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oninput attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oninput", value)
+            
+
+
+    @staticmethod
+    def oninvalid(value) -> BaseAttribute:
+        """
+        "global" attribute: oninvalid  
+        invalid event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An oninvalid attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("oninvalid", value)
+            
+
+
+    @staticmethod
+    def onkeydown(value) -> BaseAttribute:
+        """
+        "global" attribute: onkeydown  
+        keydown event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onkeydown attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onkeydown", value)
+            
+
+
+    @staticmethod
+    def onkeypress(value) -> BaseAttribute:
+        """
+        "global" attribute: onkeypress  
+        keypress event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onkeypress attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onkeypress", value)
+            
+
+
+    @staticmethod
+    def onkeyup(value) -> BaseAttribute:
+        """
+        "global" attribute: onkeyup  
+        keyup event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onkeyup attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onkeyup", value)
+            
+
+
+    @staticmethod
+    def onload(value) -> BaseAttribute:
+        """
+        "global" attribute: onload  
+        load event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onload attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onload", value)
+            
+
+
+    @staticmethod
+    def onloadeddata(value) -> BaseAttribute:
+        """
+        "global" attribute: onloadeddata  
+        loadeddata event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onloadeddata attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onloadeddata", value)
+            
+
+
+    @staticmethod
+    def onloadedmetadata(value) -> BaseAttribute:
+        """
+        "global" attribute: onloadedmetadata  
+        loadedmetadata event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onloadedmetadata attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onloadedmetadata", value)
+            
+
+
+    @staticmethod
+    def onloadstart(value) -> BaseAttribute:
+        """
+        "global" attribute: onloadstart  
+        loadstart event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onloadstart attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onloadstart", value)
+            
+
+
+    @staticmethod
+    def onmousedown(value) -> BaseAttribute:
+        """
+        "global" attribute: onmousedown  
+        mousedown event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmousedown attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmousedown", value)
+            
+
+
+    @staticmethod
+    def onmouseenter(value) -> BaseAttribute:
+        """
+        "global" attribute: onmouseenter  
+        mouseenter event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmouseenter attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmouseenter", value)
+            
+
+
+    @staticmethod
+    def onmouseleave(value) -> BaseAttribute:
+        """
+        "global" attribute: onmouseleave  
+        mouseleave event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmouseleave attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmouseleave", value)
+            
+
+
+    @staticmethod
+    def onmousemove(value) -> BaseAttribute:
+        """
+        "global" attribute: onmousemove  
+        mousemove event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmousemove attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmousemove", value)
+            
+
+
+    @staticmethod
+    def onmouseout(value) -> BaseAttribute:
+        """
+        "global" attribute: onmouseout  
+        mouseout event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmouseout attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmouseout", value)
+            
+
+
+    @staticmethod
+    def onmouseover(value) -> BaseAttribute:
+        """
+        "global" attribute: onmouseover  
+        mouseover event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmouseover attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmouseover", value)
+            
+
+
+    @staticmethod
+    def onmouseup(value) -> BaseAttribute:
+        """
+        "global" attribute: onmouseup  
+        mouseup event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onmouseup attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onmouseup", value)
+            
+
+
+    @staticmethod
+    def onpaste(value) -> BaseAttribute:
+        """
+        "global" attribute: onpaste  
+        paste event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onpaste attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onpaste", value)
+            
+
+
+    @staticmethod
+    def onpause(value) -> BaseAttribute:
+        """
+        "global" attribute: onpause  
+        pause event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onpause attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onpause", value)
+            
+
+
+    @staticmethod
+    def onplay(value) -> BaseAttribute:
+        """
+        "global" attribute: onplay  
+        play event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onplay attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onplay", value)
+            
+
+
+    @staticmethod
+    def onplaying(value) -> BaseAttribute:
+        """
+        "global" attribute: onplaying  
+        playing event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onplaying attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onplaying", value)
+            
+
+
+    @staticmethod
+    def onprogress(value) -> BaseAttribute:
+        """
+        "global" attribute: onprogress  
+        progress event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onprogress attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onprogress", value)
+            
+
+
+    @staticmethod
+    def onratechange(value) -> BaseAttribute:
+        """
+        "global" attribute: onratechange  
+        ratechange event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onratechange attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onratechange", value)
+            
+
+
+    @staticmethod
+    def onreset(value) -> BaseAttribute:
+        """
+        "global" attribute: onreset  
+        reset event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onreset attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onreset", value)
+            
+
+
+    @staticmethod
+    def onresize(value) -> BaseAttribute:
+        """
+        "global" attribute: onresize  
+        resize event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onresize attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onresize", value)
+            
+
+
+    @staticmethod
+    def onscroll(value) -> BaseAttribute:
+        """
+        "global" attribute: onscroll  
+        scroll event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onscroll attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onscroll", value)
+            
+
+
+    @staticmethod
+    def onscrollend(value) -> BaseAttribute:
+        """
+        "global" attribute: onscrollend  
+        scrollend event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onscrollend attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onscrollend", value)
+            
+
+
+    @staticmethod
+    def onsecuritypolicyviolation(value) -> BaseAttribute:
+        """
+        "global" attribute: onsecuritypolicyviolation  
+        securitypolicyviolation event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onsecuritypolicyviolation attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onsecuritypolicyviolation", value)
+            
+
+
+    @staticmethod
+    def onseeked(value) -> BaseAttribute:
+        """
+        "global" attribute: onseeked  
+        seeked event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onseeked attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onseeked", value)
+            
+
+
+    @staticmethod
+    def onseeking(value) -> BaseAttribute:
+        """
+        "global" attribute: onseeking  
+        seeking event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onseeking attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onseeking", value)
+            
+
+
+    @staticmethod
+    def onselect(value) -> BaseAttribute:
+        """
+        "global" attribute: onselect  
+        select event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onselect attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onselect", value)
+            
+
+
+    @staticmethod
+    def onslotchange(value) -> BaseAttribute:
+        """
+        "global" attribute: onslotchange  
+        slotchange event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onslotchange attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onslotchange", value)
+            
+
+
+    @staticmethod
+    def onstalled(value) -> BaseAttribute:
+        """
+        "global" attribute: onstalled  
+        stalled event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onstalled attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onstalled", value)
+            
+
+
+    @staticmethod
+    def onsubmit(value) -> BaseAttribute:
+        """
+        "global" attribute: onsubmit  
+        submit event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onsubmit attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onsubmit", value)
+            
+
+
+    @staticmethod
+    def onsuspend(value) -> BaseAttribute:
+        """
+        "global" attribute: onsuspend  
+        suspend event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onsuspend attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onsuspend", value)
+            
+
+
+    @staticmethod
+    def ontimeupdate(value) -> BaseAttribute:
+        """
+        "global" attribute: ontimeupdate  
+        timeupdate event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ontimeupdate attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ontimeupdate", value)
+            
+
+
+    @staticmethod
+    def ontoggle(value) -> BaseAttribute:
+        """
+        "global" attribute: ontoggle  
+        toggle event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An ontoggle attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("ontoggle", value)
+            
+
+
+    @staticmethod
+    def onvolumechange(value) -> BaseAttribute:
+        """
+        "global" attribute: onvolumechange  
+        volumechange event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onvolumechange attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onvolumechange", value)
+            
+
+
+    @staticmethod
+    def onwaiting(value) -> BaseAttribute:
+        """
+        "global" attribute: onwaiting  
+        waiting event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onwaiting attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onwaiting", value)
+            
+
+
+    @staticmethod
+    def onwheel(value) -> BaseAttribute:
+        """
+        "global" attribute: onwheel  
+        wheel event handler  
+
+        Args:
+            value:
+                Event handler content attribute
+        
+        Returns:
+            An onwheel attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("onwheel", value)
+            

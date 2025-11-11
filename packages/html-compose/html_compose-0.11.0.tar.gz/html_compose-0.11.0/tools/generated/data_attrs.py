@@ -1,0 +1,27 @@
+from . import BaseAttribute
+from typing import Literal, Iterable, Mapping
+from ..base_types import Resolvable, StrLike
+
+class DataAttrs:
+    """ 
+    This module contains functions for attributes in the 'data' element.
+    Which is inherited by a class so we can generate type hints
+    """ 
+    
+    @staticmethod
+    def value(value: StrLike) -> BaseAttribute:
+        """
+        "data" attribute: value  
+        Machine-readable value  
+
+        Args:
+            value:
+                Text*
+        
+        Returns:
+            An value attribute to be added to your element
+
+        """
+        
+        return BaseAttribute("value", value)
+            

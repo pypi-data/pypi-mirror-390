@@ -1,0 +1,140 @@
+[project]
+name = "html-compose"
+version = "0.11.0"
+description = "Composable HTML generation in python"
+authors = [
+    { name = "jealouscloud", email = "github@noaha.org" }
+]
+dependencies = [
+    "markupsafe>=2.0.0",
+    "beautifulsoup4>=4.12.3",
+]
+readme = "README.md"
+requires-python = ">= 3.10"
+license = { text = "MIT" }
+
+classifiers = [
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "Typing :: Typed",
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP",
+]
+
+
+[project.optional-dependencies]
+
+live-reload = [
+    "watchfiles>=1.0.4",
+    "websockets>=15.0.1"
+]
+
+
+full = [
+    "watchfiles>=1.0.4",
+    "websockets>=15.0.1",
+    "beautifulsoup4>=4.12.3"
+]
+
+
+[build-system]
+requires = ["hatchling==1.26.3"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "pyright>=1.1.396",
+    "requests>=2.32.3",
+    "hext>=1.0.11",
+    "pytest>=8.3.3",
+    "mypy>=1.15.0",
+    "types-beautifulsoup4>=4.12.0.20250204",
+    "ipython>=8.33.0",
+    "watchfiles>=1.0.4",
+    "websockets>=15.0.1",
+    "pdoc>=15.0.4",
+    "ruff>=0.12.3",
+]
+[project.scripts]
+"html-convert" = "html_compose.cli:html_convert"
+"html-compose" = "html_compose.cli:cli"
+
+[tool.rye.scripts]  # Run as "rye run <command>"
+build-elements = { chain = ["python tools/generate_elements.py --copy", 'fix-lint', 'fix-fmt' ] }
+build-attributes = { chain = ["python tools/generate_attributes.py --copy", 'fix-lint', 'fix-fmt' ] }
+"check-lint" = "rye lint"
+"check-fmt" = "rye fmt --check"
+fix = { chain = ["fix-lint", "fix-fmt" ] }
+"fix-lint" = "rye lint --fix"
+"fix-fmt" = "rye fmt"
+build = "rye build --clean --verbose"
+publish = "rye publish --verbose"
+release = { chain = ["check", "build", "publish"]}
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/html_compose"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "tools/generated",
+]
+
+line-length = 80
+indent-width = 4
+
+# Assume Python 3.10
+target-version = "py310"
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
