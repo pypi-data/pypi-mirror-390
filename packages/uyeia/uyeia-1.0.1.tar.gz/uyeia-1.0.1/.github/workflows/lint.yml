@@ -1,0 +1,25 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+    lint:
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+        runs-on: ubuntu-22.04
+        steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+        - name: Install Rye
+          uses: eifinger/setup-rye@v4
+          with:
+              version: '0.43.0'
+        - name: Install dependencies
+          run: |
+              rye sync
+        - name: Run Linter
+          run: |
+              rye run lint

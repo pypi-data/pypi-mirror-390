@@ -1,0 +1,56 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - ubuntu-22.04
+        python-version:
+        - '3.8'
+        - '3.9'
+        - '3.10'
+        - '3.11'
+        - '3.12'
+        - '3.13'
+        - pypy-3.10
+        allow-failure:
+        - false
+        include:
+        - os: windows-2022
+          python-version: '3.12'
+          allow-failure: false
+        - os: macos-13
+          python-version: '3.12'
+          allow-failure: false
+        - os: ubuntu-22.04
+          python-version: 3.14-dev
+          allow-failure: true
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+      env:
+        # Workaround for https://github.com/actions/setup-python/issues/866
+        PIP_TRUSTED_HOST: pypi.python.org pypi.org files.pythonhosted.org
+    - name: Install Rye
+      uses: eifinger/setup-rye@v4
+      with:
+        version: '0.43.0'
+    - name: Install dependencies
+      run: |
+        rye sync
+    - name: Run tests
+      run: |
+        rye run test
+      continue-on-error: ${{ matrix.allow-failure }}
