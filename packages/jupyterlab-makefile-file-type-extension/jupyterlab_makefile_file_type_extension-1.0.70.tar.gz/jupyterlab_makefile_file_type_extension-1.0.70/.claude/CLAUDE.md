@@ -1,0 +1,1 @@
+- when committing to git make sure we have updated and committed package.json and lock files
