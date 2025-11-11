@@ -1,0 +1,195 @@
+rules:
+  - id: azure-vm-required-tags
+    description: Virtual machines must have required tags for governance
+    resource_type: azurerm_linux_virtual_machine
+    severity: error
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+      tags.CostCenter:
+        regex: "^\\d{5}$"
+
+  - id: azure-vm-windows-required-tags
+    description: Windows virtual machines must have required tags for governance
+    resource_type: azurerm_windows_virtual_machine
+    severity: error
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+      tags.CostCenter:
+        regex: "^\\d{5}$"
+
+  - id: azure-vm-disk-encryption
+    description: Virtual machine OS disks must be encrypted
+    resource_type: azurerm_linux_virtual_machine
+    severity: error
+    assert:
+      os_disk.encryption_at_host_enabled: true
+
+  - id: azure-vm-windows-disk-encryption
+    description: Windows virtual machine OS disks must be encrypted
+    resource_type: azurerm_windows_virtual_machine
+    severity: error
+    assert:
+      os_disk.encryption_at_host_enabled: true
+
+  - id: azure-storage-account-https-only
+    description: Storage accounts should only allow HTTPS traffic
+    resource_type: azurerm_storage_account
+    severity: error
+    assert:
+      enable_https_traffic_only: true
+
+  - id: azure-storage-account-min-tls
+    description: Storage accounts should use minimum TLS version 1.2
+    resource_type: azurerm_storage_account
+    severity: error
+    assert:
+      min_tls_version: "TLS1_2"
+
+  - id: azure-storage-account-public-access
+    description: Storage accounts should disable public blob access
+    resource_type: azurerm_storage_account
+    severity: warning
+    assert:
+      allow_nested_items_to_be_public: false
+
+  - id: azure-storage-account-secure-transfer
+    description: Storage accounts must require secure transfer
+    resource_type: azurerm_storage_account
+    severity: error
+    assert:
+      enable_https_traffic_only: true
+
+  - id: azure-nsg-no-wide-open-ssh
+    description: Network security groups should not allow SSH from any source
+    resource_type: azurerm_network_security_rule
+    severity: error
+    filter:
+      access: "Allow"
+      direction: "Inbound"
+      destination_port_range: "22"
+    assert:
+      source_address_prefix:
+        ne: "*"
+
+  - id: azure-nsg-no-wide-open-rdp
+    description: Network security groups should not allow RDP from any source
+    resource_type: azurerm_network_security_rule
+    severity: error
+    filter:
+      access: "Allow"
+      direction: "Inbound"
+      destination_port_range: "3389"
+    assert:
+      source_address_prefix:
+        ne: "*"
+
+  - id: azure-nsg-no-wide-open-http
+    description: Network security groups should not allow HTTP from any source
+    resource_type: azurerm_network_security_rule
+    severity: warning
+    filter:
+      access: "Allow"
+      direction: "Inbound"
+      destination_port_range: "80"
+    assert:
+      source_address_prefix:
+        ne: "*"
+
+  - id: azure-sql-server-firewall-rules
+    description: SQL servers should not allow access from all Azure services
+    resource_type: azurerm_sql_server
+    severity: warning
+    assert:
+      connection_policy: "Proxy"
+
+  - id: azure-sql-server-audit-policy
+    description: SQL servers should have auditing enabled
+    resource_type: azurerm_sql_server
+    severity: error
+    assert:
+      extended_auditing_policy.storage_endpoint: present
+
+  - id: azure-key-vault-network-access
+    description: Key vaults should restrict network access
+    resource_type: azurerm_key_vault
+    severity: warning
+    assert:
+      network_acls.default_action: "Deny"
+
+  - id: azure-key-vault-purge-protection
+    description: Key vaults should have purge protection enabled
+    resource_type: azurerm_key_vault
+    severity: error
+    assert:
+      purge_protection_enabled: true
+
+  - id: azure-key-vault-soft-delete
+    description: Key vaults should have soft delete enabled
+    resource_type: azurerm_key_vault
+    severity: error
+    assert:
+      soft_delete_retention_days:
+        gte: 7
+
+  - id: azure-app-service-https-only
+    description: App services should only accept HTTPS requests
+    resource_type: azurerm_app_service
+    severity: error
+    assert:
+      https_only: true
+
+  - id: azure-app-service-min-tls
+    description: App services should use minimum TLS version 1.2
+    resource_type: azurerm_app_service
+    severity: error
+    assert:
+      site_config.min_tls_version: "1.2"
+
+  - id: azure-function-app-https-only
+    description: Function apps should only accept HTTPS requests
+    resource_type: azurerm_function_app
+    severity: error
+    assert:
+      https_only: true
+
+  - id: azure-postgresql-ssl-enforcement
+    description: PostgreSQL servers should enforce SSL connections
+    resource_type: azurerm_postgresql_server
+    severity: error
+    assert:
+      ssl_enforcement_enabled: true
+
+  - id: azure-mysql-ssl-enforcement
+    description: MySQL servers should enforce SSL connections
+    resource_type: azurerm_mysql_server
+    severity: error
+    assert:
+      ssl_enforcement_enabled: true
+
+  - id: azure-resource-group-tags
+    description: Resource groups should have required tags
+    resource_type: azurerm_resource_group
+    severity: warning
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+
+  - id: azure-public-ip-allocation
+    description: Public IP addresses should use static allocation for production
+    resource_type: azurerm_public_ip
+    severity: warning
+    filter:
+      tags.Environment: "production"
+    assert:
+      allocation_method: "Static"
+
+  - id: azure-load-balancer-standard-sku
+    description: Load balancers should use Standard SKU for production workloads
+    resource_type: azurerm_load_balancer
+    severity: warning
+    filter:
+      tags.Environment: "production"
+    assert:
+      sku: "Standard"

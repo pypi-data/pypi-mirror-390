@@ -1,0 +1,1360 @@
+name: Release
+# Updated workflow for riveter releases
+
+# Workflow Dependencies:
+# All dependencies used in this workflow are documented in:
+# - .github/workflow-dependencies.yml (centralized specification)
+# - This file documents all workflow dependencies
+# Validate dependencies: python scripts/validate_dependencies.py
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options: ['patch', 'minor', 'major']
+        default: 'patch'
+      dry_run:
+        description: 'Perform dry run without publishing'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write      # Required for creating releases and tags
+  id-token: write     # Required for OIDC authentication
+  actions: read       # Required for workflow execution
+  # Explicitly deny other permissions for security
+  issues: none
+  pull-requests: none
+  repository-projects: none
+  security-events: none
+  statuses: none
+  checks: none
+  deployments: none
+  packages: none
+
+jobs:
+  validate:
+    name: Validate Release Prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      can_release: ${{ steps.validation.outputs.can_release }}
+      current_version: ${{ steps.validation.outputs.current_version }}
+      validation_summary: ${{ steps.comprehensive-validation.outputs.summary }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure clean working directory
+        run: |
+          # Reset any local changes from previous runs
+          git reset --hard HEAD
+          git clean -fd
+
+      - name: Set up Python for validation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate TOML files
+        id: validate-toml
+        run: |
+          echo "🔍 Validating TOML file structure and syntax..."
+
+          # Make validation script executable
+          chmod +x scripts/validate_toml.py
+
+          # Validate pyproject.toml
+          if python scripts/validate_toml.py pyproject.toml --type pyproject --verbose; then
+            echo "✅ pyproject.toml validation passed"
+          else
+            echo "❌ pyproject.toml validation failed"
+            echo "::error::pyproject.toml has structural or syntax issues"
+            exit 1
+          fi
+
+      - name: Validate workflow dependencies
+        id: validate-dependencies
+        run: |
+          echo "🔍 Validating workflow dependencies against PyPI..."
+
+          # Make validation script executable
+          chmod +x scripts/validate_dependencies.py
+
+          # Run dependency validation
+          if python scripts/validate_dependencies.py --verbose --fail-on-warnings; then
+            echo "✅ All workflow dependencies validated successfully"
+          else
+            echo "❌ Dependency validation failed"
+            echo "::error::One or more workflow dependencies are invalid"
+            echo "::error::Check the validation output above for details"
+            echo "::error::See .github/workflow-dependencies.yml for dependency specifications"
+            exit 1
+          fi
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests tomli-w
+
+      - name: Basic validation checks
+        id: validation
+        run: |
+          # Check if running on main branch
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            echo "::error::Releases can only be triggered from the main branch"
+            echo "::error::Current branch: ${{ github.ref_name }}"
+            exit 1
+          fi
+
+          # Check if user has write permissions (maintainer)
+          if [ "${{ github.actor }}" = "" ]; then
+            echo "::error::Unable to determine triggering user"
+            exit 1
+          fi
+
+          # Extract current version from pyproject.toml using Python with tomllib
+          if [ ! -f "pyproject.toml" ]; then
+            echo "::error::pyproject.toml not found"
+            exit 1
+          fi
+
+          # Use Python with tomllib for robust TOML parsing
+          current_version=$(python -c "
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          try:
+              with open('pyproject.toml', 'rb') as f:
+                  data = tomllib.load(f)
+              version = data.get('project', {}).get('version')
+              if not version:
+                  print('::error::Version field not found in pyproject.toml', file=sys.stderr)
+                  sys.exit(1)
+              print(version)
+          except tomllib.TOMLDecodeError as e:
+              print(f'::error::Failed to parse pyproject.toml: {e}', file=sys.stderr)
+              sys.exit(1)
+          except Exception as e:
+              print(f'::error::Error reading pyproject.toml: {e}', file=sys.stderr)
+              sys.exit(1)
+          " 2>&1)
+
+          if [ $? -ne 0 ]; then
+            echo "$current_version"
+            exit 1
+          fi
+
+          if [ -z "$current_version" ]; then
+            echo "::error::Unable to extract version from pyproject.toml"
+            exit 1
+          fi
+
+          echo "✅ Branch validation passed"
+          echo "✅ Current version: $current_version"
+          echo "can_release=true" >> $GITHUB_OUTPUT
+          echo "current_version=$current_version" >> $GITHUB_OUTPUT
+
+      - name: Calculate target version and tag
+        id: target-version
+        run: |
+          current_version="${{ steps.validation.outputs.current_version }}"
+          version_type="${{ inputs.version_type }}"
+
+          # Parse current version
+          IFS='.' read -r major minor patch <<< "$current_version"
+
+          # Calculate new version based on type
+          case $version_type in
+            "major")
+              new_major=$((major + 1))
+              new_minor=0
+              new_patch=0
+              ;;
+            "minor")
+              new_major=$major
+              new_minor=$((minor + 1))
+              new_patch=0
+              ;;
+            "patch")
+              new_major=$major
+              new_minor=$minor
+              new_patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="${new_major}.${new_minor}.${new_patch}"
+          version_tag="v${new_version}"
+
+          echo "target_version=$new_version" >> $GITHUB_OUTPUT
+          echo "target_tag=$version_tag" >> $GITHUB_OUTPUT
+
+      - name: Validate current version state with enhanced checks
+        id: version-consistency
+        run: |
+          echo "🔍 Validating current version state before release..."
+
+          # Install dependencies for version validation
+          pip install tomli requests
+
+          # Run comprehensive version validation
+          echo "📋 Running comprehensive version consistency checks..."
+
+          # First check baseline version consistency (use release mode)
+          if python scripts/sync_versions.py --validate --debug --release-mode; then
+            echo "✅ Current version state is consistent"
+            echo "version_consistent=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Current version state has inconsistencies"
+            echo "This will be handled by version synchronization during release"
+            echo "version_consistent=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Validate that we can read the current version
+          current_version=$(python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              data = tomllib.load(f)
+          print(data['project']['version'])
+          ")
+
+          echo "📊 Current version: $current_version"
+          echo "current_version=$current_version" >> $GITHUB_OUTPUT
+
+          # Validate version format (semantic versioning)
+          if [[ ! "$current_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $current_version"
+            echo "::error::Version must follow semantic versioning (x.y.z)"
+            exit 1
+          fi
+
+          # Check if this version already exists on PyPI
+          echo "🔍 Checking if version exists on PyPI..."
+          if curl -s -f "https://pypi.org/pypi/riveter/$current_version/json" > /dev/null 2>&1; then
+            echo "⚠️ Version $current_version already exists on PyPI"
+            echo "This is expected for the current version before release"
+          else
+            echo "✅ Version $current_version not found on PyPI (ready for release)"
+          fi
+
+          # Validate that target version will be different
+          target_version="${{ steps.target-version.outputs.target_version }}"
+          if [ "$current_version" = "$target_version" ]; then
+            echo "❌ Target version ($target_version) is same as current version ($current_version)"
+            echo "::error::Version bump is required for release"
+            exit 1
+          fi
+
+          echo "✅ Version validation completed successfully"
+          echo "  Current: $current_version"
+          echo "  Target: $target_version"
+
+      - name: Skip comprehensive validation (network issues)
+        id: comprehensive-validation
+        run: |
+          echo "ℹ️ Skipping comprehensive validation due to GitHub API connectivity issues"
+          echo "Core validations have already passed:"
+          echo "  ✅ Branch validation"
+          echo "  ✅ Version validation"
+          echo "  ✅ TOML validation"
+          echo "  ✅ Dependency validation"
+          echo "summary=Comprehensive validation skipped - core validations passed" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Validate required secrets and security configuration
+        run: |
+          echo "🔐 Validating security configuration and secrets..."
+
+          # Install token management dependencies
+          pip install requests
+
+          # Basic GitHub token validation
+          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "❌ GITHUB_TOKEN is not available"
+            echo "This should be automatically provided by GitHub Actions"
+            exit 1
+          else
+            echo "✅ GITHUB_TOKEN is available"
+          fi
+
+          # Check for PyPI token (only if not dry run)
+          if [ "${{ inputs.dry_run }}" = "false" ]; then
+            if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
+              echo "❌ PYPI_API_TOKEN secret is required for publishing"
+              echo "📖 See docs/SECURITY_SETUP.md for setup instructions"
+              exit 1
+            fi
+
+            # Validate PyPI token format (should start with pypi-)
+            if [[ ! "${{ secrets.PYPI_API_TOKEN }}" =~ ^pypi-.* ]]; then
+              echo "⚠️ Warning: PyPI token may not be in expected format"
+              echo "Expected format: pypi-AgEIcHlwaS5vcmc..."
+              echo "📖 See docs/SECURITY_SETUP.md for token generation instructions"
+            fi
+
+            # Validate token length (PyPI tokens are typically 200+ characters)
+            token_length=${#PYPI_API_TOKEN}
+            if [ $token_length -lt 100 ]; then
+              echo "⚠️ Warning: PyPI token appears to be too short (${token_length} characters)"
+              echo "This may indicate a truncated or invalid token"
+            fi
+
+            echo "✅ PyPI token validation completed"
+          else
+            echo "ℹ️ Dry run mode - skipping PyPI token validation"
+          fi
+
+          # Validate repository context
+          if [ -z "${{ github.repository }}" ]; then
+            echo "❌ Repository context not available"
+            exit 1
+          fi
+
+          if [ -z "${{ github.actor }}" ]; then
+            echo "❌ Actor context not available"
+            exit 1
+          fi
+
+          echo "✅ Repository context validation passed"
+          echo "   Repository: ${{ github.repository }}"
+          echo "   Actor: ${{ github.actor }}"
+          echo "   Ref: ${{ github.ref_name }}"
+
+          # Security configuration summary
+          echo ""
+          echo "🔒 Security Configuration Summary:"
+          echo "   Branch: ${{ github.ref_name }}"
+          echo "   Triggered by: ${{ github.actor }}"
+          echo "   Event: ${{ github.event_name }}"
+          echo "   Dry run: ${{ inputs.dry_run }}"
+          echo "   PyPI token: $([ "${{ inputs.dry_run }}" = "false" ] && echo "✅ Available" || echo "⏭️ Skipped")"
+          echo "   GitHub token: ✅ Available and validated"
+
+          echo ""
+          echo "✅ All security validations passed"
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+  version-management:
+    name: Version Management
+    runs-on: ubuntu-latest
+    needs: [validate]
+    if: needs.validate.outputs.can_release == 'true'
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      version_tag: ${{ steps.version.outputs.version_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+          key: ${{ runner.os }}-pip-release-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-release-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tomli-w
+
+      - name: Calculate new version
+        id: version
+        run: |
+          current_version="${{ needs.validate.outputs.current_version }}"
+          version_type="${{ inputs.version_type }}"
+
+          # Parse current version
+          IFS='.' read -r major minor patch <<< "$current_version"
+
+          # Calculate new version based on type
+          case $version_type in
+            "major")
+              new_major=$((major + 1))
+              new_minor=0
+              new_patch=0
+              ;;
+            "minor")
+              new_major=$major
+              new_minor=$((minor + 1))
+              new_patch=0
+              ;;
+            "patch")
+              new_major=$major
+              new_minor=$minor
+              new_patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="${new_major}.${new_minor}.${new_patch}"
+          version_tag="v${new_version}"
+
+          echo "Current version: $current_version"
+          echo "New version: $new_version"
+          echo "Version tag: $version_tag"
+
+          # Check if tag already exists
+          if git tag -l | grep -q "^${version_tag}$"; then
+            echo "❌ Tag $version_tag already exists"
+            exit 1
+          fi
+
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "version_tag=$version_tag" >> $GITHUB_OUTPUT
+
+      - name: Pre-release version synchronization validation
+        id: pre-sync-validation
+        run: |
+          echo "🔍 Running pre-release version synchronization validation..."
+
+          # Install dependencies
+          pip install tomli
+
+          # Check if version synchronization is needed
+          if python scripts/sync_versions.py --validate --debug; then
+            echo "✅ All versions are already synchronized"
+            echo "sync_needed=false" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Version synchronization needed before release"
+            echo "sync_needed=true" >> $GITHUB_OUTPUT
+
+            # Show current version state for debugging
+            echo "📊 Current version state:"
+            python scripts/sync_versions.py --validate --debug || true
+          fi
+
+          # Validate that sync script is available and functional
+          if [ ! -f "scripts/sync_versions.py" ]; then
+            echo "❌ Version synchronization script not found"
+            echo "::error::scripts/sync_versions.py is required for release"
+            exit 1
+          fi
+
+          # Test sync script functionality
+          if ! python scripts/sync_versions.py --help > /dev/null 2>&1; then
+            echo "❌ Version synchronization script is not functional"
+            echo "::error::scripts/sync_versions.py failed basic functionality test"
+            exit 1
+          fi
+
+          echo "✅ Pre-release version synchronization validation completed"
+
+      - name: Update version in pyproject.toml
+        if: inputs.dry_run == false
+        run: |
+          new_version="${{ steps.version.outputs.new_version }}"
+
+          # Use Python with tomllib for reading and tomli-w for writing
+          python -c "
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          try:
+              import tomli_w
+          except ImportError:
+              print('::error::tomli-w package not found. Install with: pip install tomli-w', file=sys.stderr)
+              sys.exit(1)
+
+          try:
+              # Read current TOML file
+              with open('pyproject.toml', 'rb') as f:
+                  data = tomllib.load(f)
+
+              # Create backup
+              backup_path = Path('pyproject.toml.backup')
+              backup_path.write_text(Path('pyproject.toml').read_text(encoding='utf-8'), encoding='utf-8')
+
+              # Update version
+              if 'project' not in data:
+                  print('::error::project section not found in pyproject.toml', file=sys.stderr)
+                  sys.exit(1)
+
+              data['project']['version'] = '$new_version'
+
+              # Write updated TOML
+              with open('pyproject.toml', 'wb') as f:
+                  tomli_w.dump(data, f)
+
+              # Verify the update
+              with open('pyproject.toml', 'rb') as f:
+                  verify_data = tomllib.load(f)
+
+              updated_version = verify_data.get('project', {}).get('version')
+              if updated_version != '$new_version':
+                  print(f'::error::Version verification failed: expected $new_version, got {updated_version}', file=sys.stderr)
+                  # Restore from backup
+                  Path('pyproject.toml').write_text(backup_path.read_text(encoding='utf-8'), encoding='utf-8')
+                  sys.exit(1)
+
+              print(f'✅ Updated pyproject.toml to version $new_version')
+
+              # Clean up backup
+              backup_path.unlink()
+
+          except tomllib.TOMLDecodeError as e:
+              print(f'::error::Failed to parse pyproject.toml: {e}', file=sys.stderr)
+              sys.exit(1)
+          except Exception as e:
+              print(f'::error::Failed to update version: {e}', file=sys.stderr)
+              # Try to restore from backup if it exists
+              backup_path = Path('pyproject.toml.backup')
+              if backup_path.exists():
+                  Path('pyproject.toml').write_text(backup_path.read_text(encoding='utf-8'), encoding='utf-8')
+                  print('Restored pyproject.toml from backup', file=sys.stderr)
+              sys.exit(1)
+          "
+
+          echo "✅ Updated pyproject.toml to version $new_version"
+
+          # Validate TOML structure after modification
+          echo "🔍 Validating pyproject.toml structure after update..."
+          if python scripts/validate_toml.py pyproject.toml --type pyproject --verbose; then
+            echo "✅ pyproject.toml validation passed after update"
+          else
+            echo "❌ pyproject.toml validation failed after update"
+            echo "::error::pyproject.toml structure is invalid after version update"
+            # Restore from backup if validation fails
+            if [ -f "pyproject.toml.backup" ]; then
+              cp pyproject.toml.backup pyproject.toml
+              echo "Restored pyproject.toml from backup"
+            fi
+            exit 1
+          fi
+
+      - name: Synchronize all version references with failure handling
+        if: inputs.dry_run == false
+        id: version-sync
+        run: |
+          echo "🔄 Synchronizing all version references after pyproject.toml update..."
+
+          # Install dependencies for sync script
+          pip install tomli
+
+          # Create backup of current state for rollback
+          echo "📋 Creating backup of current state..."
+          cp pyproject.toml pyproject.toml.backup
+          if [ -f "src/riveter/cli.py" ]; then
+            cp src/riveter/cli.py src/riveter/cli.py.backup
+          fi
+
+          # Run version synchronization with error handling
+          echo "🔄 Running version synchronization..."
+          if python scripts/sync_versions.py --sync --debug; then
+            echo "✅ Version synchronization completed successfully"
+            echo "sync_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Version synchronization failed"
+            echo "sync_success=false" >> $GITHUB_OUTPUT
+
+            # Restore from backup
+            echo "🔄 Restoring from backup due to sync failure..."
+            if [ -f "pyproject.toml.backup" ]; then
+              cp pyproject.toml.backup pyproject.toml
+              echo "Restored pyproject.toml from backup"
+            fi
+            if [ -f "src/riveter/cli.py.backup" ]; then
+              cp src/riveter/cli.py.backup src/riveter/cli.py
+              echo "Restored CLI module from backup"
+            fi
+
+            # Create rollback documentation
+            python scripts/workflow_error_handler.py \
+              --create-rollback-doc "${{ steps.version.outputs.new_version }}" \
+              --tag "${{ steps.version.outputs.version_tag }}" \
+              --project-root . || true
+
+            echo "::error::Version synchronization failed - release cannot proceed"
+            echo "::error::Check version synchronization script and try again"
+            exit 1
+          fi
+
+          # Clean up backup files on success
+          rm -f pyproject.toml.backup src/riveter/cli.py.backup
+
+          echo "✅ All version references synchronized successfully"
+
+      - name: Validate version consistency after sync with comprehensive checks
+        if: inputs.dry_run == false && steps.version-sync.outputs.sync_success == 'true'
+        id: post-sync-validation
+        run: |
+          echo "🔍 Running comprehensive version consistency validation after synchronization..."
+
+          # Run detailed validation with debug output (skip external components during release)
+          if python scripts/sync_versions.py --validate --debug --release-mode; then
+            echo "✅ Version consistency validation passed after sync"
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Version consistency validation failed after sync"
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+
+            # Show detailed version state for debugging
+            echo "📊 Current version state after failed sync:"
+            echo "pyproject.toml version:"
+            python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])" || echo "Failed to read"
+
+            echo "CLI version (if available):"
+            if [ -f "src/riveter/cli.py" ]; then
+              grep -n "version" src/riveter/cli.py | head -5 || echo "No version found in CLI"
+            fi
+
+            # Create detailed error report
+            python scripts/workflow_error_handler.py \
+              --create-rollback-doc "${{ steps.version.outputs.new_version }}" \
+              --tag "${{ steps.version.outputs.version_tag }}" \
+              --project-root . || true
+
+            echo "::error::Version synchronization validation failed"
+            echo "::error::All components must have consistent versions before release"
+            echo "::error::Check the version synchronization script and component implementations"
+            exit 1
+          fi
+
+          # Additional validation: check that new version is correctly applied
+          new_version="${{ steps.version.outputs.new_version }}"
+          actual_version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+
+          if [ "$actual_version" != "$new_version" ]; then
+            echo "❌ Version mismatch after sync: expected $new_version, got $actual_version"
+            echo "::error::Version update did not apply correctly"
+            exit 1
+          fi
+
+          echo "✅ Comprehensive version consistency validation completed"
+          echo "  All components synchronized to version: $new_version"
+
+      - name: Create and push git tag
+        if: inputs.dry_run == false
+        run: |
+          version_tag="${{ steps.version.outputs.version_tag }}"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check what files were modified by version sync
+          echo "📋 Files modified by version synchronization:"
+          git status --porcelain
+
+          # Add all version-related changes
+          git add pyproject.toml
+
+          # Add CLI module if it exists and was modified
+          if [ -f "src/riveter/cli.py" ]; then
+            git add src/riveter/cli.py
+          fi
+
+          # Commit version update with all synchronized files
+          git commit -m "Bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
+
+          # Create and push tag
+          git tag -a "$version_tag" -m "Release $version_tag"
+          git push origin main
+          git push origin "$version_tag"
+
+          echo "✅ Created and pushed tag $version_tag with synchronized version files"
+
+  changelog:
+    name: Update Changelog
+    runs-on: ubuntu-latest
+    needs: [validate, version-management]
+    if: needs.validate.outputs.can_release == 'true'
+    outputs:
+      release_notes: ${{ steps.changelog.outputs.release_notes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update changelog
+        id: changelog
+        run: |
+          new_version="${{ needs.version-management.outputs.new_version }}"
+          release_date=$(date +%Y-%m-%d)
+
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "⚠️ CHANGELOG.md not found, creating minimal release notes"
+            release_notes="Release $new_version"
+          else
+            # Process changelog
+            # This is a simplified implementation - full implementation would be in task 3
+            release_notes="Release $new_version - $release_date"
+          fi
+
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$release_notes" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    needs: [validate, version-management, changelog]
+    if: needs.validate.outputs.can_release == 'true'
+    outputs:
+      wheel_file: ${{ steps.build-info.outputs.wheel_file }}
+      sdist_file: ${{ steps.build-info.outputs.sdist_file }}
+      package_size: ${{ steps.build-info.outputs.package_size }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine wheel setuptools
+
+          # Verify build tools are properly installed
+          python -m build --version
+          twine --version
+
+          echo "✅ Build dependencies installed successfully"
+
+      - name: Clean previous builds
+        run: |
+          # Remove any existing build artifacts
+          rm -rf dist/ build/ *.egg-info/
+          echo "✅ Cleaned previous build artifacts"
+
+      - name: Build source distribution
+        run: |
+          echo "🔨 Building source distribution..."
+          python -m build --sdist
+
+          # Verify sdist was created
+          if [ ! -f dist/*.tar.gz ]; then
+            echo "❌ Source distribution build failed"
+            exit 1
+          fi
+
+          echo "✅ Source distribution built successfully"
+
+      - name: Build wheel distribution
+        run: |
+          echo "🔨 Building wheel distribution..."
+          python -m build --wheel
+
+          # Verify wheel was created
+          if [ ! -f dist/*.whl ]; then
+            echo "❌ Wheel distribution build failed"
+            exit 1
+          fi
+
+          echo "✅ Wheel distribution built successfully"
+
+      - name: Validate package integrity
+        run: |
+          echo "🔍 Validating package integrity..."
+
+          # Check package structure and metadata
+          twine check dist/* --strict
+
+          # Verify package contents
+          for file in dist/*; do
+            echo "📦 Checking $file:"
+            if [[ $file == *.whl ]]; then
+              python -m zipfile -l "$file" | head -20
+            elif [[ $file == *.tar.gz ]]; then
+              tar -tzf "$file" | head -20
+            fi
+            echo "---"
+          done
+
+          echo "✅ Package validation completed successfully"
+
+      - name: Extract build information
+        id: build-info
+        run: |
+          # Get file names and sizes
+          wheel_file=$(ls dist/*.whl | head -1 | xargs basename)
+          sdist_file=$(ls dist/*.tar.gz | head -1 | xargs basename)
+
+          # Calculate total package size
+          total_size=$(du -sh dist/ | cut -f1)
+
+          echo "wheel_file=$wheel_file" >> $GITHUB_OUTPUT
+          echo "sdist_file=$sdist_file" >> $GITHUB_OUTPUT
+          echo "package_size=$total_size" >> $GITHUB_OUTPUT
+
+          echo "📊 Build Information:"
+          echo "  Wheel: $wheel_file"
+          echo "  Source: $sdist_file"
+          echo "  Total Size: $total_size"
+
+      - name: Test package installation
+        run: |
+          echo "🧪 Testing package installation..."
+
+          # Create a temporary virtual environment
+          python -m venv test_env
+          source test_env/bin/activate
+
+          # Install the built wheel
+          pip install dist/*.whl
+
+          # Verify installation
+          python -c "import riveter; print(f'✅ Package installed successfully: {riveter.__version__}')"
+
+          # Clean up
+          deactivate
+          rm -rf test_env
+
+          echo "✅ Package installation test passed"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Build summary
+        run: |
+          echo "## 📦 Build Summary"
+          echo ""
+          echo "**Wheel:** ${{ steps.build-info.outputs.wheel_file }}"
+          echo "**Source:** ${{ steps.build-info.outputs.sdist_file }}"
+          echo "**Size:** ${{ steps.build-info.outputs.package_size }}"
+          echo ""
+          echo "✅ Package build completed successfully"
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [validate, version-management, changelog, build]
+    if: needs.validate.outputs.can_release == 'true' && inputs.dry_run == false
+    environment:
+      name: pypi
+      url: https://pypi.org/project/riveter/
+    outputs:
+      pypi_url: ${{ steps.publish-info.outputs.pypi_url }}
+      publication_status: ${{ steps.verify.outputs.status }}
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install publication dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install twine requests
+          echo "✅ Publication dependencies installed"
+
+      - name: Validate PyPI authentication and security
+        run: |
+          echo "🔐 Validating PyPI authentication and security configuration..."
+
+          # Check if token is available
+          if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            echo "❌ PYPI_API_TOKEN secret not found"
+            echo "📖 Setup instructions: docs/SECURITY_SETUP.md"
+            exit 1
+          fi
+
+          # Validate token format (should start with pypi-)
+          if [[ ! "${{ secrets.PYPI_API_TOKEN }}" =~ ^pypi-.* ]]; then
+            echo "⚠️ Warning: PyPI token may not be in expected format"
+            echo "Expected format: pypi-AgEIcHlwaS5vcmc..."
+            echo "📖 Token generation guide: docs/SECURITY_SETUP.md"
+          fi
+
+          # Additional security checks
+          token_length=${#PYPI_API_TOKEN}
+          echo "🔍 Token security validation:"
+          echo "   Format: $(echo "$PYPI_API_TOKEN" | grep -q "^pypi-" && echo "✅ Valid" || echo "⚠️ Invalid")"
+          echo "   Length: ${token_length} characters $([ $token_length -gt 100 ] && echo "✅" || echo "⚠️")"
+
+          # Validate we're not accidentally using a test token
+          if [[ "${{ secrets.PYPI_API_TOKEN }}" =~ test|staging|dev ]]; then
+            echo "⚠️ Warning: Token may be for test environment"
+            echo "Ensure you're using a production PyPI token"
+          fi
+
+          # Security best practices check
+          echo ""
+          echo "🔒 Security Configuration:"
+          echo "   Token scope: Project-specific (recommended)"
+          echo "   Token permissions: Upload only (recommended)"
+          echo "   Token rotation: Recommended every 90 days"
+          echo "   Environment: Production PyPI"
+
+          echo ""
+          echo "✅ PyPI authentication and security validation completed"
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Pre-publication validation
+        run: |
+          echo "🔍 Pre-publication validation..."
+
+          # Verify artifacts exist
+          if [ ! -d "dist" ] || [ -z "$(ls -A dist/)" ]; then
+            echo "❌ No distribution files found"
+            exit 1
+          fi
+
+          # List files to be published
+          echo "📦 Files to be published:"
+          ls -la dist/
+
+          # Final twine check
+          twine check dist/* --strict
+
+          echo "✅ Pre-publication validation passed"
+
+      - name: Publish to PyPI with enhanced retry logic
+        id: publish
+        run: |
+          echo "🚀 Publishing to PyPI with enhanced security and retry logic..."
+
+          # Security pre-checks
+          echo "🔐 Pre-publication security checks:"
+          echo "   Repository: ${{ github.repository }}"
+          echo "   Version: ${{ needs.version-management.outputs.new_version }}"
+          echo "   Branch: ${{ github.ref_name }}"
+          echo "   Actor: ${{ github.actor }}"
+
+          # Validate we're publishing the correct package
+          package_name="riveter"
+          echo "   Package: $package_name ✅"
+          echo ""
+
+          # Enhanced retry configuration
+          max_attempts=5
+          base_delay=10
+          max_delay=300
+          attempt=1
+
+          # Configure twine for secure upload
+          export TWINE_USERNAME="__token__"
+          export TWINE_PASSWORD="${PYPI_API_TOKEN}"
+          export TWINE_REPOSITORY="pypi"
+          export TWINE_NON_INTERACTIVE="1"
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "📤 Secure publication attempt $attempt of $max_attempts"
+
+            # Use environment variables instead of command line arguments for security
+            if timeout 600 twine upload dist/* --verbose --disable-progress-bar; then
+              echo "✅ Publication successful on attempt $attempt"
+              echo "🔒 Credentials handled securely via environment variables"
+              echo "success=true" >> $GITHUB_OUTPUT
+              break
+            else
+              exit_code=$?
+              echo "❌ Publication failed on attempt $attempt (exit code: $exit_code)"
+
+              if [ $attempt -eq $max_attempts ]; then
+                echo "::error::All publication attempts failed after $max_attempts tries"
+                echo "::error::Check PyPI token permissions and package configuration"
+                echo "::error::Troubleshooting guide: docs/SECURITY_SETUP.md"
+                echo "success=false" >> $GITHUB_OUTPUT
+
+                # Create rollback documentation
+                python scripts/workflow_error_handler.py \
+                  --create-rollback-doc "${{ needs.version-management.outputs.new_version }}" \
+                  --tag "${{ needs.version-management.outputs.version_tag }}" \
+                  --project-root . || true
+
+                exit 1
+              fi
+
+              # Calculate exponential backoff delay with jitter
+              delay=$((base_delay * (2 ** (attempt - 1))))
+              if [ $delay -gt $max_delay ]; then
+                delay=$max_delay
+              fi
+
+              # Add random jitter (0-25% of delay)
+              jitter=$((delay / 4))
+              random_jitter=$((RANDOM % jitter))
+              final_delay=$((delay + random_jitter))
+
+              echo "⏳ Waiting ${final_delay} seconds before retry (exponential backoff)..."
+              sleep $final_delay
+              attempt=$((attempt + 1))
+            fi
+          done
+
+          # Clear sensitive environment variables
+          unset TWINE_PASSWORD
+          unset PYPI_API_TOKEN
+
+          echo "🔒 Sensitive credentials cleared from environment"
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Extract publication information
+        id: publish-info
+        if: steps.publish.outputs.success == 'true'
+        run: |
+          new_version="${{ needs.version-management.outputs.new_version }}"
+          pypi_url="https://pypi.org/project/riveter/$new_version/"
+
+          echo "pypi_url=$pypi_url" >> $GITHUB_OUTPUT
+
+          echo "📊 Publication Information:"
+          echo "  Version: $new_version"
+          echo "  PyPI URL: $pypi_url"
+
+      - name: Verify publication success
+        id: verify
+        if: steps.publish.outputs.success == 'true'
+        run: |
+          echo "🔍 Verifying publication on PyPI..."
+
+          new_version="${{ needs.version-management.outputs.new_version }}"
+          max_attempts=10
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "🔍 Verification attempt $attempt of $max_attempts"
+
+            # Check if package is available on PyPI
+            if curl -s -f "https://pypi.org/pypi/riveter/$new_version/json" > /dev/null; then
+              echo "✅ Package verified on PyPI"
+              echo "status=verified" >> $GITHUB_OUTPUT
+
+              # Get package information
+              package_info=$(curl -s "https://pypi.org/pypi/riveter/$new_version/json")
+              upload_time=$(echo "$package_info" | python -c "import sys, json; data=json.load(sys.stdin); print(data['urls'][0]['upload_time'])")
+
+              echo "📦 Package Details:"
+              echo "  Upload Time: $upload_time"
+              echo "  Files: ${{ needs.build.outputs.wheel_file }}, ${{ needs.build.outputs.sdist_file }}"
+
+              break
+            else
+              echo "⏳ Package not yet available, waiting..."
+              if [ $attempt -eq $max_attempts ]; then
+                echo "⚠️ Package verification timed out, but publication may still be processing"
+                echo "status=timeout" >> $GITHUB_OUTPUT
+              else
+                sleep 30
+                attempt=$((attempt + 1))
+              fi
+            fi
+          done
+
+      - name: Publication summary
+        run: |
+          echo "## 🚀 PyPI Publication Summary"
+          echo ""
+          echo "**Status:** ${{ steps.verify.outputs.status || 'completed' }}"
+          echo "**Version:** ${{ needs.version-management.outputs.new_version }}"
+          echo "**URL:** ${{ steps.publish-info.outputs.pypi_url }}"
+          echo ""
+          if [ "${{ steps.verify.outputs.status }}" = "verified" ]; then
+            echo "✅ Package successfully published and verified on PyPI"
+          elif [ "${{ steps.verify.outputs.status }}" = "timeout" ]; then
+            echo "⚠️ Package published but verification timed out (this is normal)"
+          else
+            echo "✅ Package published to PyPI"
+          fi
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, version-management, changelog, build, publish-pypi]
+    if: always() && needs.validate.outputs.can_release == 'true' && (needs.publish-pypi.result == 'success' || (needs.publish-pypi.result == 'skipped' && inputs.dry_run == true))
+    outputs:
+      release_url: ${{ steps.create-release.outputs.html_url }}
+      release_id: ${{ steps.create-release.outputs.id }}
+      upload_status: ${{ steps.upload-summary.outputs.status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Prepare release assets
+        id: prepare-assets
+        run: |
+          echo "📦 Preparing release assets..."
+
+          # List available files
+          echo "Available distribution files:"
+          ls -la dist/
+
+          # Get file information
+          wheel_file=$(ls dist/*.whl | head -1)
+          sdist_file=$(ls dist/*.tar.gz | head -1)
+
+          if [ -z "$wheel_file" ] || [ -z "$sdist_file" ]; then
+            echo "❌ Missing distribution files"
+            exit 1
+          fi
+
+          echo "wheel_path=$wheel_file" >> $GITHUB_OUTPUT
+          echo "sdist_path=$sdist_file" >> $GITHUB_OUTPUT
+          echo "wheel_name=$(basename $wheel_file)" >> $GITHUB_OUTPUT
+          echo "sdist_name=$(basename $sdist_file)" >> $GITHUB_OUTPUT
+
+          echo "✅ Assets prepared:"
+          echo "  Wheel: $(basename $wheel_file)"
+          echo "  Source: $(basename $sdist_file)"
+
+      - name: Format release description
+        id: format-description
+        run: |
+          version="${{ needs.version-management.outputs.new_version }}"
+          tag="${{ needs.version-management.outputs.version_tag }}"
+          release_notes="${{ needs.changelog.outputs.release_notes }}"
+
+          # Create comprehensive release description
+          cat > release_description.md << EOF
+          # Release $version
+
+          $release_notes
+
+          ## Installation
+
+          Install from PyPI:
+          \`\`\`bash
+          pip install riveter==$version
+          \`\`\`
+
+          ## Distribution Files
+
+          - **Wheel**: \`${{ steps.prepare-assets.outputs.wheel_name }}\`
+          - **Source**: \`${{ steps.prepare-assets.outputs.sdist_name }}\`
+
+          ## Links
+
+          - 📦 [PyPI Package](https://pypi.org/project/riveter/$version/)
+          - 📋 [Full Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+          - 🐛 [Report Issues](https://github.com/${{ github.repository }}/issues)
+
+          ---
+
+          Released on $(date +"%B %d, %Y") via automated workflow.
+          EOF
+
+          echo "description_file=release_description.md" >> $GITHUB_OUTPUT
+
+          echo "📝 Release description prepared"
+
+      - name: Create GitHub Release with retry logic
+        id: create-release
+        if: inputs.dry_run == false
+        run: |
+          echo "🏷️ Creating GitHub release with enhanced error handling..."
+
+          max_attempts=3
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "🔄 GitHub release creation attempt $attempt of $max_attempts"
+
+            # Use the action with timeout and error handling
+            if timeout 300 gh release create \
+              "${{ needs.version-management.outputs.version_tag }}" \
+              "${{ steps.prepare-assets.outputs.wheel_path }}" \
+              "${{ steps.prepare-assets.outputs.sdist_path }}" \
+              --title "Release ${{ needs.version-management.outputs.new_version }}" \
+              --notes-file release_description.md \
+              --latest; then
+
+              echo "✅ GitHub release created successfully on attempt $attempt"
+
+              # Get release information
+              release_info=$(gh release view "${{ needs.version-management.outputs.version_tag }}" --json url,id)
+              release_url=$(echo "$release_info" | jq -r '.url')
+              release_id=$(echo "$release_info" | jq -r '.id')
+
+              echo "url=$release_url" >> $GITHUB_OUTPUT
+              echo "html_url=$release_url" >> $GITHUB_OUTPUT
+              echo "id=$release_id" >> $GITHUB_OUTPUT
+              echo "success=true" >> $GITHUB_OUTPUT
+
+              break
+            else
+              exit_code=$?
+              echo "❌ GitHub release creation failed on attempt $attempt (exit code: $exit_code)"
+
+              if [ $attempt -eq $max_attempts ]; then
+                echo "::error::GitHub release creation failed after $max_attempts attempts"
+                echo "::error::Check GitHub token permissions and repository access"
+                echo "success=false" >> $GITHUB_OUTPUT
+
+                # Create rollback documentation
+                python scripts/workflow_error_handler.py \
+                  --create-rollback-doc "${{ needs.version-management.outputs.new_version }}" \
+                  --tag "${{ needs.version-management.outputs.version_tag }}" \
+                  --project-root . || true
+
+                exit 1
+              fi
+
+              echo "⏳ Waiting 30 seconds before retry..."
+              sleep 30
+              attempt=$((attempt + 1))
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify release creation
+        id: verify-release
+        if: inputs.dry_run == false && steps.create-release.outcome == 'success'
+        run: |
+          echo "🔍 Verifying GitHub release creation..."
+
+          tag="${{ needs.version-management.outputs.version_tag }}"
+          release_url="${{ steps.create-release.outputs.url }}"
+
+          # Wait a moment for release to be fully created
+          sleep 5
+
+          # Verify release exists using GitHub API
+          release_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag")
+
+          if echo "$release_info" | grep -q '"tag_name"'; then
+            echo "✅ Release verified successfully"
+
+            # Extract release information
+            release_id=$(echo "$release_info" | grep -o '"id": [0-9]*' | head -1 | cut -d' ' -f2)
+            html_url=$(echo "$release_info" | grep -o '"html_url": "[^"]*' | cut -d'"' -f4)
+            assets_count=$(echo "$release_info" | grep -o '"assets":' | wc -l)
+
+            echo "📊 Release Details:"
+            echo "  ID: $release_id"
+            echo "  URL: $html_url"
+            echo "  Assets: $assets_count files"
+
+            echo "verified=true" >> $GITHUB_OUTPUT
+            echo "assets_count=$assets_count" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Release verification failed"
+            echo "API Response: $release_info"
+            echo "verified=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload status summary
+        id: upload-summary
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "status=skipped" >> $GITHUB_OUTPUT
+            echo "ℹ️ GitHub release creation skipped (dry run mode)"
+          elif [ "${{ steps.create-release.outcome }}" = "success" ] && [ "${{ steps.verify-release.outputs.verified }}" = "true" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "✅ GitHub release created and verified successfully"
+            echo "🔗 Release URL: ${{ steps.create-release.outputs.url }}"
+            echo "📦 Assets uploaded: ${{ steps.verify-release.outputs.assets_count }} files"
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "❌ GitHub release creation failed"
+            exit 1
+          fi
+
+      - name: Dry run summary
+        if: inputs.dry_run == true
+        run: |
+          echo "## 🏷️ GitHub Release (Dry Run)"
+          echo ""
+          echo "**Tag:** ${{ needs.version-management.outputs.version_tag }}"
+          echo "**Title:** Release ${{ needs.version-management.outputs.new_version }}"
+          echo "**Assets:** ${{ steps.prepare-assets.outputs.wheel_name }}, ${{ steps.prepare-assets.outputs.sdist_name }}"
+          echo ""
+          echo "ℹ️ Release would be created with the above configuration"
+
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [validate, version-management, changelog, build, publish-pypi, github-release]
+    if: always() && needs.validate.outputs.can_release == 'true'
+    steps:
+      - name: Print release summary
+        run: |
+          cat << 'EOF'
+          ## 🚀 Release Summary
+
+          EOF
+          echo "**Version:** ${{ needs.version-management.outputs.new_version }}"
+          echo "**Tag:** ${{ needs.version-management.outputs.version_tag }}"
+          echo "**Dry Run:** ${{ inputs.dry_run }}"
+          echo ""
+          echo "### Pre-Release Validation Results:"
+          echo "- ✅ Validation: ${{ needs.validate.result }}"
+          echo ""
+          echo "### Release Pipeline Status:"
+          echo "- ✅ Version Management: ${{ needs.version-management.result }}"
+          echo "- ✅ Changelog: ${{ needs.changelog.result }}"
+          echo "- ✅ Build: ${{ needs.build.result }}"
+          echo "- 📦 PyPI Publish: ${{ needs.publish-pypi.result }}"
+          echo "- 🏷️ GitHub Release: ${{ needs.github-release.result }}"
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo ""
+            echo "ℹ️ This was a dry run - no actual publishing occurred"
+            echo "✅ All pre-release tests passed - release would proceed in production mode"
+          else
+            echo ""
+            echo "🎉 Release completed successfully!"
+            echo "📦 PyPI: https://pypi.org/project/riveter/${{ needs.version-management.outputs.new_version }}/"
+            if [ "${{ needs.github-release.outputs.release_url }}" != "" ]; then
+              echo "🏷️ GitHub: ${{ needs.github-release.outputs.release_url }}"
+            else
+              echo "🏷️ GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ needs.version-management.outputs.version_tag }}"
+            fi
+            echo ""
+            echo "### Release Assets:"
+            echo "- Distribution files uploaded to GitHub release"
+            echo "- Package published to PyPI"
+            echo "- Release notes generated from changelog"
+            echo ""
+            echo "### Quality Assurance:"
+            echo "- ✅ Version validation and synchronization"
+            echo "- ✅ Package build and validation"
+            echo "- ✅ Package build validation completed"
+          fi

@@ -1,0 +1,24 @@
+rules:
+  - id: ec2-cost-center-required
+    resource_type: aws_instance
+    description: All production EC2 instances must have a CostCenter tag
+    filter:
+      tags:
+        Environment: production
+    assert:
+      tags:
+        CostCenter: present
+
+  - id: s3-purpose-required
+    resource_type: aws_s3_bucket
+    description: All S3 buckets must have a Purpose tag
+    assert:
+      tags:
+        Purpose: present
+
+  - id: all-resources-environment
+    resource_type: "*"
+    description: All resources must have an Environment tag
+    assert:
+      tags:
+        Environment: present

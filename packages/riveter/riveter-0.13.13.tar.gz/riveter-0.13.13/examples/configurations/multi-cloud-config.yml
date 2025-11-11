@@ -1,0 +1,68 @@
+# Multi-Cloud Riveter Configuration
+# This configuration supports validation across AWS, Azure, and Google Cloud Platform.
+
+# Multi-cloud rule packs
+rule_packs:
+  - aws-security      # AWS security rules
+  - cis-aws          # CIS AWS benchmark
+  - cis-azure        # CIS Azure benchmark
+  - soc2-security    # SOC 2 compliance (multi-cloud)
+
+# Cloud-specific custom rules
+rule_dirs:
+  - ./aws-rules       # AWS-specific custom rules
+  - ./azure-rules     # Azure-specific custom rules
+  - ./gcp-rules       # GCP-specific custom rules
+  - ./multi-cloud-rules # Cross-cloud rules
+
+# JSON output for programmatic processing
+output_format: json
+
+# Show all issues for comprehensive multi-cloud governance
+min_severity: info
+
+# Cloud provider specific filtering
+include_rules:
+  - "aws-*"           # AWS rules
+  - "azure-*"         # Azure rules
+  - "gcp-*"           # GCP rules
+  - "*security*"      # Security rules for all clouds
+  - "*compliance*"    # Compliance rules for all clouds
+
+exclude_rules:
+  - "*deprecated*"    # Exclude deprecated rules
+
+# Multi-cloud settings
+debug: false
+parallel: true                          # Enable parallel processing
+cache_dir: ~/.riveter/multi-cloud-cache # Dedicated cache for multi-cloud
+baseline: ~/.riveter/multi-cloud-baseline.json
+
+# Structured logging for multi-cloud monitoring
+log_level: INFO
+log_format: json
+
+# Multi-cloud environment
+environment: multi-cloud
+
+# Cloud provider specific configurations
+cloud_providers:
+  aws:
+    regions:
+      - us-east-1
+      - us-west-2
+      - eu-west-1
+  azure:
+    regions:
+      - eastus
+      - westus2
+      - westeurope
+  gcp:
+    regions:
+      - us-central1
+      - us-east1
+      - europe-west1
+
+# Performance settings for multi-cloud
+max_workers: 6                         # More workers for multi-cloud processing
+timeout: 600                           # 10-minute timeout for large multi-cloud scans

@@ -1,0 +1,36 @@
+rules:
+  - id: ec2-instance-type-restriction
+    resource_type: aws_instance
+    description: Production EC2 instances must use approved instance types
+    filter:
+      tags:
+        Environment: production
+    assert:
+      instance_type: t3.micro
+
+  - id: rds-backup-required
+    resource_type: aws_rds_instance
+    description: Production RDS instances must have backup enabled
+    filter:
+      tags:
+        Environment: production
+    assert:
+      tags:
+        Backup: present
+
+  - id: s3-compliance-tagging
+    resource_type: aws_s3_bucket
+    description: S3 buckets storing sensitive data must have compliance tags
+    filter:
+      tags:
+        Purpose: data-storage
+    assert:
+      tags:
+        Compliance: present
+
+  - id: vpc-naming-convention
+    resource_type: aws_vpc
+    description: VPCs must follow naming convention
+    assert:
+      tags:
+        Name: present
