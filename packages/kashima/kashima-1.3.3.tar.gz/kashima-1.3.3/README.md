@@ -1,0 +1,722 @@
+# kashima
+
+**Machine Learning Tools for Geotechnical Earthquake Engineering**
+
+Kashima is a Python library designed for seismological and geotechnical applications, providing powerful tools for earthquake event visualization, catalog processing, and interactive mapping. Built on top of Folium, it creates rich web maps for seismic data analysis and visualization.
+
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## Features
+
+- **Interactive Seismic Maps**: Create stunning Folium-based web maps with earthquake events
+- **Multi-Catalog Support**: Integrate data from USGS, Global CMT, ISC, and custom blast catalogs
+- **Global CMT Integration**: Download complete moment tensor solutions from the Global CMT Project
+  - Fast NDK method: 68,718 events (1962-present) in ~30 seconds
+  - Full moment tensor components (Mrr, Mtt, Mpp, Mrt, Mrp, Mtp)
+  - Nodal plane parameters (strike, dip, rake)
+  - Source parameters (half duration, time shift, scalar moment)
+- **Global Cache System**: Efficient catalog management
+  - Download catalogs once, reuse across projects
+  - Incremental updates for new events
+  - Fast parquet storage format
+  - Platform-specific cache directories
+- **Advanced Visualizations**:
+  - Magnitude-scaled event markers with customizable color schemes
+  - Seismic moment tensor beachball plots
+  - Epicentral distance circles
+  - Activity heatmaps
+  - Geological fault line overlays
+  - Seismic station markers
+- **Flexible Configuration**: Configuration-driven design using dataclasses
+- **Coordinate System Support**: Handle multiple CRS with automatic transformations
+- **Large Dataset Handling**: Efficient processing of large seismic catalogs
+- **Mining Applications**: Specialized tools for blast event analysis
+
+## Installation
+
+### From PyPI
+```bash
+pip install kashima
+```
+
+### Development Installation
+```bash
+git clone https://github.com/averriK/kashima.git
+cd kashima
+pip install -e .
+```
+
+### Dependencies
+```bash
+pip install pandas numpy folium geopandas pyproj requests branca geopy matplotlib obspy pyarrow
+```
+
+All dependencies are automatically installed when using `pip install kashima`.
+
+## Quick Start
+
+### Simple API (Recommended)
+
+The easiest way to create maps using the simplified API:
+
+```python
+from kashima.mapper import buildMap, buildCatalog
+
+# Minimal call - only coordinates required
+# Creates ./data/ and ./maps/ folders in current directory
+result = buildMap(
+    latitude=-32.86758,
+    longitude=-68.88867
+)
+
+print(f"Map: {result['html']}")        # ./maps/index.html
+print(f"Events: {result['event_count']}")
+
+# Auto-downloads USGS catalog (basic events)
+# Auto-searches for moment tensors in:
+#   1. ./data/gcmt-events.csv (download with buildCatalog)
+#   2. ./data/isc-events.csv (static file)
+
+# With optional parameters
+result = buildMap(
+    latitude=-32.86758,
+    longitude=-68.88867,
+    output_dir="./my_project",  # Custom output folder
+    radius_km=500,
+    vmin=5.5,
+    project_name="My Seismic Study",
+    show_beachballs_default=True
+)
+
+# Download catalog separately first
+catalog = buildCatalog(
+    source="usgs",
+    outputPath="data/usgs-events.csv",
+    latitude=-32.86758,
+    longitude=-68.88867,
+    maxRadiusKm=500,
+    minMagnitude=5.0
+)
+```
+
+### Advanced Usage (Full Control)
+
+Use the bundled CSVs to generate a map without network access:
+
+```python
+from pathlib import Path
+import logging
+
+from kashima.mapper import MapConfig, EventConfig, FaultConfig
+from kashima.mapper import EventMap
+
+# Paths inside the installed package repo (adjust if needed)
+root = Path(__file__).resolve().parent  # if running from a clone, e.g. repo root
+examples = root / "examples" / "mapper"
+data_dir = examples / "data"
+out_dir = examples / "maps"
+out_dir.mkdir(parents=True, exist_ok=True)
+
+usgs_csv = data_dir / "usgs-events.csv"
+legend_csv = data_dir / "legend.csv"
+faults_geojson = data_dir / "gem_active_faults.geojson"
+
+map_cfg = MapConfig(
+    project_name="Test Site",
+    client="Test Client",
+    latitude=-32.86758,
+    longitude=-68.88867,
+    radius_km=500,
+    base_zoom_level=9,
+    min_zoom_level=7,
+    max_zoom_level=15,
+    default_tile_layer="Esri.WorldImagery",
+    auto_fit_bounds=False,
+    lock_pan=True,
+    epicentral_circles=5,
+)
+
+event_cfg = EventConfig(
+    legend_title="Magnitude (Mw)",
+    show_events_default=True,
+    show_heatmap_default=False,
+    show_beachballs_default=True,
+)
+
+fault_cfg = FaultConfig(
+    include_faults=True,
+    faults_gem_file_path=str(faults_geojson),
+)
+
+emap = EventMap(
+    map_config=map_cfg,
+    event_config=event_cfg,
+    events_csv=str(usgs_csv),
+    legend_csv=str(legend_csv),
+    mandatory_mag_col="mag",
+    calculate_distance=True,
+    fault_config=fault_cfg,
+)
+
+emap.loadData()
+folium_map = emap.getMap()
+
+html_out = out_dir / "index.html"
+csv_out = out_dir / "epicenters.csv"
+
+folium_map.save(html_out)
+emap.events_df.to_csv(csv_out, index=False)
+print("✔ Map →", html_out)
+print("✔ Data →", csv_out)
+```
+
+**Example Scripts:**
+
+*Cache Management:*
+- `examples/mapper/00_download_catalogs.py` - Download all catalogs to cache (run once)
+- `examples/mapper/00_update_catalogs.py` - Update cached catalogs incrementally
+
+*Catalog Downloads:*
+- `examples/mapper/01_usgs_catalog.py` - Download USGS catalog
+- `examples/mapper/02_gcmt_catalog.py` - Download GCMT catalog (NDK method)
+- `examples/mapper/03_isc_catalog.py` - Download ISC catalog
+- `examples/mapper/10_blast_catalog.py` - Process mining blast data
+
+*Map Visualizations:*
+- `examples/mapper/04_minimal_map.py` - Minimal map (just coordinates!)
+- `examples/mapper/05_map_with_beachballs.py` - Map with focal mechanisms
+- `examples/mapper/06_map_with_custom_legend.py` - Map with custom legend
+- `examples/mapper/07_map_with_heatmap.py` - Map with activity heatmap
+- `examples/mapper/08_map_with_faults.py` - Map with fault line overlays
+- `examples/mapper/09_map_advanced_config.py` - Low-level API with MapConfig/EventConfig
+
+## Cache System
+
+Kashima v1.2.0.0 introduces a global cache system to avoid repeated catalog downloads across projects.
+
+### First-Time Setup
+
+After installing kashima, download all catalogs and fault databases to the global cache once:
+
+```python
+from kashima.mapper import downloadAllCatalogs
+
+# Download all catalogs (USGS, GCMT, ISC) and fault databases to cache
+# This may take 5-10 minutes depending on your connection
+catalogs = downloadAllCatalogs(include_faults=True)
+
+print(f"Cache location: {catalogs['cache_dir']}")
+
+# Earthquake catalogs:
+print(f"USGS:  {catalogs['usgs']}")   # 302,777 events (12 MB)
+print(f"GCMT:  {catalogs['gcmt']}")   # 68,718 events (3.8 MB)
+print(f"ISC:   {catalogs['isc']}")    # 470,230 events (9.7 MB)
+
+# Fault databases:
+print(f"GEM Faults:  {catalogs['gem_faults']}")      # 16,195 faults (10.9 MB)
+print(f"USGS Faults: {catalogs['usgs_faults']}")     # 114,037 segments (381.7 MB)
+print(f"EFSM20:      {catalogs['efsm20_faults']}")   # 1,248 faults (1.5 MB)
+```
+
+Or use the provided script:
+```bash
+cd examples/mapper
+python 00_download_catalogs.py
+```
+
+### Cache Location
+
+- **macOS**: `~/Library/Caches/kashima/`
+- **Linux**: `~/.cache/kashima/`
+- **Windows**: `%LOCALAPPDATA%\kashima\Cache\`
+
+### Incremental Updates
+
+Update cached catalogs and fault databases periodically:
+
+```python
+from kashima.mapper import updateAllCatalogs
+
+# Downloads only new events since last update (fast!)
+# Re-downloads fault databases completely (they change rarely)
+result = updateAllCatalogs(include_faults=True)
+
+# Earthquake catalogs (incremental):
+print(f"USGS: +{result['usgs_new']} new events")
+print(f"GCMT: +{result['gcmt_new']} new events")
+print(f"ISC:  +{result['isc_new']} new events")
+
+# Fault databases (full re-download):
+print(f"GEM Faults:  {result['gem_faults']}")
+print(f"USGS Faults: {result['usgs_faults']}")
+print(f"EFSM20:      {result['efsm20_faults']}")
+```
+
+Or use the provided script:
+```bash
+cd examples/mapper
+python 00_update_catalogs.py
+```
+
+### Individual Fault Database Updates
+
+Update specific fault databases independently:
+
+```python
+from kashima.mapper import (
+    updateGEMActiveFaults,
+    updateUSGSQuaternaryFaults,
+    updateEFSM20Faults
+)
+
+# Update only GEM Active Faults (fast, ~12 MB)
+result = updateGEMActiveFaults()
+print(f"GEM: {result['feature_count']:,} faults")
+
+# Update only USGS Quaternary Faults (slow, ~13 MB KMZ → 381 MB GeoJSON)
+result = updateUSGSQuaternaryFaults()
+print(f"USGS Faults: {result['feature_count']:,} segments")
+
+# Update only EFSM20 Faults (fast, ~1.5 MB via WFS)
+result = updateEFSM20Faults()
+print(f"EFSM20: {result['feature_count']:,} faults")
+```
+
+### Cache Benefits
+
+- **Performance**: Catalogs load in seconds instead of minutes
+- **Offline Work**: Build maps without network access (after initial download)
+- **Consistency**: Same data across all projects
+- **Bandwidth**: Avoid re-downloading hundreds of megabytes
+- **Storage**: Efficient parquet format (~25 MB for 841,725 events)
+
+### Force Refresh
+
+To force a complete re-download:
+
+```python
+catalogs = downloadAllCatalogs(force_update=True)
+```
+
+### Clear Cache
+
+To remove all cached catalogs:
+
+```python
+from kashima.mapper import clear_cache
+
+clear_cache()
+```
+
+## API Reference
+
+### Simplified API
+
+Kashima provides two high-level functions for common workflows:
+
+#### `buildMap()` - Create Interactive Maps
+
+**Minimal signature** (only coordinates required):
+```python
+from kashima.mapper import buildMap
+
+result = buildMap(
+    latitude: float,              # REQUIRED - Center latitude
+    longitude: float,             # REQUIRED - Center longitude
+)
+
+# Returns: {"html": str, "csv": str, "event_count": int}
+# Creates ./data/ and ./maps/ in current directory
+```
+
+**Full signature** with most common parameters:
+```python
+result = buildMap(
+    latitude: float,                       # REQUIRED
+    longitude: float,                      # REQUIRED
+    output_dir: str = ".",                 # Output directory
+    radius_km: float = 500,                # Search radius
+    vmin: float = 4.5,                     # Min magnitude
+    vmax: float = 9.0,                     # Max magnitude
+    project_name: str = "",
+    client: str = "",
+    # Layer visibility
+    show_events_default: bool = True,
+    show_beachballs_default: bool = True,
+    show_faults_default: bool = True,      # NEW: Control fault layer visibility
+    show_heatmap_default: bool = False,
+    base_zoom_level: int = 9,
+    # File paths
+    station_csv_path: str = None,
+    # Visual customization (optional - uses sensible defaults)
+    mag_bins: list = None,                 # Magnitude bin edges
+    dot_palette: dict = None,              # Colors per magnitude range
+    dot_sizes: dict = None,                # Marker sizes per magnitude
+    beachball_sizes: dict = None,          # Beachball sizes per magnitude
+    color_palette: str = "magma",          # Matplotlib colormap
+    scaling_factor: float = 2.0,           # Overall size scaling
+    keep_data: bool = False,               # Keep ./data/ after completion
+    # ...
+)
+```
+
+#### `buildCatalog()` - Download Seismic Catalogs
+
+```python
+from kashima.mapper import buildCatalog
+
+result = buildCatalog(
+    source: str,                  # "usgs", "gcmt", or "blast"
+    outputPath: str,              # Where to save CSV
+    latitude: float = None,       # Center lat (optional)
+    longitude: float = None,      # Center lon (optional)
+    maxRadiusKm: float = None,    # Search radius (optional)
+    minMagnitude: float = 4.5,
+    startTime: str = None,        # "YYYY-MM-DD" format
+    endTime: str = None,          # "YYYY-MM-DD" format
+    eventType: str = "earthquake"
+)
+
+# Returns: {"csv": str, "event_count": int, "source": str}
+
+# Example with Global CMT:
+result = buildCatalog(
+    source="gcmt",
+    outputPath="data/gcmt-events.csv",
+    latitude=-35.6,
+    longitude=-73.25,
+    maxRadiusKm=500,
+    minMagnitude=5.0,
+    startTime="2020-01-01",
+    endTime="2020-12-31"
+)
+```
+
+
+
+
+## Supported Tile Layers
+
+Kashima supports numerous base map layers:
+- **OpenStreetMap**: Standard OSM rendering
+- **ESRI Layers**: Satellite imagery, terrain, streets, relief
+- **CartoDB**: Positron, dark matter, voyager themes  
+- **Stamen**: Terrain and toner artistic styles
+- **OpenTopoMap**: Topographic mapping
+- **CyclOSM**: Cycling-focused rendering
+
+## Data Sources
+
+### USGS Earthquake Catalog
+```python
+from datetime import datetime
+from kashima.mapper import USGSCatalog
+
+catalog = USGSCatalog()
+events = catalog.getEvents(
+    start_date=datetime(2023, 1, 1),
+    end_date=datetime(2023, 12, 31),
+    latitude=36.0,
+    longitude=-120.0,
+    maxradiuskm=200,
+    min_magnitude=3.0,
+    want_tensor=True  # Include moment tensor data
+)
+```
+
+### Global CMT Catalog
+Download moment tensor solutions from the Global CMT Project using the fast NDK method:
+```python
+from datetime import datetime
+from kashima.mapper import GCMTCatalog
+
+catalog = GCMTCatalog(verbose=True)
+
+# NDK method (fast, recommended) - downloads from NDK text files
+# Complete catalog: 68,718 events from 1962-present in ~30 seconds
+events = catalog.getEventsFromNDK(
+    start_date=datetime(1962, 1, 1),  # NDK starts in 1962
+    end_date=datetime(2024, 12, 31),
+    min_magnitude=4.5,
+    max_magnitude=10.0
+)
+
+# Alternative: Web API method (slower, limited pagination)
+# events = catalog.getEvents(
+#     start_date=datetime(2020, 1, 1),
+#     end_date=datetime(2020, 12, 31),
+#     latitude=-35.6,
+#     longitude=-73.25,
+#     maxradiuskm=500,
+#     min_magnitude=5.0
+# )
+
+# Events include complete moment tensor data:
+# mrr, mtt, mpp, mrt, mrp, mtp
+# strike1, dip1, rake1, strike2, dip2, rake2
+# half_duration, time_shift, scalar_moment
+```
+
+### Active Fault Databases
+
+Kashima integrates three major fault databases for global coverage:
+
+```python
+from kashima.mapper import (
+    buildGEMActiveFaults,
+    buildUSGSQuaternaryFaults,
+    buildEFSM20Faults
+)
+
+# GEM Global Active Faults (worldwide coverage)
+# Compilation of 20 regional catalogs
+result = buildGEMActiveFaults()
+# Output: 16,195 fault traces, 10.9 MB
+# Source: https://github.com/GEMScienceTools/gem-global-active-faults
+
+# USGS Quaternary Fault and Fold Database (USA only)
+# Faults with evidence of deformation in last 1.6 million years
+result = buildUSGSQuaternaryFaults()
+# Output: 114,037 fault segments, 381.7 MB
+# Source: https://earthquake.usgs.gov/static/lfs/nshm/qfaults/
+
+# EFSM20 European Fault-Source Model (Europe-Mediterranean)
+# Part of ESHM2020 seismic hazard model
+result = buildEFSM20Faults()
+# Output: 1,248 fault traces, 1.5 MB
+# Source: https://services.seismofaults.eu (WFS service)
+
+# Total coverage: 131,480 fault features across three databases
+```
+
+### Control fault visibility in maps:**
+```python
+from kashima.mapper import buildMap
+
+# Map WITH faults (default)
+result = buildMap(
+    latitude=-32.86758,
+    longitude=-68.88867,
+    show_faults_default=True  # Faults visible on load
+)
+
+# Map WITHOUT faults
+result = buildMap(
+    latitude=-32.86758,
+    longitude=-68.88867,
+    show_faults_default=False  # Faults hidden on load
+)
+```
+
+
+## Advanced Features
+
+### Coordinate System Transformations
+Automatic conversion between coordinate systems:
+```python
+# Input data in UTM, output in WGS84 for web mapping
+blast_config = BlastConfig(
+    coordinate_system="EPSG:32722"  # UTM Zone 22S
+)
+```
+
+
+## Class Reference
+
+### Simplified API Functions
+- **`buildMap()`**: High-level function to create maps with sensible defaults
+- **`buildCatalog()`**: Download and save seismic catalogs from various sources
+
+### Core Classes
+- **`EventMap`**: Main visualization class
+- **`USGSCatalog`**: USGS earthquake data interface
+- **`GCMTCatalog`**: Global CMT moment tensor data interface
+- **`BlastCatalog`**: Mining blast data processor
+- **`BaseMap`**: Foundation mapping functionality
+
+### Configuration Classes
+- **`MapConfig`**: Core map parameters
+- **`EventConfig`**: Event visualization settings
+- **`FaultConfig`**: Fault line display options
+- **`StationConfig`**: Seismic station configuration
+- **`BlastConfig`**: Blast data processing parameters
+
+### Layer Classes  
+- **`EventMarkerLayer`**: Individual event markers
+- **`HeatmapLayer`**: Activity density visualization
+- **`BeachballLayer`**: Moment tensor focal mechanisms
+- **`FaultLayer`**: Geological fault lines
+- **`StationLayer`**: Seismic station markers
+- **`EpicentralCirclesLayer`**: Distance rings
+
+## Dependencies
+
+### Core Requirements
+
+- **Python 3.8+**: Base language
+
+### Python Package Dependencies
+
+**Mapping and visualization:**
+- `folium`: Interactive web maps
+- `branca`: Colormap utilities for folium
+- `matplotlib`: Plotting and colormaps
+
+**Geospatial data:**
+- `geopandas`: Geographic data structures
+- `geopy`: Geocoding utilities
+- `pyproj`: Coordinate system transformations
+
+**Data processing:**
+- `pandas`: Data manipulation
+- `numpy`: Numerical computations
+- `pyarrow>=10.0.0`: Parquet file format
+
+**Seismology:**
+- `obspy`: Seismological data processing
+- `requests`: HTTP library for catalog downloads
+
+---
+
+## References
+
+### Earthquake Catalogs
+
+- **USGS ComCat**: https://earthquake.usgs.gov/data/comcat/
+- **Global CMT Project**: https://www.globalcmt.org/
+- **ISC Bulletin**: http://www.isc.ac.uk/iscbulletin/
+
+### Fault Databases
+
+- **GEM Global Active Faults**: Styron, R., & Pagani, M. (2020). The GEM Global Active Faults Database. *Earthquake Spectra*, 36(S1), 160-180. https://github.com/GEMScienceTools/gem-global-active-faults
+
+- **USGS Quaternary Faults**: U.S. Geological Survey (2020). Quaternary Fault and Fold Database. https://earthquake.usgs.gov/hazards/qfaults/
+
+- **EFSM20**: Basili, R., et al. (2021). The European Fault-Source Model 2020 (EFSM20). *EFEHR Technical Report 001*. https://www.seismofaults.eu/
+
+---
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
+---
+
+## Changelog
+
+### Version 1.3.1 (Current)
+- **BUG FIX**: Fixed cluster layer control visibility
+  - `MarkerCluster` now wrapped in `FeatureGroup` for proper layer control display
+  - When `show_cluster_default=True`, "Events (Clustered)" appears in layer control menu
+  - Users can now toggle cluster visibility from the map interface
+  - Previously, clustered events had no visibility control in the layer menu
+
+### Version 1.3.0
+- **MAJOR ENHANCEMENT**: Streamlined cache system
+  - Removed obsolete `build_*_catalog` parameters from `buildMap()`
+  - All catalogs (USGS, ISC, GCMT) now mandatory by default
+  - Fresh cache snapshots copied to `./data/` on every run
+  - No more stale data issues - always synchronized with cache
+  - Added `keep_data` parameter to control `./data/` cleanup (default: False)
+- **NEW FEATURE**: Fault database management
+  - `buildGEMActiveFaults()` - Download GEM Global Active Faults (16,195 faults worldwide)
+  - `buildUSGSQuaternaryFaults()` - Download USGS Quaternary Faults (114,037 segments, USA)
+  - `buildEFSM20Faults()` - Download EFSM20 European Faults (1,248 faults, Europe-Mediterranean)
+  - Fault database update functions: `updateGEMActiveFaults()`, `updateUSGSQuaternaryFaults()`, `updateEFSM20Faults()`
+  - Integrated into cache system: `downloadAllCatalogs(include_faults=True)` and `updateAllCatalogs(include_faults=True)`
+  - New parameter `show_faults_default` in `buildMap()` to control fault visibility (default: True)
+  - Total coverage: 131,480 fault features across three global/regional databases
+- **NEW EXAMPLES**:
+  - `03_update_catalogs.py` - Update global cache catalogs
+  - `04_rebuild_cache.py` - Rebuild corrupted cache from scratch
+  - `05_custom_faults.py` - Use custom fault lines GeoJSON files
+  - `06_update_active_faults.py` - Update GEM Active Faults database
+  - `07_compile_all_fault_databases.py` - Download all fault databases
+  - `08_update_all_catalogs_and_faults.py` - Update both earthquake catalogs and fault databases
+- **IMPROVEMENTS**:
+  - Simplified data flow: Cache → ./data/ (temp) → Read → Cleanup
+  - Better error messages for missing cache
+  - Faults always copied fresh from cache (like catalogs)
+  - Fault layers behave consistently with beachball layers (show/hide control)
+- **DEPENDENCIES**: Same as v1.2.0.0
+
+### Version 1.2.0.0
+- **BREAKING CHANGE**: Refactored all public methods to use camelCase naming convention
+  - `get_events()` → `getEvents()`
+  - `load_data()` → `loadData()`
+  - `get_map()` → `getMap()`
+  - `read_blast_data()` → `readBlastData()`
+  - `build_catalog()` → `buildCatalog()`
+  - `to_feature_group()` → `toFeatureGroup()`
+  - All layer classes updated
+  - All examples and documentation updated
+- **MAJOR ENHANCEMENT**: Global CMT catalog now uses fast NDK method
+  - New `getEventsFromNDK()` method downloads from NDK text files
+  - Complete historical catalog: 68,718 events from 1962-present
+  - Download time: ~30 seconds for full catalog (vs hours with web API)
+  - `buildGCMTCatalog()` now uses NDK method by default
+  - Web API method still available via `getEvents()` for spatial filtering
+- Added Global CMT (Global Centroid Moment Tensor) catalog support
+  - New `GCMTCatalog` class for downloading moment tensor data
+  - Integrated into `buildCatalog()` with `source="gcmt"`
+  - Complete moment tensor components (Mrr, Mtt, Mpp, Mrt, Mrp, Mtp)
+  - Nodal plane data (strike, dip, rake)
+  - Source parameters (half_duration, time_shift, scalar_moment)
+- Added global cache system for catalog data
+  - `downloadAllCatalogs()` - Download all catalogs to cache once
+  - `updateAllCatalogs()` - Incrementally update with new events
+  - Cache location: `~/Library/Caches/kashima/` (macOS), `~/.cache/kashima/` (Linux)
+  - Parquet format for efficient storage and fast loading
+  - Added `pyarrow>=10.0.0` dependency
+- Private methods and function arguments remain in snake_case
+
+### Version 1.0.10.1
+- Enhanced coordinate system support
+- Improved large dataset handling
+- Added beachball visualization
+- Extended tile layer options
+- Better error handling and logging
+- Fixed directory creation bug in examples
+- Updated SiteMarkerLayer export
+- Corrected fault style typo
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Citation
+
+When using Kashima in your research or professional work, please cite:
+
+```bibtex
+@software{kashima,
+  author = {Verri Kozlowski, Alejandro},
+  title = {HTML Mapping of Seismic Events},
+  year = {2025},
+  version = {1.3.1},
+  url = {https://github.com/averriK/kashima}
+}
+```
+
+---
+
+## Author
+
+**Alejandro Verri Kozlowski**
+
+- Email: averri@fi.uba.ar
+- ORCID: [0000-0002-8535-1170](https://orcid.org/0000-0002-8535-1170)
+- GitHub: [@averriK](https://github.com/averriK)
+
+**Affiliation:**
+- Facultad de Ingeniería, Universidad de Buenos Aires
