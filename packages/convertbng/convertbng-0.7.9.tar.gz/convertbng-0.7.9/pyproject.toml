@@ -1,0 +1,61 @@
+[project]
+name = "convertbng"
+version = "0.7.9"
+description = "Fast lon, lat to and from ETRS89 and BNG (OSGB36) using the OS OSTN15 transform via Rust FFI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy >= 2.0.0",
+]
+authors = [{ name = "Stephan Hügel", email = "urschrei@gmail.com" }]
+license = "BlueOak-1.0.0"
+license-files = ["LICENSE.md"]
+keywords = ["Geo", "OSTN02", "OSTN15", "BNG", "OSGB36", "GIS"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: GIS"
+    ]
+[project.urls]
+Repository = "https://github.com/urschrei/convertbng"
+Tracker = "https://github.com/urschrei/convertbng/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+wheel.packages = ["src/convertbng"]
+
+[build-system]
+requires = [
+    "scikit-build-core>=0.10",
+    "numpy >= 2.0.0",
+    "cython >= 3.1.0",
+    "cython-cmake"
+]
+build-backend = "scikit_build_core.build"
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.{h,c,pyx,pxd,dylib,so,dll}" }, { file = "CMakeLists.txt" }]
+
+[tool.pytest.ini_options]
+minversion = "8.4.1"
+addopts = [
+    "--import-mode=importlib",
+]
+testpaths = [
+    "tests",
+]
