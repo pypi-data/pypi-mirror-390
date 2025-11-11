@@ -1,0 +1,26 @@
+Typically, this allows to create a new process using a thread in background.
+
+- Duplicate an existing file (e.g. compute_average.py)
+
+- Clear the run() function (except the last line super...)
+
+- If you want to add a progress bar in the footer automatically:
+    - Be sure that this function is defined:
+        def update_progress(self, val): # does += val
+            self.th.progress_signal.emit(self.th.rt.get_pf_dict(val))
+    - Add progress increment updates cleverly, e.g. inside a double-loop (x, y):
+        self.update_progress(100 / (len_x * len_y))
+
+- Import the new worker path in run_thread.py, eg:
+from processing.threads.workers.compute_average import ComputeAverage
+
+- From anywhere run the thread thanks to:
+RunThread('WorkerClassName', self.main, objects, 'Process title')
+    - With here "objects" any needed argument (dict, object instance, integer, ...)
+    - If 'Process title' is defined, the process progression will be displayed in the footer
+
+- Change the "self.objects" comment to explain what argument is needed to pass
+
+- Fill run() with if self.th.do_interrupt: super() + return
+(If process takes more than ~2sec)
+This way interruption will occur when loading another data file
