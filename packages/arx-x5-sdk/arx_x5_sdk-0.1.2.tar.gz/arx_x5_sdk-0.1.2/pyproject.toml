@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "pybind11>=2.10.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arx-x5-sdk"
+version = "0.1.2"
+description = "ARX X5 Robot Arm Python SDK"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "BSD-3-Clause"
+authors = [
+    {name = "Remi Cadene", email = "remi@uma.bot"},
+    {name = "UMA", email = "contact@uma.bot"}
+]
+keywords = ["robotics", "arx", "robot-arm", "sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "pybind11>=2.10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/uma-robots/arx-x5-sdk"
+Repository = "https://github.com/uma-robots/arx-x5-sdk"
+Issues = "https://github.com/uma-robots/arx-x5-sdk/issues"
+
+[tool.cibuildwheel]
+# Build for Linux on x86_64 and aarch64
+build = ["cp310-*", "cp311-*", "cp312-*"]
+skip = ["*-musllinux_*", "pp*"]
+
+# Platform-specific settings
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+before-all = [
+    "yum install -y cmake gcc gcc-c++ make || apt-get update && apt-get install -y cmake g++ make",
+]
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+# Environment variables
+environment = {CMAKE_BUILD_PARALLEL_LEVEL = "4"}
+
+# Testing
+test-requires = ["pytest"]
+test-command = "python -c 'import arx_x5_sdk; print(\"ARX X5 SDK loaded successfully!\")'"
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+before-all = [
+    "brew install cmake || true",
+]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+before-all = [
+    "choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y || echo CMake already installed",
+]
