@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "Cython>=3.0.0", "packaging>=24.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apple-foundation-models"
+version = "0.1.9"
+description = "Python bindings for Apple's FoundationModels framework - on-device AI (requires macOS 26.0+)"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Ben Tucker" }]
+maintainers = [{ name = "Ben Tucker" }]
+keywords = [
+  "apple",
+  "intelligence",
+  "ai",
+  "llm",
+  "foundation-models",
+  "on-device",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: MacOS :: MacOS X",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Cython",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.9"
+dependencies = ["typing-extensions>=4.0.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.20", "pytest-cov>=4.0", "black>=22.0", "mypy>=0.991"]
+pydantic = ["pydantic>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/btucker/apple-foundation-models-py"
+Repository = "https://github.com/btucker/apple-foundation-models-py"
+Documentation = "https://github.com/btucker/apple-foundation-models-py#readme"
+Issues = "https://github.com/btucker/apple-foundation-models-py/issues"
+
+[tool.setuptools]
+packages = ["applefoundationmodels"]
+
+[tool.setuptools.exclude-package-data]
+applefoundationmodels = ["swift/*", "*.c", "*.pxd", "*.pyx"]
+
+[tool.setuptools.package-data]
+applefoundationmodels = [
+    "py.typed",
+    "*.pyi",
+    "*.dylib",
+    "*.so",
+]
+
+[bdist_wheel]
+universal = false
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+]
+# Note: Wheels tagged as macosx_11_0 for PyPI compatibility
+# Actual macOS 26+ requirement enforced by runtime checks in Client.__init__()
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["-v", "--strict-markers", "--tb=short"]
+markers = [
+  "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
