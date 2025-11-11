@@ -1,0 +1,181 @@
+Metadata-Version: 2.1
+Name: split_openfeature_provider
+Version: 1.0.0
+Summary: The official Python Split Provider for OpenFeature
+License: Apache License 2.0
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# Split OpenFeature Provider for Python
+[![Twitter Follow](https://img.shields.io/twitter/follow/splitsoftware.svg?style=social&label=Follow&maxAge=1529000)](https://twitter.com/intent/follow?screen_name=splitsoftware)
+
+## Overview
+This Provider is designed to allow the use of OpenFeature with Split, the platform for controlled rollouts, serving features to your users via the Split feature flag to manage your complete customer experience.
+
+## Compatibility
+This SDK is compatible with Python 3.9 and higher.
+
+## Getting started
+### Pip Installation 
+```python
+pip install split-openfeature-provider==1.0.0
+```
+### Configure it
+Below is a simple example that describes using the Split Provider. Please see the [OpenFeature Documentation](https://docs.openfeature.dev/docs/reference/concepts/evaluation-api) for details on how to use the OpenFeature SDK.
+
+```python
+from openfeature import api
+from split_openfeature_provider import SplitProvider
+config = {
+      'impressionsMode': 'OPTIMIZED',
+      'impressionsRefreshRate': 30,
+    }
+provider = SplitProvider({"SdkKey": "YOUR_API_KEY", "ConfigOptions": config, "ReadyBlockTime": 5})
+api.set_provider(provider)
+```
+
+If you are more familiar with Split or want access to other initialization options, you can provide a Split `client` to the constructor. See the [Harness Split Python SDK Documentation](https://developer.harness.io/docs/feature-management-experimentation/sdks-and-infrastructure/server-side-sdks/python-sdk/) for more information.
+```python
+from openfeature import api
+from split_openfeature_provider import SplitProvider
+from splitio import get_factory
+
+config = {
+      'impressionsMode': 'OPTIMIZED',
+      'impressionsRefreshRate': 30,
+    }
+factory = get_factory("YOUR_API_KEY", config=config)
+factory.block_until_ready(5)
+api.set_provider(SplitProvider({"SplitClient": factory.client()}))
+```
+
+## Use of OpenFeature with Split
+After the initial setup you can use OpenFeature according to their [documentation](https://docs.openfeature.dev/docs/reference/concepts/evaluation-api/).
+
+One important note is that the Split Provider **requires a targeting key** to be set. Often times this should be set when evaluating the value of a flag by [setting an EvaluationContext](https://docs.openfeature.dev/docs/reference/concepts/evaluation-context) which contains the targeting key. An example flag evaluation is
+```python
+from openfeature import api
+from openfeature.evaluation_context import EvaluationContext
+
+client = api.get_client("CLIENT_NAME")
+
+context = EvaluationContext(targeting_key="TARGETING_KEY")
+value = client.get_boolean_value("FLAG_NAME", False, context)
+```
+If the same targeting key is used repeatedly, the evaluation context may be set at the client level 
+```python
+context = EvaluationContext(targeting_key="TARGETING_KEY")
+client.context = context
+```
+or at the OpenFeatureAPI level 
+```python
+context = EvaluationContext(targeting_key="TARGETING_KEY")
+api.set_evaluation_context(context)
+```
+If the context was set at the client or api level, it is not required to provide it during flag evaluation.
+
+### Asyncio mode
+The provider supports asyncio mode as well, using the asyncio mode in Split SDK.
+Example below shows using the provider in asyncio
+
+```python
+from openfeature import api
+from split_openfeature_provider import SplitProviderAsync
+config = {
+      'impressionsMode': 'OPTIMIZED',
+      'impressionsRefreshRate': 30,
+    }
+provider = SplitProvider({"SdkKey": "YOUR_API_KEY", "ConfigOptions": config, "ReadyBlockTime": 5})
+await provider.create()
+api.set_provider(provider)
+```
+
+Example below show how to create the Split Client externally and pass it to Provider
+```python
+from openfeature import api
+from split_openfeature_provider import SplitProviderAsync
+from splitio import get_factory_async
+
+config = {
+      'impressionsMode': 'OPTIMIZED',
+      'impressionsRefreshRate': 30,
+    }
+factory = get_factory_async("YOUR_API_KEY", config=config)
+await factory.block_until_ready(5)
+provider = SplitProviderAsync({"SplitClient": factory.client()})
+await provider.create()
+api.set_provider(provider)
+```
+
+Example below fetching the treatment in asyncio mode
+```python
+from openfeature import api
+from openfeature.evaluation_context import EvaluationContext
+
+client = api.get_client("CLIENT_NAME")
+
+context = EvaluationContext(targeting_key="TARGETING_KEY")
+value = await client.get_boolean_value_async("FLAG_NAME", False, context)
+```
+### Logging
+Split Provider use `logging` library, Each module has it's own logger, the root being split_provider. Below is an example of simple usage which will set all libraries using `logging` including the provider, to use `DEBUG` mode.
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+```
+
+### Shutting down Split SDK factory
+Currently OpenFeature SDK does not provide override for provider shutdown, when using internal split client object, the Split SDK will not shutdown properly. We recommend using the example below before terminating the OpenFeature object
+
+```python
+from threading import Event
+
+destroy_event = Event()
+provider._split_client_wrapper._factory.destroy(destroy_event)
+destroy_event.wait()
+```
+
+Below the example for asyncio mode
+```python
+await provider._split_client_wrapper._factory.destroy()
+```
+
+## Submitting issues
+ 
+The Split team monitors all issues submitted to this [issue tracker](https://github.com/splitio/split-openfeature-provider-python/issues). We encourage you to use this issue tracker to submit any bug reports, feedback, and feature enhancements. We'll do our best to respond in a timely manner.
+
+## Contributing
+Please see [Contributors Guide](CONTRIBUTORS-GUIDE.md) to find all you need to submit a Pull Request (PR).
+
+## License
+Licensed under the Apache License, Version 2.0. See: [Apache License](http://www.apache.org/licenses/).
+
+## About Split
+ 
+Split is the leading Feature Delivery Platform for engineering teams that want to confidently deploy features as fast as they can develop them. Split’s fine-grained management, real-time monitoring, and data-driven experimentation ensure that new features will improve the customer experience without breaking or degrading performance. Companies like Twilio, Salesforce, GoDaddy and WePay trust Split to power their feature delivery.
+ 
+To learn more about Split, contact hello@split.io, or get started with feature flags for free at https://www.split.io/signup.
+ 
+Split has built and maintains SDKs for:
+ 
+* Java [Github](https://github.com/splitio/java-client) [Docs](https://help.split.io/hc/en-us/articles/360020405151-Java-SDK)
+* Javascript [Github](https://github.com/splitio/javascript-client) [Docs](https://help.split.io/hc/en-us/articles/360020448791-JavaScript-SDK)
+* Node [Github](https://github.com/splitio/javascript-client) [Docs](https://help.split.io/hc/en-us/articles/360020564931-Node-js-SDK)
+* .NET [Github](https://github.com/splitio/dotnet-client) [Docs](https://help.split.io/hc/en-us/articles/360020240172--NET-SDK)
+* Ruby [Github](https://github.com/splitio/ruby-client) [Docs](https://help.split.io/hc/en-us/articles/360020673251-Ruby-SDK)
+* PHP [Github](https://github.com/splitio/php-client) [Docs](https://help.split.io/hc/en-us/articles/360020350372-PHP-SDK)
+* Python [Github](https://github.com/splitio/python-client) [Docs](https://help.split.io/hc/en-us/articles/360020359652-Python-SDK)
+* GO [Github](https://github.com/splitio/go-client) [Docs](https://help.split.io/hc/en-us/articles/360020093652-Go-SDK)
+* Android [Github](https://github.com/splitio/android-client) [Docs](https://help.split.io/hc/en-us/articles/360020343291-Android-SDK)
+* iOS [Github](https://github.com/splitio/ios-client) [Docs](https://help.split.io/hc/en-us/articles/360020401491-iOS-SDK)
+ 
+For a comprehensive list of open source projects visit our [Github page](https://github.com/splitio?utf8=%E2%9C%93&query=%20only%3Apublic%20).
+ 
+**Learn more about Split:**
+ 
+Visit [split.io/product](https://www.split.io/product) for an overview of Split, or visit our documentation at [help.split.io](http://help.split.io) for more detailed information.
+
