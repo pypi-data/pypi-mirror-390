@@ -1,0 +1,68 @@
+Metadata-Version: 2.4
+Name: cf-deploy
+Version: 0.1.57
+Summary: A package to automate CloudFormation deployments
+License: MIT
+Author: Bart Machielsen
+Author-email: bartmachielsen@gmail.com
+Requires-Python: >=3.9,<4.0
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: PyYAML (>=6.0.1,<7.0.0)
+Requires-Dist: boto3 (>=1.20.0,<2.0.0)
+Requires-Dist: colorama (>=0.4.4,<0.5.0)
+Requires-Dist: deepmerge (>=0.3.0,<0.4.0)
+Requires-Dist: pydantic (>=2.11.3,<3.0.0)
+Requires-Dist: structlog (>=21.5.0,<22.0.0)
+Requires-Dist: tqdm (>=4.65.0,<5.0.0)
+Description-Content-Type: text/markdown
+
+# cf-deploy
+cf-deploy is a package to automate CloudFormation deployments. It simplifies the deployment process by allowing you to use YAML configuration files to define your stack parameters and resources.
+
+Features:
+- Merge multiple configuration files to create a single CloudFormation stack
+- 
+
+## Installation
+To install cf-deploy, run the following command:
+
+```bash
+pip install cf-deploy
+```
+## Usage
+To use cf-deploy, create a YAML configuration file with your CloudFormation stack settings. You can use a base configuration file to define common settings and override or extend them with environment-specific configuration files.
+
+Here's a sample base configuration file, base.yaml:
+
+```yaml
+region: us-west-2
+template: s3://my-bucket/my-template.yaml
+deployment_stages:
+  - dev
+  - prod
+```
+And a sample environment-specific configuration file, dev.yaml:
+
+```yaml
+name: my-stack-dev
+prefix: dev-
+parameters:
+  Stage: dev
+  InstanceType: t2.micro
+```
+
+## Deploying a CloudFormation stack
+To deploy a CloudFormation stack using cf-deploy, run the following command:
+
+```bash
+cf-deploy -b base.yaml -c dev.yaml
+```
+
+This command will merge the base configuration file (base.yaml) with the environment-specific configuration file (dev.yaml) and deploy the resulting CloudFormation stack.
