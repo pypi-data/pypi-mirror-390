@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark" data-bs-core="modern">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_metadata.app_name }}</title>
+  <link href="{{ url_for('static', path='/vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='/vendor/halfmoon/halfmoon.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='/vendor/halfmoon/halfmoon.modern.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='/vendor/datatables.net-bs5/dataTables.bootstrap5.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', path='/vendor/datatables.net-columncontrol-bs5/columnControl.bootstrap5.min.css') }}" rel="stylesheet">
+  <style>
+    /* Only override overflow when DataTables is initialized */
+    .table-responsive:has(table.dataTable) {
+      overflow: visible !important;
+    }
+  </style>
+  {% block extra_styles %}{% endblock %}
+</head>
+
+<body class="ps-md-sbwidth">
+  <header>
+    <nav class="sidebar offcanvas-start offcanvas-md" tabindex="-1" id="sidebar">
+      <div class="offcanvas-header border-bottom">
+        <a class="sidebar-brand" href="/">
+          {{ app_metadata.app_name }}
+        </a>
+        <button
+          type="button"
+          class="btn-close d-md-none"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+          data-bs-target="#sidebar"
+        >
+        </button>
+      </div>
+      <div class="offcanvas-body d-flex flex-column">
+        <ul class="sidebar-nav flex-grow-1 overflow-auto">
+          {% if not request.app.state.config.settings.web.hide_tables %}
+          <li>
+            <h6 class="sidebar-header">Tables</h6>
+          </li>
+          <li><hr class="sidebar-divider"></li>
+          {% for table in tables %}
+          {% set table_url = '/tables/' + table.name %}
+          <li class="nav-item">
+            <a
+              class="text-truncate nav-link{% if request.url.path.startswith(table_url + '/') or request.url.path == table_url %} active{% endif %}"
+              href="{{ table_url }}"
+              aria-current="page"
+            >
+              <i class="bi-table" aria-hidden="true"></i>
+              {{ table.name }}
+            </a>
+          </li>
+          {% endfor %}
+
+          <li><hr class="sidebar-divider"></li>
+          {% endif %}
+
+          <li>
+            <h6 class="sidebar-header">Queries</h6>
+          </li>
+          <li><hr class="sidebar-divider"></li>
+          {% for query in queries %}
+          {% set query_url = '/queries/' + query.name + '/view' %}
+          <li class="nav-item">
+            <a
+              class="text-truncate nav-link{% if request.url.path.startswith(query_url + '/') or request.url.path == query_url %} active{% endif %}"
+              href="{{ query_url }}"
+              aria-current="page"
+            >
+              <i class="bi-code-square" aria-hidden="true"></i>
+              {{ query.title }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <div class="mt-auto pt-3 border-top flex-shrink-0">
+          <div class="px-3 d-block">
+            <button type="button" class="btn btn-link btn-sm text-muted text-decoration-none p-0" data-bs-toggle="modal" data-bs-target="#creditsModal">
+              <i class="bi-info-circle me-1"></i>
+              About
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <nav class="navbar navbar-expand-md sticky-top" style="border-bottom: var(--bs-border-width) solid var(--bs-content-border-color); min-height: 60px;">
+      <div class="container-md justify-content-start">
+        <button type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" class="btn btn-secondary d-md-none">
+          <i class="bi-layout-sidebar" aria-hidden="true"></i>
+        </button>
+
+        <a href="/" class="navbar-brand d-flex align-items-center d-md-none ms-auto ms-md-0">
+          {{ app_metadata.app_name }}
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="container py-3 py-sm-4 px-3 px-sm-4">
+      {% block body %}{% endblock %}
+    </div>
+  </main>
+
+  <div class="modal fade" id="creditsModal" tabindex="-1" aria-labelledby="creditsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="creditsModalLabel">About</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="text-center mb-3">
+            <h4>{{ app_metadata.app_name }}</h4>
+            <p class="text-muted mb-0">Oversee your lakehouse</p>
+          </div>
+
+          <dl class="row mb-3">
+            <dt class="col-sm-4">Version</dt>
+            <dd class="col-sm-8">
+              <a href="https://github.com/datalpia/laketower/releases/tag/{{ app_metadata.app_version }}"
+                 target="_blank"
+                 class="text-decoration-none">
+                {{ app_metadata.app_version }}
+                <i class="bi-box-arrow-up-right ms-1" style="font-size: 0.8em;"></i>
+              </a>
+            </dd>
+
+            <dt class="col-sm-4">Repository</dt>
+            <dd class="col-sm-8">
+              <a href="https://github.com/datalpia/laketower"
+                 target="_blank"
+                 class="text-decoration-none">
+                github.com/datalpia/laketower
+                <i class="bi-box-arrow-up-right ms-1" style="font-size: 0.8em;"></i>
+              </a>
+            </dd>
+
+            <dt class="col-sm-4">Issue Tracker</dt>
+            <dd class="col-sm-8">
+              <a href="https://github.com/datalpia/laketower/issues"
+                 target="_blank"
+                 class="text-decoration-none">
+                Report an issue
+                <i class="bi-box-arrow-up-right ms-1" style="font-size: 0.8em;"></i>
+              </a>
+            </dd>
+
+            <dt class="col-sm-4">License</dt>
+            <dd class="col-sm-8">
+              <a href="https://github.com/datalpia/laketower/blob/main/LICENSE"
+                 target="_blank"
+                 class="text-decoration-none">
+                Apache License 2.0
+                <i class="bi-box-arrow-up-right ms-1" style="font-size: 0.8em;"></i>
+              </a>
+            </dd>
+          </dl>
+
+          <div class="text-center text-muted">
+            <small>Copyright © 2025 Romain Clement / Datalpia</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', path='/vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', path='/datatables.bundle.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

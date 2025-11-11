@@ -1,0 +1,102 @@
+{% extends "_base.html" %}
+
+{% block extra_styles %}
+{% endblock %}
+
+{% block body %}
+<div class="row">
+  <div class="col">
+    <h2 class="mb-3">{{ query.title }}</h2>
+
+    {% if query.description %}
+    <div>
+      {{ query.description | render_markdown | safe }}
+    </div>
+    {% endif %}
+
+    <form action="{{ request.url.path }}" method="get">
+      {% if sql_params|length %}
+      <h3 class="mb-3">Parameters</h3>
+      {% for param_name, param_value in sql_params.items() %}
+      <div class="row mb-3">
+        <label for="param-{{ param_name }}" class="col-form-label col-sm-2">{{ param_name }}</label>
+        <div class="col-sm-4">
+          <input id="param-{{ param_name }}" class="form-control" name="{{ param_name }}" value="{{ param_value }}">
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <div class="mb-3">
+        <div class="d-flex justify-content-end">
+          <div class="row">
+            <div class="col">
+              <a href="/tables/query?sql={{ query.sql | urlencode }}{% if request.query_params | length > 0 %}&{{ request.query_params.multi_items() | urlencode}}{% endif %}" class="btn btn-secondary" type="button">
+                <i class="bi-code" aria-hidden="true"></i> Edit SQL
+              </a>
+            </div>
+
+            <div class="col-auto">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi-lightning" aria-hidden="true"></i> Execute
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+      {{ error.message }}
+    </div>
+    {% else %}
+    <h3>Results</h3>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <p>
+        <i class="{% if truncated_results %}bi-database-exclamation{% else %}bi-database-check{% endif %}" aria-hidden="true"></i>
+        {{ query_results.num_rows }} rows returned{% if truncated_results %} (truncated){% endif %}
+        <br>
+        <i class="bi-speedometer" aria-hidden="true"></i>
+        Query execution time: {{ execution_time_ms | round(2) }}ms
+      </p>
+      <a href="/tables/query/csv?sql={{ query.sql | urlencode }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi-download" aria-hidden="true"></i> Export CSV
+      </a>
+    </div>
+    <div class="table-responsive">
+      <table id="resultsTable" class="table table-sm table-bordered table-striped table-hover">
+        <thead>
+          <tr>
+            {% for column in query_results.column_names %}
+            <th>{{ column }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody class="table-group-divider">
+          {% for row in query_results.to_pylist() %}
+          <tr>
+            {% for column in query_results.column_names %}
+            <td>{{ row[column] }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    {% if not error %}
+    const arrowTypes = {{ query_results.schema.types | map('string') | list | tojson }}
+    const columnTypes = datatables.arrowTypesToDataTables(arrowTypes)
+    const dataTable = datatables.createDataTable('#resultsTable', {columnTypes})
+    {% endif %}
+  })
+</script>
+{% endblock %}
