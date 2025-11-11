@@ -1,0 +1,31 @@
+# Smithery configuration for the RealTimeX PyAutoGUI MCP server.
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      pause:
+        type: number
+        description: Override for PyAutoGUI global pause (seconds).
+      failsafe:
+        type: boolean
+        description: Enable (true) or disable (false) PyAutoGUI failsafe.
+  commandFunction:
+    |-
+    (config) => {
+      const env = {}
+      if (typeof config.pause === "number") {
+        env.REALTIMEX_PAUSE = String(config.pause)
+      }
+      if (typeof config.failsafe === "boolean") {
+        env.REALTIMEX_FAILSAFE = config.failsafe ? "1" : "0"
+      }
+      return {
+        command: "realtimex-pyautogui-server",
+        env,
+      }
+    }
+  exampleConfig:
+    pause: 0.5
+    failsafe: true
