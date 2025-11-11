@@ -1,0 +1,112 @@
+# ARX X5 SDK
+
+Python bindings for the ARX X5 robot arm SDK. This package provides a Python interface to control ARX X5 robot arms.
+
+## Prerequisites
+
+```bash
+sudo apt install build-essential cmake python3-dev
+```
+
+Python dependencies (pybind11) are installed automatically during build.
+
+## Installation
+
+### From PyPI (Recommended)
+
+```bash
+pip install arx-x5-sdk
+```
+
+### From Source
+
+```bash
+git clone https://github.com/uma-robots/arx-x5-sdk.git
+cd arx-x5-sdk
+pip install .
+```
+
+### Development Mode
+
+For active development:
+
+```bash
+pip install -e .
+```
+
+All installation methods automatically build the C++ extension using CMake.
+
+## Usage
+
+### Simple API (Recommended)
+
+The easiest way to use the SDK with automatic URDF selection:
+
+```python
+import arx_x5_sdk
+from arx_x5_sdk import ArmType
+
+# Create interface using enum (recommended)
+interface = arx_x5_sdk.ArxInterface("can0", ArmType.X5_2025)
+
+# Or use the default (X5_2025)
+interface = arx_x5_sdk.ArxInterface("can0")
+
+# Available arm types:
+# - ArmType.FOLLOWER  : Follower arm (x5.urdf)
+# - ArmType.LEADER    : Leader arm (x5_master.urdf)
+# - ArmType.X5_2025   : X5 2025 model (x5_2025.urdf, default)
+```
+
+### Advanced API
+
+For more control, use the low-level C++ interface directly:
+
+```python
+import arx_x5_sdk
+from arx_x5_sdk import ArmType
+
+# Get URDF path by type
+urdf_path = arx_x5_sdk.get_urdf_path_by_type(ArmType.X5_2025)
+
+# Or get URDF path by filename
+urdf_path = arx_x5_sdk.get_urdf_path("x5_2025.urdf")
+
+# Create interface with explicit URDF path
+interface = arx_x5_sdk.C_ArxInterface(urdf_path, "can0", ArmType.X5_2025)
+
+# Integers still work for backwards compatibility
+interface = arx_x5_sdk.ArxInterface("can0", 2)  # equivalent to ArmType.X5_2025
+```
+
+## Development
+
+### Manual Build (Advanced)
+
+If you need to rebuild just the C++ extension:
+
+```bash
+python setup.py build_ext --inplace
+```
+
+This builds the extension in-place without installing.
+
+### Architecture Support
+
+The build automatically detects your system architecture:
+- **x86_64**: Uses `libarx_x5_src.so`
+- **ARM64/aarch64**: Uses `libarx_x5_src-arm64.so`
+
+## Troubleshooting
+
+### Build errors
+Ensure prerequisites are installed:
+```bash
+sudo apt install build-essential cmake python3-dev
+```
+
+### Import errors
+Make sure the package is installed:
+```bash
+pip install -e .
+```
