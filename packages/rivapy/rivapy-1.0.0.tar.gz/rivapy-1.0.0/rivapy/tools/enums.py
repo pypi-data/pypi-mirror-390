@@ -1,0 +1,616 @@
+# -*- coding: utf-8 -*-
+from enum import Enum as _Enum, unique as _unique
+from dataclasses import dataclass
+from typing import List
+
+
+"""
+
+The following Enum sub-classes replace to corresponding former classes one-on-one. The main reason for this replacement
+is the more comfortable iterations over the enumeration class members. Moreover, the Enum class provides potentially
+useful functionalities like comparisons, pickling, ... Finally, the decorator @unique ensures unique enumeration values.
+"""
+
+
+class _MyEnum(_Enum):
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
+    @classmethod
+    def to_string(cls, value) -> str:
+        """Checks if given enum class contains the value and raises exception if not. If value is str
+
+        Args:
+            enum (_type_): _description_
+            value (_type_): _description_
+
+        Returns:
+            str: _description_
+        """
+
+        # Accept either the enum's stored value (e.g. 'Act360') or its name/key (e.g. 'ACT360')
+        # Matching is case-insensitive for robustness.
+        if isinstance(value, str):
+            v = value.strip()
+            # direct match against stored values (exact)
+            for member in cls:
+                if v == member.value:
+                    return member.value
+            # exact name/key match
+            if v in cls.__members__:
+                return cls[v].value
+            # case-insensitive match against names or values
+            uv = v.upper()
+            for member in cls:
+                if uv == member.name.upper() or uv == str(member.value).upper():
+                    return member.value
+            raise Exception("Unknown " + cls.__name__ + ": " + value)
+        if isinstance(value, cls):
+            return value.value
+        raise Exception("Given value " + str(value) + " does not belong to enum " + cls.__name__)
+
+
+class _MyIntEnum(_Enum):
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
+    @classmethod
+    def to_string(cls, value) -> str:
+        """Checks if given enum class contains the value and raises exception if not. If value is str
+
+        Args:
+            enum (_type_): _description_
+            value (_type_): _description_
+
+        Returns:
+            str: _description_
+        """
+
+        # Accept either the enum name (string) or integer value. Return the enum NAME as string.
+        if isinstance(value, str):
+            v = value.strip()
+            # direct name/key match
+            if v in cls.__members__:
+                return v
+            # case-insensitive name match
+            uv = v.upper()
+            for member in cls:
+                if uv == member.name.upper():
+                    return member.name
+            raise Exception("Unknown " + cls.__name__ + ": " + value)
+        elif isinstance(value, int):
+            try:
+                return cls(value).name
+            except Exception:
+                raise Exception("Unknown " + cls.__name__ + ": " + str(value))
+        if isinstance(value, cls):
+            return value.name
+        raise Exception("Given value " + str(value) + " does not belong to enum " + cls.__name__)
+
+
+@_unique
+class InterpolationType(_MyEnum):
+    CONSTANT = "CONSTANT"
+    LINEAR = "LINEAR"
+    LINEAR_LOG = "LINEAR_LOG"
+    CONSTRAINED_SPLINE = "CONSTRAINED_SPLINE"
+    HAGAN = "HAGAN"
+    HAGAN_DF = "HAGAN_DF"
+
+
+@_unique
+class ExtrapolationType(_MyEnum):
+    NONE = "NONE"
+    CONSTANT = "CONSTANT"
+    CONSTANT_DF = "CONSTANT_DF"
+    LINEAR = "LINEAR"
+    LINEAR_LOG = "LINEAR_LOG"
+
+
+@_unique
+class SecuritizationLevel(_MyEnum):
+    NONE = "NONE"
+    COLLATERALIZED = "COLLATERALIZED"
+    SENIOR_SECURED = "SENIOR_SECURED"
+    SENIOR_UNSECURED = "SENIOR_UNSECURED"
+    SUBORDINATED = "SUBORDINATED"
+    MEZZANINE = "MEZZANINE"
+    EQUITY = "EQUITY"
+    PREFERRED_SENIOR = "PREFERRED_SENIOR"
+    NON_PREFERRED_SENIOR = "NON_PREFERRED_SENIOR"
+
+
+# class SecuritizationLevel:
+#     NONE = 'NONE'
+#     COLLATERALIZED = 'COLLATERALIZED' #,,,'','SUBORDINATED','MEZZANINE','EQUITY']
+#     SENIOR_SECURED = 'SENIOR_SECURED'
+#     SENIOR_UNSECURED = 'SENIOR_UNSECURED'
+#     SUBORDINATED = 'SUBORDINATED'
+#     MEZZANINE = 'MEZZANINE'
+#     EQUITY = 'EQUITY'
+
+# @_unique
+# class ProductType(_MyEnum):
+#     BOND = 'BOND'
+#     CALLABLE_BOND = 'CALLABLE_BOND'
+
+
+# @_unique
+# class PricerType(_MyEnum):
+#     ANALYTIC = 'ANALYTIC'
+#     PDE = 'PDE'
+#     MONTE_CARLO = 'MONTE_CARLO'
+#     COMBO = 'COMBO'
+
+
+@_unique
+class EnergyTimeGridStructure(_MyEnum):
+    BASE = "BASE"
+    PEAK = "PEAK"
+    OFFPEAK = "OFFPEAK"
+
+
+@_unique
+class Model(_MyEnum):
+    BLACK76 = "BLACK76"
+    CIR = "CIR"
+    HULL_WHITE = "HULL_WHITE"
+    HESTON = "HESTON"
+    LV = "LV"
+    GBM = "GBM"
+    G2PP = "G2PP"
+    VASICEK = "VASICEK"
+
+
+# class Model:
+#     BLACK76 = 'BLACK76'
+#     CIR ='CIR'
+#     HULL_WHITE = 'HULL_WHITE'
+#     HESTON = 'HESTON'
+#     LV = 'LV'
+#     GBM = 'GBM'
+#     G2PP = 'G2PP'
+#     VASICEK = 'VASICEK'
+
+
+@_unique
+class Period(_MyEnum):
+    A = "A"
+    SA = "SA"
+    Q = "Q"
+    M = "M"
+    D = "D"
+
+
+# class Period:
+#     A = 'A'
+#     SA = 'SA'
+#     Q = 'Q'
+#     M = 'M'
+#     D = 'D'
+
+
+@_unique
+class RollConvention(_MyEnum):
+    FOLLOWING = "Following"
+    MODIFIED_FOLLOWING = "ModifiedFollowing"
+    MODIFIED_FOLLOWING_EOM = "ModifiedFollowingEOM"
+    MODIFIED_FOLLOWING_BIMONTHLY = "ModifiedFollowingBimonthly"
+    PRECEDING = "Preceding"
+    MODIFIED_PRECEDING = "ModifiedPreceding"
+    NEAREST = "Nearest"
+    UNADJUSTED = "Unadjusted"
+
+
+@_unique
+class RollRule(_MyEnum):
+    """Roll Rules are used for calculating daten when building a schedule and, therefore, rolling forward (or backward) dates by periods or frequencies"""
+
+    NONE = "NONE"  # no roll rule applied,  day of a month drifts if adjustments are made acc. to bdc, i.e. the anchor date changes
+    EOM = "EOM"  # rolls from month end to month end, ambiguous days are adjusted to the end of the month, i.e. Mar 30,
+    DOM = "DOM"  # rolls from a specific day of month to the same day of month, ambiguous days are adjusted to the same day of month, i.e. Mar 30,
+    IMM = "IMM"  # rolls to the third Wednesday of the month, i.e. Mar 30, rolls to Mar 20, if Mar 20 is a weekend, it rolls to Mar 22
+
+
+@_unique
+class DayCounterType(_MyEnum):
+    ACT_ACT = "ActAct"
+    Act365Fixed = "Act365Fixed"
+    ACT360 = "Act360"
+    ThirtyU360 = "30U360"
+    ThirtyE360 = "30E360"
+    ACT252 = "Act252"
+    Thirty360ISDA = "30360ISDA"
+    ActActICMA = "ActActICMA"
+
+
+@_unique
+class InflationInterpolation(_MyEnum):
+    UNDEFINED = "UNDEFINED"
+    GERMAN = "GERMAN"
+    JAPAN = "JAPAN"
+    CONSTANT = "CONSTANT"
+
+
+@_unique
+class Sector(_MyEnum):
+    UNDEFINED = "UNDEFINED"
+    # BASIC_MATERIALS = 'BasicMaterials'
+    CONGLOMERATES = "Conglomerates"
+    CONSUMER_GOODS = "ConsumerGoods"
+    # FINANCIAL = 'Financial'
+    # HEALTHCARE = 'Healthcare'
+    # INDUSTRIAL_GOODS = 'IndustrialGoods'
+    SERVICES = "Services"
+    # TECHNOLOGY = 'Technology'
+    # UTILITIES = 'Utilities'
+
+    COMMUNICATION_SERVICES = "CommunicationServices"
+    CONSUMER_STAPLES = "ConsumerStaples"
+    CONSUMER_DISCRETIONARY = "ConsumerDiscretionary"
+    ENERGY = "Energy"
+    FINANCIAL = "Financial"
+    HEALTH_CARE = "HealthCare"
+    INDUSTRIALS = "Industrials"
+    INFORMATION_TECHNOLOGY = "InformationTechnology"
+    MATERIALS = "Materials"
+    REAL_ESTATE = "RealEstate"
+    UTILITIES = "Utilities"
+
+
+@_unique
+class ESGRating(_MyEnum):  # see MSCI ESG ratings
+    AAA = "AAA"
+    AA = "AA"
+    A = "A"
+    BBB = "BBB"
+    BB = "BB"
+    B = "B"
+    CCC = "CCC"
+
+
+@_unique
+class Rating(_MyEnum):
+    # cf. https://www.moneyland.ch/de/vergleich-rating-agenturen
+    AAA = "AAA"
+    AA_PLUS = "AA+"
+    AA = "AA"
+    AA_MINUS = "AA-"
+    A_PLUS = "A+"
+    A = "A"
+    A_MINUS = "A-"
+    BBB_PLUS = "BBB+"
+    BBB = "BBB"
+    BBB_MINUS = "BBB-"
+    BB_PLUS = "BB+"
+    BB = "BB"
+    BB_MINUS = "BB-"
+    B_PLUS = "B+"
+    B = "B"
+    B_MINUS = "B-"
+    CCC_PLUS = "CCC+"
+    CCC = "CCC"
+    CCC_MINUS = "CCC-"
+    CC = "CC"
+    C = "C"
+    D = "D"
+    NONE = "NONE"  # not rated
+
+
+# class ProductType:
+#        BOND = 'BOND'
+#        CALLABLE_BOND = 'CALLABLE_BOND'
+
+
+class PricerType:
+    ANALYTIC = "ANALYTIC"
+    PDE = "PDE"
+    MONTE_CARLO = "MONTE_CARLO"
+    COMBO = "COMBO"
+
+
+@_unique
+class VolatilityStickyness(_MyEnum):
+    NONE = "NONE"
+    StickyStrike = "StickyStrike"
+    StickyXStrike = "StickyXStrike"
+    StickyFwdMoneyness = "StickyFwdMoneyness"
+
+
+@_unique
+class Currency(_MyEnum):
+    AED = "AED"
+    AFN = "AFN"
+    ALL = "ALL"
+    AMD = "AMD"
+    ANG = "ANG"
+    AOA = "AOA"
+    ARS = "ARS"
+    AUD = "AUD"
+    AWG = "AWG"
+    AZN = "AZN"
+    BAM = "BAM"
+    BBD = "BBD"
+    BDT = "BDT"
+    BGN = "BGN"
+    BHD = "BHD"
+    BIF = "BIF"
+    BMD = "BMD"
+    BND = "BND"
+    BOB = "BOB"
+    BRL = "BRL"
+    BSD = "BSD"
+    BTN = "BTN"
+    BWP = "BWP"
+    BYR = "BYR"
+    BZD = "BZD"
+    CAD = "CAD"
+    CDF = "CDF"
+    CHF = "CHF"
+    CLP = "CLP"
+    CNH = "CNH"
+    CNY = "CNY"
+    COP = "COP"
+    CRC = "CRC"
+    CUC = "CUC"
+    CUP = "CUP"
+    CVE = "CVE"
+    CZK = "CZK"
+    DJF = "DJF"
+    DKK = "DKK"
+    DOP = "DOP"
+    DZD = "DZD"
+    EGP = "EGP"
+    ERN = "ERN"
+    ETB = "ETB"
+    EUR = "EUR"
+    FJD = "FJD"
+    FKP = "FKP"
+    GBP = "GBP"
+    GEL = "GEL"
+    GGP = "GGP"
+    GHS = "GHS"
+    GIP = "GIP"
+    GMD = "GMD"
+    GNF = "GNF"
+    GTQ = "GTQ"
+    GYD = "GYD"
+    HKD = "HKD"
+    HNL = "HNL"
+    HRK = "HRK"
+    HTG = "HTG"
+    HUF = "HUF"
+    IDR = "IDR"
+    ILS = "ILS"
+    IMP = "IMP"
+    INR = "INR"
+    IQD = "IQD"
+    IRR = "IRR"
+    ISK = "ISK"
+    JEP = "JEP"
+    JMD = "JMD"
+    JOD = "JOD"
+    JPY = "JPY"
+    KES = "KES"
+    KGS = "KGS"
+    KHR = "KHR"
+    KMF = "KMF"
+    KPW = "KPW"
+    KRW = "KRW"
+    KWD = "KWD"
+    KYD = "KYD"
+    KZT = "KZT"
+    LAK = "LAK"
+    LBP = "LBP"
+    LKR = "LKR"
+    LRD = "LRD"
+    LSL = "LSL"
+    LTL = "LTL"
+    LVL = "LVL"
+    LYD = "LYD"
+    MAD = "MAD"
+    MDL = "MDL"
+    MGA = "MGA"
+    MKD = "MKD"
+    MMK = "MMK"
+    MNT = "MNT"
+    MOP = "MOP"
+    MRO = "MRO"
+    MUR = "MUR"
+    MVR = "MVR"
+    MWK = "MWK"
+    MXN = "MXN"
+    MYR = "MYR"
+    MZN = "MZN"
+    NAD = "NAD"
+    NGN = "NGN"
+    NIO = "NIO"
+    NOK = "NOK"
+    NPR = "NPR"
+    NZD = "NZD"
+    OMR = "OMR"
+    PAB = "PAB"
+    PEN = "PEN"
+    PGK = "PGK"
+    PHP = "PHP"
+    PKR = "PKR"
+    PLN = "PLN"
+    PYG = "PYG"
+    QAR = "QAR"
+    RON = "RON"
+    RSD = "RSD"
+    RUB = "RUB"
+    RWF = "RWF"
+    SAR = "SAR"
+    SBD = "SBD"
+    SCR = "SCR"
+    SDG = "SDG"
+    SEK = "SEK"
+    SGD = "SGD"
+    SHP = "SHP"
+    SLL = "SLL"
+    SOS = "SOS"
+    SPL = "SPL"
+    SRD = "SRD"
+    STD = "STD"
+    SVC = "SVC"
+    SYP = "SYP"
+    SZL = "SZL"
+    THB = "THB"
+    TJS = "TJS"
+    TMT = "TMT"
+    TND = "TND"
+    TOP = "TOP"
+    TRY = "TRY"
+    TTD = "TTD"
+    TVD = "TVD"
+    TWD = "TWD"
+    TZS = "TZS"
+    UAH = "UAH"
+    UGX = "UGX"
+    USD = "USD"
+    UYU = "UYU"
+    UZS = "UZS"
+    VEF = "VEF"
+    VND = "VND"
+    VUV = "VUV"
+    WST = "WST"
+    XAF = "XAF"
+    XAG = "XAG"
+    XAU = "XAU"
+    XPD = "XPD"
+    XPT = "XPT"
+    XCD = "XCD"
+    XDR = "XDR"
+    XOF = "XOF"
+    XPF = "XPF"
+    YER = "YER"
+    ZAR = "ZAR"
+    ZMW = "ZMW"
+    ZWD = "ZWD"
+
+
+class Country(_MyEnum):
+    DE = "DE"
+    FR = "FR"
+    CA = "CA"
+    US = "US"
+    GB = "GB"
+    JP = "JP"
+    CN = "CN"
+
+
+class IrLegType(_MyEnum):
+    """Enums object for the type of interest rate swap legs."""
+
+    FIXED = "FIXED"
+    FLOAT = "FLOAT"
+    OIS = "OIS"
+
+    @staticmethod
+    def from_string(s: str) -> str:
+        s = s.upper()
+        if s in (IrLegType.FIXED, IrLegType.FLOAT, IrLegType.OIS):
+            return s
+        raise ValueError(f"Unknown leg type '{s}'")
+
+    # @staticmethod
+    # def to_string(cls, value: str) -> str:
+    #     return value.upper()
+
+
+class Instrument(_MyEnum):
+    """Enums object for the type of instrument."""
+
+    IRS = "IRS"
+    TBS = "TBS"
+    BS = "BS"
+    DEPOSIT = "DEPOSIT"
+    OIS = "OIS"
+    FRA = "FRA"
+    FXF = "FXF"
+
+
+@dataclass(frozen=True)
+class IRIndexMetadata:
+    name: str
+    currency: str
+    tenor: str
+    spot_days: int
+    business_day_convention: str
+    day_count_convention: str
+    roll_convention: str
+    calendar: str
+    aliases: List[str]
+
+
+class InterestRateIndex(_MyEnum):
+    EUR1M = IRIndexMetadata(
+        name="EURIBOR 1M",
+        currency="EUR",
+        tenor="1M",
+        spot_days=2,
+        business_day_convention="ModifiedFollowing",
+        day_count_convention="ACT360",
+        roll_convention="EOM",
+        calendar="TARGET",
+        aliases=["EUR1M", " EUR 1M", "EURIBOR 1M"],
+    )
+    EUR3M = IRIndexMetadata(
+        name="EURIBOR 3M",
+        currency="EUR",
+        tenor="3M",
+        spot_days=2,
+        business_day_convention="ModifiedFollowing",
+        day_count_convention="ACT360",
+        roll_convention="EOM",
+        calendar="TARGET",
+        aliases=["EUR3M", " EUR 3M", "EURIBOR 3M", "EURIBOR_3M"],
+    )
+    EUR6M = IRIndexMetadata(
+        name="EURIBOR 6M",
+        currency="EUR",
+        tenor="6M",
+        spot_days=2,
+        business_day_convention="ModifiedFollowing",
+        day_count_convention="ACT360",
+        roll_convention="EOM",
+        calendar="TARGET",
+        aliases=["EUR6M", "EUR 6M", "EURIBOR 6M"],
+    )
+    EUR12M = IRIndexMetadata(
+        name="EURIBOR 12M",
+        currency="EUR",
+        tenor="12M",
+        spot_days=2,
+        business_day_convention="ModifiedFollowing",
+        day_count_convention="ACT360",
+        roll_convention="EOM",
+        calendar="TARGET",
+        aliases=["EUR12M", "EUR 12M", "EURIBOR 12M", "EUR1Y", "EUR_1Y", "EURIBOR_1Y"],
+    )
+    ESTR = IRIndexMetadata(
+        name="€STR",
+        currency="EUR",
+        tenor="O/N",
+        spot_days=0,
+        business_day_convention="Following",
+        day_count_convention="ACT360",
+        roll_convention="None",
+        calendar="TARGET",
+        aliases=["EURSTR", "EUR STR", "€STR", "EUR1D", "EUR O/N"],
+    )
+
+
+def get_index_by_alias(alias: str) -> InterestRateIndex:
+    alias = alias.strip().upper()
+    for index in InterestRateIndex:
+        value = index.value
+        aliases = [a.upper() for a in value.aliases]
+        if alias in aliases or alias == index.name.upper():
+            print("erfolgreich")
+            str = index.value.name
+            return index
+    raise ValueError(f"Unknown index alias: {alias}")
