@@ -1,0 +1,194 @@
+Metadata-Version: 2.4
+Name: vcard-graph
+Version: 0.1.0
+Summary: A tool to visualize vCard contacts as an interactive graph
+Author-email: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: vobject>=0.9.6
+Requires-Dist: networkx>=2.6
+Requires-Dist: plotly>=5.0.0
+Requires-Dist: click>=8.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+Dynamic: license-file
+
+# vcard-graph
+
+A Python tool to visualize vCard contacts as an interactive graph, showing relationships between people and organizations.
+
+## Features
+
+- Parse vCard files (`.vcf` and `.vcard` formats) using the `vobject` library
+- Extract standard vCard fields including names, emails, organizations, and relationships
+- Build a network graph showing connections between contacts
+- Visualize relationships with different colors for different relationship types (spouse, child, parent, friend, colleague, etc.)
+- Group contacts by organization
+- Generate interactive HTML visualizations using Plotly
+
+## Installation
+
+```bash
+pip install vcard-graph
+```
+
+For development:
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Usage
+
+### Command Line
+
+Visualize vCard files:
+
+```bash
+# Single file
+vcard-graph contacts.vcf
+
+# Multiple files
+vcard-graph contact1.vcf contact2.vcf contact3.vcf
+
+# From a directory
+vcard-graph ~/contacts/ --directory
+
+# Specify output file
+vcard-graph contacts.vcf -o my_graph.html
+```
+
+### Python API
+
+```python
+from pathlib import Path
+from vcard_graph import VCardParser, VCardGraph
+
+# Parse vCard files
+parser = VCardParser()
+parser.parse_file(Path("contacts.vcf"))
+
+# Or parse a directory
+parser.parse_directory(Path("~/contacts"))
+
+# Build and visualize the graph
+graph = VCardGraph()
+graph.build_from_parser(parser)
+graph.visualize("output.html")
+
+# Get statistics
+stats = graph.get_stats()
+print(f"People: {stats['people']}")
+print(f"Organizations: {stats['organizations']}")
+print(f"Relationships: {stats['relationships']}")
+```
+
+## vCard Relationship Support
+
+The tool supports both standard vCard relationships and Apple-specific relationship fields.
+
+### Standard RELATED Field (RFC 6350)
+
+The standard `RELATED` field from vCard 4.0 with `TYPE` parameter:
+
+```
+RELATED;TYPE=spouse:bob@example.com
+RELATED;TYPE=child:alice@example.com
+RELATED;TYPE=parent:carol@example.com
+RELATED;TYPE=friend:dave@example.com
+RELATED;TYPE=colleague:eve@example.com
+```
+
+### Apple X-ABRELATEDNAMES
+
+Apple Contacts uses `X-ABRELATEDNAMES` with item grouping and `X-ABLabel`:
+
+```
+item1.X-ABRELATEDNAMES:Bob Smith
+item1.X-ABLabel:_$!<Friend>!$_
+item2.X-ABRELATEDNAMES:Carol Johnson
+item2.X-ABLabel:_$!<Mother>!$_
+item3.X-ABRELATEDNAMES:Dave Wilson
+item3.X-ABLabel:Custom Relation
+```
+
+Apple uses the format `_$!<Type>!$_` for standard relationship types and plain text for custom labels.
+
+### Supported Relationship Types
+
+All relationship types are visualized with different colors in the graph:
+
+- **Family**: spouse, partner, child, parent, mother, father, sibling, brother, sister
+- **Social**: friend
+- **Professional**: colleague, assistant, manager
+- **Other**: related (default), custom labels
+
+Each relationship type is visualized with a different color in the graph.
+
+## Graph Visualization
+
+The interactive graph shows:
+- **People** as colored circles (color varies by category)
+- **Organizations** as red squares
+- **Relationships** as colored lines (color varies by relationship type)
+- Hover over nodes to see details (name, email, organization, categories)
+- Legend showing relationship types and categories
+
+### Category Colors
+
+Contacts are automatically grouped and color-coded by their vCard CATEGORIES field. Each unique category is assigned a distinct color from a diverse color palette. The visualization:
+- Groups contacts spatially by their primary category
+- Colors each category distinctly for easy visual identification
+- Shows "Uncategorized" in gray for contacts without categories
+- Displays all categories in the legend
+
+System categories like "Starred" and "MyContacts" are automatically filtered out.
+
+To assign categories to contacts, add the CATEGORIES field to your vCard:
+```
+CATEGORIES:Family,VIP
+```
+
+Any category name you use will automatically get a color assigned!
+
+## Development
+
+Run tests:
+
+```bash
+pytest
+```
+
+Format code:
+
+```bash
+ruff format .
+```
+
+Check code style:
+
+```bash
+ruff check .
+```
+
+Type checking:
+
+```bash
+mypy src
+```
+
+## License
+
+Apache License 2.0
