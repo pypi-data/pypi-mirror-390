@@ -1,0 +1,87 @@
+# Fabric SDK
+
+**Official Python SDK for Fabric - Distributed AI Compute Network**
+
+Submit AI workloads to the Fabric network programmatically.
+
+## Installation
+
+```bash
+pip install fabric-sdk
+```
+
+## Quick Start
+
+```python
+from fabric_sdk import FabricClient
+
+# Initialize client
+client = FabricClient(
+    api_url="https://api.fabric.carmel.so",
+    email="your@email.com",
+    password="your_password"
+)
+
+# Submit a job
+job = client.submit_job(
+    workload_type="llm_inference",
+    params={
+        "prompt": "Explain quantum computing in simple terms",
+        "max_length": 200,
+        "temperature": 0.7,
+        "use_gpu": True
+    },
+    job_name="My LLM Inference Job"
+)
+
+print(f"Job submitted: {job['id']}")
+
+# Wait for completion
+result = client.wait_for_job(job['id'], timeout=300)
+print(f"Job completed in {result['duration_seconds']}s")
+print(f"Cost: ${result['actual_cost']}")
+```
+
+## Features
+
+- **Automatic Authentication** - JWT token management
+- **Job Submission** - Submit 28 production workload types
+- **Job Monitoring** - Track progress and get results
+- **Credit Management** - Check balance and purchase credits
+- **Node Discovery** - List available compute nodes
+- **Auto-Retry** - Built-in network resilience
+- **Type Hints** - Full TypeScript-style typing support
+
+## Supported Workload Types (26 Total)
+
+**Compute & Simulation (5)**
+- `cpu_compute_benchmark`, `gpu_compute_benchmark`
+- `eigenvalue_decomposition`, `financial_forecast_simulation`, `agent_simulation`
+
+**Data Processing (5)**
+- `data_cleaning`, `feature_extraction`, `csv_vectorization`
+- `data_augmentation`, `outlier_detection`
+
+**AI Inference (7)**
+- `llm_inference`, `llm_inference_batch`, `image_classification`
+- `embedding_generation`, `sentiment_analysis`
+- `text_summarization`, `question_answering`
+
+**Media Processing (5)**
+- `video_transcode`, `audio_to_text`, `video_object_detection`
+- `image_resize_batch`, `video_summarization`
+
+**ML Training (4)**
+- `random_forest_training`, `svm_training`
+- `xgboost_training`, `neural_network_training`
+
+**Custom (1)**
+- `custom_python`
+
+For detailed parameter documentation for each workload type, see [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md).
+
+## License
+
+MIT License - See [LICENSE](./LICENSE)
+
+
