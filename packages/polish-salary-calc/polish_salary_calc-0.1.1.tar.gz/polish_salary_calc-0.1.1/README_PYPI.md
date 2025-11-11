@@ -1,0 +1,73 @@
+# Polish Salary Calculator
+
+A precise and configurable salary calculator for the Polish tax and social contribution system. The library supports multiple contract types, including Employment, Mandate, Work Contract, and Self-Employment, with full control over contribution rates, cost deductions, and tax configuration.
+
+This library is intended for:
+- HR systems
+- Payroll automation tools
+- Business and accounting applications
+- Financial simulations and benchmarking
+
+All monetary calculations use `Decimal` for accuracy.
+
+## Features
+
+- Employment Contract (Umowa o pracę)
+- Mandate Contract (Umowa zlecenie)
+- Work Contract (Umowa o dzieło)
+- Self-Employment (B2B) including lump-sum, linear tax, and more
+- Yearly salary summary and month-by-month adjustment
+- Contract-to-contract cost comparison
+- Export to Excel, CSV, JSON, and Pandas DataFrame
+- Builder-based configuration interface
+
+## Installation
+
+```bash
+pip install polish-salary-calc
+```
+
+## Basic Example
+
+```python
+from decimal import Decimal
+from polish_salary_calc.rates.rates import Rates
+from polish_salary_calc.contracts.employment_contract import EmploymentContract
+from polish_salary_calc.contract_settings.employment_contract_settings import EmploymentContractSettings
+from polish_salary_calc.contracts.base_contract import SalaryType
+
+rates = Rates()
+
+settings = (
+    EmploymentContractSettings().builder()
+    .is_increased_costs(True)
+    .build()
+)
+
+contract = EmploymentContract(rates, settings)
+contract.calculate(Decimal("7000"), SalaryType.GROSS)
+
+print(contract)
+```
+
+## Year Summary Example
+
+```python
+from polish_salary_calc.summary.contract_summary import YearContractSummary
+year_summary = YearContractSummary(rates, settings, Decimal("8000"), SalaryType.NET)
+year_summary.calculate()
+print(year_summary)
+```
+
+## Export
+
+```python
+contract.to_excel("contract.xlsx")
+year_summary.to_json("summary.json")
+```
+
+## Python Version Requirement
+Python 3.9+
+
+## License
+MIT
