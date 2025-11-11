@@ -1,0 +1,86 @@
+[project]
+name = "multi-line-replacer"
+version = "2.0.0"
+description = "A CLI utility for replacing multi-line strings in files. Supports textual replacements with wildcard matching and indentation-awareness."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    {name = "Caleb Evans", email = "caleb@calebevans.me"}
+]
+maintainers = [
+    {name = "Caleb Evans", email = "caleb@calebevans.me"}
+]
+license = "MIT"
+keywords = ["replacements", "cli", "command-line", "utility", "multi-line", "multiline", "string", "wildcard", "indentation-aware"]
+dependencies=[
+    "rich>=14.0.0,<15.0.0",
+]
+
+[project.urls]
+homepage = "https://github.com/caleb531/multi-line-replacer"
+documentation = "https://github.com/caleb531/multi-line-replacer#readme"
+repository = "https://github.com/caleb531/multi-line-replacer"
+changelog = "https://github.com/caleb531/multi-line-replacer/releases"
+
+[project.scripts]
+mlr = "mlr.__main__:main"
+multi-line-replacer = "mlr.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mlr"
+module-root = ""
+
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.1",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.12.0",
+    "tomli>=2.2.1",
+]
+
+# Ruff
+
+[tool.ruff]
+include = ["**/*.py"]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # pyflakes
+    "F",
+    # isort
+    "I",
+    # perflint
+    "PERF",
+]
+
+# mypy
+
+[tool.mypy]
+disallow_untyped_defs = true
+exclude = ['build', 'dist']
+
+# Configuration for coverage.py (https://pypi.python.org/pypi/coverage)
+
+[tool.coverage.run]
+# Enable branch coverage
+branch = true
+# Only check coverage for source files
+source = ["mlr"]
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_lines = [
+    "pragma: no cover",
+    # Ignore non-runnable code
+    "if __name__ == .__main__.:",
+    "pass",
+]
