@@ -1,0 +1,394 @@
+from collections.abc import Mapping
+from io import BytesIO
+from typing import Any, TypeVar, Union, cast
+
+from attrs import define as _attrs_define
+from attrs import field as _attrs_field
+
+from .. import types
+from ..models.blank_enum import BlankEnum
+from ..models.country_enum import CountryEnum
+from ..types import UNSET, File, Unset
+
+T = TypeVar("T", bound="CustomerRequestMultipart")
+
+
+@_attrs_define
+class CustomerRequestMultipart:
+    """
+    Attributes:
+        name (str):
+        backend_id (Union[Unset, str]): Organization identifier in another application.
+        image (Union[File, None, Unset]):
+        slug (Union[Unset, str]):
+        native_name (Union[Unset, str]):
+        abbreviation (Union[Unset, str]):
+        description (Union[Unset, str]):
+        contact_details (Union[Unset, str]):
+        email (Union[Unset, str]):
+        phone_number (Union[Unset, str]):
+        registration_code (Union[Unset, str]):
+        homepage (Union[Unset, str]):
+        vat_code (Union[Unset, str]): VAT number
+        postal (Union[Unset, str]):
+        address (Union[Unset, str]):
+        bank_name (Union[Unset, str]):
+        latitude (Union[None, Unset, float]):
+        longitude (Union[None, Unset, float]):
+        bank_account (Union[Unset, str]):
+        country (Union[BlankEnum, CountryEnum, Unset]):
+        notification_emails (Union[Unset, str]): Comma-separated list of notification email addresses
+    """
+
+    name: str
+    backend_id: Union[Unset, str] = UNSET
+    image: Union[File, None, Unset] = UNSET
+    slug: Union[Unset, str] = UNSET
+    native_name: Union[Unset, str] = UNSET
+    abbreviation: Union[Unset, str] = UNSET
+    description: Union[Unset, str] = UNSET
+    contact_details: Union[Unset, str] = UNSET
+    email: Union[Unset, str] = UNSET
+    phone_number: Union[Unset, str] = UNSET
+    registration_code: Union[Unset, str] = UNSET
+    homepage: Union[Unset, str] = UNSET
+    vat_code: Union[Unset, str] = UNSET
+    postal: Union[Unset, str] = UNSET
+    address: Union[Unset, str] = UNSET
+    bank_name: Union[Unset, str] = UNSET
+    latitude: Union[None, Unset, float] = UNSET
+    longitude: Union[None, Unset, float] = UNSET
+    bank_account: Union[Unset, str] = UNSET
+    country: Union[BlankEnum, CountryEnum, Unset] = UNSET
+    notification_emails: Union[Unset, str] = UNSET
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        name = self.name
+
+        backend_id = self.backend_id
+
+        image: Union[None, Unset, types.FileTypes]
+        if isinstance(self.image, Unset):
+            image = UNSET
+        elif isinstance(self.image, File):
+            image = self.image.to_tuple()
+
+        else:
+            image = self.image
+
+        slug = self.slug
+
+        native_name = self.native_name
+
+        abbreviation = self.abbreviation
+
+        description = self.description
+
+        contact_details = self.contact_details
+
+        email = self.email
+
+        phone_number = self.phone_number
+
+        registration_code = self.registration_code
+
+        homepage = self.homepage
+
+        vat_code = self.vat_code
+
+        postal = self.postal
+
+        address = self.address
+
+        bank_name = self.bank_name
+
+        latitude: Union[None, Unset, float]
+        if isinstance(self.latitude, Unset):
+            latitude = UNSET
+        else:
+            latitude = self.latitude
+
+        longitude: Union[None, Unset, float]
+        if isinstance(self.longitude, Unset):
+            longitude = UNSET
+        else:
+            longitude = self.longitude
+
+        bank_account = self.bank_account
+
+        country: Union[Unset, str]
+        if isinstance(self.country, Unset):
+            country = UNSET
+        elif isinstance(self.country, CountryEnum):
+            country = self.country.value
+        else:
+            country = self.country.value
+
+        notification_emails = self.notification_emails
+
+        field_dict: dict[str, Any] = {}
+        field_dict.update(self.additional_properties)
+        field_dict.update(
+            {
+                "name": name,
+            }
+        )
+        if backend_id is not UNSET:
+            field_dict["backend_id"] = backend_id
+        if image is not UNSET:
+            field_dict["image"] = image
+        if slug is not UNSET:
+            field_dict["slug"] = slug
+        if native_name is not UNSET:
+            field_dict["native_name"] = native_name
+        if abbreviation is not UNSET:
+            field_dict["abbreviation"] = abbreviation
+        if description is not UNSET:
+            field_dict["description"] = description
+        if contact_details is not UNSET:
+            field_dict["contact_details"] = contact_details
+        if email is not UNSET:
+            field_dict["email"] = email
+        if phone_number is not UNSET:
+            field_dict["phone_number"] = phone_number
+        if registration_code is not UNSET:
+            field_dict["registration_code"] = registration_code
+        if homepage is not UNSET:
+            field_dict["homepage"] = homepage
+        if vat_code is not UNSET:
+            field_dict["vat_code"] = vat_code
+        if postal is not UNSET:
+            field_dict["postal"] = postal
+        if address is not UNSET:
+            field_dict["address"] = address
+        if bank_name is not UNSET:
+            field_dict["bank_name"] = bank_name
+        if latitude is not UNSET:
+            field_dict["latitude"] = latitude
+        if longitude is not UNSET:
+            field_dict["longitude"] = longitude
+        if bank_account is not UNSET:
+            field_dict["bank_account"] = bank_account
+        if country is not UNSET:
+            field_dict["country"] = country
+        if notification_emails is not UNSET:
+            field_dict["notification_emails"] = notification_emails
+
+        return field_dict
+
+    def to_multipart(self) -> types.RequestFiles:
+        files: types.RequestFiles = []
+
+        files.append(("name", (None, str(self.name).encode(), "text/plain")))
+
+        if not isinstance(self.backend_id, Unset):
+            files.append(("backend_id", (None, str(self.backend_id).encode(), "text/plain")))
+
+        if not isinstance(self.image, Unset):
+            if isinstance(self.image, File):
+                files.append(("image", self.image.to_tuple()))
+            else:
+                files.append(("image", (None, str(self.image).encode(), "text/plain")))
+
+        if not isinstance(self.slug, Unset):
+            files.append(("slug", (None, str(self.slug).encode(), "text/plain")))
+
+        if not isinstance(self.native_name, Unset):
+            files.append(("native_name", (None, str(self.native_name).encode(), "text/plain")))
+
+        if not isinstance(self.abbreviation, Unset):
+            files.append(("abbreviation", (None, str(self.abbreviation).encode(), "text/plain")))
+
+        if not isinstance(self.description, Unset):
+            files.append(("description", (None, str(self.description).encode(), "text/plain")))
+
+        if not isinstance(self.contact_details, Unset):
+            files.append(("contact_details", (None, str(self.contact_details).encode(), "text/plain")))
+
+        if not isinstance(self.email, Unset):
+            files.append(("email", (None, str(self.email).encode(), "text/plain")))
+
+        if not isinstance(self.phone_number, Unset):
+            files.append(("phone_number", (None, str(self.phone_number).encode(), "text/plain")))
+
+        if not isinstance(self.registration_code, Unset):
+            files.append(("registration_code", (None, str(self.registration_code).encode(), "text/plain")))
+
+        if not isinstance(self.homepage, Unset):
+            files.append(("homepage", (None, str(self.homepage).encode(), "text/plain")))
+
+        if not isinstance(self.vat_code, Unset):
+            files.append(("vat_code", (None, str(self.vat_code).encode(), "text/plain")))
+
+        if not isinstance(self.postal, Unset):
+            files.append(("postal", (None, str(self.postal).encode(), "text/plain")))
+
+        if not isinstance(self.address, Unset):
+            files.append(("address", (None, str(self.address).encode(), "text/plain")))
+
+        if not isinstance(self.bank_name, Unset):
+            files.append(("bank_name", (None, str(self.bank_name).encode(), "text/plain")))
+
+        if not isinstance(self.latitude, Unset):
+            if isinstance(self.latitude, float):
+                files.append(("latitude", (None, str(self.latitude).encode(), "text/plain")))
+            else:
+                files.append(("latitude", (None, str(self.latitude).encode(), "text/plain")))
+
+        if not isinstance(self.longitude, Unset):
+            if isinstance(self.longitude, float):
+                files.append(("longitude", (None, str(self.longitude).encode(), "text/plain")))
+            else:
+                files.append(("longitude", (None, str(self.longitude).encode(), "text/plain")))
+
+        if not isinstance(self.bank_account, Unset):
+            files.append(("bank_account", (None, str(self.bank_account).encode(), "text/plain")))
+
+        if not isinstance(self.country, Unset):
+            if isinstance(self.country, CountryEnum):
+                files.append(("country", (None, str(self.country.value).encode(), "text/plain")))
+            else:
+                files.append(("country", (None, str(self.country.value).encode(), "text/plain")))
+
+        if not isinstance(self.notification_emails, Unset):
+            files.append(("notification_emails", (None, str(self.notification_emails).encode(), "text/plain")))
+
+        for prop_name, prop in self.additional_properties.items():
+            files.append((prop_name, (None, str(prop).encode(), "text/plain")))
+
+        return files
+
+    @classmethod
+    def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        d = dict(src_dict)
+        name = d.pop("name")
+
+        backend_id = d.pop("backend_id", UNSET)
+
+        def _parse_image(data: object) -> Union[File, None, Unset]:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, bytes):
+                    raise TypeError()
+                image_type_0 = File(payload=BytesIO(data))
+
+                return image_type_0
+            except:  # noqa: E722
+                pass
+            return cast(Union[File, None, Unset], data)
+
+        image = _parse_image(d.pop("image", UNSET))
+
+        slug = d.pop("slug", UNSET)
+
+        native_name = d.pop("native_name", UNSET)
+
+        abbreviation = d.pop("abbreviation", UNSET)
+
+        description = d.pop("description", UNSET)
+
+        contact_details = d.pop("contact_details", UNSET)
+
+        email = d.pop("email", UNSET)
+
+        phone_number = d.pop("phone_number", UNSET)
+
+        registration_code = d.pop("registration_code", UNSET)
+
+        homepage = d.pop("homepage", UNSET)
+
+        vat_code = d.pop("vat_code", UNSET)
+
+        postal = d.pop("postal", UNSET)
+
+        address = d.pop("address", UNSET)
+
+        bank_name = d.pop("bank_name", UNSET)
+
+        def _parse_latitude(data: object) -> Union[None, Unset, float]:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(Union[None, Unset, float], data)
+
+        latitude = _parse_latitude(d.pop("latitude", UNSET))
+
+        def _parse_longitude(data: object) -> Union[None, Unset, float]:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(Union[None, Unset, float], data)
+
+        longitude = _parse_longitude(d.pop("longitude", UNSET))
+
+        bank_account = d.pop("bank_account", UNSET)
+
+        def _parse_country(data: object) -> Union[BlankEnum, CountryEnum, Unset]:
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                country_type_0 = CountryEnum(data)
+
+                return country_type_0
+            except:  # noqa: E722
+                pass
+            if not isinstance(data, str):
+                raise TypeError()
+            country_type_1 = BlankEnum(data)
+
+            return country_type_1
+
+        country = _parse_country(d.pop("country", UNSET))
+
+        notification_emails = d.pop("notification_emails", UNSET)
+
+        customer_request_multipart = cls(
+            name=name,
+            backend_id=backend_id,
+            image=image,
+            slug=slug,
+            native_name=native_name,
+            abbreviation=abbreviation,
+            description=description,
+            contact_details=contact_details,
+            email=email,
+            phone_number=phone_number,
+            registration_code=registration_code,
+            homepage=homepage,
+            vat_code=vat_code,
+            postal=postal,
+            address=address,
+            bank_name=bank_name,
+            latitude=latitude,
+            longitude=longitude,
+            bank_account=bank_account,
+            country=country,
+            notification_emails=notification_emails,
+        )
+
+        customer_request_multipart.additional_properties = d
+        return customer_request_multipart
+
+    @property
+    def additional_keys(self) -> list[str]:
+        return list(self.additional_properties.keys())
+
+    def __getitem__(self, key: str) -> Any:
+        return self.additional_properties[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.additional_properties[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self.additional_properties[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.additional_properties
