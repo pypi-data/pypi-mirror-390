@@ -1,0 +1,208 @@
+rules:
+  - id: gcp-compute-instance-required-labels
+    description: Compute instances must have required labels for governance
+    resource_type: google_compute_instance
+    severity: error
+    assert:
+      labels.environment: present
+      labels.owner: present
+      labels.cost-center:
+        regex: "^\\d{5}$"
+
+  - id: gcp-compute-instance-no-external-ip
+    description: Compute instances should not have external IP addresses unless required
+    resource_type: google_compute_instance
+    severity: warning
+    filter:
+      labels.environment: "production"
+    assert:
+      network_interface.access_config:
+        length:
+          eq: 0
+
+  - id: gcp-compute-instance-disk-encryption
+    description: Compute instance boot disks should be encrypted with customer-managed keys
+    resource_type: google_compute_instance
+    severity: warning
+    assert:
+      boot_disk.disk_encryption_key: present
+
+  - id: gcp-compute-instance-shielded-vm
+    description: Compute instances should enable shielded VM features
+    resource_type: google_compute_instance
+    severity: warning
+    assert:
+      shielded_instance_config.enable_secure_boot: true
+      shielded_instance_config.enable_vtpm: true
+      shielded_instance_config.enable_integrity_monitoring: true
+
+  - id: gcp-storage-bucket-uniform-access
+    description: Storage buckets should use uniform bucket-level access
+    resource_type: google_storage_bucket
+    severity: error
+    assert:
+      uniform_bucket_level_access: true
+
+  - id: gcp-storage-bucket-public-prevention
+    description: Storage buckets should prevent public access
+    resource_type: google_storage_bucket
+    severity: error
+    assert:
+      public_access_prevention: "enforced"
+
+  - id: gcp-storage-bucket-versioning
+    description: Storage buckets should have versioning enabled
+    resource_type: google_storage_bucket
+    severity: warning
+    assert:
+      versioning.enabled: true
+
+  - id: gcp-storage-bucket-encryption
+    description: Storage buckets should use customer-managed encryption keys
+    resource_type: google_storage_bucket
+    severity: warning
+    assert:
+      encryption.default_kms_key_name: present
+
+  - id: gcp-firewall-no-wide-open-ssh
+    description: Firewall rules should not allow SSH from any source
+    resource_type: google_compute_firewall
+    severity: error
+    filter:
+      direction: "INGRESS"
+      allow:
+        contains:
+          ports:
+            contains: "22"
+    assert:
+      source_ranges:
+        subset: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+  - id: gcp-firewall-no-wide-open-rdp
+    description: Firewall rules should not allow RDP from any source
+    resource_type: google_compute_firewall
+    severity: error
+    filter:
+      direction: "INGRESS"
+      allow:
+        contains:
+          ports:
+            contains: "3389"
+    assert:
+      source_ranges:
+        subset: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+  - id: gcp-firewall-default-deny
+    description: Firewall rules should have explicit deny rules for unused protocols
+    resource_type: google_compute_firewall
+    severity: info
+    filter:
+      direction: "INGRESS"
+      action: "DENY"
+    assert:
+      priority:
+        lte: 1000
+
+  - id: gcp-sql-instance-ssl-required
+    description: Cloud SQL instances should require SSL connections
+    resource_type: google_sql_database_instance
+    severity: error
+    assert:
+      settings.ip_configuration.require_ssl: true
+
+  - id: gcp-sql-instance-backup-enabled
+    description: Cloud SQL instances should have automated backups enabled
+    resource_type: google_sql_database_instance
+    severity: error
+    assert:
+      settings.backup_configuration.enabled: true
+
+  - id: gcp-sql-instance-point-in-time-recovery
+    description: Cloud SQL instances should have point-in-time recovery enabled
+    resource_type: google_sql_database_instance
+    severity: warning
+    assert:
+      settings.backup_configuration.point_in_time_recovery_enabled: true
+
+  - id: gcp-sql-instance-authorized-networks
+    description: Cloud SQL instances should not allow access from 0.0.0.0/0
+    resource_type: google_sql_database_instance
+    severity: error
+    assert:
+      settings.ip_configuration.authorized_networks:
+        length:
+          eq: 0
+
+  - id: gcp-gke-cluster-private-nodes
+    description: GKE clusters should use private nodes
+    resource_type: google_container_cluster
+    severity: error
+    assert:
+      private_cluster_config.enable_private_nodes: true
+
+  - id: gcp-gke-cluster-network-policy
+    description: GKE clusters should have network policy enabled
+    resource_type: google_container_cluster
+    severity: warning
+    assert:
+      network_policy.enabled: true
+
+  - id: gcp-gke-cluster-master-auth
+    description: GKE clusters should disable basic authentication
+    resource_type: google_container_cluster
+    severity: error
+    assert:
+      master_auth.username: ""
+      master_auth.password: ""
+
+  - id: gcp-gke-cluster-legacy-abac
+    description: GKE clusters should disable legacy ABAC
+    resource_type: google_container_cluster
+    severity: error
+    assert:
+      enable_legacy_abac: false
+
+  - id: gcp-service-account-keys
+    description: Service accounts should not have user-managed keys
+    resource_type: google_service_account
+    severity: warning
+    assert:
+      description: present
+
+  - id: gcp-kms-key-rotation
+    description: KMS crypto keys should have automatic rotation enabled
+    resource_type: google_kms_crypto_key
+    severity: warning
+    assert:
+      rotation_period: present
+
+  - id: gcp-cloud-function-https-trigger
+    description: Cloud Functions with HTTP triggers should require HTTPS
+    resource_type: google_cloud_function
+    severity: error
+    filter:
+      trigger.http_trigger: present
+    assert:
+      https_trigger_security_level: "SECURE_ALWAYS"
+
+  - id: gcp-compute-network-auto-subnets
+    description: VPC networks should not use auto-created subnets
+    resource_type: google_compute_network
+    severity: warning
+    assert:
+      auto_create_subnetworks: false
+
+  - id: gcp-compute-subnetwork-flow-logs
+    description: Compute subnetworks should have flow logs enabled
+    resource_type: google_compute_subnetwork
+    severity: info
+    assert:
+      log_config.enable: true
+
+  - id: gcp-project-iam-primitive-roles
+    description: Project IAM should not use primitive roles (Owner, Editor, Viewer)
+    resource_type: google_project_iam_binding
+    severity: warning
+    assert:
+      role:
+        regex: "^(?!roles/(owner|editor|viewer)$).*$"

@@ -1,0 +1,97 @@
+# Team Riveter Configuration
+# This configuration is designed for team collaboration with shared standards.
+
+# Team-approved rule packs
+rule_packs:
+  - aws-security      # Team security standards
+  - cis-aws          # Industry compliance
+  - company-standards # Custom company rule pack
+
+# Team rule directories
+rule_dirs:
+  - ./team-rules      # Shared team rules
+  - ./platform-rules  # Platform team rules
+  - ./security-rules  # Security team rules
+  - ./compliance-rules # Compliance team rules
+
+# Table output for team reviews
+output_format: table
+
+# Show warnings and errors for team standards
+min_severity: warning
+
+# Team-specific rule filtering
+include_rules:
+  - "*team*"          # Team-specific rules
+  - "*shared*"        # Shared standards
+  - "*platform*"      # Platform requirements
+
+exclude_rules:
+  - "*personal*"      # Exclude personal rules
+  - "*experimental*"  # Exclude experimental rules
+
+# Team collaboration settings
+debug: false
+parallel: true                          # Enable for team efficiency
+cache_dir: ~/.riveter/team-cache       # Shared team cache location
+baseline: ./.riveter/team-baseline.json # Team baseline file
+
+# Team logging
+log_level: INFO
+log_format: human                       # Human-readable for team reviews
+
+# Team environment
+environment: team
+
+# Team-specific configurations
+team:
+  name: "Platform Engineering Team"
+
+  # Team standards
+  standards:
+    - security_first
+    - cost_optimization
+    - maintainability
+
+  # Review process
+  review:
+    required_approvers: 2
+    auto_approve_info: true
+    auto_approve_warnings: false
+
+  # Notification settings
+  notifications:
+    slack_webhook: "${SLACK_WEBHOOK_URL}"
+    email_list:
+      - platform-team@company.com
+      - security-team@company.com
+
+  # Integration with team tools
+  integrations:
+    jira:
+      enabled: true
+      project_key: "PLAT"
+    confluence:
+      enabled: true
+      space_key: "PLATFORM"
+    github:
+      enabled: true
+      org: "company"
+      team: "platform-engineering"
+
+# Collaboration features
+collaboration:
+  # Shared rule development
+  rule_sharing:
+    enabled: true
+    repository: "git@github.com:company/riveter-rules.git"
+
+  # Team metrics
+  metrics:
+    enabled: true
+    dashboard_url: "https://metrics.company.com/riveter"
+
+  # Knowledge sharing
+  documentation:
+    wiki_url: "https://wiki.company.com/riveter"
+    runbooks_url: "https://runbooks.company.com/riveter"

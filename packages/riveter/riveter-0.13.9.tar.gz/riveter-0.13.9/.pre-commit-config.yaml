@@ -1,0 +1,92 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+  # Basic file checks - optimized for performance
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        files: \.(py|yaml|yml|md|txt|json)$
+      - id: end-of-file-fixer
+        files: \.(py|yaml|yml|md|txt|json)$
+      - id: check-yaml
+        files: \.(yaml|yml)$
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: debug-statements
+        files: \.py$
+
+  # Python code formatting with Black - version matches pyproject.toml
+  - repo: https://github.com/psf/black
+    rev: 24.10.0  # Matches black>=23.0 in pyproject.toml
+    hooks:
+      - id: black
+        language_version: python3
+        files: \.py$
+        args: [--line-length=100, --fast]
+
+  # Import sorting with isort - version matches pyproject.toml
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2  # Matches isort>=5.0 in pyproject.toml
+    hooks:
+      - id: isort
+        files: \.py$
+        args: [--profile=black, --line-length=100]
+
+  # Linting with Ruff - temporarily disabled
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   rev: v0.8.4  # Matches ruff>=0.1.0 in pyproject.toml
+  #   hooks:
+  #     - id: ruff
+  #       files: \.py$
+  #       args: [--fix, --exit-non-zero-on-fix, --show-fixes]
+  #     - id: ruff-format
+  #       files: \.py$
+
+  # Type checking with MyPy - temporarily disabled
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.13.0  # Matches mypy>=1.0 in pyproject.toml
+  #   hooks:
+  #     - id: mypy
+  #       files: ^src/.*\.py$
+  #       additional_dependencies: [types-PyYAML>=6.0, cryptography>=41.0, importlib_metadata>=6.0]
+  #       args: [--strict, --ignore-missing-imports, --fast-module-lookup]
+
+
+
+  # Security checks with bandit - optional (uncomment when security issues are resolved)
+  # - repo: https://github.com/pycqa/bandit
+  #   rev: 1.7.10  # Latest stable version
+  #   hooks:
+  #     - id: bandit
+  #       args: [-r, src/, --quiet, --severity-level, high]
+  #       pass_filenames: false
+
+# Configuration for specific hooks
+default_language_version:
+  python: python3
+
+# Global settings - optimized for developer experience
+fail_fast: true  # Stop on first failure for faster feedback
+minimum_pre_commit_version: "3.0.0"
+
+# Performance optimizations
+default_stages: [pre-commit]
+exclude: |
+  (?x)^(
+    .*\.pyc|
+    .*\.pyo|
+    .*\.orig|
+    .*\.rej|
+    .*\.egg-info/.*|
+    .*/__pycache__/.*|
+    .*/\.mypy_cache/.*|
+    .*/\.pytest_cache/.*|
+    .*/\.ruff_cache/.*|
+    .*/htmlcov/.*|
+    .*/venv/.*|
+    .*/\.venv/.*
+  )$
