@@ -1,0 +1,267 @@
+"""Pose and Motion Estimation with Madgwick Filter."""
+
+import math
+from copy import copy
+from typing import Optional
+
+import numpy as np
+
+from py_imu.quaternion import Quaternion, Vector3D
+from py_imu.utilities import accel2q, accelmag2q
+
+TWOPI = 2.0 * math.pi
+IDENTITY_QUATERNION = Quaternion(1.0, 0.0, 0.0, 0.0)
+VECTOR_ZERO = Vector3D(0.0, 0.0, 0.0)
+DEG2RAD = math.pi / 180.0
+RAD2DEG = 180.0 / math.pi
+EPSILON = math.ldexp(1.0, -53)
+
+
+def updateIMU(
+    q: Quaternion, gyr: Vector3D, acc: Vector3D, dt: float, gain: float
+) -> Quaternion:
+    """Quaternion Estimation with a Gyroscope and Accelerometer.
+
+    q   : A-priori quaternion.
+    gyr : Vector3D of tri-axial Gyroscope in rad/s
+    acc : Vector3D of tri-axial Accelerometer in m/s^2
+    dt  : float, default: None, Time step, in seconds, between consecutive Quaternions.
+
+    Returns
+    -------
+    q   : Estimated quaternion.
+
+    """
+    acc.normalize()  #          // 160-162
+    # q.normalize() its normalized at the end
+
+    # Estimated orientation change from gyroscope
+    qDot = 0.5 * (q * gyr)  # (eq. 12) // 150-153
+
+    # Objective function                                       # (eq. 25)
+    f = np.array(
+        [
+            2.0 * (q.x * q.z - q.w * q.y) - acc.x,
+            2.0 * (q.w * q.x + q.y * q.z) - acc.y,
+            2.0 * (0.5 - q.x * q.x - q.y * q.y) - acc.z,
+        ]
+    )
+
+    # if np.linalg.norm(f) > 0:
+    if math.sqrt(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]) > 0:
+        # Jacobian                                             # (eq. 26)
+        J = np.array(
+            [
+                [-2.0 * q.y, 2.0 * q.z, -2.0 * q.w, 2.0 * q.x],
+                [2.0 * q.x, 2.0 * q.w, 2.0 * q.z, 2.0 * q.y],
+                [0.0, -4.0 * q.x, -4.0 * q.y, 0.0],
+            ]
+        )
+
+        # Sensitivity Matrix                                   # (eq. 34)
+        gradient = J.T @ f
+
+        # gradient = gradient / np.linalg.norm(gradient)         #           // 184-188
+        gradient = gradient / math.sqrt(
+            gradient[0] * gradient[0]
+            + gradient[1] * gradient[1]
+            + gradient[2] * gradient[2]
+        )
+
+        # Update orientation change
+        qDot = qDot - gain * gradient  # (eq. 33) // 191-194
+
+    # Update orientation
+    q = q + qDot * dt  # (eq. 13) // 198-201
+    q.normalize()  #          // 204-208
+
+    return q
+
+
+def updateMARG(
+    q: Quaternion,
+    sensor_data: tuple[Vector3D, Vector3D, Vector3D],
+    dt: float,
+    gain: float,
+) -> Quaternion:
+    """Quaternion Estimation with a Gyroscope, Accelerometer and Magnetometer.
+
+    q   : A-priori quaternion.
+    gyr : Vector3D of tri-axial Gyroscope in rad/s
+    acc : Vector3D of tri-axial Accelerometer in m/s^2
+    mag : Vector3D of tri-axial Magnetometer in nT
+    dt  : float, default: None, Time step, in seconds, between consecutive Quaternions.
+
+    Returns
+    -------
+    q : Estimated quaternion.
+
+    """
+    gyr, acc, mag = sensor_data
+
+    acc.normalize()
+    mag.normalize()
+    # q.normalize() its normalized at the end
+
+    # Estimated orientation change from gyroscope
+    qDot = 0.5 * (q * gyr)  # (eq. 12)
+
+    # Rotate normalized magnetometer measurements
+    # h = mag.rotate(q.r33.T)                                  # (eq. 45) , 19 microseconds
+    h = q * mag * q.conjugate  # (eq. 45) , 14 microseconds
+    bx = math.sqrt(h.x * h.x + h.y * h.y)  # (eq. 46)
+    bz = h.z
+
+    # Objective function                                       # (eq. 31)
+    f = np.array(
+        [
+            2.0 * (q.x * q.z - q.w * q.y) - acc.x,
+            2.0 * (q.w * q.x + q.y * q.z) - acc.y,
+            2.0 * (0.5 - q.x * q.x - q.y * q.y) - acc.z,
+            2.0 * bx * (0.5 - q.y * q.y - q.z * q.z)
+            + 2.0 * bz * (q.x * q.z - q.w * q.y)
+            - mag.x,
+            2.0 * bx * (q.x * q.y - q.w * q.z)
+            + 2.0 * bz * (q.w * q.x + q.y * q.z)
+            - mag.y,
+            2.0 * bx * (q.w * q.y + q.x * q.z)
+            + 2.0 * bz * (0.5 - q.x * q.x - q.y * q.y)
+            - mag.z,
+        ]
+    )
+
+    # if np.linalg.norm(f) > 0:                                  # math.sqrt(f[0]*f[0] + f[1]*f[1] + ... ) is faster
+    if (
+        math.sqrt(
+            f[0] * f[0]
+            + f[1] * f[1]
+            + f[2] * f[2]
+            + f[3] * f[3]
+            + f[4] * f[4]
+            + f[5] * f[5]
+        )
+        > 0
+    ):
+        # Jacobian                                             # eq. 32)
+        J = np.array(
+            [
+                [-2.0 * q.y, 2.0 * q.z, -2.0 * q.w, 2.0 * q.x],
+                [2.0 * q.x, 2.0 * q.w, 2.0 * q.z, 2.0 * q.y],
+                [0.0, -4.0 * q.x, -4.0 * q.y, 0.0],
+                [
+                    -2.0 * bz * q.y,
+                    2.0 * bz * q.z,
+                    -4.0 * bx * q.y - 2.0 * bz * q.w,
+                    -4.0 * bx * q.z + 2.0 * bz * q.x,
+                ],
+                [
+                    -2.0 * bx * q.z + 2.0 * bz * q.x,
+                    2.0 * bx * q.y + 2.0 * bz * q.w,
+                    2.0 * bx * q.x + 2.0 * bz * q.z,
+                    -2.0 * bx * q.w + 2.0 * bz * q.y,
+                ],
+                [
+                    2.0 * bx * q.y,
+                    2.0 * bx * q.z - 4.0 * bz * q.x,
+                    2.0 * bx * q.w - 4.0 * bz * q.y,
+                    2.0 * bx * q.x,
+                ],
+            ]
+        )
+
+        # Sensitivity Matrix
+        gradient = J.T @ f  # (eq. 34)
+        # gradient = gradient / np.linalg.norm(gradient)
+        gradient = gradient / math.sqrt(
+            gradient[0] * gradient[0]
+            + gradient[1] * gradient[1]
+            + gradient[2] * gradient[2]
+            + gradient[3] * gradient[3]
+        )
+        # Updated orientation change
+        qDot = qDot - gain * gradient  # (eq. 33)
+
+    # Update orientation
+    q = q + qDot * dt  # (eq. 13)
+    q.normalize()
+    return q
+
+
+class Madgwick:
+    """Madgwick's Gradient Descent Pose Filter.
+
+    Earth Axis Convention: NED (North, East, Down)
+
+    Methods:
+    - update:
+      Update the filter with new measurements, calls
+      updateIMU when using only gyroscope and accelerometer data (IMU implementation),
+      updateMARG when using gyroscope, accelerometer and magnetometer data (MARG implementation).
+
+    Initialization:
+      frequency : float, default: 100.0; Sampling frequency in Hertz, or
+      dt : float, default: 0.01;         Sampling step in seconds. Inverse of sampling frequency. Not required.
+      gain : float,                      Filter gain. Defaults to 0.033 for IMU implementations, or to 0.041 for MARG implementations.
+      gain_imu : float, default: 0.033;  Filter gain for IMU implementation.
+      gain_marg : float, default: 0.041; Filter gain for MARG implementation.
+
+    """
+
+    def __init__(self, **kwargs):
+        self.q = None
+        self.acc = None
+        self.gyr = None
+        self.mag = None
+        self.frequency: float = kwargs.get("frequency", 100.0)
+        self.dt: float = kwargs.get(
+            "dt", (1.0 / self.frequency) if self.frequency else 0.01
+        )
+        self.gain_imu = kwargs.get("gain_imu", 0.033)
+        self.gain_marg = kwargs.get("gain_marg", 0.041)
+
+    def update(
+        self,
+        gyr: Vector3D,
+        acc: Vector3D,
+        mag: Optional[Vector3D] = None,
+        dt: float = -1,
+    ) -> Quaternion:
+        """Estimate the pose quaternion.
+
+        gyr : Vector3D of Gyroscope in rad/s
+        acc : Vector3D of Accelerometer in m/s^2
+        mag : Vector3D of Magnetometer in nT, optional
+        dt  : float, default: None, Time step, in seconds, between consecutive function calls.
+        """
+        self.gyr = copy(gyr)
+        self.acc = copy(acc)
+
+        if mag is None:
+            # Compute with IMU architecture
+            if (self.q is None) or (dt < 0):
+                # We run this the first time. Estimate initial quaternion.
+                #   Nake sure that you have stable readings from the senor before
+                #   calling this function, otherwise it takes a while for the sensor to orient.
+                self.q = accel2q(self.acc)  # estimate initial orientation
+                # self.q.normalize()
+                # print('Init with acc only: ', q2rpy(self.q))
+            else:
+                self.q = updateIMU(
+                    self.q, self.gyr, self.acc, dt=dt, gain=self.gain_imu
+                )
+
+        else:
+            # Compute with MARG architecture
+            self.mag = copy(mag)
+            if (self.q is None) or (dt < 0):
+                # We run this the first time. Estimate initial quaternion.
+                #   Nake sure that you have stable readings from the senor before
+                #   calling this function, otherwise it will take a while for sensor to orient.
+                self.q = accelmag2q(self.acc, self.mag)
+                # self.q.normalize()
+                # print('Init with acc and mag: ', q2rpy(self.q))
+            else:
+                sensor_data = (self.gyr, self.acc, self.mag)
+                self.q = updateMARG(self.q, sensor_data, dt=dt, gain=self.gain_marg)
+
+        return self.q
