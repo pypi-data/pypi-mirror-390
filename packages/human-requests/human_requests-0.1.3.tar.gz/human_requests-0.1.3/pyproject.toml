@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "human-requests"
+dynamic = ["version"]
+description = "Playwright wrapper обеспечивающий необходимый функционал для человеко-подобного парсинга сайтов"
+authors = [
+    {name = "Miskler", email = "mail@miskler.ru"}
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet",
+    "Topic :: Utilities"
+]
+keywords = []
+dependencies = [
+    "ua-parser[regex]",
+    "playwright",
+    "selectolax"
+]
+
+[project.urls]
+Homepage = "https://github.com/Miskler/human-requests"
+Repository = "https://github.com/Miskler/human-requests"
+Documentation = "https://miskler.github.io/human-requests/basic/quick_start/index.html"
+Issues = "https://github.com/Miskler/human-requests/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "human_requests.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["human_requests*"]
+
+[tool.setuptools.package-data]
+"human_requests" = ["py.typed", "fingerprint/*.html", "fetch.js"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=human_requests --cov-report=term-missing --cov-report=html"
