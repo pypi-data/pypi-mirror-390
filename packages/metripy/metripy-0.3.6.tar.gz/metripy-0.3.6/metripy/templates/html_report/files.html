@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files - Code Metrics Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* File Tree Styling */
+        .file-tree {
+            max-height: 600px;
+  overflow-y: auto;
+            padding: var(--spacing-lg);
+            background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.95) 100%);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-tree-legend {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .filter-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border: 1.5px solid;
+            background: white;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-btn.active {
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .filter-btn .filter-count {
+            background: rgba(0,0,0,0.1);
+            padding: 0.0625rem 0.25rem;
+  border-radius: 6px;
+            font-size: 0.625rem;
+            margin-left: 0.125rem;
+            min-width: 1.25rem;
+            text-align: center;
+        }
+
+        .filter-btn.good {
+            border-color: #10b981;
+            color: #059669;
+        }
+
+        .filter-btn.good.active {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .filter-btn.good.active .filter-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .filter-btn.ok {
+            border-color: #f59e0b;
+            color: #d97706;
+        }
+
+        .filter-btn.ok.active {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .filter-btn.ok.active .filter-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .filter-btn.warning {
+            border-color: #f97316;
+            color: #ea580c;
+        }
+
+        .filter-btn.warning.active {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white;
+        }
+
+        .filter-btn.warning.active .filter-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .filter-btn.critical {
+            border-color: #ef4444;
+            color: #dc2626;
+        }
+
+        .filter-btn.critical.active {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .filter-btn.critical.active .filter-count {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-dot.good { background: #10b981; }
+        .legend-dot.ok { background: #f59e0b; }
+        .legend-dot.warning { background: #f97316; }
+        .legend-dot.critical { background: #ef4444; }
+
+        /* Hidden files */
+        .file-tree li.filtered-out {
+            display: none;
+        }
+
+        .file-tree::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .file-tree::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .file-tree::-webkit-scrollbar-thumb {
+            background: var(--border-medium);
+            border-radius: 4px;
+        }
+
+        .file-tree::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+}
+
+.file-tree ul {
+  list-style: none;
+            padding-left: 1.5rem;
+            margin: 0.25rem 0;
+  position: relative;
+}
+
+.file-tree ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0.5rem;
+  bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--border-light), transparent);
+        }
+
+        .file-tree > ul {
+            padding-left: 0;
+        }
+
+        .file-tree > ul::before {
+            display: none;
+}
+
+.file-tree li {
+  position: relative;
+            margin: 0.125rem 0;
+  padding-left: 1rem;
+}
+
+.file-tree li::before {
+  content: '';
+  position: absolute;
+            top: 0.875rem;
+  left: 0.5rem;
+  width: 0.75rem;
+            height: 2px;
+            background: var(--border-light);
+        }
+
+        .file-tree > ul > li::before {
+            display: none;
+        }
+
+        .file-tree li > i {
+            margin-right: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            transition: color var(--transition-fast);
+}
+
+.file-tree .folder,
+.file-tree .file {
+  display: inline-block;
+  cursor: pointer;
+            padding: 0.375rem 0.625rem;
+            padding-left: 0.75rem;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+            color: var(--text-primary);
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            margin-left: -3px;
+        }
+
+        /* File health borders */
+        .file-tree .file.health-good {
+            border-left-color: #10b981;
+        }
+
+        .file-tree .file.health-ok {
+            border-left-color: #f59e0b;
+        }
+
+        .file-tree .file.health-warning {
+            border-left-color: #f97316;
+        }
+
+        .file-tree .file.health-critical {
+            border-left-color: #ef4444;
+}
+
+.file-tree .folder {
+            color: var(--primary-color);
+  font-weight: 600;
+        }
+
+        .file-tree .folder:hover {
+            background-color: rgba(59, 130, 246, 0.08);
+            color: var(--primary-dark);
+            transform: translateX(2px);
+        }
+
+        .file-tree .folder:hover + ul {
+            border-left-color: var(--primary-color);
+        }
+
+        .file-tree .file:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.1));
+            color: var(--primary-color);
+            transform: translateX(2px);
+        }
+
+        /* Enhanced hover for health borders */
+        .file-tree .file.health-good:hover {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.1));
+            box-shadow: inset 3px 0 0 0 #10b981;
+        }
+
+        .file-tree .file.health-ok:hover {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), rgba(245, 158, 11, 0.1));
+            box-shadow: inset 3px 0 0 0 #f59e0b;
+        }
+
+        .file-tree .file.health-warning:hover {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.05), rgba(249, 115, 22, 0.1));
+            box-shadow: inset 3px 0 0 0 #f97316;
+        }
+
+        .file-tree .file.health-critical:hover {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.1));
+            box-shadow: inset 3px 0 0 0 #ef4444;
+        }
+
+        .file-tree .folder i {
+            color: var(--warning-color);
+        }
+
+        .file-tree .file i {
+            color: var(--info-color);
+        }
+
+        /* File health indicators */
+        .file-health-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+            transition: all var(--transition-fast);
+        }
+
+        .file-health-indicator.good {
+            background: #10b981;
+        }
+
+        .file-health-indicator.ok {
+            background: #f59e0b;
+        }
+
+        .file-health-indicator.warning {
+            background: #f97316;
+        }
+
+        .file-health-indicator.critical {
+            background: #ef4444;
+            animation: pulse-critical 2s infinite;
+        }
+
+        @keyframes pulse-critical {
+            0%, 100% {
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(239, 68, 68, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 6px rgba(239, 68, 68, 0.1);
+            }
+        }
+
+        .file-tree .file:hover .file-health-indicator {
+            transform: scale(1.3);
+        }
+
+        /* Priority badge for files */
+        .file-priority-badge {
+            display: inline-block;
+            margin-left: 0.5rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 8px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            vertical-align: middle;
+        }
+
+        .file-priority-badge.critical {
+            background: #ef4444;
+            color: white;
+        }
+
+        .file-priority-badge.warning {
+            background: #f97316;
+            color: white;
+        }
+
+        .file-priority-badge.ok {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* File Details Styling */
+        .file-view {
+            min-height: 400px;
+        }
+
+        .file-details {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.98) 100%);
+            border: 1px solid var(--border-light);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-details h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 2px solid var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .file-details h2 i {
+            color: var(--primary-color);
+            font-size: 1.75rem;
+        }
+
+        .file-details > p {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin: 0 var(--spacing-sm) var(--spacing-sm) 0;
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .file-details > p strong {
+            color: var(--text-primary);
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+
+        /* Metric badges with color coding */
+        .metric-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 2px solid;
+            transition: all var(--transition-fast);
+            flex: 0 1 auto;
+        }
+
+        .metric-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .metric-badge .label {
+            font-weight: 600;
+            margin-right: 0.25rem;
+        }
+
+        .metric-badge .value {
+            font-weight: 700;
+        }
+
+        .metric-badge .segment-indicator {
+            margin-left: 0.5rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        /* Good segment */
+        .metric-badge.good {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.15));
+            border-color: #10b981;
+            color: #059669;
+        }
+
+        .metric-badge.good .segment-indicator {
+            background: #10b981;
+            color: white;
+        }
+
+        /* Ok segment */
+        .metric-badge.ok {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.15));
+            border-color: #f59e0b;
+            color: #d97706;
+        }
+
+        .metric-badge.ok .segment-indicator {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* Warning segment */
+        .metric-badge.warning {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.15));
+            border-color: #f97316;
+            color: #ea580c;
+        }
+
+        .metric-badge.warning .segment-indicator {
+            background: #f97316;
+            color: white;
+        }
+
+        /* Critical segment */
+        .metric-badge.critical {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.15));
+            border-color: #ef4444;
+            color: #dc2626;
+        }
+
+        .metric-badge.critical .segment-indicator {
+            background: #ef4444;
+            color: white;
+        }
+
+        .file-details hr {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+            margin: var(--spacing-xl) 0 var(--spacing-lg) 0;
+}
+
+.file-details h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .file-details h3::before {
+            content: '';
+            width: 4px;
+            height: 1.125rem;
+            background: linear-gradient(180deg, var(--primary-color), var(--info-color));
+            border-radius: 2px;
+}
+
+.file-details ul {
+  list-style: none;
+            padding-left: 0;
+            margin: var(--spacing-md) 0;
+        }
+
+        .file-details > ul > li {
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--primary-color);
+            transition: all var(--transition-fast);
+        }
+
+        .file-details > ul > li:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-md);
+            border-left-color: var(--primary-dark);
+        }
+
+        .file-details > ul > li > strong {
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+
+        .file-details .methods {
+            list-style: none;
+            padding-left: var(--spacing-lg);
+            margin-top: var(--spacing-sm);
+        }
+
+        .file-details .methods li {
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin: var(--spacing-xs) 0;
+            background-color: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            border-left: 3px solid var(--info-color);
+            transition: all var(--transition-fast);
+        }
+
+        .file-details .methods li:hover {
+            background-color: rgba(6, 182, 212, 0.05);
+            border-left-color: var(--info-color);
+            transform: translateX(4px);
+        }
+
+        /* Complexity indicators */
+        .complexity-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+        }
+
+        .complexity-indicator.good {
+            background: #10b981;
+            color: white;
+        }
+
+        .complexity-indicator.ok {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .complexity-indicator.warning {
+            background: #f97316;
+            color: white;
+        }
+
+        .complexity-indicator.critical {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Empty state */
+        .file-view:empty::before {
+            content: '👈 Select a file from the tree to view details';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: var(--text-muted);
+            font-size: 1rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border-radius: var(--radius-lg);
+            border: 2px dashed var(--border-light);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .file-tree {
+                max-height: 400px;
+            }
+
+            .file-details {
+                padding: var(--spacing-lg);
+            }
+
+            .file-details h2 {
+                font-size: 1.25rem;
+            }
+
+            .metrics-summary {
+                flex-direction: column !important;
+            }
+
+            .metric-badge {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .metric-badge .segment-indicator {
+                margin-left: auto;
+            }
+
+            .file-tree-legend {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .legend-title {
+                width: 100%;
+            }
+
+            .filter-controls {
+                width: 100%;
+            }
+
+            .filter-btn {
+                flex: 1;
+                min-width: 0;
+                justify-content: center;
+                padding: 0.25rem 0.375rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="images/logo.svg" alt="Metripy Logo" class="logo-icon">
+                    <h2>Metripy</h2>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="files.html" class="nav-link">
+                            <i class="fas fa-file-code"></i>
+                            <span>Files</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="top_offenders.html" class="nav-link">
+                            <i class="fa-solid fa-stethoscope"></i>
+                            <span>Top Offenders</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="git_analysis.html" class="nav-link">
+                            <i class="fab fa-git-alt"></i>
+                            <span>Git Analysis</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="dependencies.html" class="nav-link">
+                            <i class="fas fa-cubes"></i>
+                            <span>Dependencies</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="trends.html" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Trends</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="project-info">
+                    <h4>Project: {{project_name}}</h4>
+                    <p>Last updated: {{last_updated}}</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="page-header">
+                <div class="header-content">
+                    <h1>File Details</h1>
+                    <p class="subtitle">File details and analysis</p>
+                </div>
+            </header>
+            
+            <section class="two-column-section">
+                <div class="info-card">
+                    <h4>File List</h4>
+                    <div class="file-tree" id="filetree">
+                        <!-- filled by JS-->
+                    </div>
+                </div>
+                <div class="info-card">
+                    <h4>File View</h4>
+                    <div class="file-view" id="fileview">
+                        <!-- filled by JS-->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Embed data directly from template engine
+    </script>
+    <script>
+        const fileTreeData = {{filetree}};
+        const fileDetails = {{file_details}};
+        
+        function getIconClass(name, numChildren) {
+            const file_ext = name.split(".").pop();
+            if (numChildren) {
+                return 'fa-regular fa-folder';
+            } else if (file_ext === "php") {
+                return 'fa-brands fa-php';
+            } else if (file_ext === "py") {
+                return 'fa-brands fa-python';
+            } else {
+                return 'fa-regular fa-file';
+            }
+        }
+
+        // Helper function to determine the worst segment for a file
+        function getWorstSegment(fullName) {
+            const details = fileDetails[fullName];
+            if (!details) return null;
+
+            const segments = [
+                details.loc_segment,
+                details.complexity_segment,
+                details.maintainability_segment,
+                details.method_size_segment
+            ];
+
+            // Priority: critical > warning > ok > good
+            if (segments.includes('critical')) return 'critical';
+            if (segments.includes('warning')) return 'warning';
+            if (segments.includes('ok')) return 'ok';
+            return 'good';
+        }
+
+        // Helper function to create health indicator HTML
+        function getHealthIndicatorHTML(fullName) {
+            const segment = getWorstSegment(fullName);
+            if (!segment) return '';
+            
+            if (segment === 'critical') {
+                return `<span class="file-health-indicator ${segment}" title="Needs immediate attention"></span><span class="file-priority-badge critical">!</span>`;
+            } else if (segment === 'warning') {
+                return `<span class="file-health-indicator ${segment}" title="Needs attention"></span>`;
+            } else if (segment === 'ok') {
+                return `<span class="file-health-indicator ${segment}" title="Could be improved"></span>`;
+            } else {
+                return `<span class="file-health-indicator ${segment}" title="Healthy"></span>`;
+            }
+        }
+
+        function renderTree(node) {
+            if (!node) return '';
+
+            const icon = getIconClass(node.name, node.children.length);
+            const isFile = node.children.length === 0;
+            const healthIndicator = isFile ? getHealthIndicatorHTML(node.full_name) : '';
+            
+            // Add health class to files
+            let className = node.children.length ? 'folder' : 'file';
+            if (isFile) {
+                const segment = getWorstSegment(node.full_name);
+                if (segment) {
+                    className += ` health-${segment}`;
+                }
+            }
+
+            let html = `<li><i class="${icon}"></i><span class="${className}" id="${node.full_name}"> ${node.name}</span>${healthIndicator}`;
+            if (node.children.length > 0) {
+                html += `<ul>`;
+                node.children.forEach(child => {
+                    html += renderTree(child);
+                });
+                html += `</ul>`;
+            }
+
+            html += `</li>`;
+            return html;
+        }
+
+        // Count files by health status
+        function countFilesByHealth() {
+            const counts = { good: 0, ok: 0, warning: 0, critical: 0, total: 0 };
+            
+            function countInNode(node) {
+                if (!node) return;
+                
+                if (node.children.length === 0) {
+                    // It's a file
+                    const segment = getWorstSegment(node.full_name);
+                    if (segment) {
+                        counts[segment]++;
+                        counts.total++;
+                    }
+                } else {
+                    // It's a folder, recurse
+                    node.children.forEach(child => countInNode(child));
+                }
+            }
+            
+            countInNode(fileTreeData);
+            return counts;
+        }
+
+        const healthCounts = countFilesByHealth();
+
+        const fileTree = document.getElementById('filetree');
+        const legendHTML = `
+            <div class="file-tree-legend">
+                <span class="legend-title">Filter:</span>
+                <div class="filter-controls">
+                    <div class="filter-btn good active" data-filter="good">
+                        <span class="legend-dot good"></span>
+                        <span>Healthy</span>
+                        <span class="filter-count">${healthCounts.good}</span>
+                    </div>
+                    <div class="filter-btn ok active" data-filter="ok">
+                        <span class="legend-dot ok"></span>
+                        <span>OK</span>
+                        <span class="filter-count">${healthCounts.ok}</span>
+                    </div>
+                    <div class="filter-btn warning active" data-filter="warning">
+                        <span class="legend-dot warning"></span>
+                        <span>Needs Attention</span>
+                        <span class="filter-count">${healthCounts.warning}</span>
+                    </div>
+                    <div class="filter-btn critical active" data-filter="critical">
+                        <span class="legend-dot critical"></span>
+                        <span>Critical</span>
+                        <span class="filter-count">${healthCounts.critical}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        fileTree.innerHTML = legendHTML + `<ul>${renderTree(fileTreeData)}</ul>`
+
+        // Set up filtering functionality
+        const activeFilters = new Set(['good', 'ok', 'warning', 'critical']);
+        
+        function applyFilters() {
+            const allFiles = fileTree.querySelectorAll('li');
+            
+            allFiles.forEach(li => {
+                const fileSpan = li.querySelector('.file');
+                if (!fileSpan) {
+                    // It's a folder or has no file, check if it has visible children
+                    li.classList.remove('filtered-out');
+                    return;
+                }
+                
+                // Get the health class from the file span
+                let fileHealth = null;
+                if (fileSpan.classList.contains('health-good')) fileHealth = 'good';
+                else if (fileSpan.classList.contains('health-ok')) fileHealth = 'ok';
+                else if (fileSpan.classList.contains('health-warning')) fileHealth = 'warning';
+                else if (fileSpan.classList.contains('health-critical')) fileHealth = 'critical';
+                
+                // Show or hide based on active filters
+                if (fileHealth && activeFilters.has(fileHealth)) {
+                    li.classList.remove('filtered-out');
+                } else {
+                    li.classList.add('filtered-out');
+                }
+            });
+            
+            // Hide empty folders
+            const allFolders = fileTree.querySelectorAll('li');
+            allFolders.forEach(li => {
+                const folderSpan = li.querySelector('.folder');
+                if (folderSpan) {
+                    const ul = li.querySelector('ul');
+                    if (ul) {
+                        const visibleChildren = Array.from(ul.children).filter(
+                            child => !child.classList.contains('filtered-out')
+                        );
+                        if (visibleChildren.length === 0) {
+                            li.classList.add('filtered-out');
+                        } else {
+                            li.classList.remove('filtered-out');
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Add click handlers to filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const filter = btn.dataset.filter;
+                
+                // Toggle individual filter
+                if (activeFilters.has(filter)) {
+                    activeFilters.delete(filter);
+                    btn.classList.remove('active');
+                } else {
+                    activeFilters.add(filter);
+                    btn.classList.add('active');
+                }
+                
+                applyFilters();
+            });
+        });
+
+        document.querySelectorAll('.folder').forEach(folder => {
+            folder.addEventListener('click', () => {
+                const nextUl = folder.nextElementSibling;
+                if (nextUl && nextUl.tagName === 'UL') {
+                    nextUl.style.display = nextUl.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+        });
+
+        const fileView = document.getElementById('fileview');
+        document.querySelectorAll('.file').forEach(file => {
+            file.addEventListener('click', () => {
+                console.log('file clicked', file.id);
+                const details = fileDetails[file.id];
+                console.log(details);
+
+                // Extract file name from full path
+                const fileName = file.id.split('/').pop();
+
+                // Collect all method names to filter from global functions
+                const methodNames = new Set();
+
+                const icon = getIconClass(fileName, 0);
+                
+                // Helper function to get segment label
+                const getSegmentLabel = (segment) => {
+                    const labels = {
+                        'good': '✓ Good',
+                        'ok': '○ OK',
+                        'warning': '⚠ Warning',
+                        'critical': '✗ Critical'
+                    };
+                    return labels[segment] || segment;
+                };
+                
+                let html = `
+                <div class="file-details">
+                    <h2><i class="${icon}"></i> ${fileName}</h2>
+                    <div class="metrics-summary" style="margin-bottom: var(--spacing-lg); display: flex; flex-wrap: wrap; gap: var(--spacing-sm);">
+                        <div class="metric-badge ${details.loc_segment}">
+                            <span class="label">Lines of Code:</span>
+                            <span class="value">${details.loc}</span>
+                            <span class="segment-indicator">${getSegmentLabel(details.loc_segment)}</span>
+                        </div>
+                        <div class="metric-badge ${details.maintainability_segment}">
+                            <span class="label">Maintainability:</span>
+                            <span class="value">${details.maintainabilityIndex}</span>
+                            <span class="segment-indicator">${getSegmentLabel(details.maintainability_segment)}</span>
+                        </div>
+                        <div class="metric-badge ${details.complexity_segment}">
+                            <span class="label">Avg Complexity:</span>
+                            <span class="value">${details.avgCcPerFunction.toFixed(2)}</span>
+                            <span class="segment-indicator">${getSegmentLabel(details.complexity_segment)}</span>
+                        </div>
+                        <div class="metric-badge ${details.method_size_segment}">
+                            <span class="label">Avg Method Size:</span>
+                            <span class="value">${details.avgLocPerFunction.toFixed(2)}</span>
+                            <span class="segment-indicator">${getSegmentLabel(details.method_size_segment)}</span>
+                        </div>
+                    </div>
+
+                    <hr/>
+                    <h3>Classes</h3>
+                    <ul>
+                `;
+
+                details.class_nodes.forEach(node => {
+                const classComplexitySegment = node.real_complexity;
+                html += `<li><strong>${node.name}</strong> — Complexity: ${node.real_complexity}<span class="complexity-indicator ${classComplexitySegment}">${getSegmentLabel(classComplexitySegment)}</span>`;
+                if (node.functions && node.functions.length > 0) {
+                    html += `<ul class="methods">`;
+                    node.functions.forEach(method => {
+                        const methodComplexitySegment = method.complexity_segment;
+                        html += `<li>${method.name}() — Complexity: ${method.complexity}<span class="complexity-indicator ${methodComplexitySegment}">${getSegmentLabel(methodComplexitySegment)}</span></li>`;
+                        methodNames.add(method.name)
+                    });
+                    html += `</ul>`;
+                }
+                html += `</li>`;
+                });
+
+                html += `
+                    </ul>
+                    <hr/>
+                    <h3>Global Functions</h3>
+                    <ul>
+                `;
+
+                details.function_nodes.forEach(node => {
+                if (!methodNames.has(node.name)) {
+                    const functionComplexitySegment = node.complexity_segment;
+                    html += `<li><strong>${node.name}</strong> — Complexity: ${node.complexity}<span class="complexity-indicator ${functionComplexitySegment}">${getSegmentLabel(functionComplexitySegment)}</span></li>`;
+                }
+                });
+
+                html += `</ul></div>`;
+
+                fileView.innerHTML = html;
+
+            });
+        });
+    </script>
+</body>
+</html>
