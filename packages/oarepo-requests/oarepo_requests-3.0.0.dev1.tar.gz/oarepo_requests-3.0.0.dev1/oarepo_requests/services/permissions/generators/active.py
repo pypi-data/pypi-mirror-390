@@ -1,0 +1,38 @@
+#
+# Copyright (C) 2024 CESNET z.s.p.o.
+#
+# oarepo-requests is free software; you can redistribute it and/or
+# modify it under the terms of the MIT License; see LICENSE file for more
+# details.
+#
+"""Generator is triggered when workflow action is being performed."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, override
+
+from invenio_records_permissions.generators import Generator
+from invenio_search.engine import dsl
+
+from oarepo_requests.services.permissions.identity import request_active
+
+if TYPE_CHECKING:
+    from flask_principal import Need
+
+
+class RequestActive(Generator):
+    """A generator that requires that a request is being handled.
+
+    This is useful for example when a caller identity should have greater permissions
+    when calling an action from within a request.
+    """
+
+    @override
+    def needs(self, **context: Any) -> list[Need]:
+        """Return the needs required for the action."""
+        return [request_active]
+
+    @override
+    def query_filter(self, **context: Any) -> dsl.query.Query:
+        """Return the query filter for the action."""
+        return dsl.Q("match_none")

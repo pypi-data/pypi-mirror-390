@@ -1,0 +1,53 @@
+#
+# Copyright (C) 2024 CESNET z.s.p.o.
+#
+# oarepo-requests is free software; you can redistribute it and/or
+# modify it under the terms of the MIT License; see LICENSE file for more
+# details.
+#
+"""Default workflow receiver function."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, cast
+
+from oarepo_workflows.errors import RequestTypeNotInWorkflowError
+
+from oarepo_requests.errors import ReceiverNonReferencableError
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from invenio_records_resources.records.api import Record
+    from invenio_requests.customizations.request_types import RequestType
+    from oarepo_workflows import WorkflowRequest
+
+
+def default_workflow_receiver_function(
+    record: Record,
+    request_type: RequestType,
+    **kwargs: Any,  # i suppose we can't have requests with None topic
+) -> Mapping[str, str] | None:
+    """Get the receiver of the request.
+
+    This function is called by oarepo-requests when a new request is created. It should
+    return the receiver of the request. The receiver is the entity that is responsible for
+    accepting/declining the request.
+    """
+    from oarepo_workflows.proxies import current_oarepo_workflows
+
+    workflow = current_oarepo_workflows.get_workflow(record)
+    if not workflow:
+        return None  # exception?
+
+    try:
+        request: WorkflowRequest = workflow.requests().requests_by_id[request_type.type_id]
+    except KeyError as e:
+        raise RequestTypeNotInWorkflowError(
+            request_type.type_id, current_oarepo_workflows.get_workflow(record).code
+        ) from e
+
+    receiver = request.recipient_entity_reference(record=record, request_type=request_type, **kwargs)
+    if not request_type.receiver_can_be_none and not receiver:
+        raise ReceiverNonReferencableError(request_type=request_type, record=record, **kwargs)
+    return cast("Mapping[str, str]", receiver)  # TODO: unknown linter issue, possibly a bug
