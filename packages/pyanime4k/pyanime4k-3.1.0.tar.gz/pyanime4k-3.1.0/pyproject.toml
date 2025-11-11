@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=42", "scikit-build>=0.13", "cmake>=3.19"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyanime4k"
+version = "3.1.0"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+readme = "README.md"
+dependencies = ["numpy"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+]
+
+[tool.cibuildwheel]
+skip = ["pp*", "*win32", "*i686", "*musllinux*"]
+build-verbosity = 1
+
+[tool.cibuildwheel.macos]
+environment = "MACOSX_DEPLOYMENT_TARGET=10.15"
+
+[tool.cibuildwheel.linux]
+before-all = [
+    "yum install -y epel-release",
+    "yum install -y ocl-icd ocl-icd-devel opencl-headers",
+]
