@@ -1,0 +1,69 @@
+# config.toml
+# config file for caactus workflow
+
+
+#path to main folder
+main_folder = "path/to/your/mainfolder" # enter the path to the main folder containing subfolder "0_1_training_data" to "9_data_analysis"
+
+
+#config for renaming, change only if your names deviate
+[renaming]
+input_path = "0_2_original_tif_batch_images" # path of original .tif-files
+output_path = "0_3_batch_tif_renamed" # path for the renamed files
+csv_rename = "renaming.csv" # path for .csv-table with the metadata renaming
+
+
+# config for tif2h5py
+[tif2h5py.training]
+input_path = "0_1_original_tif_training_images" # path of original .tif-files
+output_path = "1_images" # path for the .h5py-files for training
+[tif2h5py.batch]
+input_path = "0_3_batch_tif_renamed" # path of renamed .tif-files
+output_path = "5_batch_images" # path for the renamed .h5py-files for batch-mode
+
+
+# config for background_processing
+[background_processing.training]
+input_path = "3_multicut" # path to the training files
+[background_processing.batch]
+input_path = "7_batch_multicut" # path to the batch iles
+
+# config for csv_summary
+[csv_summary]
+input_path = "8_batch_objectclassification" # path of analyzed individual .csv-tables
+output_path = "9_data_analysis" # path for data analysis files
+pixel_size = "0.454" # pixel size as read out from image acquisition software e.g. Zen-Blue
+
+[summary_statistics]
+input_path = "9_data_analysis" # path for data analysis files
+output_path = "9_data_analysis" # path for data analysis files
+variable_names = ["strain", "timepoint"] # for grouping summary statisitcs and facetting plot, first variable x-axis, second variable facetting
+class_order = ["resting", "swollen", "germling", "hyphae"]
+
+[summary_statistics.color_mapping]
+resting = "yellow"
+swollen = "blue"
+germling = "red"
+hyphae = "cyan"
+
+[summary_statistics_eucast]
+input_path = "9_data_analysis" # path for data analysis files
+output_path = "9_data_analysis" # path for data analysis files
+variable_names = ["conc", "timepoint"] # for grouping summary statisitcs and facetting plot, first variable x-axis, second variable facetting
+class_order = ["resting", "swollen", "germling", "hyphae", "mycelium"]
+conc_order = ["16", "8", "4", "2", "1", "0.5", "0.25", "0.125", "0.0625", "0.03", "0"]
+timepoint_order = ["4h", "7h", "10h", "24h"]
+
+[summary_statistics_eucast.color_mapping]
+resting = "yellow"
+swollen = "blue"
+germling = "red"
+hyphae = "cyan"
+mycelium = "green"
+
+# config for plnmodelling
+[pln_modelling]
+input_path = "9_data_analysis" # path where summary files are stored for processing
+output_path = "9_data_analysis" # path for data analysis files
+dynamic_clomuns = ['resting', 'swollen', 'germling', 'hyphae']
+variable_names = ["strain", "timepoint"]
