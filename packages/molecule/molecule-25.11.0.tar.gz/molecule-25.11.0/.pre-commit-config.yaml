@@ -1,0 +1,145 @@
+---
+ci:
+  # We rely on renovate to update it but there is no way to fully disable it
+  # https://github.com/pre-commit-ci/issues/issues/83
+  autoupdate_schedule: quarterly
+  skip:
+    # https://github.com/pre-commit-ci/issues/issues/55
+    - tombi-format
+    - tombi-lint
+default_language_version:
+  # minimal version we support officially as this will impact mypy, pylint
+  # minimal version determined by minimal version required by ansible-core, but
+  # we might keep a backwards compatibility version for older ones
+  python: "3.11"
+repos:
+  - repo: meta
+    hooks:
+      - id: check-useless-excludes
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.9.8
+    hooks:
+      - id: uv-sync
+      - id: uv-lock
+      - id: uv-lock
+        name: "deps: upgrade via uv sync --upgrade"
+        alias: deps
+        args: ["--upgrade"]
+        stages: [manual]
+  - repo: https://github.com/biomejs/pre-commit
+    rev: "v2.3.4"
+    hooks:
+      - id: biome-check
+        name: biome
+        alias: biome
+        args: [--unsafe]
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v9.2.1
+    hooks:
+      - id: cspell
+        entry: bash
+        pass_filenames: false
+        args:
+          [
+            "-euo",
+            "pipefail",
+            "-c",
+            "cspell-cli . --relative --no-progress --no-summary && cspell-cli . --disable-dictionary=words --no-exit-code --words-only --quiet --unique | LC_ALL=C sort > .config/dictionary.txt",
+          ]
+        name: cspell + remove unused and sort dictionary
+  - repo: https://github.com/pre-commit/pre-commit-hooks.git
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: debug-statements
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.8
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/asottile/add-trailing-comma.git
+    rev: v4.0.0
+    hooks:
+      - id: add-trailing-comma
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks.git
+    rev: v1.5.5
+    hooks:
+      - id: remove-tabs
+        exclude: >
+          (?x)^(
+            .config/pydoclint-baseline.txt
+          )$
+  - repo: https://github.com/tombi-toml/tombi-pre-commit
+    rev: v0.6.41
+    hooks:
+      - id: tombi-format
+        alias: toml
+      - id: tombi-lint
+        alias: toml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.4
+    hooks:
+      - id: ruff-format
+        alias: ruff
+      - id: ruff-check
+        alias: ruff
+  - repo: https://github.com/jsh9/pydoclint
+    rev: "0.8.1"
+    hooks:
+      - id: pydoclint
+        # This allows automatic reduction of the baseline file when needed.
+        entry: sh -ec "pydoclint . && pydoclint --generate-baseline=1 ."
+        pass_filenames: false
+
+  - repo: https://github.com/pycqa/pylint.git
+    rev: v4.0.2
+    hooks:
+      - id: pylint
+        args:
+          - --output-format=colorized
+        additional_dependencies:
+          - ansible-compat>=25.1.4
+          - click
+          - click-help-colors
+          - enrich>=1.2.7
+          - filelock
+          - jsonschema
+          - pexpect
+          - pytest-mock
+          - pytest-testinfra
+          - wcmatch
+
+  - repo: https://github.com/pre-commit/mirrors-mypy.git
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - ansible-compat>=25.1.4
+          - click
+          - click-help-colors
+          - enrich
+          - pytest
+          - pytest-mock
+          - rich
+          - types-pyyaml
+          - types-filelock
+          - types-jsonschema
+          - types-pexpect
+          - types-setuptools
+          - wcmatch
+        # Override default pre-commit '--ignore-missing-imports'
+        args: [--strict]
+
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v25.9.2
+    hooks:
+      - id: ansible-lint
+        stages: [manual]
