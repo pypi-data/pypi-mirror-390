@@ -1,0 +1,86 @@
+DATA:
+    FASTQ: 'DATA_DIR/DATATEST/fastq'
+    OUTPUT: 'ikiss_OUTPUT/'
+
+WORKFLOW:
+    # convert reads in kmers and computes a binary matrix
+    KMERS_MODULE : true
+    # structure genotype based in ancestry
+    SNMF: true
+    # structure genotype based in pca
+    PCADAPT : true
+    # calculate association between genotype and phenotype
+    LFMM : true
+    # mapping of kmers over a genomic reference
+    MAPPING_KMERS: true
+    # assembly kmers outliers detected by pcadapt and lfmm
+    ASSEMBLY_KMERS : true
+    # intersect outliers position (directly kmers or contigs) and features in a gff
+    INTERSECT : true
+
+
+PARAMS:
+    KMERS_MODULE:
+        KMER_SIZE : 31
+        MAC : 2
+        P : 0.2
+        MAF : 0.05
+        B : 1000000 # nb kmers in each bed file
+        SPLIT_LIST_SIZE : 100000
+        MIN_LIST_SIZE : 50000
+        SAMPLES_FILE: "DATA_DIR/DATATEST/samples.txt"
+
+    SNMF:
+        K_MIN : 2
+        K_MAX : 6
+        REPETITIONS : 5
+        NB : 2
+        BEST_K : 4
+
+    # BONFERONNI, BH, FDR
+    PCADAPT:
+        K : 2
+        CORRECTION: 'FDR'
+        ALPHA : 0.05
+
+    LFMM:
+        K : 2
+        # PHENOTYPE_FILE is obligatory, if PHENOTYPE_PCA_ANALYSIS is false, lfmm is launched directly using it as phenotype to LFMM analysis. This file can be a PCA result
+        #PHENOTYPE_FILE: ''
+        PHENOTYPE_FILE: 'DATA_DIR/DATATEST/pheno.txt'
+        # if PHENOTYPE_PCA_ANALYSIS is true, a PCA is done before run lfmm using the PHENOTYPE_FILE
+        PHENOTYPE_PCA_ANALYSIS : true
+        CORRECTION: 'BH'
+        ALPHA : 0.05
+
+    MAPPING_KMERS:
+        REF: 'DATA_DIR/DATATEST/ref/reference.fasta'
+        # type bwa-aln or bwa-mem2
+        #MODE : bwa-mem2
+        MODE : bwa-aln
+        # If bwa-aln "-a bwtsw" or "" . If bwa-mem2 leaf empty
+        #INDEX_OPTIONS: "-a bwtsw"
+        INDEX_OPTIONS: ""
+        #index_options: " "
+        # if bwa-mem2 default parameters -A 1 -B 4; if bwa-aln -n [0.04] 2 diff by 30 pb
+        OPTIONS : "-n 0.04"
+        #OPTIONS : "-A 1 -B 4"
+        # by default bam is filtered with FLAG and QUALITY parametters
+        FILTER_FLAG : 4
+        FILTER_QUAL : 10
+
+    ASSEMBLY_KMERS:
+        OVERLAP_SIZE : 15
+        FILTER_CONTIG_SIZE : 50
+        MAPPING_CONTIGS: True
+        # if REF is not empty, ikiss maps contigs vs REF using bwamem2
+        REF: 'DATA_DIR/DATATEST/ref/reference.fasta'
+        MAPPING_OPTIONS : ""
+
+    # if REF and GFF are not empty, ikiss calculates how much kmers (if MAPPING_KMERS) or contigs (if ASSEMBLY_KMERS) are in FEATURE
+    INTERSECT:
+        GFF : 'DATA_DIR/DATATEST/ref/reference.gff'
+        FEATURE : 'gene'
+        FILTER_MAPQ_STATS: '15' # for kmers and also for contigs
+        FILTER_NB_CONTIGS_BY_FEATURE: 1
+        FILTER_NB_KMERS_BY_FEATURE : 10

@@ -1,0 +1,125 @@
+Bootstrap: docker
+From: ubuntu:24.04
+%labels
+maintainer Julie Orjuela - UMR DIADE IRD
+%post
+export DEBIAN_FRONTEND=noninteractive
+ln -fs /usr/share/zoneinfo/Europe/Paris /etc/localtime
+apt update
+apt install -y python3-all-dev python3-pip python3-venv jupyter-core
+apt -y install libz-dev libbz2-dev libncurses-dev autoconf automake curl gnuplot liblzma-dev libcrypto++-dev
+apt -y install git curl less locate build-essential openssh-server
+apt -y install wget unzip
+apt install -y software-properties-common
+apt install -y python-is-python3
+apt update
+apt -y install gcc g++
+apt -y upgrade libstdc++6
+apt -y dist-upgrade
+
+# Python virtual environment
+mkdir -p /.envs
+python3 -m venv /.envs/ikiss_dependencies
+/.envs/ikiss_dependencies/bin/python3 -m pip install --upgrade pip
+/.envs/ikiss_dependencies/bin/python3 -m pip install xarray dataclasses
+/.envs/ikiss_dependencies/bin/python3 -m pip install numpy pandas argparse random2 pathlib nbformat ipykernel
+/.envs/ikiss_dependencies/bin/python3 -m pip install seaborn matplotlib scikit-learn
+/.envs/ikiss_dependencies/bin/python3 -m pip install bioinfokit jupyter itables pyyaml
+
+# BWAMEM2 version >2.2.1
+wget https://github.com/bwa-mem2/bwa-mem2/releases/download/v2.2.1/bwa-mem2-2.2.1_x64-linux.tar.bz2
+tar jxf bwa-mem2-2.2.1_x64-linux.tar.bz2 --no-same-owner
+mv bwa-mem2-2.2.1_x64-linux bwa-mem2-2.2.1
+
+# SEQKIT
+mkdir seqkit_2.4.0
+cd seqkit_2.4.0
+wget https://github.com/shenwei356/seqkit/releases/download/v2.4.0/seqkit_linux_amd64.tar.gz
+tar -xzvf seqkit_linux_amd64.tar.gz
+cd ..
+
+# SEQTK 1.3
+wget https://github.com/lh3/seqtk/archive/refs/tags/v1.3.zip
+unzip v1.3.zip
+cd seqtk-1.3/
+make
+cd ..
+
+# Quarto
+wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.4.549/quarto-1.4.549-linux-amd64.deb
+dpkg -i quarto-1.4.549-linux-amd64.deb
+rm quarto-1.4.549-linux-amd64.deb
+quarto install tool tinytex --quiet
+
+# Kmer GWAS v 0.3
+mkdir kmer_gwas
+cd kmer_gwas
+wget https://github.com/voichek/kmersGWAS/releases/download/v0.3-beta/v0_3_beta.zip
+unzip v0_3_beta.zip
+chmod -R 755 /kmer_gwas/bin
+chmod -R 755 /kmer_gwas/external_programs
+cd ..
+
+# samtools 1.19
+wget https://github.com/samtools/samtools/releases/download/1.19/samtools-1.19.tar.bz2
+tar xfvj samtools-1.19.tar.bz2
+cd samtools-1.19
+./configure
+make
+make install
+cd ..
+
+# BWA version 0.7.17
+git clone https://github.com/lh3/bwa.git
+cd bwa; make
+cd ..
+
+# MergeTags
+git clone https://github.com/Transipedia/dekupl-mergeTags.git
+cd dekupl-mergeTags
+make
+cd ..
+
+# bedtools2
+wget https://github.com/arq5x/bedtools2/releases/download/v2.31.1/bedtools-2.31.1.tar.gz
+tar -zxvf bedtools-2.31.1.tar.gz
+cd bedtools2
+make
+cd ..
+
+# R and dependencies
+apt -y update
+echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+apt install -y libpng16-16 libblas3 libblas-dev liblapack-dev liblapack3 libreadline8 r-recommended r-doc-html libxml2-dev libcurl4-openssl-dev libssl-dev libmagick++-dev perl
+# Add repository for latest R
+apt install --no-install-recommends software-properties-common dirmngr
+wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu noble-cran40/"
+apt install -y --no-install-recommends r-base pandoc
+# R packages
+R --slave -e 'install.packages(c("rmarkdown","tinytex"))'
+Rscript -e 'install.packages("BiocManager", repos="https://cloud.r-project.org")'
+Rscript -e 'BiocManager::install(version = "3.21", ask = FALSE)'
+Rscript -e 'BiocManager::install("LEA", force = TRUE, ask = FALSE)'
+Rscript -e "library(BiocManager); install('remotes')"
+Rscript -e "library(BiocManager); install('Gviz')"
+Rscript -e "library(BiocManager); install('qvalue')"
+R -e "install.packages('ggplot2')"
+R -e "install.packages('optparse')"
+R -e "install.packages('plotly')"
+R -e "install.packages('yaml')"
+R -e "install.packages('BEDMatrix')"
+R -e "install.packages('pcadapt')"
+R -e "install.packages('seqRFLP')"
+R -e "install.packages('stringr')"
+R -e "install.packages('lfmm')"
+R -e "install.packages('rlist')"
+
+%environment
+export PATH=/bedtools2/bin:/kmer_gwas/bin:/kmer_gwas/external_programs:/usr/local/bin:/seqkit_2.4.0:/seqtk-1.3:/bwa-mem2-2.2.1:/bwa:/dekupl-mergeTags/:$PATH
+export PATH=/.envs/ikiss_dependencies/bin:$PATH
+source /.envs/ikiss_dependencies/bin/activate
+
+%runscript
+source /.envs/ikiss_dependencies/bin/activate
+exec "$@"

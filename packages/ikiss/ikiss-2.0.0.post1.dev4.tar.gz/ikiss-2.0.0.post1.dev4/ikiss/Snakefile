@@ -1,0 +1,2022 @@
+#!/usr/bin/env snakemake
+# -*- coding: utf-8 -*-
+import os
+import glob
+from pathlib import Path
+
+from ikiss import IKISS, dico_tool
+import click
+
+ikiss_obj = IKISS(dico_tool, workflow=workflow, config=config)
+tools_config = ikiss_obj.tools_config
+#cluster_config = ikiss_obj.cluster_config
+
+#print(ikiss_obj.export_use_yaml)
+# print for debug:
+#print(ikiss_obj)
+#print(tools_config)
+#exit()
+
+###############################################################################
+
+# Getting paths on usefully variables
+output_dir = config['DATA']['OUTPUT']
+fastq_dir = config['DATA']['FASTQ']
+reference_file = config['PARAMS']['MAPPING_KMERS']['REF']
+gff_file = config['PARAMS']['INTERSECT']['GFF']
+feature = config['PARAMS']['INTERSECT']['FEATURE']
+samples_file = config['PARAMS']['KMERS_MODULE']['SAMPLES_FILE']
+pheno_file = config['PARAMS']['LFMM']['PHENOTYPE_FILE']
+
+basename_reference = Path(reference_file).stem
+
+reference_assembly = config['PARAMS']['ASSEMBLY_KMERS']['REF']
+basename_reference2 = Path(reference_assembly).stem
+
+FASTQ, = glob_wildcards(f"{config['DATA']['FASTQ']}{{fastq}}{ikiss_obj.fastq_files_ext}")
+#SAMPLE, = glob_wildcards(f"{config['DATA']['FASTQ']}{{sample}}_R1{ikiss_obj.fastq_files_ext}")
+SAMPLE = list(ikiss_obj.samples.keys())
+PHENO = list(ikiss_obj.phenotype.keys())
+
+# check tools version
+if not Path(f"{output_dir}versions.csv").exists():
+    click.secho("Check if tools are available and their version before run wokflow")
+    ikiss_obj.tools_version_to_df(csv_file=f"{ikiss_obj.snakemake_scripts}/report_template/versions.csv",
+        active_tools_list=["KMC", "KMERS_GWAS", "BWA-MEM2", "BWA", "FLAGSTATS", "SAMTOOLS", "SEQTK", "BEDTOOLS", "MERGETAGS", "R"],
+        output_file=f"{output_dir}versions.csv")
+
+def output_final(wildcards):
+    dico_final = {
+        "fastq_table": rules.fastq_stats.output.fastq_table,
+        "kmer_module": f"{output_dir}3.TABLE2BED/",
+    }
+    #if self.config['WORKFLOW']['KMERS_MODULE']) and self.config['WORKFLOW']['INTERSECT']:
+    if 'KMERS_MODULE' in ikiss_obj.tools_activated and not 'PCADAPT' in ikiss_obj.tools_activated and not 'LFMM' in ikiss_obj.tools_activated:
+        if 'MAPPING_KMERS' in ikiss_obj.tools_activated:
+            dico_final.update({
+                "bam" : rules.samtools_merge.output.combined
+                })
+            if 'INTERSECT' in ikiss_obj.tools_activated:
+                dico_final.update({
+                "global_matrix_with_annotation": rules.merging_annotations_and_binary_matrix.output.annotations_and_binary_matrix_info
+                })
+
+    if 'SNMF' in ikiss_obj.diversity_method:
+        dico_final.update({
+            "method_diversity": expand(rules.merge_diversity_method.output.ok, diversity_method = ikiss_obj.diversity_method),
+        })
+    if 'PCADAPT' in ikiss_obj.method or 'LFMM' in ikiss_obj.method:
+        dico_final.update({
+        "method_kmers": expand(rules.merge_method.output.outliers_combined, method=ikiss_obj.method),
+        })
+        if 'MAPPING_KMERS' in ikiss_obj.tools_activated:
+            dico_final.update({
+                "outliers_and_mapping" : expand(rules.outliers_position.output.csv, method=ikiss_obj.method),
+                "stats" : expand(rules.outliers_position.output.stats, method=ikiss_obj.method),
+                "bam" : expand(rules.mapping_kmers_outliers.output.sortedbam, method=ikiss_obj.method),
+            })
+            if 'INTERSECT' in ikiss_obj.tools_activated:
+                dico_final.update({
+                    "stats_by_method" : expand(rules.stats_intersect_and_outliers.output.stats_all, method=ikiss_obj.method),
+                    "stats_all_kmers": expand(rules.stats_intersect_allkmers.output.stats_all),
+
+                })
+        if 'ASSEMBLY_KMERS' in ikiss_obj.tools_activated:
+            dico_final.update({
+                "outliers_assembly": expand(rules.mergetags.output.assembled_outliers, method=ikiss_obj.method),
+                "outliers_csv": expand(rules.mergetags.output.assembled_csv, method=ikiss_obj.method),
+            })
+            if config['PARAMS']['ASSEMBLY_KMERS']['MAPPING_CONTIGS']:
+                dico_final.update({
+                    "sortedbam" : expand(rules.mapping_contigs.output.sortedbam, method=ikiss_obj.method),
+                })
+                if 'INTERSECT' in ikiss_obj.tools_activated:
+                    dico_final.update({
+                        "stats_contigs" : expand(rules.intersect_and_contigs.output.stats_contigs, method=ikiss_obj.method),
+                })
+    return dico_final
+
+rule final:
+    input:
+        f"{output_dir}REPORT/QMD/ikiss_report/index.html"
+
+###################### rules
+rule kmers_gwas_per_sample:
+    """
+    kmers_gwas_per_sample automates the process of counting k-mers for each sample, both as canonical and non-canonical, and then combines the results to produce a file with k-mers and their strand information
+    """
+    threads: 1
+    input:
+        forw = f"{fastq_dir}{{sample}}_R1{ikiss_obj.fastq_files_ext}"
+    params:
+        rev = f"{fastq_dir}{{sample}}_R2{ikiss_obj.fastq_files_ext}",
+        name = f"{{sample}}",
+        kmer_size = config['PARAMS']['KMERS_MODULE']['KMER_SIZE'],
+        dir = f"{output_dir}1.KMERS_MODULE/{{sample}}"
+    output:
+        kmers_file = f"{output_dir}1.KMERS_MODULE/{{sample}}/{{sample}}_kmers_with_strand"
+    log:
+        output = f"{output_dir}LOGS/1.KMERS_MODULE/{{sample}}/{{sample}}_KMERS_MODULE.o",
+        error = f"{output_dir}LOGS/1.KMERS_MODULE/{{sample}}/{{sample}}_KMERS_MODULE.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/{{sample}}_KMERS_MODULE.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            forward : {input.forw}
+        params:
+            reverse : {params.rev}
+        output:
+            kmers_file: {output.kmers_file}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["KMERS_GWAS"]
+    shell:
+        """
+        cd {params.dir}
+        # creating txt files path
+        realpath {input.forw} {params.rev} > {params.name}_files.txt
+        # calculate canonical and not canonical by each sample
+        kmc_v3 -t{threads} -k{params.kmer_size} -ci2 @{params.name}_files.txt {params.name}_kmc3_canon ./ 1> {log.error} 2> {log.output}
+        kmc_v3 -t{threads} -k{params.kmer_size} -ci0 -b @{params.name}_files.txt {params.name}_kmc3_all ./ 1>> {log.error} 2>> {log.output}
+        #combine 2 runs
+        kmers_add_strand_information -c {params.name}_kmc3_canon -n {params.name}_kmc3_all -k {params.kmer_size} -o {params.name}_kmers_with_strand 1>> {log.error} 2>> {log.output}
+        """
+
+rule kmers_to_use:
+    """
+    kmers_to_use prepares and filters a list of k-mers found in a samples
+    """
+    threads: 1
+    input:
+        samples_list = expand({rules.kmers_gwas_per_sample.output.kmers_file}, sample=SAMPLE)
+    params:
+        dir = f"{output_dir}2.KMERS_TABLE/",
+        kmer_size = config['PARAMS']['KMERS_MODULE']['KMER_SIZE'],
+        mac = config['PARAMS']['KMERS_MODULE']['MAC'],
+        p = config['PARAMS']['KMERS_MODULE']['P'],
+        kmers_list_path = f"{output_dir}2.KMERS_TABLE/kmers_list_paths.txt"
+    output:
+        kmers_to_use = f"{output_dir}2.KMERS_TABLE/kmers_to_use"
+    log:
+        output = f"{output_dir}LOGS/2.KMERS_TABLE/KMERS_TO_USE.o",
+        error = f"{output_dir}LOGS/2.KMERS_TABLE/KMERS_TO_USE.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/KMERS_TO_USE.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            samples_list : {input.samples_list}
+        output:
+            kmers_to_use: {output.kmers_to_use}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        cd {params.dir}
+        # create file with paths to kmers_with_strand before merging
+        realpath {input.samples_list} > samplesTMP.txt;
+        awk -F '/' '{{print $_"\t"$NF"TMP" }}' samplesTMP.txt | sed 's/_kmers_with_strandTMP//g' - > {params.kmers_list_path}
+        rm samplesTMP.txt
+        # calculate kmers to use
+        list_kmers_found_in_multiple_samples -l {params.kmers_list_path} -k {params.kmer_size} --mac {params.mac} -p {params.p} -o {output.kmers_to_use} 1> {log.error} 2> {log.output}
+        """
+
+rule kmers_table:
+    """
+    create_kmers_table build a kmer table using the filtered kmers of several samples
+    """
+    threads: 1
+    input:
+        kmers_to_use = rules.kmers_to_use.output.kmers_to_use
+    params:
+        dir = f"{output_dir}2.KMERS_TABLE/",
+        kmer_size = config['PARAMS']['KMERS_MODULE']['KMER_SIZE'],
+        kmers_list_path = f"{output_dir}2.KMERS_TABLE/kmers_list_paths.txt",
+        kmers_table_name = f"kmers_table"
+    output:
+        kmers_table = f"{output_dir}2.KMERS_TABLE/kmers_table.table"
+    log:
+        output = f"{output_dir}LOGS/2.KMERS_TABLE/KMERS_TABLE.o",
+        error = f"{output_dir}LOGS/2.KMERS_TABLE/KMERS_TABLE.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/KMERS_TABLE.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            kmers_to_use : {input.kmers_to_use}
+        output:
+            kmers_table: {output.kmers_table}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["KMERS_GWAS"]
+    shell:
+        """
+        cd {params.dir}
+        # create the kmer table
+        build_kmers_table -l {params.kmers_list_path} -k {params.kmer_size} -a {input.kmers_to_use} -o {params.kmers_table_name} 1> {log.error} 2> {log.output}
+        """
+
+##### BED WC
+checkpoint kmers_table_to_bed:
+    """
+    kmers_table_to_bed converts a kmer table to bed file format
+    """
+    threads: 1
+    input:
+        kmers_table = rules.kmers_table.output.kmers_table,
+    params:
+        dir = f"{output_dir}3.TABLE2BED/",
+        kmers_table_name = f"{output_dir}2.KMERS_TABLE/kmers_table",
+        pheno = samples_file,
+        #pheno = pheno_file,
+        kmer_size = config['PARAMS']['KMERS_MODULE']['KMER_SIZE'],
+        mac = config['PARAMS']['KMERS_MODULE']['MAC'],
+        maf = config['PARAMS']['KMERS_MODULE']['MAF'],
+        nb_kmers_in_bed = config['PARAMS']['KMERS_MODULE']['B'],
+        bed_name = f"output_file"
+    output:
+        bed = directory(f"{output_dir}3.TABLE2BED/")
+    log:
+        output = f"{output_dir}3.TABLE2BED/log/TABLE2BED.o",
+        error = f"{output_dir}3.TABLE2BED/log/TABLE2BED.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/TABLE2BED.txt"
+    message:
+        """
+        Launching CHECKPOINT {rule}
+        threads: {threads}
+        input:
+            kmers_table : {input.kmers_table}
+        output:
+            kmers_table: {output.bed}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["KMERS_GWAS"]
+    shell:
+        """
+        cd {params.dir}
+        # obtain the plink binary files (bed, fam, bim) 
+        kmers_table_to_bed -t {params.kmers_table_name} -k {params.kmer_size} --maf {params.maf} --mac {params.mac} -b {params.nb_kmers_in_bed} -o {params.bed_name} --phentype_file {params.pheno} 1>> {log.error} 2>> {log.output}
+        """
+
+rule extract_kmers_from_bed:
+    """
+    extract_kmers_from_bed takes kmers sequences from a bed and creates a fasta format 
+    """
+    threads: 1
+    input:
+        bed = f"{output_dir}3.TABLE2BED/{{bed}}.bed"
+    params:
+        dir = f"{output_dir}4.EXTRACT_FASTA/",
+        tmp = f"{output_dir}3.TABLE2BED/{{bed}}.fasta",
+    output:
+        fasta = f"{output_dir}4.EXTRACT_FASTA/{{bed}}.fasta.gz"
+    log:
+        output = f"{output_dir}LOGS/4.EXTRACT_FASTA/{{bed}}_EXTRACT_FASTA.o",
+        error = f"{output_dir}LOGS/4.EXTRACT_FASTA/{{bed}}_EXTRACT_FASTA.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_EXTRACT_FASTA.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bed : {input.bed}
+        output:
+            fasta: {output.fasta}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        python3 {ikiss_obj.snakemake_scripts}/kmer-bed2fasta.py -b {input.bed} 
+        gzip {params.tmp} 
+        mv {params.tmp}.gz {output.fasta} ) 1> {log.error} 2> {log.output}
+        """
+
+rule index_ref:
+    """
+    index_ref for bwa-mem2 or bwa 
+    """
+    threads: 4
+    input:
+        ref = reference_file
+    params:
+        ref_dir = f"{output_dir}REF",
+        index_options = config['PARAMS']['MAPPING_KMERS']['INDEX_OPTIONS'],
+        index_type = f"bwa-mem2 " if config['PARAMS']['MAPPING_KMERS']['MODE'] == "bwa-mem2" else "bwa",
+    output:
+        # TODO: manage fasta extensions
+        new_ref = f"{output_dir}REF/{basename_reference}.fasta",
+        index_tag = f"{output_dir}REF/{basename_reference}.fasta.bwt.2bit.64" if config['PARAMS']['MAPPING_KMERS']['MODE'] == "bwa-mem2" else f"{output_dir}REF/{basename_reference}.fasta.sa"
+    log:
+        output = f"{output_dir}LOGS/{basename_reference}_INDEXING.o",
+        error = f"{output_dir}LOGS/{basename_reference}_INDEXING.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{basename_reference}_INDEXING.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            ref: {input.ref}
+        output:
+            new_ref : {output.new_ref}
+            index_tag : {output.index_tag}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["BWAMEM2"],
+        tools_config["ENV-MODULES"]["BWA"],
+    shell:
+        """
+        (mkdir -p {params.ref_dir}
+        cd {params.ref_dir}
+        cp {reference_file} {output.new_ref} 
+        {params.index_type} index {params.index_options} {output.new_ref} ) 1> {log.error} 2> {log.output}
+        """
+
+rule index_ref_to_assembly:
+    """
+    index_ref_to_assembly for bwa-mem2
+    """
+    threads: 4
+    input:
+        ref = reference_assembly
+    params:
+        ref_dir = f"{output_dir}REF_ASSEMBLY",
+    output:
+        new_ref = f"{output_dir}REF_ASSEMBLY/{basename_reference2}.fasta",
+        index_tag = f"{output_dir}REF_ASSEMBLY/{basename_reference2}.fasta.bwt.2bit.64"
+    log:
+        output = f"{output_dir}LOGS/{basename_reference2}_ASSEMBLY_INDEXING.o",
+        error = f"{output_dir}LOGS/{basename_reference2}_ASSEMBLY_INDEXING.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{basename_reference2}_ASSEMBLY_INDEXING.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            ref: {input.ref}
+        output:
+            new_ref : {output.new_ref}
+            index_tag : {output.index_tag}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["BWAMEM2"],
+        tools_config["ENV-MODULES"]["BWA"],
+    shell:
+        """
+        (mkdir -p {params.ref_dir}
+        cd {params.ref_dir}
+        cp {input.ref} {output.new_ref} 
+        bwa-mem2 index {output.new_ref}) 1> {log.error} 2> {log.output}
+        """
+
+rule mapping_kmers:
+    """
+    mapping_kmers
+    """
+    threads: 4
+    input:
+        fasta = f"{output_dir}4.EXTRACT_FASTA/{{bed}}.fasta.gz",
+        ref = rules.index_ref.output.new_ref,
+        index_tag = rules.index_ref.output.index_tag
+    params:
+        dir = f"{output_dir}8.MAPPING_KMERS/",
+        sai = f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}.sai",
+        bam = f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}.bam",
+        options = config['PARAMS']['MAPPING_KMERS']['OPTIONS'],
+        mode = config['PARAMS']['MAPPING_KMERS']['MODE'],
+    output:
+        sortedbam = f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_sorted.bam",
+    log:
+        output = f"{output_dir}LOGS/8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_MAPPING.o",
+        error = f"{output_dir}LOGS/8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_MAPPING.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_vs_{basename_reference}_MAPPING.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            fasta: {input.fasta}
+        output:
+            bam : {output.sortedbam}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["BWAMEM2"],
+        tools_config["ENV-MODULES"]["BWA"],
+        tools_config["ENV-MODULES"]["SAMTOOLS"]
+    shell:
+        """
+        (cd {params.dir} 
+        if [[ {params.mode} == bwa-mem2 ]]; then 
+             bwa-mem2 mem {params.options} -t {threads} {input.ref} {input.fasta} > {params.bam};
+        fi
+        if [[ {params.mode} == bwa-aln ]]; then
+             bwa aln {params.options} -t {threads} {input.ref} {input.fasta} > {params.sai};
+             bwa samse -f {params.bam} {input.ref} {params.sai} {input.fasta};
+        fi
+        samtools sort {params.bam} -o {output.sortedbam}       
+        samtools index {output.sortedbam}
+        samtools stats {output.sortedbam} > {output.sortedbam}.stats) 1> {log.error} 2> {log.output}
+        """
+
+rule filter_bam:
+    """
+    filter_bam
+    """
+    threads: 4
+    input:
+        sortedbam = f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_sorted.bam",
+    params:
+        flag = config['PARAMS']['MAPPING_KMERS']['FILTER_FLAG'],
+        qual = config['PARAMS']['MAPPING_KMERS']['FILTER_QUAL'],
+        dir = f"{output_dir}8.MAPPING_KMERS/",
+        unmapped = temp(f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_F.bam"),
+    output:
+        filterbam = f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_FMQ.bam",
+    log:
+        output = f"{output_dir}LOGS/8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_FMQ.o",
+        error = f"{output_dir}LOGS/8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_FMQ.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_vs_{basename_reference}_FMQ.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            sortedbam: {input.sortedbam}
+        output:
+            filterbam : {output.filterbam}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["SAMTOOLS"]
+    shell:
+        """
+        (cd {params.dir}
+        samtools view -bh -F {params.flag} {input.sortedbam} > {params.unmapped}
+        samtools view -bh -q {params.qual} {params.unmapped} > {output.filterbam}
+        rm {params.unmapped}
+        ) 1> {log.error} 2> {log.output}
+        """
+
+rule kmer_position_from_bam:
+    """
+    kmer_position_from_bam
+    """
+    threads: 4
+    input:
+        #filterbam = f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_FMQ.bam",
+        filterbam= rules.filter_bam.output.filterbam
+    params:
+        kmer_size = config['PARAMS']['KMERS_MODULE']['KMER_SIZE'],
+        dir = f"{output_dir}8.MAPPING_KMERS/",
+        name=f"{{bed}}",
+        tmpposition = temp(f"{output_dir}9.KMERPOSITION/{{bed}}_vs_{basename_reference}_TMPKMERPOSITION.txt"),
+    output:
+        position = f"{output_dir}9.KMERPOSITION/{{bed}}_vs_{basename_reference}_KMERPOSITION.txt",
+    log:
+        output = f"{output_dir}LOGS/9.KMERPOSITION/{{bed}}_vs_{basename_reference}_KMERPOSITION.o",
+        error = f"{output_dir}LOGS/9.KMERPOSITION/{{bed}}_vs_{basename_reference}_KMERPOSITION.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_vs_{basename_reference}_FMQ.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            filterbam: {input.filterbam}
+        output:
+            position : {output.position}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["SAMTOOLS"]
+    shell:
+        """
+        (cd {params.dir}
+        echo {params.name}
+        name={params.name}
+        samtools view {input.filterbam} | cut -f1-4,10 - > {params.tmpposition}
+        awk '{{if ($2=="16") print "{params.name}\t"$1"\t"$5"\t"$3"\t"$4-{params.kmer_size}-1; else print "{params.name}\t"$1"\t"$5"\t"$3"\t"$4}}' {params.tmpposition} > {output.position}
+        sort -n -k2,2 {output.position} > {params.tmpposition}
+        mv {params.tmpposition} {output.position}
+        ) 1> {log.error} 2> {log.output}   
+        """
+
+###################################### BED WC
+
+def aggregate_bam(wildcards):
+    checkpoint_output = checkpoints.kmers_table_to_bed.get(**wildcards).output[0]
+    bed=glob_wildcards(os.path.join(checkpoint_output,"{bed}.bed")).bed
+    return expand(f"{output_dir}9.KMERPOSITION/{{bed}}_vs_{basename_reference}_KMERPOSITION.txt", bed=bed)
+
+# merge bed wc
+rule merge_kmer_position:
+    """
+    list kmers positions files
+    """
+    threads: 1
+    input:
+        list = aggregate_bam,
+    params:
+        dir = f"{output_dir}9.KMERPOSITION/"
+    output:
+        combined = f"{output_dir}10.MERGE_KMERPOSITION/kmer_position_merged.txt",
+    log:
+        output = f"{output_dir}LOGS/10.MERGE_KMERPOSITION/KMERPOSITION_MERGING.o",
+        error = f"{output_dir}LOGS/10.MERGE_KMERPOSITION/KMERPOSITION_MERGING.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/KMERPOSITION_MERGING.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            list : {input.list}
+        output:
+            combined: {output.combined}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir} 
+        echo -e 'bedname\tkmer_number\tsequence\tREF\tposition' > tmp.txt
+        cat *KMERPOSITION.txt >> tmp.txt
+        mv tmp.txt {output.combined} ) 1> {log.error} 2> {log.output}
+        """
+
+def aggregate_bam_to_samtools_merge(wildcards):
+    checkpoint_output = checkpoints.kmers_table_to_bed.get(**wildcards).output[0]
+    bed=glob_wildcards(os.path.join(checkpoint_output,"{bed}.bed")).bed
+    return expand(f"{output_dir}8.MAPPING_KMERS/{{bed}}_vs_{basename_reference}_FMQ.bam", bed=bed)
+
+# merge bam wc
+rule samtools_merge:
+    """
+    list kmers positions files
+    """
+    threads: 1
+    input:
+        list = aggregate_bam_to_samtools_merge,
+    params:
+        dir = f"{output_dir}8.MAPPING_KMERS/"
+    output:
+        combined = f"{output_dir}10.MERGE_KMERPOSITION/kmer_position_samtools_merge.bam",
+    log:
+        output = f"{output_dir}LOGS/10.MERGE_KMERPOSITION/KMERPOSITION_SAMTOOLS_MERGE.o",
+        error = f"{output_dir}LOGS/10.MERGE_KMERPOSITION/KMERPOSITION_SAMTOOLS_MERGE.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/KMERPOSITION_SAMTOOLS_MERGE.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            list : {input.list}
+        output:
+            combined: {output.combined}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir} 
+        echo {input.list} > bam_files.txt 
+        sed -i 's/ /\\n/g' bam_files.txt
+        samtools merge -@ {threads} -b bam_files.txt {output.combined}) 1> {log.error} 2> {log.output}
+        """
+###################################################################################"
+###################################################################################"
+
+##### SEGMENT WC
+checkpoint split_bed:
+    """
+    from a bed, random kmers in several list before to PCA
+    """
+    threads: 1
+    input:
+        bed = f"{output_dir}3.TABLE2BED/{{bed}}.bed",
+        fasta = f"{output_dir}4.EXTRACT_FASTA/{{bed}}.fasta.gz",
+    params:
+        nb_kmers_in_bed = config['PARAMS']['KMERS_MODULE']['SPLIT_LIST_SIZE'],
+        name = f"{{bed}}",
+        min_lenght =  config['PARAMS']['KMERS_MODULE']['MIN_LIST_SIZE'],
+    output:
+        dir = directory(f"{output_dir}5.RANGES/{{bed}}")
+    log:
+        output = f"{output_dir}LOGS/5.RANGES/{{bed}}_RANGES.o",
+        error = f"{output_dir}LOGS/5.RANGES/{{bed}}_RANGES.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_RANGES.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bed : {input.bed}
+            fasta: {input.fasta}
+        params:
+            name : {params.name} 
+        output:
+            dir : {output.dir}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        VAR=`zcat {input.fasta} | wc -l - | cut -d' ' -f1 `;
+        FILE_LENGHT=$((${{VAR}}/2));
+        python3 {ikiss_obj.snakemake_scripts}/split_bed.py --list_length {params.nb_kmers_in_bed} --file_length $FILE_LENGHT --min_length {params.min_lenght} --output-name {params.name} --output-dir {output.dir} 1> {log.error} 2> {log.output}
+        """
+
+rule pcadapt:
+    """
+    pca using a segment
+    """
+    threads: 1
+    input:
+        kmer_list_file = f"{output_dir}5.RANGES/{{bed}}/{{segment}}.txt",
+    params:
+        k = config['PARAMS']['PCADAPT']['K'],
+        correction = config['PARAMS']['PCADAPT']['CORRECTION'],
+        alpha = config['PARAMS']['PCADAPT']['ALPHA'],
+        bed = f"{output_dir}3.TABLE2BED/{{bed}}.bed",
+        bim = f"{output_dir}3.TABLE2BED/{{bed}}.bim",
+        fam = f"{output_dir}3.TABLE2BED/{{bed}}.fam",
+        segment_file = f"{{bed}}_{{segment}}"
+    output:
+        outliers = f"{output_dir}6.PCADAPT/{{bed}}_{{segment}}_PCADAPT_outliers.csv",
+        pvalues = f"{output_dir}6.PCADAPT/{{bed}}_{{segment}}_PCADAPT_pvalues.csv",
+    log:
+        output = f"{output_dir}LOGS/6.PCADAPT/{{bed}}_{{segment}}_PCADAPT.o",
+        error = f"{output_dir}LOGS/6.PCADAPT/{{bed}}_{{segment}}_PCADAPT.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_{{segment}}_PCADAPT.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            kmer_list_file : {input.kmer_list_file}
+        params:
+            bed : {params.bed}
+            k :  {params.k}
+        output:
+            outliers: {output.outliers}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["R"]
+    shell:
+        """
+        Rscript {ikiss_obj.snakemake_scripts}/pcadapt.R -x {params.k} -e {params.bed} -i {params.bim} -a {params.fam} -o {output.outliers} -k {input.kmer_list_file} 1>{log.output} 2>{log.error}
+        sed -i '1d' {output.outliers}
+        sed -i '1d' {output.pvalues}
+        sed -i s'/_0//' {output.outliers}
+        sed -i s'/_0//' {output.pvalues}
+        """
+
+
+# # nested wc https://stackoverflow.com/questions/58823881/how-are-nested-checkpoints-resolved-in-snakemake/58859794#58859794
+def aggregate_segments(wildcards):
+    outputs_bed = glob.glob(f"{checkpoints.kmers_table_to_bed.get().output}/*.bed")
+    outputs_bed = [output.split('/')[-1].split('.bed')[0] for output in outputs_bed]
+    split_files = []
+    for bed in outputs_bed:
+        outputs_segment = glob.glob(f"{checkpoints.split_bed.get(bed=bed).output}/*.txt")
+        outputs_segment = [output.split('/')[-1].split('.txt')[0] for output in outputs_segment]
+        for segment in outputs_segment:
+            split_files.append(f"{output_dir}6.{{method}}/{bed}_{segment}_{{method}}_outliers.csv")
+    #print (split_files)
+    return split_files
+
+rule merge_method:
+    """
+    merging under selection kmers detected by pcadapt or lfmm
+    """
+    threads: 1
+    input:
+        agg_segments = aggregate_segments
+    params:
+        method = f"{{method}}",
+        dir = f"{output_dir}6.{{method}}/"
+    output:
+        pvalues_combined = f"{output_dir}7.MERGED_{{method}}/merged_{{method}}_pvalues.csv",
+        outliers_combined = f"{output_dir}7.MERGED_{{method}}/merged_{{method}}_outliers.csv"
+    log:
+        output = f"{output_dir}LOGS/7.MERGED_{{method}}/MERGED_{{method}}.o",
+        error = f"{output_dir}LOGS/7.MERGED_{{method}}/MERGED_{{method}}.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/MERGED_{{method}}.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            aggregate_segments: {input.agg_segments}
+        output:
+            pvalues_combined: {output.pvalues_combined}
+            outliers_combined : {output.outliers_combined}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (if [[ {params.method} == LFMM ]]
+            then
+            mkdir -p {params.dir}
+            cd {params.dir} 
+            echo -e 'sequence\tbedname\tsegment_nb\tpvalue' > tmp.csv
+            cat *outliers.csv >> tmp.csv
+            mv tmp.csv {output.outliers_combined}
+            cat *pvalues.csv > {output.pvalues_combined}
+        fi
+
+        if [[ {params.method} == PCADAPT ]]; then
+            mkdir -p {params.dir}
+            cd {params.dir}
+            echo -e '\tbedname\tsegment_nb\tkmer_number\tsequence\tpvalue.X1\tpvalue.X2' > tmp.csv
+            cat *pvalues.csv >> tmp.csv
+            cut -f2- tmp.csv > {output.pvalues_combined}
+            rm tmp.csv 
+            echo -e '\tsequence\tbedname\tsegment_nb\tkmer_number\tpvalue.X1\tpvalue.X2\tkmer_number_index_get.pc\tPC' > tmp.csv
+            cat *outliers.csv >> tmp.csv
+            cut -f2- tmp.csv > {output.outliers_combined}
+            rm tmp.csv 
+        fi
+        ) 2>{log.error}
+        """
+
+
+# input function for rule aggregate, return paths to all files produced by the checkpoint 'somestep'
+def aggregate_segments_snmf(wildcards):
+    times=0
+    outputs_bed = glob.glob(f"{checkpoints.kmers_table_to_bed.get().output}/*.bed")
+    outputs_bed = [output.split('/')[-1].split('.bed')[0] for output in outputs_bed]
+    split_files = []
+    for bed in outputs_bed:
+        outputs_segment = glob.glob(f"{checkpoints.split_bed.get(bed=bed).output}/*.txt")
+        outputs_segment = [output.split('/')[-1].split('.txt')[0] for output in outputs_segment]
+        for segment in outputs_segment:
+            if times < ikiss_obj.times_div:
+                split_files.append(f"{output_dir}6.{{diversity_method}}/{bed}_{segment}_{{diversity_method}}/kmer.geno")
+                times = times + 1
+        #print (split_files)
+        return split_files
+
+
+rule merge_diversity_method:
+    """
+    launching SNMF in a nb of segments defined by aggregate_segment_snmf
+    """
+    threads: 1
+    input:
+        agg_segments = aggregate_segments_snmf
+    params:
+        method = f"{{diversity_method}}",
+        dir = f"{output_dir}6.{{diversity_method}}/"
+    output:
+        ok = f"{output_dir}6.{{diversity_method}}/OK.txt",
+        #test = f"{output_dir}6.{{diversity_method}}/output_file.0_1_{{diversity_method}}/kmer.geno"
+    log:
+        output = f"{output_dir}LOGS/6.{{diversity_method}}/{{diversity_method}}.o",
+        error = f"{output_dir}LOGS/6.{{diversity_method}}/{{diversity_method}}.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/{{diversity_method}}.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            segments : {input.agg_segments}
+        output:
+            ok: {output.ok}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (if [[ {params.method} == SNMF ]]; then
+            mkdir -p {params.dir} ; cd {params.dir} 
+            echo 'OK' > {output.ok}
+        fi
+        ) 2>{log.error}
+        """
+
+rule outliers_position:
+    """
+    finding position of outliers by mapping
+    """
+    threads: 1
+    input:
+        outliers = rules.merge_method.output.outliers_combined,
+        positions = rules.merge_kmer_position.output.combined,
+        bam = rules.samtools_merge.output.combined,
+    output:
+        csv = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/outliers_with_position.csv",
+        stats = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/stats.txt",
+        fasta = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/outliers_with_position.fasta.gz",
+    params:
+        method = f"{{method}}",
+        fasta = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/outliers_with_position.fasta",
+    log:
+        output = f"{output_dir}LOGS/11.OUTLIERS_{{method}}_POSITION/OUTLIERS_POSITION.o",
+        error = f"{output_dir}LOGS/11.OUTLIERS_{{method}}_POSITION/OUTLIERS_POSITION.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/OUTLIERS_{{method}}_POSITION.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            outliers : {input.outliers}
+            positions : {input.positions}
+        output:
+            outliers_and_mapping : {output.fasta}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (python3 {ikiss_obj.snakemake_scripts}/outliers_and_position.py --outliers {input.outliers} --kmers_position {input.positions} --output {output.csv} 
+        if [[ {params.method} == LFMM ]]; then
+            awk '{{print \">\"$5\"\\n\"$1}}' {output.csv} > {params.fasta}
+        fi
+        if [[ {params.method} == PCADAPT ]]; then
+            awk '{{print \">\"$9\"\\n\"$1}}' {output.csv} > {params.fasta}
+        fi
+        gzip {params.fasta}
+        ) 1> {log.error} 2> {log.output}
+        """
+
+rule mapping_kmers_outliers:
+    """
+    mapping_kmers outliers
+    """
+    threads: 4
+    input:
+        fasta = rules.outliers_position.output.fasta,
+        ref = rules.index_ref.output.new_ref,
+        index_tag = rules.index_ref.output.index_tag
+    params:
+        dir = f"{output_dir}11.OUTLIERS_{{method}}_POSITION",
+        sai = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/{{method}}_vs_{basename_reference}.sai",
+        bam = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/{{method}}_vs_{basename_reference}.bam",
+        options = config['PARAMS']['MAPPING_KMERS']['OPTIONS'],
+        mode = config['PARAMS']['MAPPING_KMERS']['MODE'],
+    output:
+        sortedbam = f"{output_dir}11.OUTLIERS_{{method}}_POSITION/{{method}}_vs_{basename_reference}_sorted.bam",
+    log:
+        output = f"{output_dir}LOGS/11.OUTLIERS_{{method}}_POSITION/{{method}}_vs_{basename_reference}_MAPPING.o",
+        error = f"{output_dir}LOGS/11.OUTLIERS_{{method}}_POSITION/{{method}}_vs_{basename_reference}_MAPPING.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{method}}_vs_{basename_reference}_MAPPING.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            fasta: {input.fasta}
+        output:
+            bam : {output.sortedbam}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["BWAMEM2"],
+        tools_config["ENV-MODULES"]["BWA"],
+        tools_config["ENV-MODULES"]["SAMTOOLS"]
+    shell:
+        """
+        (cd {params.dir} 
+        if [[ {params.mode} == bwa-mem2 ]]; then 
+             bwa-mem2 mem {params.options} -t {threads} {input.ref} {input.fasta} > {params.bam};
+        fi
+        if [[ {params.mode} == bwa-aln ]]; then
+             bwa aln {params.options} -t {threads} {input.ref} {input.fasta} > {params.sai};
+             bwa samse -f {params.bam} {input.ref} {params.sai} {input.fasta};
+        fi
+        samtools sort {params.bam} -o {output.sortedbam}       
+        samtools index {output.sortedbam}
+        samtools stats {output.sortedbam} > {output.sortedbam}.stats) 1> {log.error} 2> {log.output}
+        """
+
+rule extracting_features_from_gff:
+    """
+    extracting_features_from_gff
+    """
+    threads: 1
+    input:
+        gff = gff_file,
+    params:
+        feature = feature
+    output:
+        gff_feature = f"{output_dir}13.GFF_FEATURES/extracted.gff",
+    log:
+        output = f"{output_dir}LOGS/13.GFF_FEATURES/GFF_FEATURES.o",
+        error = f"{output_dir}LOGS/13.GFF_FEATURES/GFF_FEATURES.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/GFF_FEATURES.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            gff : {input.gff}
+        params:
+            feature : {params.feature}
+        output:
+            gff_feature : {output.gff_feature}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        grep -e "{params.feature}\s" {input.gff} > {output.gff_feature}
+        """
+
+rule kmers_bedtools_intersect:
+    """
+    intersect bedtools (bam vs gff) 
+    """
+    threads: 1
+    input:
+        bam = rules.samtools_merge.output.combined,
+        gff = rules.extracting_features_from_gff.output.gff_feature,
+    params:
+        dir = f"{output_dir}14.KMERS_INTERSECT"
+    output:
+        bed = f"{output_dir}14.KMERS_INTERSECT/kmers_intersect_annotation.bed"
+    log:
+        output = f"{output_dir}LOGS/14.KMERS_INTERSECT/BEDTOOLS_INTERSECT.o",
+        error = f"{output_dir}LOGS/14.KMERS_INTERSECT/BEDTOOLS_INTERSECT.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/BEDTOOLS_INTERSECT.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bam : {input.bam}
+            gff : {input.gff}
+        output:
+            bed : {output.bed}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        bedtools intersect -abam {input.bam} -b {input.gff} -bed -header -wb -wa > {output.bed}) 1> {log.error} 2> {log.output}
+        """
+
+rule kmers_bedtools_intersect_method:
+    """
+    intersect bedtools bam from method and annotation
+    """
+    threads: 1
+    input:
+        bam = rules.mapping_kmers_outliers.output.sortedbam,
+        gff = rules.extracting_features_from_gff.output.gff_feature,
+    params:
+        dir = f"{output_dir}14.KMERS_INTERSECT_{{method}}"
+    output:
+        bed = f"{output_dir}14.KMERS_INTERSECT_{{method}}/{{method}}_kmers_intersect_annotation.bed"
+    log:
+        output = f"{output_dir}LOGS/14.KMERS_INTERSECT_{{method}}/BEDTOOLS_INTERSECT.o",
+        error=f"{output_dir}LOGS/14.KMERS_INTERSECT_{{method}}/BEDTOOLS_INTERSECT.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/BEDTOOLS_INTERSECT__{{method}}.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bam : {input.bam}
+            gff : {input.gff}
+        output:
+            bed : {output.bed}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        bedtools intersect -abam {input.bam} -b {input.gff} -bed -header -wb -wa > {output.bed}) 1> {log.error} 2> {log.output}
+        """
+
+#### -------------------extraction matrix presence absence
+
+checkpoint extract_fasta_after_intersect_all_kmers:
+    """
+    extract_fasta_after_intersect_all_kmers
+    """
+    threads: 1
+    input:
+        bed = rules.kmers_bedtools_intersect.output.bed,
+    params:
+        fasta = f"{output_dir}16.KMERS_IN_GENES_MATRIX/kmers_into_feature.fasta",
+        nbkmers = f"{config['PARAMS']['KMERS_MODULE']['SPLIT_LIST_SIZE']}"
+    output:
+        dir = directory(f"{output_dir}16.KMERS_IN_GENES_MATRIX/RANGES",)
+    log:
+        output = f"{output_dir}LOGS/16.KMERS_IN_GENES_MATRIX/EXTRACTING_KMERS_INTO_FEATURE.o",
+        error = f"{output_dir}LOGS/16.KMERS_IN_GENES_MATRIX/EXTRACTING_KMERS_INTO_FEATURE.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/EXTRACTING_KMERS_INTO_FEATURE.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bed : {input.bed}
+        output:
+            dir :  {output.dir} 
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (mkdir {output.dir} ; cd {output.dir}
+        cut -f4 {input.bed} | awk -F '_' '{{print $4}}' - > {params.fasta} 
+        split -l {params.nbkmers} {params.fasta} kmers_into_genes_
+        for file in kmers_into_genes*; do mv $file $file.txt; done
+        #rm {params.fasta}
+        ) 2> {log.output}
+        """
+
+rule filter_presence_absence_matrix:
+    """
+    filter_presence_absence_matrix using kmers located only into genes
+    """
+    threads: 1
+    input:
+        fasta = f"{output_dir}16.KMERS_IN_GENES_MATRIX/RANGES/{{txt}}.txt",
+    params:
+        kmers_table = f"{output_dir}2.KMERS_TABLE/kmers_table",
+        dir = f"{output_dir}16.KMERS_IN_GENES_MATRIX/MATRIX"
+    output:
+        matrix = f"{output_dir}16.KMERS_IN_GENES_MATRIX/MATRIX/{{txt}}.matrix"
+    log:
+        output = f"{output_dir}LOGS/16.KMERS_IN_GENES_MATRIX/MATRIX_{{txt}}.o",
+        error = f"{output_dir}LOGS/16.KMERS_IN_GENES_MATRIX/MATRIX{{txt}}.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/KMERS_IN_GENES_MATRIX_{{txt}}.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            fasta : {input.fasta}
+            kmers_table : {params.kmers_table}
+        output:
+            matrix : {output.matrix}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        filter_kmers -t {params.kmers_table} -k {input.fasta}  -o {output.matrix} ) 1> {log.error} 2> {log.output}
+        """
+
+def run_filter_presence_absence(wildcards):
+    checkpoint_output = checkpoints.extract_fasta_after_intersect_all_kmers.get(**wildcards).output[0]
+    txt=glob_wildcards(os.path.join(checkpoint_output,"{txt}.txt")).txt
+    return expand(rules.filter_presence_absence_matrix.output.matrix, txt=txt)
+
+rule aggregate_presence_absence_matrix:
+    """
+    aggregate_presence_absence_matrix
+    """
+    threads: 1
+    input:
+        list_matrix = run_filter_presence_absence
+    params:
+        dir = f"{output_dir}16.KMERS_IN_GENES_MATRIX"
+    output:
+        global_matrix = f"{output_dir}16.KMERS_IN_GENES_MATRIX/global_presence_absence_matrix.txt"
+    log:
+        output = f"{output_dir}LOGS/16.KMERS_IN_GENES_MATRIX/AGGREGATED_MATRIX.o",
+        error = f"{output_dir}LOGS/16.KMERS_IN_GENES_MATRIX/AGGREGATED_MATRIX.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/AGGREGATED_MATRIX.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            list_matrix : {input.list_matrix}
+        output:
+            global_matrix : {output.global_matrix}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        head -n1 {input.list_matrix[0]} > head.txt 
+        for file in {input.list_matrix}; 
+            do 
+                cat head.txt > {output.global_matrix};
+                grep -v ^"kmer" $file >> {output.global_matrix};
+            done
+        rm head.txt
+        ) 2> {log.output}
+        """
+
+rule merging_annotations_and_binary_matrix:
+    """
+     merging presence_absence_matrix with annotations 
+    """
+    threads: 1
+    input:
+        matrix = f"{output_dir}16.KMERS_IN_GENES_MATRIX/global_presence_absence_matrix.txt",
+        bed = rules.kmers_bedtools_intersect.output.bed
+    params:
+        dir = f"{output_dir}17.MATRIX_AND_ANNOTATION",
+        samples_dico = ikiss_obj.samples
+    output:
+        annotations_and_binary_matrix_info = f"{output_dir}17.MATRIX_AND_ANNOTATION/annotations_and_binary_matrix_info.csv",
+        stats_by_sample = f"{output_dir}17.MATRIX_AND_ANNOTATION/occurrences_by_sample.csv",
+        stats= f"{output_dir}17.MATRIX_AND_ANNOTATION/occurrences_by_group.csv"
+    log:
+        output = f"{output_dir}LOGS/17.MATRIX_AND_ANNOTATION/MATRIX_AND_ANNOTATION.o",
+        error = f"{output_dir}LOGS/17.MATRIX_AND_ANNOTATION/MATRIX_AND_ANNOTATION.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/MATRIX_AND_ANNOTATION/.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            matrix : {input.matrix} 
+            bed : {input.bed}  
+        output:
+             annotations_and_binary_matrix_info : {output.annotations_and_binary_matrix_info},
+             stats : {output.stats}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    run:
+        import pandas as pd
+        # importing data
+        matrix_df = pd.read_csv(f"{input.matrix}", delimiter='\t', header="infer")
+        bed_df = pd.read_csv(f"{input.bed}", delimiter='\t', header=None)
+        # cleaning dataframe before merging
+        def cleaning_str(seq):
+            return seq.split('_')[3]
+
+        bed_df['sequence'] = bed_df[3].apply(cleaning_str)
+        bed_df[3]=bed_df['sequence']
+        bed_df.rename(columns={3:"kmer"}, inplace=True)
+        bed_df.drop(columns=['sequence'], inplace=True)
+        # merging dataframes
+        results_df = matrix_df.merge(bed_df, on=['kmer'])
+        # writing results
+        results_df.to_csv(f"{output.annotations_and_binary_matrix_info}", index=False, sep='\t')
+        # calculate stats of presence and absence by group given in the samples_file by user
+        df = pd.DataFrame(columns=['sample', 'group', 'presence', 'absence'])
+        sample = []
+        group = []
+        presence = []
+        absence = []
+        for k, j in ikiss_obj.samples.items():
+            if k in results_df.columns:
+                sample.append(k)
+                group.append(j)
+                presence.append(len(results_df[results_df[k] == 1]))
+                absence.append(len(results_df[results_df[k] == 0]))
+        df['sample'] = sample
+        df['group'] = group
+        df['presence'] = presence
+        df['absence'] = absence
+        df.to_csv(f"{output.stats_by_sample}", index=False, sep='\t')
+        occ_by_group = df.groupby(group).sum()
+        occ_by_group.to_csv(f"{output.stats}", index=True, sep='\t')
+
+## =============================== LFMM
+
+rule get_pca_from_phenotype:
+    """
+    doing a pca analysis using phenotype file with variables done by user
+    """
+    threads: 6
+    input:
+        phenotype = pheno_file,
+    output:
+        pca_variance = f"{output_dir}6.LFMM_PHENO/PCA_from_phenotype.csv",
+    params:
+        jupyter = f"{output_dir}6.LFMM_PHENO/PCA_from_phenotype.ipynb",
+        html = f"{output_dir}6.LFMM_PHENO/PCA_from_phenotype.html",
+    log:
+        output = f"{output_dir}LOGS/6.LFMM_PHENO/PCA_FROM_PHENOTYPE_LFMM.o",
+        error = f"{output_dir}LOGS/6.LFMM_PHENO/PCA_FROM_PHENOTYPE_LFMM.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/PCA_FROM_PHENOTYPE_LFMM.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            phenotype: {input.phenotype}
+        output:
+            pca_variance: {output.pca_variance}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["KMERS_GWAS"]
+    shell:
+        """ 
+        python3 {ikiss_obj.snakemake_scripts}/pca_from_phenotype.py -p {input.phenotype} -o {params.jupyter} 1>{log.output} 2>{log.error}
+        jupyter nbconvert --execute --inplace {params.jupyter} --ExecutePreprocessor.timeout=6000
+        jupyter nbconvert --execute {params.jupyter} --no-input --ExecutePreprocessor.timeout=6000 --to=html
+        """
+
+rule lfmm:
+    """
+    lfmm using a segment
+    """
+    threads: 4
+    input:
+        #kmer_list_file = create_segments,
+        kmer_list_file = f"{output_dir}5.RANGES/{{bed}}/{{segment}}.txt",
+        phenotype = pheno_file if not config['PARAMS']['LFMM']['PHENOTYPE_PCA_ANALYSIS'] else rules.get_pca_from_phenotype.output.pca_variance
+    params:
+        k = config['PARAMS']['LFMM']['K'],
+        correction = config['PARAMS']['LFMM']['CORRECTION'],
+        alpha = config['PARAMS']['LFMM']['ALPHA'],
+        bed = f"{output_dir}3.TABLE2BED/{{bed}}.bed",
+        bim = f"{output_dir}3.TABLE2BED/{{bed}}.bim",
+        fam = f"{output_dir}3.TABLE2BED/{{bed}}.fam",
+        segment_file = f"{{bed}}_{{segment}}",
+    output:
+        outliers = f"{output_dir}6.LFMM/{{bed}}_{{segment}}_LFMM_outliers.csv",
+        pvalues = f"{output_dir}6.LFMM/{{bed}}_{{segment}}_LFMM_pvalues.csv",
+    log:
+        output = f"{output_dir}LOGS/6.LFMM/{{bed}}_{{segment}}_LFMM.o",
+        error = f"{output_dir}LOGS/6.LFMM/{{bed}}_{{segment}}_LFMM.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_{{segment}}_LFMM.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            kmer_list_file : {input.kmer_list_file}
+            phenotype : {input.phenotype}
+        params:
+            bed : {params.bed}
+            k: {params.k}
+            alpha : {params.alpha}
+            correction : {params.correction}
+        output:
+            outliers: {output.outliers}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["R"]
+    shell:
+        """
+        Rscript {ikiss_obj.snakemake_scripts}/lfmm.R -x {params.k} -e {params.bed} -i {params.bim} -a {params.fam} -o {output.outliers} -k {input.kmer_list_file} -p {input.phenotype} -f {params.alpha} -c {params.correction} 1>{log.output} 2>{log.error}
+        """
+
+################### DIVERSITY MODE
+rule snmf:
+    """
+    SNMF using segments
+    """
+    threads: 4
+    input:
+        kmer_list_file = f"{output_dir}5.RANGES/{{bed}}/{{segment}}.txt",
+    params:
+        dir = f"{output_dir}LOGS/6.SNMF/",
+        k_min = config['PARAMS']['SNMF']['K_MIN'],
+        k_max= config['PARAMS']['SNMF']['K_MAX'],
+        repetitions = config['PARAMS']['SNMF']['REPETITIONS'],
+        bed = f"{output_dir}3.TABLE2BED/{{bed}}.bed",
+        segment_file = f"{{bed}}_{{segment}}",
+        name_project = f"{{bed}}_{{segment}}_SNMF",
+    output:
+        snmf_out = f"{output_dir}6.SNMF/{{bed}}_{{segment}}_SNMF/kmer.geno",
+        #snmf_pdf= f"{output_dir}6.SNMF/{{bed}}_{{segment}}_SNMF/kmer.snmf.pdf"
+    log:
+        output = f"{output_dir}LOGS/6.SNMF/{{bed}}_{{segment}}_SNMF.o",
+        error = f"{output_dir}LOGS/6.SNMF/{{bed}}_{{segment}}_SNMF.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{bed}}_{{segment}}_SNMF.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            kmer_list_file : {input.kmer_list_file}
+        output:
+            out: {output.snmf_out}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["R"]
+    shell:
+        """
+        cd {params.dir}
+        Rscript {ikiss_obj.snakemake_scripts}/snmf.R -e {params.bed} -k {input.kmer_list_file} -r {params.repetitions} --kmin {params.k_min} --kmax {params.k_max} -j 4 -o {output.snmf_out} -t {threads} -n {params.name_project}  1>{log.output} 2>{log.error}
+        """
+
+
+
+################### ASSEMBLY_KMERS
+
+def outliers_to_mergetags(wildcards):
+    if 'LFMM' in wildcards.method :
+        return rules.merge_method.output.outliers_combined
+    elif 'PCADAPT' in wildcards.method :
+        return rules.merge_method.output.outliers_combined
+
+rule mergetags:
+    """
+    assembly significant kmers obtained by lfmm  by mergeTags
+    https://github.com/Transipedia/dekupl-mergeTags
+    """
+    threads: 1
+    input:
+        merged_pvalues = outliers_to_mergetags,
+    params:
+        method = f"{{method}}",
+        dir = f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}",
+        kmer_size = config['PARAMS']['KMERS_MODULE']['KMER_SIZE'],
+        min_overlap = config['PARAMS']['ASSEMBLY_KMERS']['OVERLAP_SIZE'],
+        contig_size = config['PARAMS']['ASSEMBLY_KMERS']['FILTER_CONTIG_SIZE'],
+        tmp4mergetags = temp(f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/tmp4mergetags.csv"),
+    output:
+        assembled_outliers = f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/outliers_{{method}}_mergetags.fasta",
+        assembled_csv= f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/outliers_{{method}}_mergetags.csv",
+    log:
+        output = f"{output_dir}LOGS/12.ASSEMBLY_OUTLIERS_{{method}}/OUTLIERS_MERGETAGS.o",
+        error = f"{output_dir}LOGS/12.ASSEMBLY_OUTLIERS_{{method}}/OUTLIERS_MERGETAGS.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/OUTLIERS_{{method}}_MERGETAGS.txt",
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            merged_pvalues : {input.merged_pvalues}
+        output:
+            assembled_outliers : {output.assembled_outliers}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (
+        if [[ {params.method} == LFMM ]]; then
+            mkdir -p {params.dir}; cd {params.dir} 
+            awk '{{print $1\"\\t"$4\"\\t"$4\"\\t\"$4\"\\t\"$3}}' {input.merged_pvalues} > {params.tmp4mergetags}
+            mergeTags -k 31 -m 15 -n  {params.tmp4mergetags} > {output.assembled_csv}
+            awk '{{ if (NR>1 && length($2)>={params.contig_size}) print \">mergeTags_\"length($2)\"_\"$3\"\\n\"$2}}' {output.assembled_csv} > {output.assembled_outliers}
+            rm {params.tmp4mergetags}
+        fi
+
+        if [[ {params.method} == PCADAPT ]]; then
+            mkdir -p {params.dir}; cd {params.dir} 
+            awk '{{print $1\"\\t"$5\"\\t"$5\"\\t\"$5\"\\t\"$3}}' {input.merged_pvalues} > {params.tmp4mergetags}
+            mergeTags -k 31 -m 15 -n  {params.tmp4mergetags} > {output.assembled_csv}
+            awk '{{ if (NR>1 && length($2)>={params.contig_size}) print \">mergeTags_\"length($2)\"_\"$3\"\\n\"$2}}' {output.assembled_csv} > {output.assembled_outliers}
+            rm {params.tmp4mergetags}
+        fi
+        )1> {log.error} 2> {log.output}
+        """
+
+
+##################### MAPPING CONTIGS
+
+def fasta_to_map(wildcards):
+    if 'LFMM' in wildcards.method :
+        #return rules.mergetags_lfmm.output.assembled_outliers
+        return f"{output_dir}12.ASSEMBLY_OUTLIERS_LFMM/outliers_LFMM_mergetags.fasta",
+    elif 'PCADAPT' in wildcards.method :
+        #return rules.mergetags_pcadapt.output.assembled_outliers
+        return f"{output_dir}12.ASSEMBLY_OUTLIERS_PCADAPT/outliers_PCADAPT_mergetags.fasta"
+
+
+def get_ref(wildcards):
+    if config['PARAMS']['MAPPING_KMERS']:
+        if (basename_reference == basename_reference2):
+            if config['PARAMS']['MAPPING_KMERS']['MODE'] == "bwa-mem2" :
+                return (rules.index_ref.output.new_ref)
+            elif config['PARAMS']['MAPPING_KMERS']['MODE'] == "bwa-aln":
+                return (rules.index_ref_to_assembly.output.new_ref)
+        else :
+            return (rules.index_ref_to_assembly.output.new_ref)
+    else :
+            return (rules.index_ref_to_assembly.output.new_ref)
+
+rule mapping_contigs:
+    """
+    mapping contigs vs ref
+    """
+    threads: 4
+    input:
+        fasta = fasta_to_map,
+        #ref = rules.index_ref_to_assembly.output.new_ref,
+        #index_tag = rules.index_ref_to_assembly.output.index_tag
+        ref = get_ref
+    params:
+        dir = f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/",
+        sai = f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/contigs_{{method}}_vs_{basename_reference}.sai",
+        bam = f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/contigs_{{method}}_vs_{basename_reference}.bam",
+        options = config['PARAMS']['ASSEMBLY_KMERS']['MAPPING_OPTIONS'],
+        mode = "bwa-mem2",
+    output:
+        sortedbam = f"{output_dir}12.ASSEMBLY_OUTLIERS_{{method}}/contigs_{{method}}_vs_{basename_reference}.sorted.bam",
+    log:
+        output = f"{output_dir}LOGS/12.ASSEMBLY_OUTLIERS_{{method}}/contigs_{{method}}_vs_{basename_reference}.MAPPING.o",
+        error = f"{output_dir}LOGS/12.ASSEMBLY_OUTLIERS_{{method}}/contigs_{{method}}_vs_{basename_reference}.MAPPING.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/{{method}}_vs_{basename_reference}_MAPPING.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            fasta: {input.fasta}
+            ref: {input.ref}
+        output:
+            bam : {output.sortedbam}
+        log:
+            output: {log.output}
+            error: {log.error} 
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    envmodules:
+        tools_config["ENV-MODULES"]["BWAMEM2"],
+        tools_config["ENV-MODULES"]["BWA"],
+        tools_config["ENV-MODULES"]["SAMTOOLS"]
+    shell:
+        """
+        (cd {params.dir} 
+        bwa-mem2 mem {params.options} -t {threads} {input.ref} {input.fasta} > {params.bam};             
+        samtools sort {params.bam} -o {output.sortedbam}       
+        samtools index {output.sortedbam}
+        samtools idxstats {output.sortedbam} > {output.sortedbam}.idxstats 
+        samtools stats {output.sortedbam} > {output.sortedbam}.stats) 1> {log.error} 2> {log.output}
+        """
+
+rule contigs_bedtools_intersect:
+    """
+    intersect contigs with bedtools (bam vs gff) 
+    """
+    threads: 1
+    input:
+        bam = rules.mapping_contigs.output.sortedbam,
+        gff = rules.extracting_features_from_gff.output.gff_feature,
+    params:
+        dir = f"{output_dir}14.CONTIGS_INTERSECT_{{method}}"
+    output:
+        bed = f"{output_dir}14.CONTIGS_INTERSECT_{{method}}/{{method}}_contigs_intersect_annotation.bed"
+    log:
+        output = f"{output_dir}LOGS/14.CONTIGS_INTERSECT_{{method}}/BEDTOOLS_CONTIGS_{{method}}_INTERSECT.o",
+        error = f"{output_dir}LOGS/14.CONTIGS_INTERSECT_{{method}}/BEDTOOLS_CONTIGS_{{method}}_INTERSECT.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/BEDTOOLS_CONTIGS_INTERSECT_{{method}}.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bam : {input.bam}
+            gff : {input.gff}
+        output:
+            bed : {output.bed}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        bedtools intersect -abam {input.bam} -b {input.gff} -bed -header -wb -wa > {output.bed})1> {log.error} 2> {log.output}
+        """
+
+##################### INTERSECT CONTIGS
+
+rule intersect_and_contigs:
+    """
+    stats after intersection (bam vs gff) and contigs {using kmers detected by method}
+    """
+    threads: 1
+    input:
+        bed = rules.contigs_bedtools_intersect.output.bed
+    params:
+        dir = f"{output_dir}15.STATS_INTERSECT/CONTIGS_{{method}}_INTERSECT",
+        mapq = config["PARAMS"]["INTERSECT"]["FILTER_MAPQ_STATS"],
+        nbinfeature = config["PARAMS"]["INTERSECT"]["FILTER_NB_CONTIGS_BY_FEATURE"]
+    output:
+        stats_contigs = f"{output_dir}15.STATS_INTERSECT/CONTIGS_{{method}}_INTERSECT/intersect_stats/nb_feature_by_gene_filter.csv",
+    log:
+        output = f"{output_dir}LOGS/15.STATS_INTERSECT/CONTIGS_{{method}}_INTERSECT/CONTIGS_{{method}}_INTERSECT.o",
+        error = f"{output_dir}LOGS/15.STATS_INTERSECT/CONTIGS_{{method}}_INTERSECT/CONTIGS_{{method}}_INTERSECT.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/STATS_CONTIGS_{{method}}_INTERSECT.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bed : {input.bed}
+        params:
+            nbinfeature : {params.nbinfeature}
+        output:
+            stats_contigs : {output.stats_contigs}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        mkdir -p intersect_stats 
+        python3 {ikiss_obj.snakemake_scripts}/stats_intersect.py --bed {input.bed} --mapq {params.mapq} --nbinfeature {params.nbinfeature} )1> {log.error} 2> {log.output}
+        """
+
+
+##################### INTERSECT KMERS
+
+rule stats_intersect_and_outliers:
+    """
+    stats after intersection (bam vs gff) and outliers {using kmers detected by method}
+    """
+    threads: 1
+    input:
+        bed = rules.kmers_bedtools_intersect_method.output.bed
+    params:
+        dir = f"{output_dir}15.STATS_INTERSECT/OUTLIERS_{{method}}_INTERSECT",
+        mapq= config["PARAMS"]["INTERSECT"]["FILTER_MAPQ_STATS"],
+        nbinfeature = config["PARAMS"]["INTERSECT"]["FILTER_NB_KMERS_BY_FEATURE"]
+    output:
+        stats_all = f"{output_dir}15.STATS_INTERSECT/OUTLIERS_{{method}}_INTERSECT/intersect_stats/nb_feature_by_gene_filter.csv",
+    log:
+        output = f"{output_dir}LOGS/15.STATS_INTERSECT/OUTLIERS_{{method}}_INTERSECT/OUTLIERS_{{method}}_INTERSECT.o",
+        error = f"{output_dir}LOGS/15.STATS_INTERSECT/OUTLIERS_{{method}}_INTERSECT/OUTLIERS_{{method}}_INTERSECT.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/STATS_OUTLIERS_{{method}}_INTERSECT.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bed : {input.bed}
+        params:
+            nbinfeature : {params.nbinfeature}
+        output:
+            stats_all : {output.stats_all}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        mkdir -p intersect_stats
+        python3 {ikiss_obj.snakemake_scripts}/stats_intersect.py --bed {input.bed} --mapq {params.mapq} --nbinfeature {params.nbinfeature} ) 1> {log.error} 2> {log.output}
+        """
+
+
+rule stats_intersect_allkmers:
+    """
+    stats after intersection (bam vs gff) and outliers {using kmers detected by method}
+    """
+    threads: 1
+    input:
+        bed = rules.kmers_bedtools_intersect.output.bed
+    params:
+        dir = f"{output_dir}15.STATS_INTERSECT/ALLKMERS_INTERSECT",
+        mapq= config["PARAMS"]["INTERSECT"]["FILTER_MAPQ_STATS"],
+        nbinfeature = config["PARAMS"]["INTERSECT"]["FILTER_NB_KMERS_BY_FEATURE"]
+    output:
+        stats_all = f"{output_dir}15.STATS_INTERSECT/ALLKMERS_INTERSECT/intersect_stats/nb_feature_by_gene_filter.csv",
+    log:
+        output = f"{output_dir}LOGS/15.STATS_INTERSECT/ALLKMERS_INTERSECT/ALLKMERS_INTERSECT.o",
+        error = f"{output_dir}LOGS/15.STATS_INTERSECT/ALLKMERS_INTERSECT/ALLKMERS_INTERSECT.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/STATS_ALLKMERS_INTERSECT.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            bed : {input.bed}
+        params :
+            nbinfeature : {params.nbinfeature}
+        output:
+            stats_all : {output.stats_all}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (cd {params.dir}
+        mkdir -p intersect_stats;
+        python3 {ikiss_obj.snakemake_scripts}/stats_intersect.py --bed {input.bed} --mapq {params.mapq} --nbinfeature {params.nbinfeature} ) 1> {log.error} 2> {log.output}
+        """
+
+
+############################ REPORT #######################################################
+# report contains dico_final now
+
+rule fastq_stats:
+    """
+    run fastq_stats
+    """
+    threads: 8
+    input:
+        dir = fastq_dir
+    output:
+        fastq_table = f"{output_dir}0.FASTQ_STATS/fastq_stats.txt"
+    log:
+        output = f"{output_dir}LOGS/0.FASTQ_STATS/FASTQ_STATS.o",
+        error = f"{output_dir}LOGS/0.FASTQ_STATS/FASTQ_STATS.e"
+    benchmark:
+        f"{output_dir}BENCHMARK/FASTQ_STATS.txt"
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            kmers_to_use : {input.dir}
+        output:
+            kmers_table: {output.fastq_table}
+        log:
+            output: {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        cd {input.dir}
+        seqkit stats -T -j {threads} {input.dir}/* -o {output.fastq_table} 1>{log.error}  2> {log.output}
+        sed -i 's|{input.dir}/||' {output.fastq_table}
+        sed -i 's|{ikiss_obj.fastq_files_ext}||' {output.fastq_table}
+        """
+
+rule report_ikiss:
+    """
+    rule to recovery all files to report
+    """
+    threads: 1
+    input:
+        unpack(output_final)
+    params:
+        yml=f"{ikiss_obj.snakemake_scripts}/report_template/_quarto.yml",
+        book_dir_qmd=f"{output_dir}REPORT/QMD/",
+        txt_config = f"{output_dir}/config_corrected.yaml",
+        workflow_steps = ikiss_obj.tools_activated,
+        fastq_stats = rules.fastq_stats.output.fastq_table,
+        list_log_kmer_per_sample = expand(rules.kmers_gwas_per_sample.log.error, sample=SAMPLE) if 'KMERS_MODULE' in ikiss_obj.tools_activated else "",
+        kmer_table_rep = f"{output_dir}3.TABLE2BED/" if 'KMERS_MODULE' in ikiss_obj.tools_activated else "",
+        plots_pcadapt = f"{output_dir}6.PCADAPT" if 'PCADAPT' in ikiss_obj.tools_activated else "",
+        plots_lfmm = f"{output_dir}6.LFMM" if 'LFMM' in ikiss_obj.tools_activated else "",
+        plots_snmf = f"{output_dir}6.SNMF" if 'SNMF' in ikiss_obj.tools_activated else "",
+        phenotype = ikiss_obj.phenotype,
+        contig_size = config['PARAMS']['ASSEMBLY_KMERS']['FILTER_CONTIG_SIZE'] if 'ASSEMBLY_KMERS' in ikiss_obj.tools_activated else "",
+        ref = reference_file if 'ASSEMBLY_KMERS' in ikiss_obj.tools_activated else "",
+        phenotype_pca_html = rules.get_pca_from_phenotype.params.html if config['PARAMS']['LFMM']['PHENOTYPE_PCA_ANALYSIS'] else "",
+    output:
+        reads_ipynb = f"{output_dir}REPORT/reads.ipynb",
+        kmers_info = f"{output_dir}REPORT/kmers_info.ipynb",
+        yml=f"{output_dir}REPORT/QMD/_quarto.yml"
+    log:
+        output = f"{output_dir}LOGS/REPORT/report.o",
+        error = f"{output_dir}LOGS/REPORT/report.e",
+    benchmark:
+        f"{output_dir}BENCHMARK/Report.txt",
+    message:
+        """
+        Launching {rule}
+        threads: {threads}
+        input:
+            {input}
+        output:
+            reads_ipynb : {output.reads_ipynb}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    script:
+        f"{ikiss_obj.snakemake_scripts}/report.py"
+
+#### QUARTO REPORT
+
+rule rule_graph:
+    """
+    run dag on {rule}
+    """
+    threads: 1
+    input:
+        #quarto_conf = f"{output_dir}REPORT/QMD/_quarto.yml",
+        config = f"{output_dir}config_corrected.yaml"
+    params:
+        tmp = f"{output_dir}REPORT/dag.tmp",
+        cmd = ikiss_obj.string_to_dag
+    output:
+        dag = f"{output_dir}REPORT/QMD/dag.png",
+    log:
+        output = f"{output_dir}REPORT/LOGS/GRAPH.o",
+        error = f"{output_dir}REPORT/LOGS/GRAPH.e"
+    message:
+        """
+        making dag ...
+        {params.cmd} --configfile {input.config} > {params.tmp}
+        dot -Tpng {params.tmp} > {output.dag}
+        """
+    shell:
+        """
+        ({params.cmd} --configfile {input.config} > {params.tmp}
+        dot -Tpng {params.tmp} > {output.dag}) 1>{log.output} 2>{log.error}
+        rm {params.tmp}
+        """
+
+rule run_report_snakemake:
+    """
+    run dag on {rule}
+    """
+    threads: 1
+    input:
+        #quarto_conf = f"{output_dir}REPORT/QMD/_quarto.yml",
+        config = f"{output_dir}config_corrected.yaml"
+    output:
+        report_snakemake = f"{output_dir}REPORT/ikiss_report/snake_report.html"
+    params:
+        cmd = ikiss_obj.string_to_dag
+    log:
+        output = f"{output_dir}REPORT/LOGS/REPORT-SNAKE.o",
+        error = f"{output_dir}REPORT/LOGS/REPORT-SNAKE.e"
+    message:
+        """
+        making report with dag and config file...
+        """
+    shell:
+        """
+        cd {ikiss_obj.install_path}/
+        {params.cmd} --configfile {input.config} --report {output.report_snakemake} 1>{log.output} 2>{log.error}
+        """
+
+rule report_about_workflow:
+    """from culebront project: build qmd for tools version dag and config"""
+    threads: 1
+    input:
+        dag = rules.rule_graph.output.dag,
+        #report_snakemake= rules.run_report_snakemake.output.report_snakemake
+    output:
+        about_ipynb = f"{output_dir}REPORT/QMD/about_workflow.ipynb"
+    params:
+        config_yaml = ikiss_obj.export_use_yaml,
+        versions = f"{output_dir}versions.csv",
+    log:
+        output=f"{output_dir}REPORT/LOGS/report_about_workflow_QMD.o",
+        error=f"{output_dir}REPORT/LOGS/report_about_workflow_QMD.e"
+    message:
+        """
+        Launching {rule}
+        threads : {threads}
+        input:
+             dag : {input.dag}
+             versions : {params.versions}
+        log:
+            output : {log.output}
+            error: {log.error}
+        """
+    script:
+        f"{ikiss_obj.snakemake_scripts}/generate_tools.py"
+
+rule ipynb_convert_qmd:
+    """build qmd for tools version dag and config"""
+    threads: 1
+    input:
+        about_ipynb= rules.report_about_workflow.output.about_ipynb,
+        reads_ipynb=rules.report_ikiss.output.reads_ipynb,
+        kmers_info=rules.report_ikiss.output.kmers_info
+    output:
+        reads_qmd= f"{output_dir}REPORT/QMD/reads.qmd",
+        kmers_qmd= f"{output_dir}REPORT/QMD/kmers_info.qmd",
+        about_qmd= f"{output_dir}REPORT/QMD/about_workflow.qmd",
+    params:
+        qmd_dir = f"{output_dir}REPORT/QMD/",
+        from_dir = f"{output_dir}REPORT/",
+        new_reads_ipynb = f"{output_dir}REPORT/QMD/reads.ipynb",
+        new_kmersinfo_ipynb = f"{output_dir}REPORT/QMD/kmers_info.ipynb",
+        cmd_pcadapt = f"quarto convert {output_dir}REPORT/QMD/pcadapt.ipynb" if 'PCADAPT' in ikiss_obj.tools_activated else "",
+        cmd_lfmm = f"quarto convert {output_dir}REPORT/QMD/lfmm.ipynb" if 'LFMM' in ikiss_obj.tools_activated else "",
+        cmd_snmf = f"quarto convert {output_dir}REPORT/QMD/snmf.ipynb" if 'SNMF' in ikiss_obj.tools_activated else "",
+    log:
+        output=f"{output_dir}REPORT/LOGS/ipynb_convert_qmd.o",
+        error=f"{output_dir}REPORT/LOGS/ipynb_convert_qmd.e"
+    message:
+        """
+        Launching {rule}
+        threads : {threads}
+        input:
+             about_ipynb : {input.about_ipynb},
+             reads_ipynb : {input.reads_ipynb}
+             kmers_info : {params.new_kmersinfo_ipynb}
+        output:
+             qmd : {output.about_qmd}
+        log:
+            output : {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+        (mkdir -p {params.qmd_dir}
+        cd {params.qmd_dir}
+        cp {params.from_dir}*.ipynb . 
+        quarto convert {input.about_ipynb}
+        quarto convert {params.new_reads_ipynb}
+        quarto convert {params.new_kmersinfo_ipynb}
+        {params.cmd_pcadapt}
+        {params.cmd_lfmm}
+        {params.cmd_snmf}
+        )1>{log.output} 2>{log.error}
+        """
+
+rule build_book:
+    """copy template files to build report"""
+    threads: 1
+    input:
+        qmd_about_wf = rules.ipynb_convert_qmd.output.about_qmd,
+        qmd_reads = rules.ipynb_convert_qmd.output.reads_qmd,
+        qmd_kmers= rules.ipynb_convert_qmd.output.kmers_qmd,
+        yml=rules.report_ikiss.output.yml,
+        index_qmd=f"{ikiss_obj.snakemake_scripts}/report_template/index.qmd",
+        ref_bib=f"{ikiss_obj.snakemake_scripts}/report_template/references.bib",
+        ref_qmd=f"{ikiss_obj.snakemake_scripts}/report_template/references.qmd",
+        csl=f"{ikiss_obj.snakemake_scripts}/report_template/cellalina.csl",
+        logo=f"{ikiss_obj.install_path}/logo_ikiss.png",
+    output:
+        html = f"{output_dir}REPORT/QMD/ikiss_report/index.html"
+    params:
+        book_dir_qmd=directory(f"{output_dir}REPORT/QMD/"),
+        input_dir=f"{ikiss_obj.snakemake_scripts}/",
+        link_html=f"{output_dir}REPORT/ikiss_report_qmd.html"
+    log:
+        output=f"{output_dir}REPORT/LOGS/build_book.o",
+        error=f"{output_dir}REPORT/LOGS/build_book.e"
+    message:
+        """
+        Launching {rule}
+        threads : {threads}
+        input:
+             qmd : {input.yml}
+        output:
+             about_qmd : {output.html}
+        log:
+            output : {log.output}
+            error: {log.error}
+        """
+    container:
+        tools_config['APPTAINER']['TOOLS']
+    shell:
+        """
+            (mkdir -p {params.book_dir_qmd};
+            cp {input.index_qmd} {params.book_dir_qmd};
+            cp {input.ref_bib} {params.book_dir_qmd};
+            cp {input.csl} {params.book_dir_qmd};
+            cp {input.logo} {params.book_dir_qmd};
+            cp {input.ref_qmd} {params.book_dir_qmd};
+            cd {params.book_dir_qmd};
+            quarto add --no-prompt --profile quarto quarto-ext/lightbox;
+            quarto render --to html
+            ln -s -f {output.html} {params.link_html}
+            ) 1>{log.output} 2>{log.error}
+        """
+

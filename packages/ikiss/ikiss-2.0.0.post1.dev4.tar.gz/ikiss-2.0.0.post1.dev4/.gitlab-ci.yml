@@ -1,0 +1,59 @@
+image: julieaorjuela/kiss_test:2.1 # docker image used
+####################
+# TAG stages: we define 3 test steps called install, test, deploy
+stages:
+  - install
+  - test
+  - deploy
+
+cache:
+  paths:
+    - .cache/pip
+    - /var/cache/apt/
+
+####################
+# TAG before_script : we list all the commands required before running any test. eg.: clone repo, install soft
+before_script:
+  - echo ${CI_PROJECT_DIR}
+  - apt-get -y install squashfs-tools
+  - python3 -m venv /opt/venv/ikiss-ci/
+  - source /opt/venv/ikiss-ci/bin/activate
+  - python3 -m pip install -U setuptools pip
+  - python3 -m pip install --cache-dir .cache/pip "ikiss@git+https://forge.ird.fr/diade/iKISS.git@$CI_COMMIT_REF_NAME"
+  - ikiss install -m local
+  - ikiss -e
+  - ikiss edit_profile &
+  - ikiss --help
+
+
+ikiss:installing:
+    stage: install                       # Put the name of stage defined previously
+    script:                              # shell commands executed by the runner
+      - whereis ikiss
+      - ikiss --version
+    rules:                           # Condition if the test is run or not
+      #- if: $CI_COMMIT_BRANCH == "snake8"
+      - if: $CI_COMMIT_TAG =~ "/^v.*rc/" # Tests ran if commit message start with v.
+      - if: $CI_COMMIT_MESSAGE =~ "/^RUN_INSTALL:.*/i"
+
+ikiss:test:
+  stage: test
+  artifacts:
+    name: ikiss-logs
+    paths:
+      - /builds/diade/iKISS/TEST/ikiss_OUTPUT/LOGS/
+    expire_in: 1 week
+  script:
+    - export PATH="/opt/venv/bin:$PATH"
+    - export PATH=$PATH:/opt/venv/ikiss-ci/lib/python3.12/site-packages/ikiss
+    - export PATH=$PATH:/opt/venv/ikiss-ci/lib/python3.12/site-packages/ikiss/snakemake_scripts
+    - chmod +x /opt/venv/ikiss-ci/lib/python3.12/site-packages/ikiss/snakemake_scripts/*
+    - ikiss test_install -d TEST
+    - ikiss run --local-cores 8 --configfile /builds/diade/iKISS/TEST/data_test_config.yaml --rerun-incomplete --nolock --apptainer-args "--bind $HOME"
+
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ "/^RUN_TEST:.*/i"
+  #  - if: $CI_COMMIT_TAG =~ "/^v.*rc/" # Tests ran if commit message start with v.
+    - if: $CI_COMMIT_TAG =~ "/^v.*rc/" # Tests ran if commit message start with v.
+    - if: $CI_PIPELINE_SOURCE == "web"  # Add this rule for manual triggers
+    - if: $CI_MERGE_REQUEST_ID # run test if is a merge_request
