@@ -1,0 +1,210 @@
+[project]
+name = "quilt-mcp"
+version = "0.8.5"
+description = "Secure MCP server for accessing Quilt data with JWT authentication"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE.txt"}
+authors = [
+    {name = "Quilt Data", email = "support@quilt.bio"}
+]
+maintainers = [
+    {name = "Quilt Data", email = "support@quilt.bio"}
+]
+keywords = ["mcp", "model-context-protocol", "claude", "quilt", "data", "analytics", "science", "server", "aws", "s3", "authentication"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "quilt3>=5.6.0",
+    "fastmcp>=2.12.4",
+    "mcp>=1.12.0",
+    "boto3>=1.34.0",
+    "httpx>=0.27.0",
+    "cachetools>=5.3.0",
+    "matplotlib>=3.7.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "plotly>=5.15.0",
+    "altair>=5.0.0",
+    "pysam>=0.21.0",
+    "biopython>=1.81",
+    "pybedtools>=0.9.0",
+    "pybigwig>=0.3.18",
+    "sqlalchemy>=2.0.0",
+    "pyathena>=3.0.0",
+    "PyYAML>=6.0.0",
+    "pyjwt>=2.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/quiltdata/quilt-mcp-server"
+Repository = "https://github.com/quiltdata/quilt-mcp-server"
+Issues = "https://github.com/quiltdata/quilt-mcp-server/issues"
+Documentation = "https://github.com/quiltdata/quilt-mcp-server/blob/main/README.md"
+
+[project.scripts]
+quilt-mcp = "quilt_mcp.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["quilt_mcp*"]
+exclude = ["shared", "scripts"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[build-system]
+requires = ["setuptools>=61.0,<75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0", 
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.1.0",
+    "quilt3>=5.6.0",
+    "pyjwt>=2.8.0",
+]
+deploy = [
+    "aws-cdk-lib>=2.100.0",
+    "constructs>=10.0.0",
+]
+lint = [
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "pandas-stubs>=2.0.0",
+    "types-cachetools>=5.3.0",
+    "types-PyYAML>=6.0.0",
+    "types-requests>=2.31.0",
+]
+dev = [
+    "pytest-xdist>=3.8.0",
+    "wheel>=0.45.1",
+    "build>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short --color=yes"
+markers = [
+    "admin: marks tests that require Quilt admin privileges (deselect with '-m \"not admin\"')",
+    "integration: marks tests that require AWS credentials, network access, or external services (deselect with '-m \"not integration\"')",
+    "search: marks tests that require Elasticsearch search functionality (deselect with '-m \"not search\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "e2e: marks tests as end-to-end tests (deselect with '-m \"not e2e\"')",
+    "asyncio: marks tests as async tests that require pytest-asyncio",
+]
+
+[tool.ruff]
+# Use external configuration file
+config = "ruff.toml"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+strict_concatenate = true
+
+# Allow gradual typing - don't require all code to be typed yet
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "quilt3.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "boto3.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "botocore.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fastmcp.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+ignore_missing_imports = true
+
+# Internal utility modules (not registered MCP tools)
+# These need Pydantic models for internal data structures in future refactor
+[[tool.mypy.overrides]]
+module = "quilt_mcp.visualization.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.search.backends.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.search.tools.search_explain"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.search.tools.unified_search"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.services.auth_service"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.services.auth_metadata"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.services.bearer_auth_service"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.services.permission_discovery"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.services.athena_service"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.services.quilt_service"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.telemetry.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.optimization.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.version_sync"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "quilt_mcp.tools.error_recovery"
+ignore_errors = true
