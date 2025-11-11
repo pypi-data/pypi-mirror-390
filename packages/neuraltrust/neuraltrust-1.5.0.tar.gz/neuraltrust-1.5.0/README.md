@@ -1,0 +1,264 @@
+# Neuraltrust SDK
+
+Python SDK for instrumenting AI agent libraries to send telemetry to the Neuraltrust platform.
+
+## Features
+
+- 🔌 **OpenAI Agents SDK integration** via custom trace processor
+- 📊 **Automatic span capture**: LLM calls, tool executions, agent runs, handoffs, guardrails
+- 🚀 **Async batching transport** with exponential backoff and retry logic
+- 🎯 **Sampling support** for high-volume production workloads
+- 🔧 **Configurable via environment variables** or programmatic config
+- 🧪 **Local test server** included for development
+
+## Installation
+
+Install the SDK using pip:
+
+```bash
+pip install neuraltrust
+```
+
+Or with uv:
+
+```bash
+uv add neuraltrust
+```
+
+## Quick Start (OpenAI Agents)
+
+```python
+from agents import Agent, Runner
+from neuraltrust import register_openai_tracing
+
+# Register the Neuraltrust trace processor
+register_openai_tracing()
+
+# Your agent code runs normally
+agent = Agent(name="Assistant", instructions="You are helpful")
+result = await Runner.run(agent, "Hello!")
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Required
+export NEURALTRUST_API_KEY=your-api-key
+
+# Optional
+export NEURALTRUST_ENDPOINT=https://telemetry.neuraltrust.ai/v1/traces/batch
+export NEURALTRUST_BATCH_SIZE=25
+export NEURALTRUST_FLUSH_INTERVAL=2.0
+export NEURALTRUST_TIMEOUT=5.0
+export NEURALTRUST_MAX_RETRIES=3
+export NEURALTRUST_SAMPLING_RATE=1.0
+
+# Custom metadata (any NEURALTRUST_METADATA_* vars)
+export NEURALTRUST_METADATA_ENVIRONMENT=production
+export NEURALTRUST_METADATA_VERSION=1.2.3
+```
+
+### Programmatic Configuration
+
+```python
+from neuraltrust import TelemetryConfig, register_openai_tracing
+
+config = TelemetryConfig(
+    api_key="your-api-key",
+    endpoint="https://telemetry.neuraltrust.ai/v1/traces/batch",
+    batch_size=25,
+    flush_interval_seconds=2.0,
+    sampling_rate=0.1,  # Sample 10% of traces
+    metadata={"environment": "staging", "version": "2.0.0"},
+)
+
+register_openai_tracing(config=config, replace_default=True)
+```
+
+### Replace Default Exporters
+
+By default, the SDK adds Neuraltrust telemetry **in addition to** OpenAI's default trace exporter. To disable OpenAI's exporter and send traces only to Neuraltrust:
+
+```python
+register_openai_tracing(replace_default=True)
+```
+
+Or via environment variable:
+
+```bash
+export NEURALTRUST_REPLACE_DEFAULT=1
+```
+
+## Development & Testing
+
+### Local Test Server
+
+Start the included test API server:
+
+```bash
+uv run uvicorn examples.api.temp_server:app --host 127.0.0.1 --port 8000
+```
+
+Configure your SDK to point to it:
+
+```bash
+export NEURALTRUST_ENDPOINT=http://127.0.0.1:8000/v1/traces/batch
+export NEURALTRUST_API_KEY=dummy
+export NEURALTRUST_REPLACE_DEFAULT=1
+```
+
+Run the example:
+
+```bash
+uv run python examples/openai_agents/basic.py "your message here"
+```
+
+Inspect captured traces:
+
+```bash
+curl http://127.0.0.1:8000/v1/traces | jq
+```
+
+Reset stored traces:
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/v1/traces
+```
+
+## Trace Data Structure
+
+Each trace envelope contains:
+
+- **Resource metadata**: SDK version, language, library name/version
+- **Traces**: One or more logical workflows
+  - `trace_id`: Unique identifier
+  - `workflow_name`: Human-readable workflow name
+  - `group_id`: Optional grouping (e.g., chat session ID)
+  - `started_at` / `ended_at`: Unix timestamps
+  - `attributes`: Key-value metadata
+  - **Spans**: Individual operations within the trace
+    - `id`: Unique span identifier
+    - `parent_id`: Parent span (null for root)
+    - `name`: Operation name (e.g., "Echo", "Response", "translate_to_french")
+    - `kind`: Span type (`workflow`, `llm`, `tool`, `guardrail`, `handoff`)
+    - `status`: Execution status (`ok`, `error`)
+    - `started_at` / `ended_at`: Unix timestamps
+    - `attributes`: Span-specific metadata (model, usage tokens, I/O, etc.)
+    - `events`: Time-stamped events within the span
+
+## Backend API Specification
+
+See [`docs/backend/endpoints.md`](docs/backend/endpoints.md) for the complete backend API specification, including:
+
+- `POST /v1/traces/batch`: Batch trace ingestion
+- `GET /v1/traces/{trace_id}`: Retrieve trace by ID
+- `POST /v1/traces/heartbeat`: Client health check
+- Authentication, error codes, retry logic
+
+## Span Attributes
+
+### LLM Spans (`kind=llm`)
+
+- `model`: Model identifier (e.g., `gpt-4o-mini-2024-07-18`)
+- `response_model`, `response_output`: Response data
+- `usage_input_tokens`, `usage_output_tokens`, `usage_total_tokens`: Token counts
+- `temperature`: Sampling temperature
+
+### Tool/Function Spans (`kind=tool`)
+
+- `function_name`: Name of the tool/function
+- `function_input`: Serialized input arguments
+- `function_output`: Serialized output
+
+### Workflow/Agent Spans (`kind=workflow`)
+
+- `agent_tools`: Available tools
+- `agent_handoffs`: Available handoff targets
+- `agent_output_type`: Expected output type
+
+### Guardrail Spans (`kind=guardrail`)
+
+- `guardrail_triggered`: Whether the guardrail was triggered
+
+### Handoff Spans (`kind=handoff`)
+
+- `handoff_from`: Source agent
+- `handoff_to`: Target agent
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│ OpenAI Agents SDK                           │
+│   ├─ Agent runs                             │
+│   ├─ LLM generations                        │
+│   └─ Tool calls                             │
+└──────────────┬──────────────────────────────┘
+               │ TracingProcessor interface
+               ▼
+┌─────────────────────────────────────────────┐
+│ NeuraltrustTraceProcessor                   │
+│   ├─ Buffers spans per trace                │
+│   ├─ Extracts span_data attributes          │
+│   └─ Emits TraceEnvelope on trace end       │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│ TelemetryClient                             │
+│   ├─ Sampling                               │
+│   └─ Async envelope queueing                │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│ TelemetryTransport                          │
+│   ├─ Background flush loop                  │
+│   ├─ Batching (default: 25 items)           │
+│   ├─ Exponential backoff retry              │
+│   └─ HTTP POST with Bearer auth             │
+└──────────────┬──────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────┐
+│ Neuraltrust Telemetry API                   │
+│   POST /v1/traces/batch                     │
+└─────────────────────────────────────────────┘
+```
+
+## Debugging
+
+Enable debug logging to see trace/span lifecycle events:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+Or via environment:
+
+```bash
+export LOG_LEVEL=DEBUG
+```
+
+Key log messages:
+
+- `Trace started; trace_id=...`
+- `Span ended; span_id=... stored_spans=N`
+- `Trace envelope prepared; trace_id=... span_count=N`
+- `Telemetry batch sent; items=N status=202`
+
+## Future Roadmap
+
+- [ ] LangChain integration
+- [ ] LlamaIndex integration
+- [ ] CrewAI integration
+- [ ] OpenTelemetry exporter
+- [ ] Prometheus metrics
+- [ ] Local SQLite storage option
+
+## License
+
+MIT
