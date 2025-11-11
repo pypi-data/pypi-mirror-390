@@ -1,0 +1,126 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cvcvka5/RGBTerminal/main/assets/banner.png" alt="RGBTerminal Banner" width="100%" />
+
+  <p align="center">
+  <!-- Row 1 -->
+  <a href="https://pypi.org/project/rgbterminal/">
+    <img src="https://img.shields.io/pypi/v/rgbterminal?label=PyPI%20Version&color=ff5f6d&labelColor=1a1a1a&logo=pypi&logoColor=white&style=for-the-badge">
+  </a>
+  <a href="https://pypi.org/project/rgbterminal/">
+    <img src="https://img.shields.io/pypi/pyversions/rgbterminal?label=Python&color=f9a825&labelColor=1a1a1a&logo=python&logoColor=f9a825&style=for-the-badge">
+  </a>
+</p>
+
+<p align="center">
+  <!-- Row 2 -->
+  <a href="https://pypi.org/project/rgbterminal/">
+    <img src="https://img.shields.io/pypi/dm/rgbterminal?label=Downloads&color=42a5f5&labelColor=1a1a1a&logo=cloudsmith&logoColor=42a5f5&style=for-the-badge">
+  </a>
+  <a href="https://github.com/cvcvka5/RGBTerminal/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/cvcvka5/RGBTerminal?label=License&color=64dd17&labelColor=1a1a1a&logo=open-source-initiative&logoColor=64dd17&style=for-the-badge">
+  </a>
+</p>
+
+<p align="center">
+Terminal text coloring with RGB and multi-stop gradients in Python.
+</p>
+
+---
+
+### Features
+
+- Color text using **truecolor (24-bit)** or **256-color approximation**
+- Multi-stop **gradient text** with smooth interpolation
+- Reusable **factory classes** for fast generation
+- **Animated gradients** with time-based looping
+- Pure Python — only depends on `numpy`
+
+---
+
+### Installation
+
+```bash
+pip install rgbterminal
+```
+
+---
+
+### Usage
+
+#### Basic RGB Text
+
+```python
+from rgbterminal import RGBText
+
+text = RGBText("Hello World!", rgb=(255, 0, 0), truecolor=False)
+print(text)
+```
+
+#### RGBTextFactory
+
+```python
+from rgbterminal import RGBTextFactory
+
+factory = RGBTextFactory(rgb=(0, 128, 255), truecolor=False)
+text1 = factory.t("Hello")
+text2 = factory.t("World")
+print(text1, text2)
+```
+
+---
+
+### Gradient Text
+
+`GradientText` allows you to apply a **smooth gradient** across a string using multiple color stops.
+
+#### Multi-stop Gradient Example
+
+```python
+from rgbterminal import GradientText
+
+gradient = GradientText(
+    "Gradient Example",
+    rgb_stops=[(255, 0, 0), (255, 255, 0), (0, 255, 0), (0, 0, 255)],
+    truecolor=False
+)
+print(gradient)
+```
+
+- Supports **any number of RGB stops**.
+- Interpolates colors in **HLS space** for smooth transitions.
+- Works with both **truecolor (24-bit)** and **256-color terminals**.
+
+#### GradientTextFactory
+
+```python
+from rgbterminal import GradientTextFactory
+
+factory = GradientTextFactory(rgb_stops=[(255,0,0), (0,0,255)], truecolor=False)
+text = factory.t("Hello Gradient!")
+print(text)
+```
+
+- Factory allows you to reuse the same gradient multiple times.
+- You can override stops per call if needed.
+
+#### Animated Gradients
+The new ```animated_gradient_print``` function animates a smooth, cyclic gradient across text in real time — perfect for banners, CLI logos, or loading indicators.
+
+```python
+import time
+from rgbterminal import GradientText, animated_gradient_print
+
+gradient = GradientText(
+    "Animated RGB Terminal!",
+    rgb_stops=[(255,0,0), (255,255,0), (0,255,0), (0,255,255), (0,0,255)],
+    truecolor=False
+)
+
+animated_gradient_print(gradient, duration=5, fps=30, speed=1.0, resolution=12)
+```
+
+---
+
+### License
+
+MIT License
