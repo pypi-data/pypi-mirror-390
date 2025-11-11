@@ -1,0 +1,77 @@
+Metadata-Version: 2.4
+Name: markat
+Version: 0.1.0
+Summary: Colorful CLI for slicing Markdown sections via dotted paths
+Project-URL: Homepage, https://github.com/tcsenpai/markat
+Project-URL: Repository, https://github.com/tcsenpai/markat
+Author-email: tcsenpai <tcsenpai@discus.sh>
+License: MIT License
+        
+        Copyright (c) 2024 tcsenpai
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: cli,documentation,markdown,utilities
+Classifier: Environment :: Console
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Text Processing
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+
+## markat
+
+`mkat` is a tiny CLI that prints a nested Markdown subsection using a dotted
+path syntax. Each dotted segment refers to the n-th heading for a particular
+depth (defaulting to `##`, `###`, `####`, ...):
+
+```
+# syntax
+2.3.2  -> second `##`, third `###` inside it, second `####` inside that
+```
+
+### Features
+- Dotted selection syntax (`2.3.2` = 2nd `##`, 3rd `###`, 2nd `####`).
+- Colorized output that highlights the breadcrumb path plus the raw section.
+- `--plain`/`-p` flag for piping the exact Markdown without headers/colors.
+- `--color/--no-color` switches to override auto-detection when needed.
+- `--base-level` flag to align the first index with your preferred heading depth.
+
+### Usage
+
+```
+uv sync
+uv run mkat example.md 2.1.2        # colorful header + section text
+uv run mkat example.md 2.1.2 -p     # plain Markdown only
+uv run mkat docs/spec.md 1 --color  # force-enable color when piping
+```
+
+Ship a Markdown file like `example.md` (included) to experiment with the dotted
+paths. Add `--base-level 1` if your top-level headings start with `#` instead of `##`.
+
+### Testing
+
+```
+python -m unittest discover
+```
+
+The test suite covers path parsing, section selection, and the CLI presentation
+helpers.
