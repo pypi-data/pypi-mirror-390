@@ -1,0 +1,47 @@
+# Production Riveter Configuration
+# This configuration is optimized for production environments with strict security requirements.
+
+# Multiple rule packs for comprehensive coverage
+rule_packs:
+  - aws-security      # AWS security best practices
+  - cis-aws          # CIS AWS Foundations Benchmark
+  - soc2-security    # SOC 2 compliance rules
+
+# Custom rule directories for organization-specific policies
+rule_dirs:
+  - ./security-rules     # Security team rules
+  - ./compliance-rules   # Compliance team rules
+  - ./platform-rules     # Platform team rules
+
+# JSON output for integration with other tools
+output_format: json
+
+# Only show warnings and errors in production
+min_severity: warning
+
+# Filter rules for production environment
+include_rules:
+  - "*security*"        # Include all security-related rules
+  - "*encryption*"      # Include all encryption rules
+  - "*compliance*"      # Include all compliance rules
+
+exclude_rules:
+  - "*test*"           # Exclude test-related rules
+  - "*dev*"            # Exclude development-specific rules
+
+# Production settings
+debug: false
+parallel: true                           # Enable parallel processing for performance
+cache_dir: /var/cache/riveter           # System cache directory
+baseline: /var/lib/riveter/baseline.json # Baseline for incremental scanning
+
+# Structured logging for production monitoring
+log_level: WARNING
+log_format: json
+
+# Environment-specific settings
+environment: production
+
+# Performance tuning
+max_workers: 4                          # Limit parallel workers
+timeout: 300                            # 5-minute timeout for large scans

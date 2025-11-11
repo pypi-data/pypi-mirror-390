@@ -1,0 +1,158 @@
+rules:
+  - id: aws-ec2-instance-public-ip
+    description: EC2 instances should not have public IP addresses unless explicitly required
+    resource_type: aws_instance
+    severity: warning
+    filter:
+      instance_type:
+        regex: "^(t3|m5|c5)\\.(small|medium|large|xlarge)$"
+    assert:
+      associate_public_ip_address: false
+
+  - id: aws-ec2-instance-required-tags
+    description: EC2 instances must have required tags for governance
+    resource_type: aws_instance
+    severity: error
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+      tags.CostCenter:
+        regex: "^\\d{5}$"
+
+  - id: aws-ec2-instance-encrypted-storage
+    description: EC2 instances must use encrypted root volumes
+    resource_type: aws_instance
+    severity: error
+    assert:
+      root_block_device.encrypted: true
+
+  - id: aws-s3-bucket-encryption
+    description: S3 buckets must have server-side encryption enabled
+    resource_type: aws_s3_bucket_encryption
+    severity: error
+    assert:
+      rule.apply_server_side_encryption_by_default.sse_algorithm: "AES256"
+
+  - id: aws-s3-bucket-public-access-block
+    description: S3 buckets should block public access
+    resource_type: aws_s3_bucket_public_access_block
+    severity: error
+    assert:
+      block_public_acls: true
+      block_public_policy: true
+      ignore_public_acls: true
+      restrict_public_buckets: true
+
+  - id: aws-s3-bucket-versioning
+    description: S3 buckets should have versioning enabled
+    resource_type: aws_s3_bucket_versioning
+    severity: warning
+    assert:
+      versioning_configuration.status: "Enabled"
+
+  - id: aws-security-group-no-wide-open-ingress
+    description: Security groups should not allow ingress from 0.0.0.0/0 on sensitive ports
+    resource_type: aws_security_group
+    severity: error
+    filter:
+      ingress:
+        contains:
+          cidr_blocks:
+            contains: "0.0.0.0/0"
+    assert:
+      ingress:
+        length:
+          lte: 0
+
+  - id: aws-security-group-ssh-restricted
+    description: Security groups should not allow SSH access from anywhere
+    resource_type: aws_security_group_rule
+    severity: error
+    filter:
+      type: "ingress"
+      from_port: 22
+      to_port: 22
+    assert:
+      cidr_blocks:
+        subset: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+  - id: aws-rds-instance-encryption
+    description: RDS instances must have encryption at rest enabled
+    resource_type: aws_rds_instance
+    severity: error
+    assert:
+      storage_encrypted: true
+
+  - id: aws-rds-instance-backup-retention
+    description: RDS instances must have adequate backup retention period
+    resource_type: aws_rds_instance
+    severity: warning
+    assert:
+      backup_retention_period:
+        gte: 7
+
+  - id: aws-rds-instance-multi-az
+    description: Production RDS instances should use Multi-AZ deployment
+    resource_type: aws_rds_instance
+    severity: warning
+    filter:
+      tags.Environment: "production"
+    assert:
+      multi_az: true
+
+  - id: aws-iam-policy-no-wildcard-actions
+    description: IAM policies should not use wildcard actions
+    resource_type: aws_iam_policy
+    severity: error
+    assert:
+      policy:
+        regex: "^(?!.*\"Action\"\\s*:\\s*\"\\*\").*$"
+
+  - id: aws-kms-key-rotation
+    description: KMS keys should have automatic key rotation enabled
+    resource_type: aws_kms_key
+    severity: warning
+    assert:
+      enable_key_rotation: true
+
+  - id: aws-cloudtrail-enabled
+    description: CloudTrail should be enabled for audit logging
+    resource_type: aws_cloudtrail
+    severity: error
+    assert:
+      enable_logging: true
+      include_global_service_events: true
+      is_multi_region_trail: true
+
+  - id: aws-cloudwatch-log-group-retention
+    description: CloudWatch log groups should have retention period set
+    resource_type: aws_cloudwatch_log_group
+    severity: warning
+    assert:
+      retention_in_days:
+        gte: 30
+
+  - id: aws-lambda-function-runtime
+    description: Lambda functions should use supported runtime versions
+    resource_type: aws_lambda_function
+    severity: warning
+    assert:
+      runtime:
+        regex: "^(python3\\.(9|10|11|12)|nodejs(18|20)\\.x|java(11|17|21)|dotnet(6|8))$"
+
+  - id: aws-vpc-flow-logs
+    description: VPCs should have flow logs enabled for network monitoring
+    resource_type: aws_vpc
+    severity: warning
+    assert:
+      enable_dns_hostnames: true
+      enable_dns_support: true
+
+  - id: aws-subnet-public-ip-assignment
+    description: Private subnets should not auto-assign public IP addresses
+    resource_type: aws_subnet
+    severity: error
+    filter:
+      tags.Type: "private"
+    assert:
+      map_public_ip_on_launch: false

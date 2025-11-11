@@ -1,0 +1,324 @@
+# GitLab CI Pipeline with Riveter Integration
+# This pipeline demonstrates multi-environment validation with GitLab CI
+
+stages:
+  - validate
+  - security-scan
+  - deploy-staging
+  - compliance-check
+  - deploy-production
+
+variables:
+  TERRAFORM_VERSION: "1.5.0"
+  RIVETER_VERSION: "latest"
+  DOCKER_DRIVER: overlay2
+
+# Cache Terraform providers and Riveter binary
+cache:
+  key: "${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .terraform/
+    - riveter
+
+# Install dependencies
+.install_dependencies: &install_dependencies
+  - |
+    # Install Terraform
+    wget -O terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+    unzip terraform.zip
+    chmod +x terraform
+    mv terraform /usr/local/bin/
+
+    # Install Riveter
+    if [ ! -f riveter ]; then
+      curl -L https://github.com/riveter/riveter/releases/latest/download/riveter-linux-amd64 -o riveter
+      chmod +x riveter
+    fi
+    cp riveter /usr/local/bin/
+
+# Basic validation for merge requests
+validate:terraform:
+  stage: validate
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl wget unzip jq
+    - *install_dependencies
+  script:
+    - |
+      # Validate all Terraform configurations
+      for env_dir in environments/*/; do
+        if [ -d "$env_dir" ]; then
+          echo "Validating $env_dir"
+          cd "$env_dir"
+
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check=true
+
+          # Basic rule validation
+          riveter scan \
+            -r ../../rule-packs/basic-validation.yml \
+            -t *.tf \
+            --output-format json \
+            --output-file validation-results.json
+
+          # Check for failures
+          if jq -e '.summary.failed > 0' validation-results.json > /dev/null; then
+            echo "Validation failed for $env_dir"
+            jq '.results[] | select(.status == "FAIL")' validation-results.json
+            exit 1
+          fi
+
+          cd - > /dev/null
+        fi
+      done
+  artifacts:
+    reports:
+      junit: environments/*/validation-results.json
+    paths:
+      - environments/*/validation-results.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Security scanning for staging deployment
+security:scan:
+  stage: security-scan
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl wget unzip jq
+    - *install_dependencies
+  script:
+    - |
+      # Run comprehensive security validation
+      cd environments/staging
+
+      terraform init
+      terraform plan -out=tfplan
+
+      # Security-focused validation
+      riveter scan \
+        -r ../../rule-packs/security-rules.yml \
+        -p aws-security \
+        -p cis-aws \
+        -t *.tf \
+        --output-format sarif \
+        --output-file security-results.sarif
+
+      # Convert SARIF to GitLab security report format
+      jq '{
+        version: "15.0.0",
+        vulnerabilities: [
+          .runs[0].results[] | {
+            id: .ruleId,
+            name: .message.text,
+            description: .message.text,
+            severity: (
+              if .level == "error" then "Critical"
+              elif .level == "warning" then "High"
+              elif .level == "note" then "Medium"
+              else "Low"
+              end
+            ),
+            location: {
+              file: .locations[0].physicalLocation.artifactLocation.uri,
+              start_line: (.locations[0].physicalLocation.region.startLine // 1)
+            }
+          }
+        ]
+      }' security-results.sarif > gl-security-report.json
+  artifacts:
+    reports:
+      sast: environments/staging/gl-security-report.json
+    paths:
+      - environments/staging/security-results.sarif
+      - environments/staging/gl-security-report.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Deploy to staging environment
+deploy:staging:
+  stage: deploy-staging
+  image: alpine:latest
+  environment:
+    name: staging
+    url: https://staging.example.com
+  before_script:
+    - apk add --no-cache curl wget unzip jq
+    - *install_dependencies
+  script:
+    - |
+      cd environments/staging
+
+      # Initialize and plan
+      terraform init
+      terraform plan -out=tfplan
+
+      # Final validation before deployment
+      riveter scan \
+        -r ../../rule-packs/staging-rules.yml \
+        -t *.tf \
+        --output-format json \
+        --output-file pre-deploy-validation.json
+
+      # Check validation results
+      if jq -e '.summary.failed > 0' pre-deploy-validation.json > /dev/null; then
+        echo "Pre-deployment validation failed!"
+        jq '.results[] | select(.status == "FAIL")' pre-deploy-validation.json
+        exit 1
+      fi
+
+      # Deploy infrastructure
+      terraform apply -auto-approve tfplan
+
+      # Post-deployment validation
+      sleep 30  # Wait for resources to be ready
+      riveter scan \
+        -r ../../rule-packs/staging-rules.yml \
+        -t *.tf \
+        --output-format json \
+        --output-file post-deploy-validation.json
+  artifacts:
+    paths:
+      - environments/staging/pre-deploy-validation.json
+      - environments/staging/post-deploy-validation.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - security:scan
+
+# Compliance validation for production readiness
+compliance:check:
+  stage: compliance-check
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl wget unzip jq
+    - *install_dependencies
+  script:
+    - |
+      cd environments/prod
+
+      terraform init
+      terraform plan -out=tfplan
+
+      # Comprehensive compliance validation
+      riveter scan \
+        -r ../../rule-packs/production-rules.yml \
+        -p soc2-security \
+        -p cis-aws \
+        -t *.tf \
+        --output-format json \
+        --output-file compliance-results.json
+
+      # Generate compliance report
+      jq '{
+        summary: .summary,
+        compliance_frameworks: [
+          {
+            name: "SOC 2",
+            controls_passed: [.results[] | select(.tags[]? == "soc2" and .status == "PASS") | .name],
+            controls_failed: [.results[] | select(.tags[]? == "soc2" and .status == "FAIL") | .name]
+          },
+          {
+            name: "CIS AWS",
+            controls_passed: [.results[] | select(.tags[]? == "cis" and .status == "PASS") | .name],
+            controls_failed: [.results[] | select(.tags[]? == "cis" and .status == "FAIL") | .name]
+          }
+        ]
+      }' compliance-results.json > compliance-report.json
+
+      # Fail if critical compliance issues found
+      critical_issues=$(jq '[.results[] | select(.severity == "critical" and .status == "FAIL")] | length' compliance-results.json)
+      if [ "$critical_issues" -gt 0 ]; then
+        echo "Critical compliance issues found: $critical_issues"
+        jq '.results[] | select(.severity == "critical" and .status == "FAIL")' compliance-results.json
+        exit 1
+      fi
+  artifacts:
+    paths:
+      - environments/prod/compliance-results.json
+      - environments/prod/compliance-report.json
+    expire_in: 1 month
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - deploy:staging
+
+# Deploy to production with manual approval
+deploy:production:
+  stage: deploy-production
+  image: alpine:latest
+  environment:
+    name: production
+    url: https://production.example.com
+  before_script:
+    - apk add --no-cache curl wget unzip jq
+    - *install_dependencies
+  script:
+    - |
+      cd environments/prod
+
+      # Final validation
+      terraform init
+      terraform plan -out=tfplan
+
+      riveter scan \
+        -r ../../rule-packs/production-rules.yml \
+        -t *.tf \
+        --output-format json \
+        --output-file final-validation.json
+
+      # Deploy to production
+      terraform apply -auto-approve tfplan
+
+      # Post-deployment compliance check
+      sleep 60  # Wait for resources to stabilize
+      riveter scan \
+        -r ../../rule-packs/production-rules.yml \
+        -p soc2-security \
+        -t *.tf \
+        --output-format json \
+        --output-file production-compliance.json
+
+      # Generate deployment report
+      echo "Production deployment completed successfully"
+      echo "Compliance status:"
+      jq '.summary' production-compliance.json
+  artifacts:
+    paths:
+      - environments/prod/final-validation.json
+      - environments/prod/production-compliance.json
+    expire_in: 1 month
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  needs:
+    - compliance:check
+
+# Notification job for deployment status
+notify:deployment:
+  stage: deploy-production
+  image: alpine:latest
+  script:
+    - |
+      # Send notification to Slack/Teams/Email
+      echo "Sending deployment notification..."
+
+      # Example Slack notification
+      if [ "$CI_JOB_STATUS" == "success" ]; then
+        MESSAGE="✅ Production deployment successful for commit $CI_COMMIT_SHORT_SHA"
+      else
+        MESSAGE="❌ Production deployment failed for commit $CI_COMMIT_SHORT_SHA"
+      fi
+
+      curl -X POST -H 'Content-type: application/json' \
+        --data "{\"text\":\"$MESSAGE\"}" \
+        $SLACK_WEBHOOK_URL
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - deploy:production
+  when: always

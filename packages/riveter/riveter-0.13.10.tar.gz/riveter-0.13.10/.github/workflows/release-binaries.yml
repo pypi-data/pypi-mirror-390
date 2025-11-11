@@ -1,0 +1,479 @@
+name: Release Binaries
+
+# Workflow for building and releasing binary distributions
+# This workflow creates standalone executables for multiple platforms
+# and uploads them to GitHub releases for Homebrew tap consumption
+
+on:
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build binaries for'
+        required: true
+        type: string
+      upload_to_release:
+        description: 'Upload binaries to GitHub release'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write      # Required for uploading release assets
+  actions: read        # Required for workflow execution
+
+jobs:
+  build-binaries:
+    name: Build Binary for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-13  # Intel runner
+            arch: intel
+            target: macos-intel
+            python-version: '3.12'
+          - os: macos-latest  # ARM64 runner
+            arch: arm64
+            target: macos-arm64
+            python-version: '3.12'
+          - os: ubuntu-latest
+            arch: x86_64
+            target: linux-x86_64
+            python-version: '3.12'
+      fail-fast: false
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Debug workflow trigger
+        run: |
+          echo "🔍 Release Binaries Workflow Debug Info"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Event action: ${{ github.event.action }}"
+          echo "Release tag: ${{ github.event.release.tag_name }}"
+          echo "Input tag: ${{ inputs.tag }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+
+      - name: Checkout code (initial)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || 'main' }}
+
+      - name: Determine release tag
+        id: release-info
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "🏷️ Using release tag: ${{ github.event.release.tag_name }}"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Get the latest release tag
+            latest_tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+            echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+            echo "🏷️ Using latest release tag: $latest_tag"
+          else
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "🏷️ Using manual input tag: ${{ inputs.tag }}"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout correct tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release-info.outputs.tag }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Cache PyInstaller build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pyinstaller
+            build/
+          key: ${{ runner.os }}-pyinstaller-${{ matrix.target }}-${{ hashFiles('src/**/*.py', 'scripts/build_*.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pyinstaller-${{ matrix.target }}-
+            ${{ runner.os }}-pyinstaller-
+
+      - name: Extract version information
+        id: version
+        run: |
+          # Use the tag determined in the previous step
+          version="${{ steps.release-info.outputs.tag }}"
+
+          # Remove 'v' prefix if present
+          version=${version#v}
+
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Building version: $version"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pyinstaller
+
+      - name: Verify PyInstaller build scripts exist
+        run: |
+          if [ ! -f "scripts/build_binary.py" ]; then
+            echo "❌ build_binary.py script not found"
+            echo "This script should have been created in task 1.1"
+            exit 1
+          fi
+
+          if [ ! -f "scripts/build_spec.py" ]; then
+            echo "❌ build_spec.py script not found"
+            echo "This script should have been created in task 1.2"
+            exit 1
+          fi
+
+          echo "✅ PyInstaller build scripts found"
+
+      - name: Build binary using PyInstaller
+        run: |
+          echo "🔨 Building binary for ${{ matrix.target }}..."
+          python scripts/build_binary.py --target ${{ matrix.target }}
+
+          # Verify binary was created (check both root and dist directories)
+          if [ -f "dist/riveter" ]; then
+            echo "✅ Binary found in dist/riveter"
+            # Move to root for consistency with workflow expectations
+            mv dist/riveter ./riveter
+          elif [ -f "dist/riveter.exe" ]; then
+            echo "✅ Binary found in dist/riveter.exe"
+            mv dist/riveter.exe ./riveter.exe
+          elif [ -f "riveter" ]; then
+            echo "✅ Binary found in root directory"
+          elif [ -f "riveter.exe" ]; then
+            echo "✅ Binary found in root directory"
+          else
+            echo "❌ Binary build failed - no executable found"
+            echo "Checked locations: ./riveter, ./riveter.exe, dist/riveter, dist/riveter.exe"
+            ls -la dist/ || echo "dist/ directory not found"
+            exit 1
+          fi
+
+          echo "✅ Binary built successfully"
+
+      - name: Test binary functionality
+        run: |
+          echo "🧪 Testing binary functionality..."
+
+          # Make binary executable (Linux/macOS)
+          if [ -f "riveter" ]; then
+            chmod +x riveter
+            binary_path="./riveter"
+          else
+            binary_path="./riveter.exe"
+          fi
+
+          # Test basic functionality
+          $binary_path --version
+          $binary_path --help
+
+          # Test rule pack listing
+          $binary_path list-rule-packs
+
+          echo "✅ Binary functionality tests passed"
+
+      - name: Create binary archive
+        id: archive
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          archive_name="riveter-${version}-${{ matrix.target }}"
+
+          # Create directory for archive contents
+          mkdir -p "$archive_name"
+
+          # Copy binary to archive directory
+          if [ -f "riveter" ]; then
+            cp riveter "$archive_name/"
+          else
+            cp riveter.exe "$archive_name/"
+          fi
+
+          # Create tar.gz archive
+          tar -czf "${archive_name}.tar.gz" "$archive_name"
+
+          # Verify archive was created
+          if [ ! -f "${archive_name}.tar.gz" ]; then
+            echo "❌ Archive creation failed"
+            exit 1
+          fi
+
+          echo "archive_name=${archive_name}.tar.gz" >> $GITHUB_OUTPUT
+          echo "archive_path=${archive_name}.tar.gz" >> $GITHUB_OUTPUT
+
+          echo "✅ Archive created: ${archive_name}.tar.gz"
+
+      - name: Generate and verify SHA256 checksum
+        id: checksum
+        run: |
+          archive_path="${{ steps.archive.outputs.archive_path }}"
+
+          # Generate SHA256 checksum using Python for consistency
+          checksum=$(python -c "
+          import hashlib
+          import sys
+
+          def calculate_sha256(file_path):
+              sha256_hash = hashlib.sha256()
+              try:
+                  with open(file_path, 'rb') as f:
+                      for chunk in iter(lambda: f.read(4096), b''):
+                          sha256_hash.update(chunk)
+                  return sha256_hash.hexdigest()
+              except Exception as e:
+                  print(f'Error calculating checksum: {e}', file=sys.stderr)
+                  sys.exit(1)
+
+          checksum = calculate_sha256('$archive_path')
+          print(checksum)
+          ")
+
+          if [ -z "$checksum" ] || [ ${#checksum} -ne 64 ]; then
+            echo "❌ Invalid checksum generated: $checksum"
+            exit 1
+          fi
+
+          echo "checksum=$checksum" >> $GITHUB_OUTPUT
+          echo "SHA256 checksum: $checksum"
+
+          # Create checksum file in standard format
+          echo "$checksum  $(basename $archive_path)" > "${archive_path}.sha256"
+
+          # Verify checksum file was created correctly
+          if [ ! -f "${archive_path}.sha256" ]; then
+            echo "❌ Checksum file creation failed"
+            exit 1
+          fi
+
+          # Verify checksum file content
+          checksum_file_content=$(cat "${archive_path}.sha256")
+          if [[ ! "$checksum_file_content" =~ ^[a-f0-9]{64}[[:space:]]+.+$ ]]; then
+            echo "❌ Invalid checksum file format: $checksum_file_content"
+            exit 1
+          fi
+
+          echo "✅ Checksum generated, verified, and saved"
+          echo "📄 Checksum file: ${archive_path}.sha256"
+
+      - name: Verify checksum integrity
+        run: |
+          archive_path="${{ steps.archive.outputs.archive_path }}"
+          expected_checksum="${{ steps.checksum.outputs.checksum }}"
+
+          echo "🔍 Verifying checksum integrity..."
+
+          # Use our verification script if available, otherwise use Python directly
+          if [ -f "scripts/verify_checksum.py" ]; then
+            echo "Using verification script..."
+            python scripts/verify_checksum.py "$archive_path" "$expected_checksum"
+          else
+            echo "Using direct Python verification..."
+            python -c "
+            import hashlib
+            import sys
+
+            def verify_checksum(file_path, expected):
+                sha256_hash = hashlib.sha256()
+                try:
+                    with open(file_path, 'rb') as f:
+                        for chunk in iter(lambda: f.read(4096), b''):
+                            sha256_hash.update(chunk)
+                    actual = sha256_hash.hexdigest()
+
+                    if actual.lower() == expected.lower():
+                        print(f'✅ Checksum verification passed')
+                        print(f'Checksum: {actual}')
+                        return True
+                    else:
+                        print(f'❌ Checksum verification failed')
+                        print(f'Expected: {expected}')
+                        print(f'Actual:   {actual}')
+                        return False
+                except Exception as e:
+                    print(f'Error during verification: {e}', file=sys.stderr)
+                    return False
+
+            if not verify_checksum('$archive_path', '$expected_checksum'):
+                sys.exit(1)
+            "
+          fi
+
+          echo "✅ Checksum integrity verification passed"
+
+      - name: Upload binary archive as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: |
+            ${{ steps.archive.outputs.archive_path }}
+            ${{ steps.archive.outputs.archive_path }}.sha256
+          retention-days: 7
+
+      - name: Get release upload URL
+        if: github.event_name == 'workflow_run'
+        id: release-url
+        run: |
+          release_tag="${{ steps.version.outputs.version }}"
+          upload_url=$(gh release view "v${release_tag}" --json uploadUrl --jq '.uploadUrl')
+          echo "upload_url=$upload_url" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to GitHub release
+        if: github.event_name == 'release' || github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.upload_to_release == true)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url || steps.release-url.outputs.upload_url }}
+          asset_path: ${{ steps.archive.outputs.archive_path }}
+          asset_name: ${{ steps.archive.outputs.archive_name }}
+          asset_content_type: application/gzip
+
+      - name: Upload checksum to GitHub release
+        if: github.event_name == 'release' || github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.upload_to_release == true)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url || steps.release-url.outputs.upload_url }}
+          asset_path: ${{ steps.archive.outputs.archive_path }}.sha256
+          asset_name: ${{ steps.archive.outputs.archive_name }}.sha256
+          asset_content_type: text/plain
+
+      - name: Build summary
+        run: |
+          echo "## 📦 Binary Build Summary - ${{ matrix.target }}"
+          echo ""
+          echo "**Platform:** ${{ matrix.target }}"
+          echo "**Archive:** ${{ steps.archive.outputs.archive_name }}"
+          echo "**SHA256:** ${{ steps.checksum.outputs.checksum }}"
+          echo "**Size:** $(du -h ${{ steps.archive.outputs.archive_path }} | cut -f1)"
+          echo ""
+          echo "✅ Binary build completed successfully"
+
+  upload-manual-release:
+    name: Upload to Release
+    runs-on: ubuntu-latest
+    needs: build-binaries
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Determine release tag for upload
+        id: upload-tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            tag=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          else
+            tag="${{ inputs.tag }}"
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          echo "🏷️ Upload target: $tag"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries to existing release
+        run: |
+          echo "📤 Uploading binaries to release ${{ steps.upload-tag.outputs.tag }}..."
+
+          # Install GitHub CLI if not available
+          if ! command -v gh &> /dev/null; then
+            echo "Installing GitHub CLI..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install gh
+          fi
+
+          # Upload each binary archive and checksum
+          for artifact_dir in artifacts/binary-*; do
+            if [ -d "$artifact_dir" ]; then
+              echo "Uploading files from $artifact_dir..."
+              for file in "$artifact_dir"/*; do
+                if [ -f "$file" ]; then
+                  echo "Uploading $(basename "$file")..."
+                  gh release upload "${{ steps.upload-tag.outputs.tag }}" "$file" --clobber
+                fi
+              done
+            fi
+          done
+
+          echo "✅ All binaries uploaded to release ${{ steps.upload-tag.outputs.tag }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: Binary Build Summary
+    runs-on: ubuntu-latest
+    needs: build-binaries
+    if: always()
+    steps:
+      - name: Print build summary
+        run: |
+          echo "## 🚀 Binary Build Summary"
+          echo ""
+          echo "**Version:** ${{ needs.build-binaries.outputs.version }}"
+          echo "**Trigger:** ${{ github.event_name }}"
+
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "**Release:** ${{ github.event.release.tag_name }}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "**Tag:** ${{ inputs.tag }}"
+            echo "**Upload to Release:** ${{ inputs.upload_to_release }}"
+          fi
+
+          echo ""
+          echo "### Platform Build Results:"
+          echo "- 🍎 macOS Intel: ${{ needs.build-binaries.result }}"
+          echo "- 🍎 macOS ARM64: ${{ needs.build-binaries.result }}"
+          echo "- 🐧 Linux x86_64: ${{ needs.build-binaries.result }}"
+
+          if [ "${{ needs.build-binaries.result }}" = "success" ]; then
+            echo ""
+            echo "✅ All binary builds completed successfully!"
+            echo ""
+            echo "### Next Steps:"
+            echo "- Binaries are available as workflow artifacts"
+            if [ "${{ github.event_name }}" = "release" ]; then
+              echo "- Binaries uploaded to GitHub release"
+              echo "- Ready for Homebrew formula update"
+            fi
+          else
+            echo ""
+            echo "❌ Some binary builds failed"
+            echo "Check individual job logs for details"
+          fi

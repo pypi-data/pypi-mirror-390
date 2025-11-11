@@ -1,0 +1,64 @@
+rules:
+  - id: ec2-advanced-validation
+    resource_type: aws_instance
+    severity: error
+    description: Advanced EC2 instance validation with multiple operators
+    filter:
+      tags:
+        Environment: production
+      instance_type:
+        regex: "^(t3|m5|c5)\\.(large|xlarge)$"
+    assert:
+      # Numeric comparison for volume size
+      root_block_device.volume_size:
+        gte: 100
+
+      # List operations for security groups
+      security_groups:
+        length:
+          gte: 1
+          lte: 5
+        contains: "sg-default"
+
+      # Required tags with regex validation
+      tags:
+        CostCenter: present
+        Team:
+          regex: "^(backend|frontend|devops|data)$"
+
+      # Network interface validation with array indexing
+      network_interfaces[0].subnet_id: present
+
+  - id: s3-bucket-compliance
+    resource_type: aws_s3_bucket
+    severity: warning
+    description: S3 bucket compliance checks
+    assert:
+      # Versioning must be enabled
+      versioning.enabled: true
+
+      # Encryption configuration
+      server_side_encryption_configuration:
+        length:
+          eq: 1
+
+      # Public access block settings
+      public_access_block.block_public_acls: true
+      public_access_block.block_public_policy: true
+
+      # Required tags
+      tags:
+        DataClassification:
+          regex: "^(public|internal|confidential|restricted)$"
+        Owner: present
+
+  - id: universal-tagging-policy
+    resource_type: "*"
+    severity: info
+    description: Universal tagging policy for all resources
+    assert:
+      tags:
+        Environment:
+          regex: "^(development|staging|production)$"
+        CreatedBy: present
+        Project: present
