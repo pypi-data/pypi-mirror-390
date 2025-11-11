@@ -1,0 +1,31 @@
+<div class="card text-bg-dark">
+
+  <tal:image tal:define="
+               image view/related_image;
+             "
+             tal:condition="image"
+  >
+    <img tal:define="
+           images image/@@images;
+           fetchpriority_image_value python:hasattr(context, 'fetchpriority_image') and (context.fetchpriority_image and 'high' or 'auto') or 'auto';
+           loading_image_value python:hasattr(context, 'fetchpriority_image') and (context.fetchpriority_image and 'eager' or 'lazy') or 'lazy';
+         "
+         tal:replace="structure python:images.srcset(fieldname='image',
+                                      scale_in_src='huge',
+                                      sizes='(min-width: 1400px) 1400px, 100vw',
+                                      alt=image.Title() ,
+                                      title=image.Title(),
+                                      fetchpriority=fetchpriority_image_value,
+                                      loading=loading_image_value)"
+    />
+  </tal:image>
+  <div class="card-img-overlay">
+    <h5 class="card-title">${context/Title}</h5>
+    <p class="card-text"
+       tal:condition="context/Description"
+    >${context/Description}</p>
+    <a href="${context/url}"
+       tal:condition="context/url"
+    >${context/link_text}</a>
+  </div>
+</div>
