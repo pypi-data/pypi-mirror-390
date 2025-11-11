@@ -1,0 +1,164 @@
+Metadata-Version: 2.4
+Name: anscombe_transform
+Version: 1.0.0
+Summary: Zarr V2 and V3 codecs for compressing photon-limited movies.
+Project-URL: Homepage, https://github.com/datajoint/anscombe-transform
+Project-URL: Source, https://github.com/datajoint/anscombe-transform
+Project-URL: Issues, https://github.com/datajoint/anscombe-transform/issues
+Author-email: Jerome Lecoq <jeromel@alleninstitute.org>, Dimitri Yatsenko <dimitr@datajoint.com>, Davis Bennett <davis.v.bennett@gmail.com>
+Maintainer-email: Dimitri Yatsenko <dimitr@datajoint.com>
+License: MIT License
+        
+        Copyright (c) 2024, Allen Institute for Neural Dynamics, DataJoint Inc., CatalystNeuro, and contributors
+        Copyright (c) 2025, DataJoint Inc.
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+License-File: LICENSE
+Keywords: compression algorithms,multimedia,multiphoton microscopy,numcodecs,video compression,zarr
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Multimedia :: Video
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.11
+Requires-Dist: scikit-learn
+Requires-Dist: zarr>=3.1.2
+Provides-Extra: docs
+Requires-Dist: griffe-inherited-docstrings; extra == 'docs'
+Requires-Dist: markdown-exec[ansi]; extra == 'docs'
+Requires-Dist: mike>=2.1.3; extra == 'docs'
+Requires-Dist: mkdocs-material[imaging]>=9.6.14; extra == 'docs'
+Requires-Dist: mkdocs-redirects>=1.2.0; extra == 'docs'
+Requires-Dist: mkdocs>=1.6.1; extra == 'docs'
+Requires-Dist: mkdocstrings-python>=1.16.10; extra == 'docs'
+Requires-Dist: mkdocstrings>=0.29.1; extra == 'docs'
+Provides-Extra: test
+Requires-Dist: imageio; extra == 'test'
+Requires-Dist: matplotlib; extra == 'test'
+Requires-Dist: nbmake; extra == 'test'
+Requires-Dist: pytest-cov; extra == 'test'
+Requires-Dist: pytest==8.4.2; extra == 'test'
+Requires-Dist: scipy; extra == 'test'
+Description-Content-Type: text/markdown
+
+[![PyPI version](https://badge.fury.io/py/anscombe-transform.svg)](https://badge.fury.io/py/anscombe-transform) ![tests](https://github.com/datajoint/anscombe-transform/actions/workflows/tests.yaml/badge.svg)
+
+# Anscombe transform
+
+This codec is designed for compressing image recordings with Poisson noise, which are produced by photon-limited modalities such multiphoton microscopy, radiography, and astronomy.
+
+The codec assumes that the video is linearly encoded with a potential offset (`zero_level`) and that the `photon_sensitivity` (the average increase in intensity per photon) is either already known or can be accurately estimated from the data.
+
+The codec re-quantizes the grayscale efficiently with a square-root-like transformation to equalize the noise variance across the grayscale levels: the [Anscombe Transform](https://en.wikipedia.org/wiki/Anscombe_transform).
+This results in a smaller number of unique grayscale levels and significant improvements in the compressibility of the data without sacrificing signal accuracy.
+
+To use the codec, one must supply two pieces of information: `zero_level` (the input value corresponding to the absence of light) and `photon_sensitivity` (levels/photon).
+
+The codec is used in Zarr as a filter prior to compression.
+
+[Zarr](https://zarr.readthedocs.io/en/stable/index.html).
+
+## Installation
+
+Install via `pip`:
+
+```
+pip install anscombe-transform
+```
+
+## Development Setup
+
+### Getting Started
+
+1. **Fork and clone the repository**
+
+```bash
+git clone https://github.com/YOUR_USERNAME/anscombe-transform.git
+cd anscombe-transform
+```
+
+2. **Install Hatch**
+
+Via pip:
+
+```bash
+pip install hatch
+```
+
+Or [directly](https://hatch.pypa.io/latest/install/#installers).
+
+
+3. **Create a development environment**
+
+```bash
+# See available environments
+hatch env show
+
+# Enter a test environment
+hatch shell test.py3.11-2.2
+```
+
+Install [pre-commit](https://pre-commit.com/#install)
+
+4. **Run tests**
+
+```bash
+# Run all tests
+hatch run test:pytest tests/
+
+# Run specific test file
+hatch run test:pytest tests/test_codec.py
+
+# Run with coverage
+hatch run test:pytest tests/ --cov=src/anscombe_transform
+```
+
+### Testing
+
+The project uses [pytest](https://docs.pytest.org/en/stable/) for testing. Tests are found in the `tests/` directory.
+
+## Building Documentation
+
+### Local Documentation Server
+
+```bash
+# Install docs dependencies
+hatch run docs:mkdocs serve
+
+# View at http://127.0.0.1:8000
+```
+
+### Building Documentation
+
+```bash
+# Build static site
+hatch run docs:mkdocs build
+
+# Output in site/
+```
+
+
+## Getting Help
+
+- **Questions?** Open a [GitHub Discussion](https://github.com/datajoint/anscombe-transform/discussions)
+- **Bug reports?** Open an [Issue](https://github.com/datajoint/anscombe-transform/issues)
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the [MIT License](https://opensource.org/license/mit).
