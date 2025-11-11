@@ -1,0 +1,90 @@
+Metadata-Version: 2.1
+Name: ul-py-tool
+Version: 2.2.2
+Summary: Python ul py tool
+Home-page: https://gitlab.neroelectronics.by/unic-lab/libraries/common-python-utils/ul-py-tool.git
+Author: Unic-lab
+Author-email: 
+Platform: any
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+Requires-Dist: numpy (<2.0.0,>=1.23.3)
+Requires-Dist: pandas (==1.4.3)
+Requires-Dist: pydantic[mypy] (==2.10.5)
+Requires-Dist: pydantic-i18n (==0.2.3)
+Requires-Dist: PyYAML (==6.0)
+Requires-Dist: colored (==1.4.3)
+Requires-Dist: rich (==12.6.0)
+Requires-Dist: tomli (==2.0.1)
+Requires-Dist: requests (<3.0.0,>=2.28.1)
+Requires-Dist: deepdiff (>=5.8.1)
+Requires-Dist: mypy (<2.0.0,>=1.9.0)
+Requires-Dist: types-pyyaml (>=6.0.11)
+Requires-Dist: types-pytz (>=2022.1.2)
+Requires-Dist: types-python-dateutil (>=2.8.19)
+Requires-Dist: types-setuptools (>=63.4.0)
+Requires-Dist: typing-extensions (>=4.3.0)
+Requires-Dist: data-science-types (>=0.2.23)
+Requires-Dist: types-requests (>=2.28.8)
+Requires-Dist: black (>=24.4.0)
+Requires-Dist: ruff (<2.0.0,>=0.4.1)
+Requires-Dist: isort[colors] (==5.13.2)
+Requires-Dist: yamllint (==1.35.1)
+Requires-Dist: pytest (>=8.1.1)
+Requires-Dist: pytest-cov (==5.0.0)
+Requires-Dist: python-gitlab (==4.4.0)
+Requires-Dist: kubernetes (==23.6.0)
+Requires-Dist: wheel (==0.43.0)
+Requires-Dist: twine (==5.0.0)
+Requires-Dist: setuptools (==69.5.1)
+
+# ul-py-tool
+> This library allows to bootstrap Python UnicLab project from scratch.
+> It provides a set of useful CMD commands mapping in *main.py* file.
+
+```python
+def main() -> None:
+    Cmd.main({
+        'code_stats': 'ul_py_tool.commands.cmd_stats:CmdStats',
+        'minor': 'ul_py_tool.commands.cmd_version:CmdVersionMinor',
+        'major': 'ul_py_tool.commands.cmd_version:CmdVersionMajor',
+        'patch': 'ul_py_tool.commands.cmd_version:CmdVersionPatch',
+        'lint': 'ul_py_tool.commands.cmd_lint:CmdLint',
+        'install': 'ul_py_tool.commands.cmd_install:CmdInstall',
+        'test': 'ul_py_tool.commands.cmd_test:CmdTest',
+        'fmt': 'ul_py_tool.commands.cmd_fmt:CmdFmt',
+        'release': 'ul_py_tool.commands.cmd_release:CmdRelease',
+        'test_secrets': 'ul_py_tool.commands.cmd_test_secrets.py:CmdTestSecrets',
+        'build-images': 'ul_py_tool.commands.cmd_build_images:CmdBuildImages',
+        'outdated': 'ul_py_tool.commands.cmp_outdated:CmdOutdated',
+        'cleanup': 'ul_py_tool.commands.cmd_cleanup:CmdCleanup',
+        'fix_own': 'ul_py_tool.commands.cmd_fix_own:CmdFixOwn',
+    })
+```
+
+> This maps the code of the CMD command to its name. After mapping, we can use a command like this:
+```bash
+python -m FOLDER_NAME_WHERE_MAIN_PY_LOCATED command_name
+python -m src run_some_script  # main.py located in src/ root
+```
+
+
+| Command        | Desription                                                                     |
+|----------------|--------------------------------------------------------------------------------|
+| Cmd            | Base class. Each command should inherit from it and provide method *run()*.    |
+| CmdStats       | Command that provides us statistics about service, lines of code written, etc. |
+| CmdVersion     | Command that applies a versioning to setup.py (major, minor, patch).           |
+| CmdTest        | Command that runs tests.                                                       |
+| CmdRelease     | Command for making a release.                                                  |
+| CmdLint        | Command to run lint (different steps).                                         |
+| CmdFmt         | Command to apply formatting (black, isort (to be implemented)).                |
+| CmdBuildImages | Command that helps to build & push to the registry Docker images.              |
+| CmdInstall     | Generates project files, configs, pre-commits, etc.                            |
+
