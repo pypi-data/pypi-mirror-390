@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<!-- This file is part of the cashbook-module from m-ds for Tryton.
+The COPYRIGHT file at the top level of this repository contains the
+full copyright notices and license terms. -->
+<tryton>
+    <data>
+
+        <!-- views -->
+        <record model="ir.ui.view" id="type_view_list">
+            <field name="model">cashbook.type</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="name">type_list</field>
+        </record>
+        <record model="ir.ui.view" id="type_view_form">
+            <field name="model">cashbook.type</field>
+            <field name="type">form</field>
+            <field name="priority" eval="20"/>
+            <field name="name">type_form</field>
+        </record>
+
+        <!-- action view-->
+        <record model="ir.action.act_window" id="act_type_view">
+            <field name="name">Cashbook Type</field>
+            <field name="res_model">cashbook.type</field>
+        </record>
+        <record model="ir.action.act_window.view" id="act_type_view-1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="type_view_list"/>
+            <field name="act_window" ref="act_type_view"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_type_view-2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="type_view_form"/>
+            <field name="act_window" ref="act_type_view"/>
+        </record>
+
+        <!-- permission -->
+        <!-- anon: deny all -->
+        <record model="ir.model.access" id="access_type-anon">
+            <field name="model" search="[('model', '=', 'cashbook.type')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <!-- group_cashbook_admin: read/write -->
+        <record model="ir.model.access" id="access_type-group_cashbook_admin">
+            <field name="model" search="[('model', '=', 'cashbook.type')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <!-- cashbook: read -->
+        <record model="ir.model.access" id="access_type-group_cashbook">
+            <field name="model" search="[('model', '=', 'cashbook.type')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+
+        <record model="ir.rule.group" id="rg_type_companies">
+            <field name="name">User in companies</field>
+            <field name="model"
+                search="[('model', '=', 'cashbook.type')]"/>
+            <field name="global_p" eval="True"/>
+        </record>
+        <record model="ir.rule" id="r_type_companies">
+            <field name="domain"
+                eval="[('company', 'in', Eval('companies', []))]"
+                pyson="1"/>
+            <field name="rule_group" ref="rg_type_companies"/>
+        </record>
+
+    </data>
+</tryton>
