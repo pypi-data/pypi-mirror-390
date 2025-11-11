@@ -1,0 +1,31 @@
+name: package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pypi-publish:
+    name: Run tests and validate data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.3
+        with:
+          pixi-version: v0.59.0
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - run: pixi run tests
+      - run: pixi run frictionless-validate
+      # TODO
+      # - name: Workflow failure notification
+      #   uses: JasonEtco/create-an-issue@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   if: failure()
+      #   with:
+      #     filename: .github/frictionless-validate-failure.md
