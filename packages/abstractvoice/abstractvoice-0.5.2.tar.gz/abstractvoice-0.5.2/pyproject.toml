@@ -1,0 +1,138 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "abstractvoice"
+dynamic = ["version"]
+description = "A modular Python library for voice interactions with AI systems"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Laurent-Philippe Albou", email = "contact@abstractcore.ai"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "requests>=2.31.0",
+    "appdirs>=1.4.0",
+    # Essential TTS dependencies for immediate functionality
+    "coqui-tts>=0.27.0,<0.30.0",
+    "torch>=2.1.0,<2.9.0",
+    "torchvision>=0.16.0,<1.0.0",
+    "torchaudio>=2.1.0,<2.9.0",
+    "librosa>=0.10.0",
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.1",
+]
+
+[project.optional-dependencies]
+# Core voice functionality - install this for basic TTS/STT features
+voice = [
+    "sounddevice>=0.4.6",
+    "webrtcvad>=2.0.10",
+    "PyAudio>=0.2.13",
+    "soundfile>=0.12.1",
+]
+
+# Text-to-Speech functionality
+tts = [
+    "coqui-tts>=0.27.0,<0.30.0",
+    "torch>=2.1.0,<2.9.0",
+    "torchvision>=0.16.0,<1.0.0",
+    "torchaudio>=2.1.0,<2.9.0",
+    "librosa>=0.10.0",
+]
+
+# Speech-to-Text functionality
+stt = [
+    "openai-whisper>=20230314",
+    "tiktoken>=0.6.0",
+]
+
+# Web API functionality
+web = [
+    "flask>=2.0.0",
+]
+
+# All features combined
+all = [
+    "sounddevice>=0.4.6",
+    "webrtcvad>=2.0.10",
+    "PyAudio>=0.2.13",
+    "openai-whisper>=20230314",
+    "coqui-tts>=0.27.0,<0.30.0",
+    "torch>=2.1.0,<2.9.0",
+    "torchvision>=0.16.0,<1.0.0",
+    "torchaudio>=2.1.0,<2.9.0",
+    "librosa>=0.10.0",
+    "soundfile>=0.12.1",
+    "flask>=2.0.0",
+    "tiktoken>=0.6.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "flake8>=5.0.0",
+]
+
+# Complete voice functionality - TTS + STT + Audio I/O (most common use case)
+voice-full = [
+    "sounddevice>=0.4.6",
+    "webrtcvad>=2.0.10",
+    "PyAudio>=0.2.13",
+    "openai-whisper>=20230314",
+    "coqui-tts>=0.27.0,<0.30.0",
+    "torch>=2.1.0,<2.9.0",
+    "torchvision>=0.16.0,<1.0.0",
+    "torchaudio>=2.1.0,<2.9.0",
+    "librosa>=0.10.0",
+    "soundfile>=0.12.1",
+    "tiktoken>=0.6.0",
+]
+
+# Core TTS-only (lightweight, no STT)
+core-tts = [
+    "coqui-tts>=0.27.0,<0.30.0",
+    "torch>=2.1.0,<2.9.0",
+    "torchvision>=0.16.0,<1.0.0",
+    "torchaudio>=2.1.0,<2.9.0",
+    "librosa>=0.10.0",
+]
+
+# Core STT-only (lightweight, no TTS)
+core-stt = [
+    "openai-whisper>=20230314",
+    "tiktoken>=0.6.0",
+]
+
+# Audio processing only (for custom TTS/STT implementations)
+audio-only = [
+    "sounddevice>=0.4.6",
+    "webrtcvad>=2.0.10",
+    "PyAudio>=0.2.13",
+    "soundfile>=0.12.1",
+]
+
+[project.urls]
+Repository = "https://github.com/lpalbou/abstractvoice"
+Documentation = "https://github.com/lpalbou/abstractvoice#readme"
+
+[project.scripts]
+abstractvoice = "abstractvoice.examples.voice_cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "abstractvoice.__version__"} 
