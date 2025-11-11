@@ -1,0 +1,51 @@
+from sqlalchemy.orm import Session
+from app.models.{{ name }} import {{ class_name }}
+from app.schemas.{{ name }} import {{ class_name }}Create
+from passlib.hash import bcrypt
+
+
+def create_{{ name }}(db: Session, data: {{ class_name }}Create):
+    hashed_password = None
+    if hasattr(data, "password"):
+        hashed_password = bcrypt.hash(data.password)
+
+    db_obj = {{ class_name }}(
+        **data.dict(exclude={"password"}),
+        hashed_password=hashed_password if hashed_password else None
+    )
+
+    db.add(db_obj)
+    db.commit()
+    db.refresh(db_obj)
+    return db_obj
+
+
+def get_{{ name }}s(db: Session):
+    return db.query({{ class_name }}).all()
+
+
+def get_{{ name }}(db: Session, id: int):
+    return db.query({{ class_name }}).filter({{ class_name }}.id == id).first()
+
+
+def update_{{ name }}(db: Session, id: int, data):
+    obj = db.query({{ class_name }}).filter({{ class_name }}.id == id).first()
+    if not obj:
+        return None
+
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(obj, key, value)
+
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def delete_{{ name }}(db: Session, id: int):
+    obj = db.query({{ class_name }}).filter({{ class_name }}.id == id).first()
+    if not obj:
+        return None
+
+    db.delete(obj)
+    db.commit()
+    return obj
