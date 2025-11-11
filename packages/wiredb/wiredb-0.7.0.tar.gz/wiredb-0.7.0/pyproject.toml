@@ -1,0 +1,75 @@
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[project]
+name = "wiredb"
+version = "0.7.0"
+description = "WireDB"
+license = { file = "LICENSE" }
+authors = [
+  { name = "David Brochart", email = "david.brochart@gmail.com" },
+]
+readme = "README.md"
+keywords = [
+  "crdt",
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+dependencies = [
+  "anyio >=4.11.0,<5.0.0",
+  "pycrdt >=0.12.41,<0.13.0",
+  "typing_extensions >=4.15.0,<5.0.0; python_version<'3.11'",
+]
+
+[dependency-groups]
+test = [
+  "mypy",
+  "ruff",
+  "pytest",
+  "trio",
+  "coverage",
+]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+]
+
+[project.optional-dependencies]
+memory = ["wire-memory >=0.7.0,<0.8.0"]
+pipe = ["wire-pipe >=0.7.0,<0.8.0"]
+websocket = ["wire-websocket >=0.7.0,<0.8.0"]
+file = ["wire-file >=0.7.0,<0.8.0"]
+
+[project.urls]
+Homepage = "https://github.com/davidbrochart/wiredb"
+
+[tool.uv.build-backend]
+module-name = "wiredb"
+
+[tool.uv.workspace]
+members = ["wires/*"]
+
+[tool.uv.sources]
+wiredb = { workspace = true }
+wire-memory = { workspace = true }
+wire-pipe = { workspace = true }
+wire-websocket = { workspace = true }
+wire-file = { workspace = true }
+
+[tool.ruff]
+lint.extend-select = ["I"]
