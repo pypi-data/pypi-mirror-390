@@ -1,0 +1,101 @@
+Metadata-Version: 2.4
+Name: llyx
+Version: 0.1.0
+Summary: llyx - Log Linter for pYthon
+License-File: LICENSE
+Requires-Python: >=3.9
+Requires-Dist: colorama>=0.4.6
+Requires-Dist: jsonschema>=4.0.0
+Requires-Dist: libcst>=1.0.0
+Requires-Dist: pyyaml>=6.0
+Description-Content-Type: text/markdown
+
+<div align="center">
+  <img src="logo-horizontal.svg" alt="loly - Log Linter for Python" width="400">
+  <br>
+  <br>
+  <p><strong>A Python logging linter that enforces best practices</strong></p>
+</div>
+
+## Why?
+
+Production incidents are harder to debug when:
+- Exception logs lack stack traces (`exc_info=True`)
+- Hot loops spam logs, degrading performance
+- Inconsistent logging causes time delay in parsing logs
+
+## Installation
+
+```bash
+uv install loly
+```
+
+## Usage
+
+```bash
+loly path/to/code
+
+loly path/to/code --config=loly.yml
+```
+
+## Policies
+
+| Code | Policy | Description |
+|------|--------|-------------|
+| **LY001** | `exception_exc_info` | Enforces `exc_info=True` in exception handlers to capture stack traces |
+| **LY002** | `log_loop` | Prevents unconditional logging in hot loops (allows conditional logging) |
+
+## Configuration
+
+Create a `loly.yml`:
+
+```yaml
+logger_names: [logger, logging, log]
+
+exception_exc_info:
+  levels: [error]
+  severity: fail
+
+log_loop:
+  levels: [info, debug]
+  severity: fail
+```
+
+## Examples
+
+**LY001**: Missing `exc_info=True`
+```python
+# Fail
+try:
+    connect_db()
+except Exception:
+    logger.error("Connection failed")  # No stack trace!
+
+# Pass
+try:
+    connect_db()
+except Exception:
+    logger.error("Connection failed", exc_info=True)
+```
+
+**LY002**: Logging in hot loops
+```python
+# Fail
+for user in users:
+    logger.info(f"Processing {user}")  # Logs every iteration
+
+# Pass
+for i, user in enumerate(users):
+    if i % 100 == 0:
+        logger.info(f"Progress: {i}/{len(users)}")  # Conditional logging
+```
+
+## Philosophy
+
+- **Zero config**: Works out of the box with sensible defaults
+- **Extensible**: Plan to add more policies
+- **Complementary**: Use with `structlog`, `loguru` — not instead of them
+
+## License
+
+MIT

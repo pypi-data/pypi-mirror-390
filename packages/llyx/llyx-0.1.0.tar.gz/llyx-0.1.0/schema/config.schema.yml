@@ -1,0 +1,108 @@
+# Schema for ly configuration validation
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ly Configuration Schema
+description: Configuration schema for ly Python logging linter
+
+type: object
+properties:
+
+  include:
+    type: array
+    description: File patterns to include for linting
+    items:
+      type: string
+    default: ["*.py"]
+    examples:
+      - ["*.py"]
+      - ["src/**/*.py", "tests/**/*.py"]
+
+  exclude:
+    type: array
+    description: File patterns to exclude from linting
+    items:
+      type: string
+    default: [".venv", "build", "dist"]
+    examples:
+      - [".venv", "build", "dist"]
+
+  logger_names:
+    type: array
+    description: Logger variable names to detect
+    items:
+      type: string
+    default: ["logging", "logger", "log"]
+    examples:
+      - ["logger", "_logger", "logging"]
+
+  exception_exc_info:
+    type: object
+    description: Enforce exc_info=True when logging in exception handlers
+    properties:
+      levels:
+        type: array
+        description: Log levels to enforce this policy on
+        items:
+          type: string
+          enum: ["debug", "info", "warning", "error", "critical", "any"]
+        default: ["error"]
+      severity:
+        $ref: "#/$defs/severity"
+    required: ["levels", "severity"]
+    additionalProperties: false
+
+  log_loop:
+    type: object
+    description: Avoid logging calls inside performance-critical loops
+    properties:
+      levels:
+        type: array
+        description: Log levels to enforce this policy on
+        items:
+          type: string
+          enum: ["debug", "info", "warning", "error", "critical", "any"]
+        default: ["error"]
+      severity:
+        $ref: "#/$defs/severity"
+    required: ["levels", "severity"]
+    additionalProperties: false
+
+
+  consistent_kv_delimeters:
+    type: object
+    description: Enforce consistent key-value format in log messages
+    properties:
+      levels:
+        type: array
+        description: Log levels to enforce this policy on
+        items:
+          type: string
+          enum: ["debug", "info", "warning", "error", "critical", "any"]
+        default: ["any"]
+      severity:
+        $ref: "#/$defs/severity"
+      delimiter:
+        type: string
+        description: Required delimiter between keys and values
+        default: "="
+        enum: ["=", ":", " = ", " : "]
+    required: ["levels", "severity"]
+    additionalProperties: false
+
+  consistent_logger_name:
+    type: object
+    description: Enforce consistent key-value format in log messages
+    properties:
+      severity:
+        $ref: "#/$defs/severity"
+    required: ["levels", "severity"]
+    additionalProperties: false
+
+required: []
+additionalProperties: false
+
+$defs:
+  severity:
+    type: string
+    description: Violation severity level
+    enum: ["fail", "warn"]
+    default: "fail"
