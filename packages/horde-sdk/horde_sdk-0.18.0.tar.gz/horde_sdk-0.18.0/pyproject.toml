@@ -1,0 +1,136 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "horde_sdk"
+description = "A python toolkit for interacting with the horde APIs, services, and ecosystem."
+authors = [
+    {name = "tazlin", email = "tazlin.on.github@gmail.com"},
+    {name = "db0", email = "mail@dbzer0.com"},
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic=["version", "dependencies"]
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Development Status :: 4 - Beta",
+]
+
+[tool.setuptools_scm]
+write_to = "horde_sdk/_version.py"
+
+[tool.setuptools.package-dir]
+horde_sdk = "horde_sdk"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.urls]
+"Homepage" = "https://github.com/Haidra-Org/horde-sdk"
+
+[tool.setuptools.package-data]
+horde_sdk = ["py.typed", "lib.pyi"]
+tests = ["*.json"]
+
+[tool.ruff]
+line-length = 119
+exclude = ["codegen"]
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "I",
+  "E",
+  "W",
+  "F",
+  "UP",
+  "YTT",
+  "B",
+  "C4",
+  "PIE",
+  "RET",
+  "SIM",
+  "COM",
+  "D",
+  "D417", # Missing argument descriptions in the docstring
+  "ANN",
+  "RUF",
+  "ASYNC",
+  ]
+ignore = [
+  "ANN101", # Missing type annotation for self in method
+  "ANN102",  # Missing type annotation for cls in classmethod
+  "D105", # Missing docstring in magic method
+  "D100", # Missing docstring in public module
+  # Ignore D rules for non-google docstring standard
+  "D203", # 1 blank line required before class docstring
+  "D204",  # 1 blank line required after class docstring
+  "D213",  # Multi-line docstring summary should start at the second line
+  "D215", # Section underline is over-indented
+  "D400", # First line should end with a period
+  "D404", # First word of the docstring should not be This
+  "D406", # Section name should end with a newline
+  "D407", # Missing dashed underline after section
+  "D408", # Section underline should be in the line following the section's name
+  "D409", # Section underline should match the length of its name
+  "D413",] # Missing blank line after last section
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+"conftest.py" = ["E402"]
+"tests/*" = ["D"] # Ignore D rules for tests
+"examples/*" = ["D"] # Ignore D rules for examples
+"docs/*" = ["D"] # Ignore D rules for docs
+"codegen/*" = ["D"] # Ignore D rules for codegen
+
+[tool.black]
+line-length = 119
+include = '\.pyi?$'
+exclude = '''
+/(
+ \.git
+ | \.hg
+ | \.mypy_cache
+ | \.tox
+ | \.venv
+ | _build
+ | buck-out
+ | build
+ | dist
+)/
+'''
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
+strict = true
+disallow_untyped_defs = true
+warn_unused_configs = true
+exclude = [
+  '^codegen',
+  '\.git',
+  '\.hg',
+  '\.mypy_cache',
+  '\.tox',
+  '\.venv',
+  '_build',
+  'buck-out',
+  'build',
+  'dist',
+]
+
+[tool.coverage.run]
+concurrency = ["gevent"]
+
+[tool.pytest.ini_options]
+# You can use `and`, `or`, `not` and parentheses to filter with the `-m` option
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "object_verify: marks tests that verify the API object structure and layout",
+    "api_side_ci: indicates that the test is intended to run during CI for the API",
+]
