@@ -1,0 +1,90 @@
+mode: train
+
+data:
+  category: "pair"
+  dataloader:
+    train:
+      partial_loader: 0.25
+      dataloader_params:
+        batch_size: 2
+        pin_memory: True
+        num_workers: 4
+
+  preprocess:
+    - module_name: monai.transforms
+      func_name: LoadImaged
+      params:
+        keys: ["IM"]
+        dimension_order_out: "SYX"
+        C: 0
+        T: 0
+        Z: 0
+    - module_name: monai.transforms
+      func_name: LoadImaged
+      params:
+        keys: ["CM", "GT"]
+        dimension_order_out: "YX"
+        C: 0
+        T: 0
+        Z: 0
+    - module_name: monai.transforms
+      func_name: AddChanneld
+      params:
+        keys: ["GT", "CM"]
+    - module_name: monai.transforms
+      func_name: CastToTyped
+      params:
+        keys: ["GT"]
+        dtype: int
+    - module_name: monai.transforms
+      func_name: RandSpatialCropSamplesd
+      params:
+        keys: ["IM", "GT", "CM"]
+        random_size: False
+        num_samples: 4
+        roi_size: [1024, 1024]
+    - module_name: monai.transforms
+      func_name: EnsureTyped
+      params:
+        keys: ["IM", "GT", "CM"]
+  augmentation:
+    - module_name: monai.transforms
+      func_name: RandFlipd
+      params:
+        prob: 0.5
+        keys: ["IM", "GT", "CM"]
+
+model:
+  framework: FCN
+  net:
+    module_name: monai.networks.nets
+    func_name: HighResNet
+    params:
+      spatial_dims: 2
+      in_channels: 3
+      out_channels: 22
+  criterion:
+    module_name: torch.nn
+    func_name: CrossEntropyLoss
+    params:
+      reduction: 'mean'
+  optimizer:
+    module_name: torch.optim
+    func_name: AdamW
+    params:
+      lr: 0.001
+      weight_decay: 0.0005
+  scheduler:
+    module_name: torch.optim.lr_scheduler
+    func_name: ExponentialLR
+    params:
+      gamma: 0.98
+trainer:
+  verbose: True
+  params:
+    accelerator: "gpu"
+    devices: 1
+    precision: 16
+    max_epochs: 10000
+    detect_anomaly: True
+    reload_dataloaders_every_n_epochs: 10
