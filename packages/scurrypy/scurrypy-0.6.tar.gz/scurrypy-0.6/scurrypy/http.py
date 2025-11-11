@@ -1,0 +1,288 @@
+"""
+R = request
+EP = endpoint
+L = Lock
+Q = Queue
+H = header
+B = Bucket
+A + B = {A:B}
+
+[R + EP]--|L|-->[Q + EP]--|send R|-->[add/update H + B]
+    1. request by endpoint
+    2. push request to queue with lock
+    3. add/update header by bucket id with send request
+
+    * Queue by ENDPOINT/REQUEST
+    * Bucket by HEADER
+"""
+
+import asyncio
+import aiohttp
+import aiofiles
+import json
+from typing import Any
+
+from dataclasses import dataclass
+
+from scurrypy.error import DiscordError
+from scurrypy.logger import Logger
+
+@dataclass
+class RequestItem:
+    method: str
+    endpoint: str
+    data: Any = None
+    params: dict = None
+    files: dict = None
+    future: asyncio.Future = None
+
+@dataclass
+class Bucket:
+    remaining: int
+    reset_after: float
+    reset_on: float
+    sleep_task: asyncio.Task = None
+
+class HTTPClient:
+    BASE = "https://discord.com/api/v10"
+    MAX_RETRIES = 3
+
+    def __init__(self, logger: Logger):
+        self.session = None
+        self.logger = logger
+
+        # PRE-REQUEST
+        self.queues: dict[str, asyncio.Queue] = {}  # maps EP -> Q
+        self.queues_lock = asyncio.Lock() # locks queues dict for editing
+
+        self.workers: dict[str, asyncio.Task] = {}  # maps EP -> worker
+
+        # POST-REQUEST
+        self.buckets: dict[str, Bucket] = {}  # maps B -> Bucket
+        self.bucket_lock: dict[str, asyncio.Lock] = {} # maps B to Lock
+        self.buckets_lock = asyncio.Lock() # locks buckets dict for editing
+
+        self.global_lock = asyncio.Lock()
+        self.global_reset = 0.0
+
+    async def start(self, token: str):
+        """Start the HTTP session."""
+
+        if not self.session:
+            self.logger.log_info("HTTP session starting.")
+            self.session = aiohttp.ClientSession(
+                headers={"Authorization": f"Bot {token}"}
+            )
+        else:
+            self.logger.log_warn("HTTP session already initialized.")
+
+    async def close(self):
+        """Gracefully stop all workers and close the HTTP session."""
+
+        async with self.queues_lock:
+            # Signal all workers to stop
+            for queue in self.queues.values():
+                await queue.put(None)  # Send sentinel
+
+            # Wait until all queues are empty
+            for queue in self.queues.values():
+                await queue.join()
+
+            # Wait for all worker tasks to finish
+            for worker in self.workers.values():
+                await worker
+
+            # Close HTTP session if it exists
+            if self.session:
+                await self.session.close()
+                self.logger.log_info("Session closed.")
+
+    async def request(
+        self,
+        method: str,
+        endpoint: str,
+        *,
+        data: Any | None = None,
+        params: dict | None = None,
+        files: Any | None = None,
+    ):
+        """Queue a request for the given endpoint.
+
+        Args:
+            method (str): HTTP method (e.g., POST, GET, DELETE, PATCH, etc.)
+            endpoint (str): Discord endpoint (e.g., /channels/123/messages)
+            data (dict, optional): relevant data
+            params (dict, optional): relevant query params
+            files (list[str], optional): relevant files
+
+        Returns:
+            (Future): result or promise of request
+        """
+
+        # ensure a queue is in place for the requested endpoint
+        async with self.queues_lock:
+            queue = self.queues.setdefault(endpoint, asyncio.Queue())
+
+        # Create a worker if it doesn’t exist
+        if endpoint not in self.workers:
+            self.workers[endpoint] = asyncio.create_task(self._worker(endpoint))
+
+        # set promise
+        future = asyncio.get_event_loop().create_future()
+
+        # Put the request in the queue
+        await queue.put(RequestItem(method, endpoint, data, params, files, future))
+
+        # return promise
+        return await future
+
+    async def _worker(self, endpoint: str):
+        """Background worker that processes requests for this endpoint.
+
+        Args:
+            endpoint (str): the endpoint to receive requests
+        """
+
+        # fetch the queue by endpoint
+        queue = self.queues[endpoint]
+
+        while True:
+            # get the next item in the queue
+            item: RequestItem = await queue.get()
+
+            if item is None:  # sentinel = time to stop
+                queue.task_done()
+                break
+
+            try:
+                result = await self._send(item)
+            except Exception as e:
+                item.future.set_exception(e)
+            else:
+                item.future.set_result(result)
+            finally:
+                queue.task_done()
+
+    async def _sleep_endpoint(self, endpoint: str, bucket: Bucket):
+        """Let an endpoint sleep for the designated reset_after seconds.
+
+        Args:
+            endpoint (str): endpoint to sleep
+            bucket (Bucket): endpoint's bucket info
+        """
+        await asyncio.sleep(bucket.reset_after)
+        bucket.remaining = 1  # allow one request again; actual value doesn’t matter much
+        bucket.sleep_task = None
+        self.logger.log_info(f"Bucket {endpoint} reset after {bucket.reset_after}s")
+
+    async def _send(self, item: RequestItem):
+        """Core HTTP request executor.
+
+        Sends a request to Discord, handling JSON payloads, files, query parameters,
+        and rate limits.
+
+        Args:
+            item (RequestItem): request object
+
+        Raises:
+            (DiscordError): If the request fails after the maximum number of retries
+                or receives an error response.
+
+        Returns:
+            (dict | str | None): Parsed JSON response if available, raw text if the
+                response is not JSON, or None for HTTP 204 responses.
+        """
+        url = f"{self.BASE.rstrip('/')}/{item.endpoint.lstrip('/')}"
+
+        kwargs = {}
+        if item.files and any(item.files):
+            payload, headers = await self._make_payload(item.data, item.files)
+            kwargs = {"data": payload, "headers": headers}
+        else:
+            kwargs = {"json": item.data}
+
+        # --- GLOBAL RATE LIMIT CHECK ---
+        now = asyncio.get_event_loop().time()
+        if self.global_reset > now:
+            async with self.global_lock:
+                await asyncio.sleep(self.global_reset - now)
+
+        # --- SEND REQUEST ---
+        async with self.session.request(
+            method=item.method, url=url, timeout=15, **kwargs
+        ) as resp:
+
+            # Update global rate limit if triggered
+            if resp.headers.get("X-RateLimit-Global") == "true":
+                retry_after = float(resp.headers.get("Retry-After", 0))
+                self.global_reset = asyncio.get_event_loop().time() + retry_after
+
+            # Bucket handling (endpoint-specific rate limits)
+            bucket_id = resp.headers.get('x-ratelimit-bucket')
+            if bucket_id:
+                async with self.buckets_lock:
+                    lock = self.bucket_lock.setdefault(bucket_id, asyncio.Lock())
+                async with lock:
+                    remaining = int(resp.headers.get('x-ratelimit-remaining', 1))
+                    reset_after = float(resp.headers.get('x-ratelimit-reset-after', 0))
+                    reset_on = float(resp.headers.get('x-ratelimit-reset', 0))
+
+                    bucket = self.buckets.get(bucket_id)
+                    if not bucket:
+                        bucket = Bucket(remaining, reset_after, reset_on)
+                        self.buckets[bucket_id] = bucket
+                    else:
+                        bucket.remaining = remaining
+                        bucket.reset_after = reset_after
+                        bucket.reset_on = reset_on
+
+                    if bucket.remaining == 0 and not bucket.sleep_task:
+                        bucket.sleep_task = asyncio.create_task(
+                            self._sleep_endpoint(item.endpoint, bucket)
+                        )
+
+            # Handle response
+            match resp.status:
+                case 204:
+                    return None
+                case 200 | 201 | 202:
+                    try:
+                        return await resp.json()
+                    except aiohttp.ContentTypeError:
+                        return await resp.text()
+                case _:
+                    try:
+                        body = await resp.json()
+                    except aiohttp.ContentTypeError:
+                        body = await resp.text()
+                    raise DiscordError(resp.status, body)
+
+    async def _make_payload(self, data: dict, files: list):
+        """Return (data, headers) for aiohttp request — supports multipart.
+
+        Args:
+            data (dict): request data
+            files (list): relevant files
+
+        Returns:
+            (tuple[aiohttp.FormData, dict]): form data and headers
+        """
+        headers = {}
+        if not files:
+            return data, headers
+
+        form = aiohttp.FormData()
+        if data:
+            form.add_field("payload_json", json.dumps(data))
+
+        for idx, file_path in enumerate(files):
+            async with aiofiles.open(file_path, 'rb') as f:
+                data = await f.read()
+            form.add_field(
+                f'files[{idx}]',
+                data,
+                filename=file_path.split('/')[-1],
+                content_type='application/octet-stream'
+            )
+
+        return form, headers

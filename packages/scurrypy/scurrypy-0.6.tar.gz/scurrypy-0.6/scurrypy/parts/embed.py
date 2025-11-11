@@ -1,0 +1,83 @@
+from dataclasses import dataclass, field
+from typing import Optional
+from ..model import DataModel
+
+@dataclass
+class EmbedAuthor(DataModel):
+    """Embed author parameters."""
+
+    name: str
+    """Name of the author."""
+
+    url: Optional[str] = None
+    """URL of the author. http or attachment://<filename> scheme."""
+
+    icon_url: Optional[str] = None
+    """URL of author's icon. http or attachment://<filename> scheme."""
+
+@dataclass
+class EmbedThumbnail(DataModel):
+    """Embed thumbnail."""
+
+    url: str
+    """Thumbnail content. http or attachment://<filename> scheme."""
+
+@dataclass
+class EmbedField(DataModel):
+    """Embed field."""
+
+    name: str
+    """Name of the field."""
+
+    value: str
+    """Value of the field."""
+
+    inline: Optional[bool] = None
+    """Whether or not this field should display inline."""
+
+@dataclass
+class EmbedImage(DataModel):
+    """Embed image."""
+
+    url: str
+    """Image content. http or attachment://<filename> scheme."""
+
+@dataclass
+class EmbedFooter(DataModel):
+    """Embed footer."""
+    text: str
+    """Footer text."""
+
+    icon_url: Optional[str] = None
+    """URL of the footer icon. http or attachment://<filename> scheme."""
+
+@dataclass
+class EmbedPart(DataModel):
+    """Represents the Embed portion of a message."""
+
+    title: Optional[str] = None
+    """This embed's title."""
+
+    description: Optional[str] = None
+    """This embed's description."""
+
+    timestamp: Optional[str] = None
+    """Timestamp of when the embed was sent."""
+
+    color: Optional[int] = None
+    """Embed's accent color."""
+
+    author: Optional[EmbedAuthor] = None
+    """Embed's author."""
+
+    thumbnail: Optional[EmbedThumbnail] = None
+    """Embed's thumbnail attachment."""
+
+    image: Optional[EmbedImage] = None
+    """Embed's image attachment."""
+
+    fields: Optional[list[EmbedField]] = field(default_factory=list)
+    """List of embed's fields."""
+
+    footer: Optional[EmbedFooter] = None
+    """Embed's footer."""
