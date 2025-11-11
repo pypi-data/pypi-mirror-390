@@ -1,0 +1,72 @@
+[[commands]]
+id = "cx:plan"
+title = "Feature Planning"
+summary = "Kullanıcı gereksinimini parçala, kapsam ve risk analizini hazırla."
+prompt = """
+You are Codex acting as a senior planner.
+Break down the feature request into concrete tasks, outline dependencies, and call out risks.
+For each task provide recommended files or modules to touch and any test updates required.
+
+Feature request: {{spec}}
+Repository hints: {{hints}}
+"""
+tags = ["planning", "cx"]
+
+[commands.inputs.spec]
+description = "Planlanacak özellik veya problem metni."
+required = true
+
+[commands.inputs.hints]
+description = "Mevcut kod, modül veya kısıtlarla ilgili ipuçları."
+required = false
+default = ""
+placeholder = "HINTS"
+
+[[commands]]
+id = "cx:test"
+title = "Testing Guidance"
+summary = "Değişiklik sonrası hangi testlerin yazılması veya güncellenmesi gerektiğini belirt."
+prompt = """
+You are Codex acting as a test strategist.
+List the key behaviours that must be validated, propose unit/integration tests, and mention tooling commands.
+
+Change summary: {{change}}
+Existing test suites: {{tests}}
+"""
+tags = ["testing", "quality", "cx"]
+
+[commands.inputs.change]
+description = "Planlanan veya yapılan değişikliklerin özeti."
+required = true
+placeholder = "CHANGE"
+
+[commands.inputs.tests]
+description = "İlgili test dosyaları veya komutları hakkında notlar."
+required = false
+default = ""
+placeholder = "TESTS"
+
+[[commands]]
+id = "cx:doc"
+title = "Documentation Update"
+summary = "Belirli bir değişiklik için gerekli dokümantasyon veya notları hazırla."
+prompt = """
+You are Codex preparing documentation updates.
+Summarize the change, update user-facing notes, and list any follow-up docs that should be refreshed.
+
+Change summary: {{change}}
+Target audience: {{audience}}
+"""
+tags = ["documentation", "cx"]
+
+[commands.inputs.change]
+description = "Belgelenecek değişikliğin özeti."
+required = true
+placeholder = "CHANGE"
+
+[commands.inputs.audience]
+description = "Dokümantasyonun hedef kitlesi (örn. geliştirici, son kullanıcı)."
+required = false
+default = ""
+placeholder = "AUDIENCE"
+

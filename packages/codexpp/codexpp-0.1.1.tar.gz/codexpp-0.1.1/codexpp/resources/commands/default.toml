@@ -1,0 +1,133 @@
+[[commands]]
+id = "cx:analyze"
+title = "Repository Analysis"
+summary = "Kod tabanının belirli bir bölümünü inceleyip bulguları raporla."
+prompt = """
+You are Codex collaborating with the developer through Codexpp.
+Analyze the target scope and produce a concise briefing with:
+1. High-level purpose and architecture notes.
+2. Key modules, data flows, and external dependencies.
+3. Potential risk areas or technical debt requiring attention.
+4. Suggested next steps for exploration.
+
+Target scope: {{target}}
+Additional context: {{context}}
+"""
+tags = ["analysis", "cx"]
+
+[commands.inputs.target]
+description = "İncelenecek dizin, paket veya dosya yolu."
+required = true
+placeholder = "TARGET"
+
+[commands.inputs.context]
+description = "İsteğe bağlı notlar veya beklenen çıktı detayları."
+required = false
+default = ""
+placeholder = "CONTEXT"
+
+[[commands]]
+id = "cx:implement"
+title = "Feature Implementation"
+summary = "Belirtilen özelliği veya değişikliği planlayıp uygula."
+prompt = """
+You are Codex implementing a change request within the active repository.
+Follow this workflow:
+- Restate the feature goal.
+- Propose the implementation plan with impacted files.
+- Apply the changes carefully, keeping diffs focused.
+- Update or add tests where helpful.
+- Summarize the modifications and testing guidance.
+
+Feature request: {{spec}}
+Constraints or notes: {{notes}}
+"""
+tags = ["implementation", "cx"]
+
+[commands.inputs.spec]
+description = "Gerçekleştirilecek özellik tanımı veya görev metni."
+required = true
+placeholder = "SPEC"
+
+[commands.inputs.notes]
+description = "Ek yönergeler, kısıtlar veya test beklentileri."
+required = false
+default = ""
+placeholder = "NOTES"
+
+[[commands]]
+id = "cx:review"
+title = "Change Review"
+summary = "Kod değişikliklerini inceleyip bulguları bildir."
+prompt = """
+You are Codex reviewing a code change.
+Provide:
+- Summary of the change intent.
+- Strengths or improvements.
+- Critical issues (bugs, regressions, missing tests).
+- Suggestions or follow-up questions.
+
+Diff context or branch: {{diff_source}}
+Reviewer focus areas: {{focus}}
+"""
+tags = ["review", "quality", "cx"]
+
+[commands.inputs.diff_source]
+description = "İncelenecek diff, PR bağlantısı veya commit referansı."
+required = true
+placeholder = "DIFF_SOURCE"
+
+[commands.inputs.focus]
+description = "İnceleme sırasında özellikle bakılacak konular."
+required = false
+default = ""
+placeholder = "FOCUS"
+
+[[commands]]
+id = "cx:triage"
+title = "Bug Triage"
+summary = "Hata raporunu analiz et, olası kök nedeni ve debug adımlarını belirle."
+prompt = """
+You are Codex helping triage a bug report.
+Summarize the reported behaviour, list likely root causes, point to relevant code areas, and suggest immediate diagnostic steps.
+
+Bug report: {{report}}
+Recent changes or context: {{context}}
+"""
+tags = ["triage", "debugging", "cx"]
+
+[commands.inputs.report]
+description = "Hata raporunun veya kullanıcı geri bildiriminin metni."
+required = true
+placeholder = "REPORT"
+
+[commands.inputs.context]
+description = "İlgili commit, feature veya ortam bilgisi."
+required = false
+default = ""
+placeholder = "CONTEXT"
+
+[[commands]]
+id = "cx:refactor"
+title = "Refactoring Plan"
+summary = "Belirli bir modül için refaktör planı hazırla."
+prompt = """
+You are Codex designing a refactor.
+Identify pain points, propose step-by-step refactor tasks, list affected files, and mention test considerations.
+
+Current implementation notes: {{notes}}
+Goals and constraints: {{goals}}
+"""
+tags = ["refactor", "cx"]
+
+[commands.inputs.notes]
+description = "Refaktör edilecek mevcut kod veya sorun noktaları."
+required = true
+placeholder = "NOTES"
+
+[commands.inputs.goals]
+description = "Hedefler, kısıtlar veya kalite ölçütleri."
+required = false
+default = ""
+placeholder = "GOALS"
+

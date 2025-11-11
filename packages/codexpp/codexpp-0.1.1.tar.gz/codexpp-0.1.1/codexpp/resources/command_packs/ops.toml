@@ -1,0 +1,71 @@
+[[commands]]
+id = "cx:deploy"
+title = "Deployment Plan"
+summary = "Yeni sürüm dağıtımını planla, doğrulama ve geri dönüş adımlarını belirle."
+prompt = """
+You are Codex coordinating a deployment.
+Provide pre-deployment checks, deployment steps, verification commands, and rollback preparation.
+
+Release notes: {{notes}}
+Target environment: {{environment}}
+"""
+tags = ["ops", "deployment", "cx"]
+
+[commands.inputs.notes]
+description = "Sürümdeki değişikliklerin özeti veya linki."
+required = true
+placeholder = "NOTES"
+
+[commands.inputs.environment]
+description = "Dağıtım yapılacak ortam (örn. staging, production)."
+required = true
+placeholder = "ENVIRONMENT"
+
+[[commands]]
+id = "cx:rollback"
+title = "Rollback Strategy"
+summary = "Prod ortamında sorun çıktığında geri dönüş planı hazırla."
+prompt = """
+You are Codex preparing an emergency rollback plan.
+Outline detection signals, rollback steps, communication plan, and post-incident follow-up.
+
+Incident summary: {{incident}}
+Current version: {{version}}
+"""
+tags = ["ops", "incident", "cx"]
+
+[commands.inputs.incident]
+description = "Yaşanan sorunun özeti veya bağlantısı."
+required = true
+placeholder = "INCIDENT"
+
+[commands.inputs.version]
+description = "Şu anda canlıda olan sürüm bilgisi."
+required = false
+default = ""
+placeholder = "VERSION"
+
+[[commands]]
+id = "cx:status"
+title = "Operational Status Briefing"
+summary = "Sistem durumu, metrikler ve açık riskler hakkında kısa rapor oluştur."
+prompt = """
+You are Codex compiling an operational status briefing.
+Summarize current health, key metrics, outstanding incidents, and recommended follow-up actions.
+
+Service scope: {{scope}}
+Latest metrics: {{metrics}}
+"""
+tags = ["ops", "reporting", "cx"]
+
+[commands.inputs.scope]
+description = "Raporlanacak servis veya modül kapsamı."
+required = true
+placeholder = "SCOPE"
+
+[commands.inputs.metrics]
+description = "Öne çıkan metrikler, dashboard linkleri veya grafana panelleri."
+required = false
+default = ""
+placeholder = "METRICS"
+
