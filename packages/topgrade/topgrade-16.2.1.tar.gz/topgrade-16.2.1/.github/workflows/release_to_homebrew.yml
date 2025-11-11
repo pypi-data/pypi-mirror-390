@@ -1,0 +1,21 @@
+name: Publish to Homebrew
+
+on:
+  repository_dispatch:
+    types: [ release-created ]
+
+permissions:
+  contents: read
+
+jobs:
+  homebrew-publish:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Bump formulae
+      uses: dawidd6/action-homebrew-bump-formula@3428a0601bba3173ec0bdcc945be23fa27aa4c31 # v5
+      with:
+        # Custom GitHub access token with only the 'public_repo' scope enabled
+        token: ${{secrets.HOMEBREW_ACCESS_TOKEN}}
+        formula: topgrade
+        tag: ${{ github.event.client_payload.tag }}
+        org: topgrade-rs
