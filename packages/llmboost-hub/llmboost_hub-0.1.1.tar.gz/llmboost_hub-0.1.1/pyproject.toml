@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llmboost_hub"
+version = "0.1.1"
+description = "A lightweight CLI tool for managing LLMBoost model images and environments."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+authors = [
+  { name = "Harish Kambhampaty", email = "harish.kambhampaty@mangoboost.io" }
+]
+keywords = ["LLM", "Docker", "CLI", "HPC", "AI", "LLMBoost"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+]
+dependencies = [
+  "click>=8.0",
+  "requests>=2.31",
+  "tabulate>=0.9",
+  "rich>=13.7",
+  "docker>=7.0",
+  "pyyaml>=6.0",
+  "pandas>=2.0",
+  "licensing",
+  "bcrypt>=4.0",
+  "huggingface_hub>=0.23",
+  "black>=23.1.0"
+]
+
+[project.optional-dependencies]
+build = ["build>=1.0.0", "wheel>=0.42", "setuptools>=68.0", "twine>=4.0"]
+compile = ["nuitka>=2.1"]
+obfuscate = ["pyarmor>=8.5"]
+
+[project.scripts]
+llmboost_hub = "llmboost_hub.cli:main"
+lbh = "llmboost_hub.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"llmboost_hub" = ["*.yaml", "*.json"]
+
+[project.urls]
+Homepage = "https://github.com/mangoboost/llmboost_hub"
+Documentation = "https://docs.mangoboost.io/llmboost_hub"
+Source = "https://github.com/mangoboost/llmboost_hub"
+
+[tool.black]
+line-length = 100
+target-version = ["py38"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+  | .*\.egg-info
+)/
+'''
