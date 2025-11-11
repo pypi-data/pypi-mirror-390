@@ -1,0 +1,99 @@
+syntax = "proto3";
+package fluxramp_generator;
+import "datatypes.proto";
+
+service FluxrampGeneratorService {
+    /**
+     * @brief Enables axistream of the core
+     * 
+     * @param msg Endpoint ID
+     * @return void
+    **/
+    rpc Enable              (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Disables axistream of the core
+     * 
+     * @param msg Endpoint ID
+     * @return void
+    **/
+    rpc Disable             (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Get the enabled Status of one submodule
+     * 
+     * @param msg Endpoint ID
+     * @return True if enabled.
+     */
+    rpc GetEnable           (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Bool)      {}
+    
+    /**
+     * @brief Issues reset of the core
+     * 
+     * Will reset the fluxramp_generator module
+     *
+     * @param msg Endpoint ID
+     * @return void
+    **/
+    rpc Reset               (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Sets Fluxramp
+     *
+     * Will set fluxramp configuration.
+     * The sharpness of the signal edge can be reduced by setting a fall time in seconds. 
+     * Fall time can be passed via FluxrampRequest->falltime
+     *
+     * @param msg Endpoint index, ramp frequency, amplitude and (optional) fall time
+     * @return void
+    **/
+    rpc SetFluxramp     (FluxrampRequest)       returns (sdr.datatypes.Empty)     {}
+ 
+    /**
+     * @brief Clears all configuration registers
+     *
+     * @param Endpoint ID
+     * @return void
+    **/
+    rpc ClearConfig         (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Returns samplerate of current configuration
+     *
+     * @param msg Endpoint ID
+     * @return samplerate in Hz
+    **/
+    rpc GetSampleRate        (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Double)    {}
+
+    /**
+     * @brief Returns frequency of current configuration
+     *
+     * @param msg Endpoint ID
+     * @return frequency in Hz
+    **/
+    rpc GetFrequency        (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Double)    {}
+
+    /**
+     * @brief Returns amplitude of current configuration
+     *
+     * @param msg Endpoint ID
+     * @return amplitude between 0 and 1
+    **/
+    rpc GetAmplitude        (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Double)    {}
+
+    /**
+     * @brief Returns falltime of current configuration
+     *
+     * @param msg Endpoint ID
+     * @return falltime in seconds
+    **/
+    rpc GetFalltime        (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Double)    {}
+}
+
+message FluxrampRequest
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    double frequency = 2;
+    double amplitude = 3;
+    double falltime = 4;
+}

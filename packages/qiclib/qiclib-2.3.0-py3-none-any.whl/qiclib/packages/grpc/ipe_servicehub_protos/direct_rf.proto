@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package direct_rf;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+/**
+ * The DirectRf service manages the entire input / output chain using
+ * the DirectRf frontend board.
+ */
+service DirectRfService
+{
+    /**
+     * Set the frequency of the entire input or output chain.
+     */
+    rpc SetFrequency(IndexedDouble) returns (google.protobuf.Empty);
+
+    /**
+     * Return the frequency of the chain.
+     */
+    rpc GetFrequency(ConverterIndex) returns (google.protobuf.DoubleValue);
+
+    /**
+     * Set the phase of the entire input or output chain.
+     */
+    rpc SetPhase(IndexedDouble) returns (google.protobuf.Empty);
+
+    /**
+     * Get the phase of the entire input or output chain.
+     */
+    rpc GetPhase(ConverterIndex) returns (google.protobuf.DoubleValue);
+
+    /**
+     * Set the attenuation for the input or output chain.
+     */
+    rpc SetAttenuation(IndexedDouble) returns (google.protobuf.Empty);
+
+    /**
+     * Get the attenuation for the input or output chain.
+     */
+    rpc GetAttenuation(ConverterIndex) returns (google.protobuf.DoubleValue);
+
+    /**
+     * Returns the RFdc index attached to this converter index
+     */
+    rpc ToRfdcIndex(ConverterIndex) returns (RfDcIndex);
+
+    /**
+     * Set the direction of a digital pin
+     */
+    rpc SetDigitalPinDirection(DigitalPinDirection) returns (google.protobuf.Empty);
+
+    /**
+     * Get the direction of a digital pin
+     */
+    rpc GetDigitalPinDirection(google.protobuf.UInt32Value) returns (DigitalPinDirection);
+
+    /**
+     * Return the current analog datapath settings.
+     */
+    rpc GetDacAnalogDataPath(google.protobuf.UInt32Value) returns (DacAnalogPath);
+
+    /**
+     * Set the analog datapath settings
+     */
+    rpc SetDacAnalogDataPath(DacAnalogPath) returns (google.protobuf.Empty);
+
+    /**
+     * Return the current analog datapath settings.
+     */
+    rpc GetAdcAnalogDataPath(google.protobuf.UInt32Value) returns (AdcAnalogPath);
+
+    /**
+     * Set the analog datapath settings
+     */
+    rpc SetAdcAnalogDataPath(AdcAnalogPath) returns (google.protobuf.Empty);
+ 
+}
+
+message DacAnalogPath {
+    enum Setting {
+        DC = 0;
+        NYQUIST_1 = 1;
+        NYQUIST_2 = 2;
+        OFF = 3;
+    }
+
+    uint32 index = 1;
+    Setting setting = 2;
+}
+
+message AdcAnalogPath {
+    enum Setting {
+        NYQUIST_1 = 0;
+        NYQUIST_2 = 1;
+        NYQUIST_6 = 2;
+        NYQUIST_7 = 3;
+        OFF = 4;
+    }
+
+    uint32 index = 1;
+    Setting setting = 2;
+}
+
+enum ConverterType
+{
+    ADC = 0;
+    DAC = 1;
+}
+
+message ConverterIndex
+{
+    ConverterType type = 1;
+    uint32 index = 2;
+}
+
+message IndexedDouble
+{
+    ConverterIndex index = 1;
+    double value = 2;
+}
+
+message RfDcIndex
+{
+    uint32 tile = 1;
+    uint32 block = 2;
+}
+
+enum IODirection
+{
+    IN = 0;
+    OUT = 1;
+}
+
+message DigitalPinDirection {
+    IODirection direction = 1;
+    uint32 pin = 2;
+}

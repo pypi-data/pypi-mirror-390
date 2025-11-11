@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package lmk04208;
+import public "datatypes.proto";
+
+service LMK04208Service {
+	// Sysfs access
+	// Load completely new set of settings
+	/* File format: Registers 0..16 and 24..30 (including address bits) as plain text 
+					either dec or hex separated by spaces (-> parsable by c++ fstream).
+					To convert TICS output to this format remove first value (duplicate
+					R0 only used for setting RESET-bit, already taken care of by Plugin).
+					Last value R31 can be included but will be ignored since there is no
+					point in making an unnecessary readback.
+	*/
+	rpc InitFromFile (sdr.datatypes.IndexedString) returns (sdr.datatypes.Empty) {}
+	rpc InitFromDT (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+	// Manual register access
+	// TODO: make readback from chip work in kernel-driver, only stored value read back 
+	rpc ReadbackOnRegister (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.UInt) {}
+	rpc Read (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.UInt) {}
+	rpc Write (WriteCommand) returns (sdr.datatypes.Empty) {}
+	
+	//TODO: Allow control of single functionalities similar to LMX2594
+}
+
+message WriteCommand {
+	sdr.datatypes.EndpointIndex index = 1;
+	uint32 address = 2; // 5 bit
+	uint32 data = 3; // 27 bit
+}

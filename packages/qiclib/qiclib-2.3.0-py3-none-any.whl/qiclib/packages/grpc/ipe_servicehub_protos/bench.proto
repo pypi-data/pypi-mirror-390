@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package bench;
+import "datatypes.proto";
+
+service BenchmarkService {
+  rpc GetDurationOfLastRequest(sdr.datatypes.Empty) returns (DurationReply) {}
+  rpc IsHWEndpointAvailable(sdr.datatypes.Empty) returns (AvailableReply) {}
+
+  //Setup functions
+
+  rpc SetupSoftwareBandwidthTest(SizeRequest) returns (AvailableReply) {}
+  rpc SetupSoftwareStreamBandwidthTest(SizeRequest) returns (AvailableReply) {}
+  rpc SetupSoftwareByteStreamBandwidthTest(SizeRequest) returns (AvailableReply) {}
+  rpc SetupHardwareBandwidthTest(SizeRequest) returns (AvailableReply) {}
+  rpc SetupDMABandwidthTest(DMASetup) returns (AvailableReply) {}
+
+  //Single Values
+
+  rpc GetSoftwareReadLatency (sdr.datatypes.Empty) returns (BenchmarkInt32) {}
+  rpc GetSoftwareWriteLatency (BenchmarkInt32) returns (sdr.datatypes.Empty) {}
+  rpc GetSoftwareWriteReadLatency (BenchmarkInt32) returns (BenchmarkInt32) {}
+
+  rpc GetHardwareReadLatency (sdr.datatypes.Empty) returns (BenchmarkInt32) {}
+  rpc GetHardwareWriteLatency (BenchmarkInt32) returns (sdr.datatypes.Empty) {}
+  rpc GetHardwareWriteReadLatency (BenchmarkInt32) returns (BenchmarkInt32) {}
+
+  //Arrays
+
+  rpc GetSoftwareReadBandwidth (sdr.datatypes.Empty) returns (BenchmarkInt32Array) {}
+  rpc GetSoftwareWriteBandwidth (BenchmarkInt32Array) returns (sdr.datatypes.Empty) {}
+
+  rpc GetHardwareReadBandwidth (sdr.datatypes.Empty) returns (BenchmarkInt32Array) {}
+  rpc GetHardwareWriteBandwidth (BenchmarkInt32Array) returns (sdr.datatypes.Empty) {}
+
+  //Streaming Arrays
+  rpc GetSoftwareReadStreamBandwidth (sdr.datatypes.Empty) returns (stream BenchmarkInt32Array) {}
+  rpc GetSoftwareWriteStreamBandwidth (stream BenchmarkInt32Array) returns (sdr.datatypes.Empty) {}
+
+  // Streaming bytes
+  rpc GetSoftwareReadByteStreamBandwidth (sdr.datatypes.Empty) returns (stream ByteStream) {}
+  rpc GetSoftwareWriteByteStreamBandwidth (stream ByteStream) returns (sdr.datatypes.Empty) {}
+
+  // DMA 
+
+  rpc GetDMAReadBandwidth (sdr.datatypes.Empty) returns (stream AcquiredData) {}
+  rpc GetDMALostData (sdr.datatypes.Empty) returns (LostDataReply) {}
+
+  // IIC
+  rpc IsIICAvailable(sdr.datatypes.Empty) returns (AvailableReply) {}
+  rpc GetIICReadLatency(sdr.datatypes.Empty) returns (BenchmarkInt32) {}
+  rpc GetIICWriteLatency(BenchmarkInt32) returns (sdr.datatypes.Empty) {}
+  rpc GetIICWriteReadLatency(BenchmarkInt32) returns (BenchmarkInt32) {}
+
+}
+
+
+message SizeRequest {
+  uint64 size=1;
+  uint64 blocksize=2;
+}
+
+message DurationReply {
+  double duration = 1;
+  uint32 nivContextSwitches = 2;
+}
+
+message AvailableReply {
+  bool available = 1;
+}
+
+message CounterRequest {
+  int32 newValue = 1;
+}
+
+message BenchReply {
+    int32 Counter = 1;
+    bytes Array = 2;
+}
+
+message BenchmarkInt32 {
+  uint32 value = 1;
+}
+
+message BenchmarkInt32Array {
+  repeated uint32 values = 1;
+}
+
+message ByteStream {
+  bytes data = 1;
+}
+
+message DMASetup {
+  int64 size=1;
+  int32 timeoutinmsecs = 2;
+}
+
+message AcquiredData{
+  repeated uint32 value = 1;
+}
+
+message LostDataReply{
+  int32 hw_counter = 1;
+  int32 sw_counter = 2;
+}

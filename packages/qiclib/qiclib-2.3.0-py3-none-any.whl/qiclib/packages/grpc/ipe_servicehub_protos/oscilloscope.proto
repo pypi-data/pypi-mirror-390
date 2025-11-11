@@ -1,0 +1,222 @@
+syntax = "proto3";
+
+package oscilloscope;
+import "datatypes.proto";
+
+service OscilloscopeService {
+
+  /**
+   * Retrieve static information about the system.
+   */
+  rpc GetSystemInfo(sdr.datatypes.Empty) returns (SystemInfo);
+
+  /**
+   * Returns the current status of the module:
+   * - Whether the buffer is full
+   * - Whether the device is busy
+   * - Whether the channel is enabled
+   */
+  rpc GetStatus(Channel) returns (ChannelStatus);
+
+  /**
+   * Enables or disables the specified channel
+   */
+  rpc SetChannelStatus(ChannelWriteableStatus) returns (sdr.datatypes.Empty);
+
+  //--------------------------------------------------------------//
+  //                      Trigger methods                         //
+  //--------------------------------------------------------------//
+
+  /**
+   * Set the trigger mode to use for a certain channel
+   */
+  rpc SetTriggerMode(TriggerMode) returns (sdr.datatypes.Empty);
+  /**
+   * Get the currently active trigger mode
+   */
+  rpc GetTriggerMode(Channel) returns (TriggerMode);
+
+  /**
+   * Set the trigger level
+   */
+  rpc SetTriggerLevel(TriggerLevel) returns (sdr.datatypes.Empty);
+  /**
+   * Get the currently active trigger level
+   */
+  rpc GetTriggerLevel(Channel) returns (TriggerLevel);
+
+  /**
+   * Set the flank that a channel should trigger on
+   */
+  rpc SetFlank(Flank) returns (sdr.datatypes.Empty);
+  /**
+   * Returns the flank that this channel triggers on
+   */
+  rpc GetFlank(Channel) returns (Flank);
+
+  /**
+   * Returns whether the oscilloscope has triggered
+   */
+  rpc IsTriggered(Channel) returns (sdr.datatypes.Bool);
+
+  /**
+   * Set the time scale to the preferred values.
+   * This will enable or disable decimation as is needed. 
+   * When infeasible, raises an exception
+   */
+  rpc SetTimeScale(TimeScale) returns (sdr.datatypes.Empty);
+
+  /**
+   * Returns the current time setting of a channel.
+   * Each channel has a defined starting point and an end point.
+   */
+  rpc GetTimeScale(sdr.datatypes.Empty) returns (TimeScale);
+
+  //--------------------------------------------------------------//
+  //                  Time control methods                        //
+  //--------------------------------------------------------------//
+
+  /**
+   * Currently unused and a NOOP
+   *
+   * Specifies the time between that has to pass so that two succeeding triggers
+   * are recognized as such. This means that once the device has triggered,
+   * this amount of time has to pass so that another trigger can occur.
+   *
+   * returns the actual time that was set
+   */
+  rpc SetHoldOffTime(Time) returns (Time);
+
+  /**
+   * Currently unused and a NOOP. No guarantees are being made as to what this method returns 
+   *
+   * Returns the Hold-Off time (see @SetHoldOffTime) that a channel currently uses.
+   */
+  rpc GetHoldOffTime(Channel) returns (Time);
+
+  /**
+   * Set the decimation method to use when a time-scale is chosen that
+   * does not allow for the highest time resolution.
+   */
+  rpc SetDecimationMode(DecimationMode) returns (sdr.datatypes.Empty);
+  /**
+   * Get the decimation method that is currently in use
+   */
+  rpc GetDecimationMode(Channel) returns (DecimationMode);
+
+  //--------------------------------------------------------------//
+  //                     Readout methods                          //
+  //--------------------------------------------------------------//
+
+  /**
+   * Returns the current data from all channels
+   */
+  rpc GetData(sdr.datatypes.Empty) returns (OscilloscopeData);
+
+}
+
+// General-purpose messages
+
+message SystemInfo {
+  // The current version (revision) of the oscilloscope
+  uint32 version = 1;
+  // The sampling frequency in Hertz
+  double sampleFreq = 2;
+  // The amount of samples the oscilloscope stores
+  uint32 sampleCount = 3;
+  /**
+   * Returns the amount of channels that the oscilloscope manages.
+   *
+   * Channels are indexed zero-based. Each number between 0 and GetChannelCount() - 1
+   * is a valid channel to address.
+   *
+   * No information can be obtained as to which channel is connected to which ADC
+   */
+  uint32 channelCount = 4;
+}
+
+message Channel {
+  uint32 value = 1;
+}
+
+/**
+ * Status flags
+ */
+message ChannelStatus {
+  bool bufferFull = 1;
+  bool ready = 2;
+  bool enabled = 3;
+}
+
+/**
+ * A subset of the status flags that are writeable
+ */
+message ChannelWriteableStatus {
+  uint32 channel = 1;
+  bool enabled = 2;
+}
+
+// Trigger related messages
+
+message TriggerMode {
+  uint32 channel = 1;
+  bool enabled = 2;
+}
+
+message TriggerLevel {
+  uint32 channel = 1;
+  /**
+   * The level in Volts
+   */
+  double level = 2;
+}
+
+message Flank {
+  enum Type {
+    Rising = 0;
+    Falling = 1;
+    DontCare = 2;
+  };
+  uint32 channel = 1;
+  Flank.Type type = 2;
+}
+
+// Time related messages
+
+message Time {
+  uint32 channel = 1;
+  double seconds = 2;
+}
+
+message TimeScale {
+  /**
+   * The start time in seconds
+   */
+  double start = 1;
+  double stop = 2;
+}
+
+message DecimationMode {
+  enum Type {
+    Average = 0;
+    MinMax = 1;
+  };
+  uint32 channel = 1;
+  Type type = 2;
+}
+
+// Data related messages
+
+message ChannelData {
+  uint32 channel = 1;
+  double tStart = 2;
+  double tStep = 3;
+  /**
+   * The current values in Volts
+   */
+  repeated double values = 4;
+}
+
+message OscilloscopeData {
+  repeated ChannelData channels = 1;
+}

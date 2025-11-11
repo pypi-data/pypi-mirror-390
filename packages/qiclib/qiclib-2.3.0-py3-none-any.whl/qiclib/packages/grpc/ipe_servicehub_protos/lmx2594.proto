@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package lmx2594;
+import public "datatypes.proto";
+
+service LMX2594Service {
+	// Chip main power state
+	rpc PowerUp (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc PowerDown (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsPowerUp (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+	// Main frequency calculations
+	rpc SetFrequency (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+	rpc GetFrequency (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+	// Input frequency manipulation
+	rpc SetInputFrequency (sdr.datatypes.IndexedLUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetInputFrequency (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.LUInt) {}
+	rpc EnableVcoDoubler (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc DisableVcoDoubler (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsVcoDoublerEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+	rpc SetRDividerBefore (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetRDividerBefore (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SetInputMultiplier (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetInputMultiplier (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SetRDividerAfter (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetRDividerAfter (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+	// Feedback loop frequency control
+	rpc SetFracGuess (WriteFracGuess) returns (sdr.datatypes.Empty) {}
+	rpc SetFnum (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetFnum (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SetFden (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetFden (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SetNDivider (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetNDivider (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+	rpc EnableMashSeed (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc DisableMashSeed (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsMashSeedEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+	rpc SetMashSeed (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetMashSeed (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+	rpc SetChargePumpCurrent (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetChargePumpCurrent (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+	// Output frequency adjustment
+	rpc SetChannelDivider (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetChannelDivider (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SwitchToVcoA (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc SwitchToChdivA (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsVcoAEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+	rpc SwitchToVcoB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc SwitchToChdivB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsVcoBEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+	// Output power control
+	rpc SetOutputPowerA (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetOutputPowerA (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SetOutputPowerB (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetOutputPowerB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	rpc SetOutputPowerAdB (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+	rpc GetOutputPowerAdB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+	rpc SetOutputPowerBdB (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+	rpc GetOutputPowerBdB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+	rpc EnableOutputA (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc DisableOutputA (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsOutputAEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+	rpc EnableOutputB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc DisableOutputB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsOutputBEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+	rpc SetOutCurrent (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetOutCurrent (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+	// Chip control
+	rpc SetPfdDly (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+	rpc GetPfdDly (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+	
+	rpc EnableMuxoutReadback (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc DisableMuxoutReadback (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc IsMuxoutReadbackEnabled (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+	rpc Recalibrate (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc Initial (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc UpdateRead (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc UpdateWrite (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+}
+
+message WriteFracGuess {
+	enum Method {
+		FAREY = 0;
+		FACSEC = 1;
+		INSTANT = 2;
+	};
+	sdr.datatypes.EndpointIndex index = 1;
+	WriteFracGuess.Method method = 2;
+	uint32 maxden = 3;
+}

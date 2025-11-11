@@ -1,0 +1,87 @@
+syntax = "proto3";
+package rampgen;
+import "datatypes.proto";
+
+service RampGenService {
+    /**
+     * @brief Enables playback of the core
+     * 
+     * @param msg Endpoint ID
+     * @return void
+    **/
+    rpc Enable              (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Disables playback of the core
+     * 
+     * @param msg Endpoint ID
+     * @return void
+    **/
+    rpc Disable             (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+    /**
+     * @brief Get the enabled Status of one submodule
+     * 
+     * The enable will start dataprocessing or stop it. Enable for normal operation.
+     * @param msg Endpoint ID
+     * @return True if enabled.
+     */
+    rpc GetEnable           (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Bool)      {}
+    
+    /**
+     * @brief Issues reset of the core
+     * 
+     * Will disable and reset the state machine
+     *
+     * @param msg Endpoint ID
+     * @return void
+    **/
+    rpc Reset               (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Sets saw tooth ramp
+     *
+     * Will configure saw tooth ramp and enable the endpoint.
+     * The sharpness of the signal edge can be reduced by setting a fall time in seconds. 
+     * Fall time can be passed via RampRequest->param
+     *
+     * @param msg Combination of Endpoint ID, ramp frequency, amplitude and (optional) fall time
+     * @return void
+    **/
+    rpc SetSawToothRamp     (RampRequest)       returns (sdr.datatypes.Empty)     {}
+    /**
+     * @brief Set triangular ramp
+     * 
+     * Will configure triangular ramp and enable the endpoint.
+     * Note: Will ignore RampRequest->param.
+     * 
+     * @param msg Combination of Endpoint ID, ramp frequency and amplitude
+     * @return void
+    **/
+    rpc SetTriangularRamp   (RampRequest)       returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Clears all configuration registers
+     *
+     * @param Endpoint ID
+     * @return void
+    **/
+    rpc ClearConfig         (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Empty)     {}
+
+    /**
+     * @brief Returns frequency of current configuration
+     *
+     * @param msg Endpoint ID
+     * @return frequency in Hz
+    **/
+    rpc GetFrequency        (sdr.datatypes.EndpointIndex)    returns (sdr.datatypes.Double)    {}
+}
+
+
+
+message RampRequest
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    double frequency = 2;
+    double amplitude = 3;
+    double param = 4; //
+}

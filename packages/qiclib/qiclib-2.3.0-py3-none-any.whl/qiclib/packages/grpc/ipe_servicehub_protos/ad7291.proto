@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package ad7291;
+import public "datatypes.proto";
+
+service AD7291Service {
+	/**
+	 * @brief Returns current temperature of AD7291 chip
+	 * 
+	 * @param EPName.ep_name: Servicehub name of endpoint (in general same as device tree alias)
+	 * @return Float.value: temperature in °C
+	 */
+	rpc GetTemperature (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Float) {}
+
+	/**
+	 * @brief Returns (recent) mean temperature of AD7291 chip
+	 *
+	 * @param EPName.ep_name: Servicehub name of endpoint (in general same as device tree alias)
+	 * @return Float.value temperature in °C
+	 */
+	rpc GetTemperatureMean (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Float) {}
+
+	/**
+	 * @brief Returns voltage of specific ADC channel
+	 * 
+	 * @param ChannelIdentifier.ep_name: Servicehub name of endpoint (in general same as device tree alias)
+	 * @param ChannelIdentifier.channel: Channel number (0 ... 7)
+	 * @return Float.value: temperature in °C
+	 */
+	 rpc GetVoltage (ChannelIdentifier) returns (sdr.datatypes.Float) {}
+}
+
+message ChannelIdentifier {
+	sdr.datatypes.EndpointIndex ep_index=1;
+	uint32 channel=2;
+}

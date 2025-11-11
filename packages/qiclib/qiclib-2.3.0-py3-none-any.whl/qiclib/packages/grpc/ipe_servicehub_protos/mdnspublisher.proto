@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package mdnspublisher;
+import "datatypes.proto";
+
+service mDNSPublisherService {
+  /**
+   * @brief Returns the IP core ID and version. 
+   *
+   * The ID Should be 0xFFFF, the version is iterated 
+   * if major things are changed.
+   * @param sdr.datatypes.Empty
+   * @return Stuct that contains Core ID and Version
+   */
+  rpc GetServices (sdr.datatypes.Empty) returns (mdnsServices) {}
+
+  rpc AddService(mdnsService) returns (sdr.datatypes.Empty) {}
+
+  rpc RemoveService(mdnsService) returns (sdr.datatypes.Empty) {}
+
+  rpc StartServer(sdr.datatypes.Empty) returns(sdr.datatypes.Empty){}
+
+  rpc StopServer(sdr.datatypes.Empty) returns(sdr.datatypes.Empty){}
+
+}
+
+message mdnsService{
+    string name = 1;
+    string type = 2;
+    uint32 port = 3;
+    string address = 4;
+    string domain = 5;
+}
+message mdnsServices{
+    repeated mdnsService Service = 1;
+}

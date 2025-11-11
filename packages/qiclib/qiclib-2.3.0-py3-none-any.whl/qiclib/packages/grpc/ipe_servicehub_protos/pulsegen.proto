@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package pulsegen;
+import "datatypes.proto";
+
+service PulseGenService {
+  rpc GetNCOFrequency(sdr.datatypes.EndpointIndex) returns (Frequency) {}
+  rpc SetNCOFrequency(Frequency) returns (sdr.datatypes.Empty) {}
+
+  rpc Reset(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+  rpc ResetEnvelopeMemory(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+  rpc GetAmplitudeCalibration(sdr.datatypes.EndpointIndex) returns (AmplitudeCalibration) {}
+  rpc SetAmplitudeCalibration(AmplitudeCalibration) returns (sdr.datatypes.Empty) {}
+
+  rpc GetPhaseOffset(IndexSet) returns (PhaseOffset) {}
+  rpc SetPhaseOffset(PhaseOffset) returns (sdr.datatypes.Empty) {}
+
+  rpc GetGlobalPhase(sdr.datatypes.EndpointIndex) returns (PhaseOffset) {}
+
+  rpc GetDuration(IndexSet) returns (Duration) {}
+  rpc SetDuration(Duration) returns (sdr.datatypes.Empty) {}
+
+  rpc GetStartAddressI(IndexSet) returns (Address) {}
+  rpc SetStartAddressI(Address) returns (sdr.datatypes.Empty) {}
+
+  rpc GetStartAddressQ(IndexSet) returns (Address) {}
+  rpc SetStartAddressQ(Address) returns (sdr.datatypes.Empty) {}
+
+  rpc TriggerManually(IndexSet) returns (sdr.datatypes.Empty) {}
+  rpc LoadPulse(Pulse) returns (sdr.datatypes.Empty) {}
+
+  rpc GetStatusFlags(sdr.datatypes.EndpointIndex) returns (StatusFlags) {}
+  rpc ResetStatusFlags(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+}
+
+message TriggerSetIndex{
+  uint32 value = 1;
+}
+
+message IndexSet{
+  sdr.datatypes.EndpointIndex cindex = 1;
+  TriggerSetIndex tindex = 2;
+}
+
+message Frequency{
+  sdr.datatypes.EndpointIndex cindex = 1;
+  double value = 2;
+}
+
+message AmplitudeCalibration{
+  sdr.datatypes.EndpointIndex cindex = 1;
+  double i_factor = 2;
+  double q_factor = 3;
+}
+message PhaseOffset{
+  IndexSet index = 1;
+  double value = 2;
+}
+
+message Duration{
+  IndexSet index = 1;
+  double value = 2;
+}
+
+message Address{
+  IndexSet index = 1;
+  uint32 value = 2;
+}
+message Pulse{
+  IndexSet index = 1;
+  repeated double i = 2;
+  repeated double q = 3;
+  double phase = 4;
+  double offset = 5;
+  bool hold = 6;
+  bool shift_phase = 7;
+}
+
+message StatusFlags {
+  sdr.datatypes.EndpointIndex cindex = 1;
+  bool saturation = 2;
+}

@@ -1,0 +1,83 @@
+syntax="proto3";
+
+package capreadoutchain;
+import "datatypes.proto";
+
+service CapReadoutChainService {
+  /**
+   * Calibrate the readoutchain for given Frequencies. Includes the calibration of Fluxramp
+   */
+  rpc CalibrateReadoutchain(Configuration) returns (ResonatorChannels) {}  
+
+  /**
+   * Get the resulting data from CalibrateReadoutchain
+   */
+  rpc GetResonatorChannels(sdr.datatypes.Empty) returns (ResonatorChannels){}
+
+
+  rpc ActivateRawReadout(sdr.datatypes.Empty) returns (sdr.datatypes.Empty){}
+  rpc ActivateDemodulatedReadout(sdr.datatypes.Empty) returns (sdr.datatypes.Empty){}
+
+  rpc GetFluxrampConfiguration(sdr.datatypes.Empty) returns (FluxrampConfiguration){}
+
+  //rpc ScanForResonators(Frequencies) returns (ResonatorChannels){}
+ }
+
+message ChannelLocation{
+  uint32 chain = 1;
+  uint32 subchain = 2;
+  uint32 channel = 3;
+}
+
+message ToneSpecs{
+  double frequency = 1; // Frequency in Hz
+  double amplitude = 2; // Amplitude in DAC counts
+  double phase = 3; // Phase in radians
+  double phaseIQI = 4; // Phase IQI in radians
+  double amplitudeIQI = 5; // amplitude IQI in relative factor: Q*factor
+} 
+
+message Frequencies{
+  repeated ToneSpecs value = 1;
+}
+
+message Configuration{
+  Frequencies tones = 1;
+  double fluxrampFrequency = 2;
+  uint32 modulationFactor = 3;
+}
+
+message ResonatorChannel{
+  uint32 id = 1;
+  ToneSpecs toneSpecs = 2;
+  ChannelLocation channelLocation = 3;
+  double resonatorFrequency = 4;
+}
+
+message ResonatorChannels{
+  repeated ResonatorChannel value = 1;
+}
+
+message ChainIndex{
+  uint32 value = 1;
+}
+
+message FluxrampData{
+  repeated double frequency = 1;
+  repeated double phase = 2;
+  repeated double offset = 3;
+}
+
+message FluxrampConfiguration{
+  repeated FluxrampData data = 1;
+}
+
+// Configuration of the event detection module
+message EventConfiguration{
+  sdr.datatypes.EndpointIndex index = 1;
+  ChainIndex chainIndex = 2;
+  uint32 threshold = 3;
+  uint32 packageLength = 4;
+  uint32 pretriggerValues = 5;
+  uint32 activeChannels = 6;
+}

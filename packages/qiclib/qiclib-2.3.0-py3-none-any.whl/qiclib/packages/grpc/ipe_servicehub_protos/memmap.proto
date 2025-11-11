@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package memmap;
+
+service DevMemService {
+  rpc Read (ReadRequest) returns (MemContent) {}
+  rpc ReadSlice(ReadSliceRequest) returns (MemContent){}
+  rpc Write (WriteRequest) returns(WriteAck) {}
+  rpc WriteSlice(WriteSliceRequest) returns(WriteAck){}
+}
+enum Type {
+  UINT8 = 0;
+  INT8 = 1;
+  UINT16 = 2;
+  INT16 = 3;
+  UINT32 = 4;
+  INT32 = 5;
+  UINT64 = 6;
+  INT64 = 7;
+  }
+message ReadRequest{
+  uint32 adr = 1;
+  uint64 count = 2;
+
+  Type type = 3;
+}
+message ReadSliceRequest{
+  uint32 adr = 1;
+  Type type = 3;
+  uint32 slice_lsb = 4;
+  uint32 slice_width = 5;
+}
+message WriteSliceRequest{
+  uint32 adr = 1;
+  uint32 value = 2;
+  Type type=3;
+  uint32 slice_lsb = 4;
+  uint32 slice_width = 5;
+}
+message WriteRequest{
+  uint32 adr = 1;
+  repeated uint64 value = 2;
+  Type type=3;
+
+}
+
+message MemContent{
+  repeated uint64 value = 1;
+}
+
+message WriteAck{
+  bool success = 1;
+}

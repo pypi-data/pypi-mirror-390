@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package multichannelddc;
+import "datatypes.proto";
+
+service MultiChannelDDCService {
+  /**
+   * @brief Issues reset of the core
+   *
+   * The reset will set all values to zero, such as phases, frequencies.
+   * It also disables the core. Use @link NCO @endlink the set the phases aferwards.
+   *
+   * @param msg Specify the Endpoint ID
+   * @return void
+   */
+  rpc Reset (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+  
+  /**
+   * @brief Enables one of the submodules.
+   * 
+   * The enable will start dataprocessing or stop it. Enable for normal operation.
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc Enable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Disables one of the submodules.
+   * 
+   * The enable will start dataprocessing or stop it. Enable for normal operation.
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc Disable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Get the enable bit.
+   * 
+   * Returns true if the core is processing data.
+   *
+   * @param msg Endpoint ID of the submodule.
+   * @return True if core is enable
+   */
+  rpc GetEnable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool){}
+
+  /**
+   * @brief Get the amount of channels that are processed in TDM.
+   *
+   * The processing core processes one channel each clock cycle. 
+   * Usually the clock is n times faster than the sample rate.
+   * Therefore n channels can be processed during the time of one
+   * sample.
+   *
+   * @param msg Endpoint ID of the submodule.
+   * @return Amount of TDM channels
+   */
+  rpc GetTDMChannels(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+
+  /**
+   * @brief Get the clock frequency of the MultiChannelDDC Module
+   *
+   * This parameter is set at the build stage of the project and cannot be
+   * changed.
+   *
+   * @param msg Endpoint ID of the submodule
+   * @return ClockFrequency of the module
+   */
+  rpc GetClockFrequency(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double){}
+ 
+  /**
+   * @brief Set the phases of all NCOs of one MultiChannelNCO. 
+   *
+   * The length of the vectors of phases and frequencies 
+   * must be the amount of TDM channels. See @link GetTDMChannels @endlink.
+   * With the function @link SetChannelNCO @endlink a single channel can be set.
+   *
+   * @param Combination of Endpoint ID of the submodule and the 
+   * frequencies and phases (-pi to pi) of all channels.
+   * @return void
+   */
+  rpc SetNCOs(MultiNCO) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Set the phases of all NCOs of one MultiChannelNCO. 
+   *
+   *
+   * @param msg The frequency and phase (-pi to pi) of one channel and Endpoint ID 
+   * of the submodule
+   * @return void
+   */
+  rpc SetNCO(SingleNCO) returns (sdr.datatypes.Empty){}
+}
+
+message NCOParam{
+  string frequency = 1; // Frequency of the NCO
+  double phase = 2; // Phase of the NCO
+
+}
+
+message MultiNCO{
+  repeated NCOParam params = 1; // Array of NCO parameters
+  sdr.datatypes.EndpointIndex index = 2;
+}
+message SingleNCO {
+  NCOParam param = 1;
+  uint32 channel = 2; // NCO channel, channel < TDMChannel count.
+  sdr.datatypes.EndpointIndex index = 3;
+}

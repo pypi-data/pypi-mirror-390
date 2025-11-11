@@ -1,0 +1,223 @@
+syntax = "proto3";
+
+package pimc;
+import "datatypes.proto";
+
+service PIMCService
+{
+    /*
+     * @brief Issue reset in the firmware.
+     *
+     * This reset is given to the IP cores within the FPGA side.
+     * The cores need to be connected to PIMC rst out.
+     * Some cores will go in an async state to its userspace/kernel driver
+     * if the reset is issued. Thus not working as expected.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Empty
+     */
+    rpc SetReset(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+    /*
+     * @brief Read if system is busy.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Bool
+     */
+    rpc GetBusy(sdr.datatypes.Empty) returns (sdr.datatypes.Bool) {}
+
+    /*
+     * @brief Read if the system is fully initialized and ready to be operated.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Bool
+     */
+    rpc GetReady(sdr.datatypes.Empty) returns (sdr.datatypes.Bool) {}
+
+    /*
+     * @brief Set the software ready flag of the platform.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Empty
+     */
+    rpc SetSWReady(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+    /*
+     * @brief Read the software ready flag from the platform.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Bool
+     */
+    rpc GetSWReady(sdr.datatypes.Empty) returns (sdr.datatypes.Bool) {}
+
+    /*
+     * @brief Set the reset done flag of the platform.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Empty
+     */
+    rpc SetResetDone(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+    /*
+     * @brief Read the reset done flag from the platform.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Bool
+     */
+    rpc GetResetDone(sdr.datatypes.Empty) returns (sdr.datatypes.Bool) {}
+
+    /*
+     * @brief Returns Chip version of PIMC core.
+     *
+     * The ID Should be 0xFFFF, the version is iterated
+     * if major things are changed.
+     *
+     * @param sdr.datatypes.Empty
+     * @return UInt
+     */
+    rpc GetChipVersion(sdr.datatypes.Empty) returns (sdr.datatypes.UInt) {}
+
+    /*
+     * @brief Returns version of the core module from the platform.
+     *
+     * @param sdr.datatypes.Empty
+     * @return UInt
+     */
+    rpc GetModuleChipVersion(sdr.datatypes.Empty) returns (sdr.datatypes.UInt) {}
+
+    /*
+     * @brief Returns struct containing pimcID, pimcVersion, projectID,
+     * platformID, buildRevision and buildTime.
+     *
+     * @param sdr.datatypes.Empty
+     * @return Info
+     */
+    rpc GetInfo(sdr.datatypes.Empty) returns (Info) {}
+
+    /*
+     * @brief Returns all Info data.
+     *
+     * @param sdr.datatypes.Empty
+     * @return String
+     */
+    rpc GetInfoString(sdr.datatypes.Empty) returns (sdr.datatypes.String) {}
+
+    /*
+     * @brief Returns true if all clocks are in valid frequency range.
+     *
+     * @param sdr.datatypes.Empty
+     * @return sdr.datatypes.Bool
+     */
+    rpc GetAllClocksValid(sdr.datatypes.Empty) returns (sdr.datatypes.Bool) {}
+
+    /*
+     * @brief Returns String containing information about connected clocks.
+     *
+     * @param sdr.datatypes.Empty
+     * @return String
+     */
+    rpc GetClocksInfo(sdr.datatypes.Empty) returns (sdr.datatypes.String) {}
+
+    /*
+     * @brief Returns String representing 16bit StatusInputs.
+     *
+     * @param sdr.datatypes.Empty
+     * @return String
+     */
+    rpc GetStatusInputs(sdr.datatypes.Empty) returns (sdr.datatypes.String) {}
+
+    /*
+     * @brief Returns String representing 16bit ReadyMask.
+     *
+     * @param sdr.datatypes.Empty
+     * @return String
+     */
+    rpc GetReadyMask(sdr.datatypes.Empty) returns (sdr.datatypes.String) {}
+
+    /*
+     * @brief Returns String representing 16bit ReadyState.
+     *
+     * @param sdr.datatypes.Empty
+     * @return String
+     */
+    rpc GetReadyState(sdr.datatypes.Empty) returns (sdr.datatypes.String) {}
+
+    /*
+     * @brief Returns the status of the platform.
+     *
+     * The user can check if the platform is ready by reading the flag.
+     * The ready state is defined within the PIMC core.
+     *
+     * @param sdr.datatypes.Empty
+     * @return PIMCStatus
+     */
+    rpc GetStatus(sdr.datatypes.Empty) returns (PIMCStatus) {}
+
+    /*
+     * @brief \deprecated Returns Project containing projectId, platformId and
+     * buildRevision.
+     *
+     * With this function one can test if the correct/expected
+     * FPGA firmware is running on the device. Using the device
+     * with a different image will cause unexpected behavior or even
+     * damage the board.
+     *
+     * @param sdr.datatypes.Empty
+     * @return Project
+     */
+    rpc GetProject(sdr.datatypes.Empty) returns (Project) {}
+
+    /*
+     * @brief \deprecated Returns buildTime in string format.
+     *
+     * The returned build time tells when the synthesis was started.
+     * This is only related to the FPGA firmware.
+     *
+     * @param sdr.datatypes.Empty
+     * @return string
+     */
+    rpc GetBuildTime(sdr.datatypes.Empty) returns (sdr.datatypes.String) {}
+
+    /*
+     * @brief \deprecated Returns BoardInfo containing coreId, the Project and
+     * BuildTime.
+     *
+     * @param sdr.datatypes.Empty
+     * @return BoardInfo
+     */
+    rpc GetBoardInfo(sdr.datatypes.Empty) returns (BoardInfo) {}
+}
+
+message BoardInfo
+{
+    uint32 coreId = 1;
+    Project project = 2;
+    string buildTime = 3;
+}
+
+message Project
+{
+    uint32 projectId = 1;
+    uint32 platformId = 2;
+    uint32 buildRevision = 3;
+}
+
+message PIMCStatus
+{
+    bool rst_done = 1;
+    bool ready = 2;
+    bool busy = 3;
+}
+
+message Info
+{
+    uint32 pimcId = 1;
+    uint32 pimcVersion = 2;
+    uint32 projectId = 3;
+    uint32 platformId = 4;
+    uint32 buildRevision = 5;
+    string buildTime = 6;
+    string projectName = 7;
+    string platformName = 8;
+    string buildCommit = 9;
+}

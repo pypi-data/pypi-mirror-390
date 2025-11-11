@@ -1,0 +1,100 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package taskrunner;
+import "datatypes.proto";
+
+service TaskRunnerService {
+  // Sends a greeting
+  rpc GetStatus (sdr.datatypes.Empty) returns (StatusReply) {}
+  rpc GetTaskState (sdr.datatypes.Empty) returns (TaskStateReply) {}
+  rpc SetParameter (ParameterRequest) returns (sdr.datatypes.Empty) {}
+  rpc ProgramTask (ProgramTaskRequest) returns (sdr.datatypes.Empty) {}
+  rpc CompileTask (ProgramTaskRequest) returns (sdr.datatypes.Empty) {}
+  rpc StartTask (StartTaskRequest) returns (sdr.datatypes.Empty) {}
+  rpc StopTask (StopTaskRequest) returns (sdr.datatypes.Empty) {}
+  rpc GetDataboxes (sdr.datatypes.Empty) returns (stream DataboxReplyINT32) {}
+  rpc GetDataboxesINT8 (sdr.datatypes.Empty) returns (stream DataboxReplyINT32) {}
+  rpc GetDataboxesUINT8 (sdr.datatypes.Empty) returns (stream DataboxReplyUINT32) {}
+  rpc GetDataboxesINT16 (sdr.datatypes.Empty) returns (stream DataboxReplyINT32) {}
+  rpc GetDataboxesUINT16 (sdr.datatypes.Empty) returns (stream DataboxReplyUINT32) {}
+  rpc GetDataboxesINT32 (sdr.datatypes.Empty) returns (stream DataboxReplyINT32) {}
+  rpc GetDataboxesUINT32 (sdr.datatypes.Empty) returns (stream DataboxReplyUINT32) {}
+  rpc GetDataboxesINT64 (sdr.datatypes.Empty) returns (stream DataboxReplyINT64) {}
+  rpc GetDataboxesUINT64 (sdr.datatypes.Empty) returns (stream DataboxReplyUINT64) {}
+  rpc GetTaskErrorMessages (sdr.datatypes.Empty) returns (GetTaskErrorMessagesReply) {}
+}
+
+
+message StatusReply {
+  uint32 chip_id = 1;
+  string firmware_hash = 2;
+  string build_date = 3;
+  string build_commit = 4;
+  string task_name = 5;
+  uint32 task_state = 6;
+  uint32 task_progress = 7;
+  uint32 databoxes_available = 8;
+}
+
+message TaskStateReply {
+  bool busy = 1;
+  bool done = 2;
+  bool loaded = 3;
+  bool looping = 4;
+  bool error_msg_available = 5;
+  bool error_msg_queue_full = 6;
+}
+
+message DataboxReplyINT32 {
+  uint32 index = 1;
+  repeated int32 data = 2;
+}
+message DataboxReplyUINT32 {
+  uint32 index = 1;
+  repeated uint32 data = 2;
+}
+message DataboxReplyINT64 {
+  uint32 index = 1;
+  repeated int64 data = 2;
+}
+message DataboxReplyUINT64 {
+  uint32 index = 1;
+  repeated uint64 data = 2;
+}
+
+message GetTaskErrorMessagesReply {
+  repeated string message = 1;
+}
+
+message ParameterRequest {
+  repeated int32 parameters = 1; // The parameters encoded as signed 32bit ints
+}
+
+message StartTaskRequest {
+  bool looping = 1; // If the task should be executed in loop mode
+  bool stop_running = 2; // If currently running task will be stopped
+}
+
+message StopTaskRequest {
+  bool reset = 1; // If the loaded binary should be reset
+}
+
+message ProgramTaskRequest {
+  string name = 1;
+  bytes task = 2;
+}
+

@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package rfdc;
+import "datatypes.proto";
+
+service RFdcService {
+  rpc GetBlockStatus (ConverterIndex) returns (BlockStatus) {}            //adapted for ADCs and DACs (16/11/22) done
+
+  rpc GetMixerFrequency (ConverterIndex) returns (Frequency) {}           //adapted for ADCs and DACs (16/11/22) done
+  rpc SetMixerFrequency (Frequency) returns (sdr.datatypes.Empty) {}
+  rpc GetFrequencyResolution(ConverterIndex) returns (sdr.datatypes.Double);
+
+  rpc GetPhase (ConverterIndex) returns (Phase) {}                        //adapted for ADCs and DACs (16/11/22) done
+  rpc SetPhase (Phase) returns (sdr.datatypes.Empty) {}		                              //adapted for ADCs and DACs (16/11/22) done
+
+  rpc GetMixerMode (ConverterIndex) returns (Mode) {}                     //adapted for ADCs and DACs (17/11/22) done
+  rpc SetMixerMode (IndexedMode) returns (sdr.datatypes.Empty) {}
+  rpc SetMixerSettings (MixerSettings) returns (sdr.datatypes.Empty) {}                 //adapted for ADCs and DACs (17/11/22) done
+  rpc GetDataType (ConverterIndex) returns (DataType) {}                  //adapted for ADCs and DACs (17/11/22) done
+
+  rpc GetInterpolation (ConverterIndex) returns (Interpolation) {}        //is is just for DACs
+  rpc SetInterpolation (Interpolation) returns (sdr.datatypes.Empty) {}                 //is is just for DACs
+
+  rpc GetDecimation (ConverterIndex) returns (Decimation) {}              //is is just for DACs (new 17/11/22) done
+  rpc SetDecimation (Decimation) returns (sdr.datatypes.Empty) {}                       //is is just for DACs (new) done
+
+  rpc GetInvSincFIR (ConverterIndex) returns (InvSincFIR) {}
+  rpc SetInvSincFIR (InvSincFIR) returns (sdr.datatypes.Empty) {}
+
+  rpc SetThresholdStickyClear (ThresholdToUpdate) returns (sdr.datatypes.Empty) {}
+
+  rpc StartUp(TileIndex) returns (sdr.datatypes.Empty) {}                               //adapted for ADCs and DACs (16/11/22) done
+  rpc Shutdown(TileIndex) returns (sdr.datatypes.Empty) {}		                          //adapted for ADCs and DACs (16/11/22) done
+  rpc Reset(TileIndex) returns (sdr.datatypes.Empty) {}		                              //adapted for ADCs and DACs (16/11/22) done
+
+  rpc InterruptClear (ConverterIndex) returns (sdr.datatypes.Empty) {}                  //adapted for ADCs and DACs (16/11/22) done
+  rpc GetInterruptStatus (ConverterIndex) returns (InterruptSettings) {}  //adapted for ADCs and DACs (16/11/22) done
+
+  rpc GetNyquistZone (ConverterIndex) returns (NyquistZone){}             //adapted for ADCs and DACs (17/11/22) done
+  rpc SetNyquistZone (NyquistZone) returns (sdr.datatypes.Empty) {}		//adapted for ADCs and DACs (17/11/22)
+
+  /**
+   * @brief Return the status of the converters in the RFdc.
+   * 
+   * @param msg None
+   * @return StatusReport containing further information about the RFdc status.
+   */
+  rpc ReportStatus(sdr.datatypes.Empty) returns (StatusReport) {}
+  
+  /**
+   * @brief Resets the status of the converters in the RFdc.
+   * 
+   * This is necessary as the status is sticky until reset.
+   * @param msg None
+   * @return None
+   */
+  rpc ResetStatus(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+  rpc GetDigitalAttenuation(ConverterIndex) returns (sdr.datatypes.Double);
+
+  rpc SetDigitalAttenuation(IndexedDouble) returns (sdr.datatypes.Empty);
+
+  rpc GetOutputCurrent(ConverterIndex) returns (sdr.datatypes.Double);
+
+  rpc SetOutputCurrent(IndexedDouble) returns (sdr.datatypes.Double);
+}
+
+enum ConverterType {
+  ADC = 0;
+  DAC = 1;
+}
+
+message ConverterIndex {
+  uint32 tile = 1;
+  uint32 block = 2;
+  ConverterType converter_type = 3;
+}
+
+message TileIndex {
+  uint32 tile = 1;
+  ConverterType converter_type = 2;
+}
+
+message BlockStatus {
+  double frequency = 1;
+  uint32 analogstatus = 2;
+  uint32 digitalstatus = 3;
+  uint32 clockstatus = 4;
+  uint32 fifoflagsenabled = 5;
+  uint32 fifoflagsasserted = 6;
+}
+
+message Frequency {
+  ConverterIndex index = 1;
+  double value = 2;
+}
+
+message NyquistZone {
+  ConverterIndex index = 1;
+  uint32 value = 2;
+}
+
+enum InvSincFIR_Enum {
+  DISABLED = 0;
+  FIRST_NYQUIST = 1;
+  SECOND_NYQUIST = 2;
+}
+
+message InvSincFIR {
+  ConverterIndex index = 1;
+  InvSincFIR_Enum value = 2;
+}
+
+message ThresholdToUpdate {
+  ConverterIndex index = 1;
+  uint32 threshold = 2;
+}
+
+message InterruptSettings {
+  ConverterIndex index = 1;
+  uint32 intrmask = 2;
+}
+message Phase {
+  ConverterIndex index = 1;
+  double value = 2;
+}
+
+message MixerSettings {
+  ConverterIndex index = 1;
+  MixerMode mode = 2;
+  double frequency = 3;
+}
+message Mode {
+  MixerMode mode = 1;
+}
+
+message IndexedMode {
+  ConverterIndex index = 1;
+  MixerMode mode = 2;
+}
+
+enum MixerMode {
+  OFF = 0;
+  COMPLEX_TO_COMPLEX = 1;
+  COMPLEX_TO_REAL = 2;
+  REAL_TO_COMPLEX = 3;
+}
+
+enum DataType_Enum {
+  REAL = 0;
+  IQ = 1;
+}
+
+message DataType {
+  DataType_Enum value = 1;
+}
+
+message Interpolation {
+  ConverterIndex index = 1;
+  uint32 factor = 2;
+}
+
+message Decimation {
+  ConverterIndex index = 1;
+  uint32 factor = 2;
+}
+
+message StatusReport {
+  bool failure = 1; // If some errors happened
+  string report = 2; // Description of the status
+  repeated ConverterIndex adc_overrange = 3; // List of all ADCs with overrange
+  repeated ConverterIndex adc_overvoltage = 4; // List of all ADCs with overvoltage
+}
+
+message IndexedDouble {
+  ConverterIndex index = 1;
+  double value = 2;
+}

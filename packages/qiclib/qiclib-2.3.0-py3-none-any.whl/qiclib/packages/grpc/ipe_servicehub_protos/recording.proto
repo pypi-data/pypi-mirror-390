@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package recording;
+import "datatypes.proto";
+
+service Recording {
+  rpc Reset(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+  rpc ReportStatus(sdr.datatypes.EndpointIndex) returns (StatusReport) {}
+  rpc ResetStatus(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+  rpc ResetStatusAll(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+  rpc IsInterferometerMode(sdr.datatypes.EndpointIndex) returns (InterferometerMode) {}
+  rpc SetInterferometerMode(InterferometerMode) returns (sdr.datatypes.Empty) {}
+  
+  rpc IsContinuousMode(sdr.datatypes.EndpointIndex) returns (ContinuousMode) {}
+  rpc SetContinuousMode(ContinuousMode) returns (sdr.datatypes.Empty) {}
+
+  rpc GetLastTrigger(sdr.datatypes.EndpointIndex) returns (Trigger) {}
+  rpc TriggerManually(Trigger) returns (sdr.datatypes.Empty) {}
+
+  rpc GetTriggerOffset(sdr.datatypes.EndpointIndex) returns (TriggerOffset) {}
+  rpc SetTriggerOffset(TriggerOffset) returns (sdr.datatypes.Empty) {}
+
+  rpc GetRecordingDuration(sdr.datatypes.EndpointIndex) returns (RecordingDuration) {}
+  rpc SetRecordingDuration(RecordingDuration) returns (sdr.datatypes.Empty) {}
+
+  rpc GetValueShift(sdr.datatypes.EndpointIndex) returns (ValueShift) {}
+  rpc SetValueShift(ValueShift) returns (sdr.datatypes.Empty) {}
+
+  rpc GetExpectedHighestSignalAmplitude(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Int);
+  rpc SetExpectedHighestSignalAmplitude(sdr.datatypes.IndexedInt) returns (sdr.datatypes.Empty);
+
+  rpc GetAverageShift(sdr.datatypes.EndpointIndex) returns (AverageShift) {}
+  rpc SetAverageShift(AverageShift) returns (sdr.datatypes.Empty) {}
+
+  rpc GetConditioningMatrix(sdr.datatypes.EndpointIndex) returns (ConditioningMatrix) {}
+  rpc SetConditioningMatrix(ConditioningMatrix) returns (sdr.datatypes.Empty) {}
+  
+  rpc GetConditioningOffset(sdr.datatypes.EndpointIndex) returns (ConditioningOffset) {}
+  rpc SetConditioningOffset(ConditioningOffset) returns (sdr.datatypes.Empty) {}
+
+  rpc GetInternalFrequency(sdr.datatypes.EndpointIndex) returns (Frequency) {}
+  rpc SetInternalFrequency(Frequency) returns (sdr.datatypes.Empty) {}
+
+  rpc GetInternalPhaseOffset(sdr.datatypes.EndpointIndex) returns (PhaseOffset) {}
+  rpc SetInternalPhaseOffset(PhaseOffset) returns (sdr.datatypes.Empty) {}
+
+  rpc GetReferenceFrequency(sdr.datatypes.EndpointIndex) returns (Frequency) {}
+  rpc SetReferenceFrequency(Frequency) returns (sdr.datatypes.Empty) {}
+
+  rpc GetReferenceDelay(sdr.datatypes.EndpointIndex) returns (ReferenceDelay) {}
+  rpc SetReferenceDelay(ReferenceDelay) returns (sdr.datatypes.Empty) {}
+
+  rpc GetStateConfig(sdr.datatypes.EndpointIndex) returns (StateConfig) {}
+  rpc SetStateConfig(StateConfig) returns (sdr.datatypes.Empty) {}
+
+  rpc GetAveragedResult(sdr.datatypes.EndpointIndex) returns (IQResult) {}
+  rpc GetSingleResult(sdr.datatypes.EndpointIndex) returns (IQResult) {}
+  
+  rpc GetResultMemoryStatus(sdr.datatypes.EndpointIndex) returns (MemoryStatus) {}
+  rpc GetResultMemorySize(sdr.datatypes.EndpointIndex) returns (MemorySize) {}
+  rpc GetResultMemory(MemorySize) returns (ResultMemory) {}
+  rpc GetRawMemory(MemorySize) returns (RawMemory) {}
+}
+
+message StatusReport {
+  string report = 1;
+  bool failure = 2;
+}
+
+message InterferometerMode {
+  sdr.datatypes.EndpointIndex index = 1;
+  bool is_interferometer = 2;
+}
+
+message ContinuousMode {
+  sdr.datatypes.EndpointIndex index = 1;
+  bool is_continuous = 2;
+}
+
+message Trigger {
+  sdr.datatypes.EndpointIndex index = 1;
+  enum TriggerValue {
+    NONE = 0;
+    SINGLE = 1;
+    ONESHOT = 2;
+    START_CONTINUOUS = 6;
+    STOP_CONTINUOUS = 7;
+    RESET = 14;
+    NCO_SYNC = 15;
+  }
+  TriggerValue value = 2;
+}
+
+message TriggerOffset {
+  sdr.datatypes.EndpointIndex index = 1;
+  double value = 2;
+}
+
+message RecordingDuration {
+  sdr.datatypes.EndpointIndex index = 1;
+  double value = 2;
+}
+
+message ValueShift {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 value = 2;
+}
+
+message ValueShiftOffset {
+  sdr.datatypes.EndpointIndex index = 1;
+  int32 value = 2;
+}
+
+message AverageShift {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 value = 2;
+}
+
+message Frequency {
+  sdr.datatypes.EndpointIndex index = 1;
+  double value = 2;
+}
+
+message PhaseOffset {
+  sdr.datatypes.EndpointIndex index = 1;
+  double value = 2;
+}
+
+message ReferenceDelay {
+  sdr.datatypes.EndpointIndex index = 1;
+  double value = 2;
+}
+
+message StateConfig {
+  sdr.datatypes.EndpointIndex index = 1;
+  int32 value_ai = 2;
+  int32 value_aq = 3;
+  int32 value_b = 4;
+}
+
+message IQResult {
+  int32 i_value = 1;
+  int32 q_value = 2;
+}
+
+message MemorySize {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 size = 2;
+}
+
+message MemoryStatus {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 size = 2;
+  bool empty = 3;
+  bool full = 4;
+  bool overflow = 5;
+}
+
+message ResultMemory {
+  repeated int32 result_i = 1;
+  repeated int32 result_q = 2;
+}
+
+message RawMemory {
+  repeated int32 raw_i = 1;
+  repeated int32 raw_q = 2;
+}
+
+message ConditioningMatrix{
+  sdr.datatypes.EndpointIndex index = 1;
+  double ii = 2;
+  double iq = 3;
+  double qi = 4;
+  double qq = 5;
+}
+
+message ConditioningOffset{
+  sdr.datatypes.EndpointIndex index = 1;
+  int32 i = 2;
+  int32 q = 3;
+}

@@ -1,0 +1,268 @@
+syntax="proto3";
+
+package eventdetection;
+import "datatypes.proto";
+
+service EventDetectionService {
+
+  /**
+   * @brief Enables the module.
+   * 
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc Enable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Reads the number of TDM channels processed by this module.
+   * 
+   * @param msg Endpoint ID
+   * @return UInteger
+   */
+   rpc GetTDMChannels(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+
+   /**
+   * @brief Reads the current status of the module.
+   * 
+   * Returns whether the module is currently enabled.
+   * @param msg Endpoint ID
+   * @return bool
+   */
+  rpc GetEnable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool){} 
+
+  /**
+   * @brief Activates the bypass.
+   * 
+   * Data stream will be forwarded without preprocessing.
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc ActivateBypass(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  
+  /**
+   * @brief Deactivates the bypass.
+   * 
+   * Events will be detected and forwarded as isolated data.
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc DeactivateBypass(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+
+  /**
+   * @brief Reads the current status of the bypass.
+   * 
+   * Returns whether the bypass is currently activated.
+   * @param msg Endpoint ID
+   * @return bool
+   */
+  rpc GetBypassStatus(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool){}
+
+
+   /**
+   * @brief Sets the amount of pretrigger values.
+   * 
+   * Defines the number of values that are stored in the DMA before the threshold is exceeded.
+   * @param msg UInteger
+   * @return void
+   */
+  rpc SetPretriggerValues(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty){}
+
+
+  /**
+   * @brief Returns the number of pretrigger values stored in the DMA.
+   *
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return UInteger
+   */
+  rpc GetPretriggerValues(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+   
+  
+  /**
+   * @brief Sets the length of an event.
+   * 
+   * Defines the time an event is stored.
+   * @param msg UInteger
+   * @return void
+   */
+  rpc SetEventLength(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Returns the length of an event.
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return UInteger
+   */
+  rpc GetEventLength(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+  
+  
+  /**
+   * @brief Specifies which trigger engine should be used.
+   * 
+   * @param msg TriggerEngine
+   * - THRESHOLD: Events are detected by comparing threshold with difference between two succeeding samples
+   * - MOVING_AVERAGE: Events are detected by using moving averages
+   * @return void
+   */
+  rpc SetTriggerEngine(TriggerEngine) returns (sdr.datatypes.Empty){}
+
+  
+   /**
+   * @brief Reads the currently used trigger engine.
+   * 
+   * Returns whether the fir-filter based trigger engine is currently used.
+   * @param msg Endpoint ID
+   * @return TriggerEngine
+   * - THRESHOLD: Events are detected by comparing threshold with difference between two succeeding samples
+   * - MOVING_AVERAGE: Events are detected by using moving averages
+   */
+  rpc GetTriggerEngine(sdr.datatypes.EndpointIndex) returns (TriggerEngine){} 
+  
+
+  /**
+   * @brief Sets the threshold for detection of an event.
+   * 
+   * Defines the comparator value for deteting the start of events.
+   * @param msg UInteger
+   * @return void
+   */
+  rpc SetEventThreshold(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty){}
+
+
+  /**
+   * @brief Returns the threshold for detection of an event.
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return UInteger
+   */
+  rpc GetEventThreshold(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+
+
+  /**
+   * @brief Triggers detection of events
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return void
+   */
+  rpc SetSoftwareTrigger(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+
+   /**
+   * @brief Activate/deactivate the software trigger for the corresponding channel.
+   * 
+   * @param msg ChannelConfiguration
+   * @return void
+   */
+  rpc SetSingleTriggerChannel(ChannelConfiguration) returns (sdr.datatypes.Empty){}
+
+
+  /**
+   * @brief Returns the status of the software trigger for the corresponding channel.
+   * 
+   * @param msg ChannelNumber
+   * @return Bool
+   */
+  rpc GetSingleTriggerChannel(ChannelNumber) returns (sdr.datatypes.Bool){}
+  
+  
+  /**
+   * @brief Activate/deactivate the corresponding channel for event detection.
+   * 
+   * @param msg ChannelConfiguration
+   * @return void
+   */
+  rpc SetChannelActive(ChannelConfiguration) returns (sdr.datatypes.Empty){}
+  
+  
+  /**
+   * @brief Returns the status of the corresponding channel.
+   * 
+   * @param msg ChannelNumber
+   * @return Bool
+   */
+  rpc GetChannelActive(ChannelNumber) returns (sdr.datatypes.Bool){}
+
+
+   /**
+   * @brief Resets the timestamp of a single module
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return void
+   */
+  rpc ResetTimestamp(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Resets the global timestamp 
+   * 
+   * @param msg sdr.datatypes.Empty
+   * @return void
+   */
+   rpc ResetGlobalTimestamp(sdr.datatypes.Empty) returns (sdr.datatypes.Empty){}
+  
+  
+  /**
+   * @brief Resets the counters for stored and discarded events
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return void
+   */
+  rpc ResetCounters(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+  
+  /**
+   * @brief Returns the counter value for the stored events.
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return UInteger
+   */
+  rpc GetStoredEvents(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+  
+  
+  /**
+   * @brief Returns the counter value for the discarded events.
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return UInteger
+   */
+  rpc GetDiscardedEvents(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+  
+  
+  /**
+   * @brief Returns both counters for stored and discarded events.
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return UInteger
+   */
+  rpc GetStatistics(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+
+}
+
+message TriggerEngine
+{
+  sdr.datatypes.EndpointIndex index = 1;
+  enum TriggerType {
+    THRESHOLD = 0;
+    MOVING_AVERAGE = 1;
+  }
+  TriggerType value = 2;
+}
+
+message Statistics
+{
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 discardedEvents = 2;
+  uint32 storedEvents = 3;
+}
+
+message ChannelNumber
+{
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 channel = 2;
+}
+
+message ChannelConfiguration
+{
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 channel = 2;
+  bool status = 3;
+}

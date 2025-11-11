@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package ltc2000;
+import public "datatypes.proto";
+
+/// Service for the configuration and information interface of an
+/// externally connected LTC2000 DAC.
+service LTC2000CfgService {
+  /// Returns the sample rate that the DAC operates at in Hz.
+  /// At the moment, only a Best guess.
+  /// Cannot be relied upon.
+  rpc GetSampleRate(sdr.datatypes.Empty) returns (sdr.datatypes.Double);
+
+  /// Returns status information from the DAC.
+  /// Will contain more status information when
+  /// an SPI interface is available
+  rpc GetStatus(sdr.datatypes.Empty) returns (Status);
+
+  /// Returns the fine-delay setting in picoseconds for the specified port.
+  rpc GetPortDelay(Port) returns (sdr.datatypes.Double);
+
+  /// Sets the fine-delay in picoseconds for the specified port.
+  /// Returns the value that was actually set in seconds.
+  rpc SetPortDelay(PortDelaySetting) returns (sdr.datatypes.Double);
+
+  /// Resets the core.
+  /// After this operation, all delay elements are reset to their initial setting.
+  rpc Reset(sdr.datatypes.Empty) returns (sdr.datatypes.Empty);
+}
+
+message Status {
+  /// returns whether Voltage and Temperature compensation (VTC) is enabled.
+  bool vtc_enabled = 1;
+  /// Only has a meaning when `vtc_enabled` is also true.
+  /// When `vtc_enabled` is true, this indicates that the calibrating the
+  /// delay elements is done and voltage and temperature variations are compensated.
+  bool calibration_done = 2;
+}
+
+/// The Port message defines, from the perspective of the LTC,
+/// the input ports coming from the FPGA.
+/// There are 65 such connections in total:
+/// - 16 Connections for Port A
+/// - 16 connections for Port B
+/// - 1 clock connection
+/// The `kind` field defines whether to select port A, port B or the clock port
+/// And the value selects the port number.
+/// For ports A and B, value must be between 0 and 31
+/// For the clock port, the value must be 0.
+message Port {
+  enum Kind {
+    CLK = 0;
+    A = 1;
+    B = 2;
+  }
+  Kind kind = 1;
+  uint32 value = 2;
+}
+
+message PortDelaySetting {
+  Port port = 1;
+  double value = 2;
+}

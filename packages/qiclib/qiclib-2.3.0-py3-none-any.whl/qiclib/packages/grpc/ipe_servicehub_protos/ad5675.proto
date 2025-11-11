@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package ad5675;
+import public "datatypes.proto";
+
+service AD5675Service {
+  /**
+   * @brief Writes a value to one channel
+   * 
+   * The voltage depends on the output scaling, can be 2,5V or 5V or other values in combination
+   * with analog circuits. The device has 16bit for Ad5675R and 12bit for AD5672R both 8 channels.
+   * 
+   * @param msg WriteChannel, with sdr.datatypes.EndpointIndex, Channel and Value
+   * @return void
+   */
+  rpc SetChannel (WriteChannel) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Get a value to one channel
+   * 
+   * The voltage depends on the output scaling, can be 2,5V or 5V or other values in combination
+   * with analog circuits. The device has 16bit for Ad5675R and 12bit for AD5672R both 8 channels.
+   * 
+   * @param msg WriteChannel, with sdr.datatypes.EndpointIndex and Channel
+   * @return uint32
+   */
+  rpc GetChannel (ReadChannel) returns (sdr.datatypes.UInt) {}
+}
+
+
+message ReadChannel{
+    sdr.datatypes.EndpointIndex index=1;
+    uint32 channel=2; /// Channel value 0-7
+}
+
+message WriteChannel{
+    sdr.datatypes.EndpointIndex index=1;
+    uint32 channel=2; // Channel value 0-7
+    uint32 value=3; // Output value 0 - (2^12-1) or 0 - (2^16-1)
+}
+
