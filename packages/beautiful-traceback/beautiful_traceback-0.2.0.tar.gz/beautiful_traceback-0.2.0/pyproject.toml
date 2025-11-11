@@ -1,0 +1,36 @@
+[project]
+name = "beautiful-traceback"
+version = "0.2.0"
+description = "Beautiful, readable Python tracebacks with colors and formatting"
+keywords = ["traceback", "error", "debugging", "formatting"]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["colorama>=0.4.6"]
+authors = [{ name = "Michael Bianco", email = "mike@mikebian.co" }]
+urls = { "Repository" = "https://github.com/iloveitaly/beautiful-traceback" }
+
+[project.scripts]
+beautiful-traceback = "beautiful_traceback.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+# avoids the src/ directory structure
+module-root = ""
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "ruff>=0.8.0",
+    "pyright>=1.1.380",
+]
+
+[project.entry-points.pytest11]
+beautiful_traceback = "beautiful_traceback.pytest_plugin"
+
+[tool.pyright]
+exclude = ["examples/", ".venv"]
+
+
