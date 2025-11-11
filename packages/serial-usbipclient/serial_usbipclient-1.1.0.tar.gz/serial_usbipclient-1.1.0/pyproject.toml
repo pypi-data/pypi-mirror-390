@@ -1,0 +1,89 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "serial-usbipclient"
+authors = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
+maintainers = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
+description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
+readme = "README.md"
+dependencies = [
+  "py-datastruct>=1.1.0",
+  "typing-extensions>=4.15.0",
+]
+requires-python = ">= 3.11"
+keywords = ["usb", "usbipd", "serial"]
+
+# https://pypi.org/classifiers/
+classifiers = [
+     # How mature is this project? Common values are
+     #   3 - Alpha
+     #   4 - Beta
+     #   5 - Production/Stable
+    "Development Status :: 5 - Production/Stable",
+    # Indicate who your project is intended for
+    "Intended Audience :: Developers",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Communications Device Class (CDC)",
+
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Natural Language :: English",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Communications Device Class (CDC)",
+
+    # Specify the Python versions you support here.
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Repository = "https://github.com/bp100a/serial-usbipclient"
+
+# poetry settings
+[tool.poetry]
+name = "serial-usbipclient"
+authors = ["Harry J. Collins <bp100a@gmail.com>"]
+maintainers = ["Harry J. Collins <bp100a@gmail.com>"]
+version = "1.1.0"
+description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
+readme = "README.md"
+package-mode = true
+exclude = ["**/tests/**/*"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+py-datastruct = "^1.1.0"
+typing-extensions="^4.15"
+
+[tool.poetry.group.tests.dependencies]
+pytest = "9.0.0"
+pytest-xdist = "3.8.0"
+coverage = "7.11.3"
+pylint = "4.0.2"
+pip-tools = "7.5.1"
+black = "25.11.0"
+pytest-cov = "7.0.0"
+pytest-timeout = "2.4.0"
+isort = "5.13.2"
+mypy = "1.18.2"
+radon = "6.0.1"
+xenon = "0.9.3"
+
+[tool.mypy]
+check_untyped_defs = true
+exclude = [
+    "test_",
+    "common_test_base.py"
+]
+
+[[tool.mypy.overrides]]
+module = ["datastruct.*", "common_test_base", "mock_usbip"]
+ignore_missing_imports = true
+
+[tool.radon]
+exclude = ["test_", "mock_usbip.py"]
+cc_min = "C"
+show_complexity = "True"
