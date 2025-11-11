@@ -1,0 +1,429 @@
+# HOPX.AI Python SDK
+
+[![PyPI version](https://badge.fury.io/py/hopx-ai.svg)](https://pypi.org/project/hopx-ai/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Official Python SDK for HOPX.AI Sandboxes - Execute code safely in isolated microVM environments.
+
+## Features
+
+- 🚀 **47/47 Features** - 100% API coverage
+- 🔒 **Type Safe** - Full Pydantic models with auto-complete
+- ⚡ **Async Support** - Native async/await for all operations
+- 🌊 **WebSocket Streaming** - Real-time code execution, terminal, file watching
+- 🎨 **Rich Outputs** - Automatic capture of plots, images, DataFrames
+- 🔐 **Security First** - Environment variables for secrets, execution timeouts
+- 📦 **Context Managers** - Automatic cleanup with `with` statement
+- 🐍 **Pythonic API** - Follows Python best practices
+
+## Installation
+
+```bash
+pip install hopx-ai
+```
+
+For WebSocket features (optional):
+```bash
+pip install hopx-ai[websockets]
+```
+
+## Quick Start
+
+```python
+from hopx_ai import Sandbox
+
+# Create sandbox
+with Sandbox.create(template="code-interpreter", api_key="your-api-key") as sandbox:
+    # Execute Python code
+    result = sandbox.run_code("""
+import pandas as pd
+df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+print(df.sum())
+    """)
+    
+    print(result.stdout)
+    # Output: a    6
+    #         b   15
+```
+
+## Environment Variables
+
+### API Key
+
+Set your HOPX API key as an environment variable:
+
+```bash
+export HOPX_API_KEY="hopx_your_key_here"
+```
+
+Or pass it explicitly:
+
+```python
+sandbox = Sandbox.create(
+    template="code-interpreter",
+    api_key="hopx_your_key_here"
+)
+```
+
+### Secrets in Code Execution
+
+**✅ ALWAYS pass secrets via environment variables:**
+
+```python
+# ✅ GOOD: Secrets via environment variables
+result = sandbox.run_code(
+    """
+import os
+api_key = os.getenv('OPENAI_API_KEY')
+# Use api_key safely...
+    """,
+    env={"OPENAI_API_KEY": "sk-..."}
+)
+
+# ❌ BAD: Never hardcode secrets
+# result = sandbox.run_code('api_key = "sk-..."')  # DON'T DO THIS!
+```
+
+## Core Features
+
+### Code Execution
+
+```python
+# Synchronous execution
+result = sandbox.run_code("print('Hello')")
+
+# With environment variables
+result = sandbox.run_code(
+    "import os; print(os.getenv('MY_VAR'))",
+    env={"MY_VAR": "value"}
+)
+
+# Async execution (non-blocking)
+execution_id = sandbox.run_code_async("import time; time.sleep(10)")
+
+# Background execution (fire-and-forget)
+execution_id = sandbox.run_code_background("# long task...")
+
+# IPython/Jupyter-style
+result = sandbox.run_ipython("df.describe()")
+```
+
+### Real-time Streaming (WebSocket)
+
+```python
+import asyncio
+
+async def stream():
+    async for message in sandbox.run_code_stream("""
+import time
+for i in range(5):
+    print(f"Step {i+1}")
+    time.sleep(1)
+    """):
+        if message['type'] == 'stdout':
+            print(message['data'], end='')
+
+asyncio.run(stream())
+```
+
+### File Operations
+
+```python
+# Write file
+sandbox.files.write('/workspace/data.txt', 'Hello, World!')
+
+# Read file
+content = sandbox.files.read('/workspace/data.txt')
+
+# List directory
+files = sandbox.files.list('/workspace')
+for file in files:
+    print(f"{file.name} ({file.size_kb:.2f}KB)")
+
+# Upload local file
+sandbox.files.upload('./local.txt', '/workspace/remote.txt')
+
+# Download remote file
+sandbox.files.download('/workspace/remote.txt', './local.txt')
+
+# Check existence
+if sandbox.files.exists('/workspace/data.txt'):
+    print("File exists!")
+
+# Remove file/directory
+sandbox.files.remove('/workspace/data.txt')
+
+# Create directory
+sandbox.files.mkdir('/workspace/mydir')
+
+# Watch filesystem (WebSocket)
+async for event in sandbox.files.watch('/workspace'):
+    print(f"{event['event']}: {event['path']}")
+```
+
+### Commands
+
+```python
+# Run shell command
+result = sandbox.commands.run('ls -la /workspace')
+print(result.stdout)
+
+# With environment variables
+result = sandbox.commands.run(
+    'echo "Key: $API_KEY"',
+    env={'API_KEY': 'secret'}
+)
+
+# Custom working directory
+result = sandbox.commands.run(
+    'pwd',
+    working_dir='/workspace/myproject'
+)
+```
+
+### Environment Variables
+
+```python
+# Get all
+env_vars = sandbox.env.get_all()
+
+# Set all (replace)
+sandbox.env.set_all({'API_KEY': 'sk-...', 'DEBUG': 'true'})
+
+# Update (merge)
+sandbox.env.update({'NEW_VAR': 'value'})
+
+# Delete
+sandbox.env.delete(['VAR_TO_DELETE'])
+
+# Get single
+value = sandbox.env.get('API_KEY')
+
+# Set single
+sandbox.env.set('API_KEY', 'sk-...')
+```
+
+### Process Management
+
+```python
+# List processes
+processes = sandbox.list_processes()
+for proc in processes:
+    print(f"{proc.pid}: {proc.name} (CPU: {proc.cpu_percent}%)")
+
+# Kill process
+sandbox.kill_process(1234)
+```
+
+### Metrics & Health
+
+```python
+# Get metrics
+metrics = sandbox.get_metrics_snapshot()
+print(f"Total executions: {metrics.total_executions}")
+print(f"Uptime: {metrics.uptime_seconds}s")
+
+# Health check
+health = sandbox.get_health()
+print(f"Status: {health.status}")
+
+# Cache management
+cache_stats = sandbox.cache.stats()
+print(f"Cache size: {cache_stats.cache.size}")
+
+sandbox.cache.clear()
+```
+
+### Desktop Automation
+
+```python
+# Note: Requires 'desktop' template
+sandbox = Sandbox.create(template='desktop', api_key='...')
+
+# Mouse operations
+sandbox.desktop.mouse_click(x=500, y=300, button='left')
+sandbox.desktop.mouse_move(x=600, y=400)
+sandbox.desktop.drag_drop(from_x=100, from_y=100, to_x=300, to_y=300)
+
+# Keyboard
+sandbox.desktop.keyboard_type('Hello, World!')
+sandbox.desktop.keyboard_press('Return')
+sandbox.desktop.keyboard_press('Control_L+c')  # Ctrl+C
+
+# Clipboard
+sandbox.desktop.clipboard_set('text to copy')
+content = sandbox.desktop.clipboard_get()
+
+# Screenshots
+screenshot = sandbox.desktop.screenshot()
+with open('screenshot.png', 'wb') as f:
+    f.write(screenshot)
+
+# OCR (text recognition)
+text = sandbox.desktop.ocr()
+print(f"Found text: {text}")
+
+# Find elements
+element = sandbox.desktop.find_element(text='Button')
+if element:
+    sandbox.desktop.mouse_click(x=element['x'], y=element['y'])
+
+# VNC connection
+vnc_info = sandbox.desktop.get_vnc_url()
+print(f"VNC URL: {vnc_info['url']}")
+```
+
+### Interactive Terminal (WebSocket)
+
+```python
+import asyncio
+
+async def terminal_session():
+    async with sandbox.terminal.connect() as term:
+        # Send commands
+        await sandbox.terminal.send_input(term, 'ls -la\n')
+        
+        # Receive output
+        async for message in sandbox.terminal.iter_output(term):
+            if message['type'] == 'output':
+                print(message['data'], end='')
+
+asyncio.run(terminal_session())
+```
+
+## Advanced Configuration
+
+```python
+sandbox = Sandbox.create(
+    template='code-interpreter',  # Template defines CPU/RAM/Disk resources
+    api_key='your-api-key',
+    region='us-west-2',           # Preferred region (optional)
+    timeout_seconds=600,          # Auto-kill after 10 minutes (optional)
+    internet_access=True,         # Enable internet access (optional, default: True)
+    env_vars={                    # Pre-set environment variables (optional)
+        'DATABASE_URL': 'postgres://...',
+        'API_KEY': 'sk-...'
+    }
+)
+
+# Note: Resources (vCPU, RAM, Disk) come from the template.
+# To customize resources, create a custom template with Template.build()
+# See: https://docs.hopx.ai/templates
+```
+
+## Error Handling
+
+```python
+from hopx_ai.errors import (
+    HopxError,
+    AuthenticationError,
+    NotFoundError,
+    FileNotFoundError,
+    CodeExecutionError,
+    RateLimitError,
+    ServerError
+)
+
+try:
+    with Sandbox.create(template='code-interpreter', api_key='...') as sandbox:
+        result = sandbox.run_code("print('Hello')")
+        
+except AuthenticationError as e:
+    print(f"Auth failed: {e.message}")
+    print(f"Request ID: {e.request_id}")
+    
+except FileNotFoundError as e:
+    print(f"File not found: {e.path}")
+    
+except CodeExecutionError as e:
+    print(f"Code execution failed: {e.message}")
+    print(f"Exit code: {e.exit_code}")
+    
+except RateLimitError as e:
+    print(f"Rate limited: {e.message}")
+    
+except HopxError as e:
+    print(f"API error: {e.message}")
+    print(f"Status code: {e.status_code}")
+```
+
+## Best Practices
+
+### 1. Always Use Context Managers
+
+```python
+# ✅ GOOD: Automatic cleanup
+with Sandbox.create(...) as sandbox:
+    # Work here
+    pass
+# Sandbox automatically deleted
+
+# ❌ BAD: Manual cleanup (easy to forget)
+sandbox = Sandbox.create(...)
+# ... work ...
+sandbox.kill()  # Easy to forget if error occurs!
+```
+
+### 2. Set Timeouts
+
+```python
+# Prevent infinite execution
+result = sandbox.run_code(code, timeout=30)
+```
+
+### 3. Optimize Performance
+
+```python
+# Set environment variables once
+sandbox.env.set_all({'API_KEY': 'sk-...', 'DB_URL': '...'})
+
+# Now available in all executions
+for i in range(100):
+    sandbox.run_code('...')  # Env vars already set
+```
+
+## Use Cases
+
+### OpenAI: ChatGPT Code Interpreter
+
+```python
+def execute_user_code(user_code: str):
+    with Sandbox.create(template="code-interpreter") as sandbox:
+        result = sandbox.run_code(user_code, timeout=30)
+        return {
+            "output": result.stdout,
+            "error": result.stderr,
+            "rich_outputs": result.rich_outputs  # Images, plots
+        }
+```
+
+### Stripe: Payment Reports
+
+```python
+with Sandbox.create(template="code-interpreter") as sandbox:
+    sandbox.env.set('STRIPE_SECRET_KEY', os.getenv('STRIPE_SECRET_KEY'))
+    
+    result = sandbox.run_code("""
+import stripe
+stripe.api_key = os.environ['STRIPE_SECRET_KEY']
+charges = stripe.Charge.list(limit=100)
+# Generate report...
+    """)
+```
+
+## Documentation
+
+- **Cookbook**: See [cookbook/python](../../cookbook/python/) for 10 complete examples
+- **API Reference**: [docs.hopx.ai](https://docs.hopx.ai)
+- **GitHub**: [github.com/hopx-ai/hopx](https://github.com/hopx-ai/hopx)
+
+## License
+
+MIT License - See [LICENSE](../LICENSE) file for details.
+
+## Support
+
+- **Issues**: [github.com/hopx-ai/hopx/issues](https://github.com/hopx-ai/hopx/issues)
+- **Email**: support@hopx.ai
+- **Documentation**: [docs.hopx.ai](https://docs.hopx.ai)
