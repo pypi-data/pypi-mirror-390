@@ -1,0 +1,204 @@
+"""A collection of messages used in platform_deployer.py."""
+
+# For conventions, see documentation in deploy_messages.py
+
+from textwrap import dedent
+
+from django.conf import settings
+
+
+confirm_automate_all = """
+The --automate-all flag means the deploy command will:
+- Run `upsun create` for you, to create an empty Upsun project.
+  - This will create a project in the us-3.platform.sh region. If you wish
+    to use a different region, cancel this operation and use the --region flag.
+  - You can see a list of all regions at:
+    https://docs.upsun.com/development/regions.html#region-location
+- Commit all changes to your project that are necessary for deployment.
+- Push these changes to Upsun.
+- Open your deployed project in a new browser tab.
+"""
+
+cancel_upsun = """
+Okay, cancelling Upsun deployment.
+"""
+
+cli_not_installed = """
+In order to deploy to Upsun, you need to install the Upsun CLI.
+  See here: https://docs.upsun.com/administration/cli.html
+After installing the CLI, you can run the deploy command again.
+"""
+
+cli_logged_out = """
+You are currently logged out of the Upsun CLI. Please log in,
+  and then run the deploy command again.
+You can log in from  the command line:
+  $ upsun login
+"""
+
+upsun_settings_found = """
+There is already an Upsun-specific settings block in settings.py. Is it okay to
+overwrite this block, and everything that follows in settings.py?
+"""
+
+cant_overwrite_settings = """
+In order to configure the project for deployment, we need to write an Upsun-specific
+settings block. Please remove the current Upsun-specific settings, and then run
+the deploy command again.
+"""
+
+no_project_name = """
+An Upsun project name could not be found.
+
+The deploy command expects that you've already run `upsun create`, or
+associated the local project with an existing project on Upsun.
+
+If you haven't done so, run the `upsun create` command and then run
+the deploy command again. You can override this warning by using
+the `--deployed-project-name` flag to specify the name you want to use for the
+project. This must match the name of your Upsun project.
+"""
+
+org_not_found = """
+An Upsun organization name could not be found.
+
+You may have created an Upsun account, but not created an organization.
+The Upsun CLI requires an organization name when creating a new project.
+
+Please visit the Upsun console and make sure you have created an organization.
+You can also do this through the CLI using the `upsun organization:create` command.
+For help, run `upsun help organization:create`.
+"""
+
+no_org_available = """
+An Upsun org must be used to make a deployment. Please identify or create the org
+you'd like to use, and then try again.
+"""
+
+login_required = """
+You appear to be logged out of the Upsun CLI. Please run the 
+command `upsun login`, and then run the deploy command again.
+
+You may be able to override this error by passing the `--deployed-project-name`
+flag.
+"""
+
+unknown_error = """
+An unknown error has occurred. Do you have the Upsun CLI installed?
+"""
+
+may_configure = """
+You may want to re-run the deploy command without the --automate-all flag.
+
+You will have to create the Upsun project yourself, but django-simple-deploy
+will do all the necessary configuration for deployment.
+"""
+
+
+# --- Dynamic strings ---
+# These need to be generated in functions, to display information that's
+#   determined as the script runs.
+
+
+def confirm_use_org(org_name):
+    """Confirm use of this org to create a new project."""
+
+    msg = dedent(
+        f"""
+        --- The Upsun CLI requires an organization name when creating a new project. ---
+        When using --automate-all, a project will be created on your behalf. The following
+        organization was found: {org_name}
+
+        This organization will be used to create a new project. If this is not okay,
+        enter n to cancel this operation.
+    """
+    )
+
+    return msg
+
+
+def unknown_create_error(e):
+    """Process a non-specific error when running `upsun create`
+    while using automate_all. This is most likely an issue with the user
+    not having permission to create a new project, for example because they
+    are on a trial plan and have already created too many projects.
+    """
+
+    msg = dedent(
+        f"""
+        --- An error has occurred when trying to create a new Upsun project. ---
+
+        While running `upsun create`, an error has occurred. You should check
+        the Upsun console to see if a project was partially created.
+
+        The error messages that Upsun provides, both through the CLI and
+        the console, are not always specific enough to be helpful.
+
+        The following output may help diagnose the error:
+        ***** output of `upsun create` *****
+
+        {e.stderr.decode()}
+
+        ***** end output *****
+    """
+    )
+
+    return msg
+
+
+def success_msg(log_output=""):
+    """Success message, for configuration-only run."""
+
+    msg = dedent(
+        f"""
+        --- Your project is now configured for deployment on Upsun. ---
+
+        To deploy your project, you will need to:
+        - Commit the changes made in the configuration process.
+            $ git status
+            $ git add .
+            $ git commit -am "Configured project for deployment."
+        - Push your project to Upsun's servers:
+            $ upsun push
+        - Open your project:
+            $ upsun url    
+        - As you develop your project further:
+            - Make local changes
+            - Commit your local changes
+            - Run `upsun push`
+    """
+    )
+
+    if log_output:
+        msg += dedent(
+            f"""
+        - You can find a full record of this configuration in the dsd_logs directory.
+        """
+        )
+
+    return msg
+
+
+def success_msg_automate_all(deployed_url):
+    """Success message, when using --automate-all."""
+
+    msg = dedent(
+        f"""
+
+        --- Your project should now be deployed on Upsun. ---
+
+        It should have opened up in a new browser tab.
+        - You can also visit your project at {deployed_url}
+
+        If you make further changes and want to push them to Upsun,
+        commit your changes and then run `upsun push`.
+
+        Also, if you haven't already done so you should review the
+        documentation for Python deployments on Upsun at:
+        - https://fixed.docs.upsun.com/languages/python.html
+        - This documentation will help you understand how to maintain
+          your deployment.
+
+    """
+    )
+    return msg
