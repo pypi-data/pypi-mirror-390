@@ -1,0 +1,45 @@
+[project]
+authors = [{name = "jgunstone", email = "j.gunstone@maxfordham.com"}]
+dependencies = ["frictionless>=5.18.1,<6"]
+name = "netzero-metrics-reference-data"
+requires-python = ">= 3.11"
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://github.com/maxfordham/netzero-metrics-reference-data#readme"
+Issues = "https://github.com/maxfordham/netzero-metrics-reference-data/issues"
+Source = "https://github.com/maxfordham/netzero-metrics-reference-data"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/netzero_metrics_reference_data/__about__.py"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling", "hatch-vcs"]
+
+[tool.pixi.pypi-dependencies]
+netzero_metrics_reference_data = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+stringcase = ">=1.2.0,<2"
+openpyxl = ">=3.1.5,<4"
+pandas = ">=2.3,<3"
+pytest = ">=7.2.2,<8"
+hatch = ">=1.0.0,<2"
+casefy = ">=1.0.0,<2"
+pip = ">=25,<26"
+
+[tool.pixi.tasks]
+get-eui = { cmd = "python get_eui.py", cwd = "scripts" }
+create-datapackage = { cmd = "python create_datapackage.py", cwd = "scripts" }
+cp-data = { cmd = "python scripts/cp_data.py"} #, cwd = "scripts"
+tests = {cmd = "pytest", depends-on = ["cp-data"] }
+build = {cmd ="hatch build", depends-on = ["cp-data"] }
+frictionless-validate = { cmd = "frictionless validate datapackage.yaml" }
