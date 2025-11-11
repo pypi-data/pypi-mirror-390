@@ -1,0 +1,46 @@
+Metadata-Version: 2.4
+Name: oups
+Version: 2025.11.1
+Summary: Out-of-core pipelines over ordered data: StatefulLoop, stateful ops, and ordered Parquet Store.
+License: Apache-2.0
+License-File: LICENSE
+Keywords: out-of-core,streaming,stateful,time-series,pandas,parquet,data-engineering
+Author: pierrot
+Requires-Python: >=3.13,<4.0
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Dist: cloudpickle (>=3.1.1)
+Requires-Dist: fastparquet (>=2023.10.1)
+Requires-Dist: flufl-lock (>=8.2.0)
+Requires-Dist: joblib (>=1.3.2)
+Requires-Dist: numba (>=0.61.2)
+Requires-Dist: numpy (>=2.0)
+Requires-Dist: pandas (>=2.2.3)
+Requires-Dist: sortedcontainers (>=2.4.0)
+Project-URL: Changelog, https://codeberg.org/pierrot/oups/src/branch/main/CHANGELOG.md
+Project-URL: Documentation, https://pierrot.codeberg.page/oups
+Project-URL: Homepage, https://codeberg.org/pierrot/oups
+Project-URL: Issues, https://codeberg.org/pierrot/oups/issues
+Project-URL: Source, https://codeberg.org/pierrot/oups
+Description-Content-Type: text/markdown
+
+# Welcome to oups!
+
+## What is oups?
+*oups* stands for Ordered Unified Processing Stack — out-of-core processing for ordered data (batch + live).
+
+*oups* is a Python toolkit for building end-to-end pipelines over ordered data with the same code in offline training and live streaming/batch contexts.
+
+It centers on ``StatefulLoop`` (``loop.bind_function_state``, ``loop.iterate``, ``loop.buffer``), which binds and persists function/object state, orchestrates chunked iteration, and buffers DataFrames under a memory cap with flush-on-limit or last-iteration semantics.
+Complementing the loop, ``stateful_ops`` provides vectorized, chunk-friendly primitives like ``AsofMerger`` for multi-DataFrame as-of joins (with optional windows of previous values) and ``SegmentedAggregator`` (planned) for streamed segmentation and aggregation.
+The ``store`` package manages ordered Parquet datasets via schema-driven keys (``@toplevel``), supports incremental updates (``store[key].write(...)``) and duplicate handling, and offers synchronized iteration across datasets via ``store.iter_intersections(...)`` with optional warm-up (``n_prev``).
+
+Together these pieces enable out-of-core processing with resumability, and deterministic buffering. The design favors explicit, minimal APIs and reproducible results, aligning offline feature generation with online serving.
+
+## Links
+
+- 📖 **[Documentation](https://pierrot.codeberg.page/oups)** - Guides and API reference
+- 📋 **[Changelog](https://codeberg.org/pierrot/oups/src/branch/main/CHANGELOG.md)** - Release notes and version history
+
