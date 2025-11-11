@@ -1,0 +1,50 @@
+# gRPC 客户端配置文件
+grpc:
+  # 服务器连接配置
+  host: localhost                    # gRPC 服务器地址
+  port: 50051                        # gRPC 服务器端口
+  
+  # 连接配置（已优化自动重连）
+  timeout: 30                        # 默认超时时间（秒）
+  keepalive_time: 30                 # Keepalive 时间（秒）- 用于检测连接状态
+  keepalive_timeout: 5               # Keepalive 超时（秒）- 超时后触发重连
+  keepalive_permit_without_calls: true  # 允许在没有调用时发送 keepalive（保持连接活跃）
+  
+  # 重试配置（已实现自动重试机制）
+  max_retry_attempts: 3              # 最大重试次数（0 表示禁用重试）
+  initial_backoff: 1.0               # 初始退避时间（秒）
+  max_backoff: 10.0                  # 最大退避时间（秒）
+  backoff_multiplier: 2.0            # 退避倍数（指数退避：initial * multiplier^attempt）
+  retryable_status_codes:            # 可重试的状态码（遇到这些错误会自动重试）
+    - UNAVAILABLE                    # 服务不可用（连接断开、服务器重启等）
+    - DEADLINE_EXCEEDED              # 超时
+    - RESOURCE_EXHAUSTED             # 资源耗尽
+    - ABORTED                        # 操作中止
+    - INTERNAL                       # 内部错误
+    - UNKNOWN                        # 未知错误
+  
+  # 连接池配置
+  max_receive_message_length: 4194304  # 最大接收消息长度（字节，默认 4MB）
+  max_send_message_length: 4194304     # 最大发送消息长度（字节，默认 4MB）
+  
+  # SSL/TLS 配置（如果服务器使用 TLS）
+  use_tls: false                     # 是否使用 TLS
+  tls_ca_certs: null                 # CA 证书文件路径
+  tls_client_cert: null              # 客户端证书文件路径
+  tls_client_key: null               # 客户端私钥文件路径
+  tls_server_hostname_override: null # 服务器主机名覆盖（用于测试）
+  
+  # 压缩配置
+  compression: null                  # 压缩算法：null, 'gzip', 'deflate'
+  
+  # 等待就绪配置
+  wait_for_ready: false              # 是否等待服务器就绪
+  wait_for_ready_timeout: 5          # 等待就绪超时（秒）
+  
+  # 拦截器配置（可选）
+  interceptors: []                   # 拦截器列表（字符串列表，需要客户端代码实现）
+  
+  # 日志配置
+  enable_logging: false              # 是否启用 gRPC 日志
+  log_level: INFO                    # 日志级别：DEBUG, INFO, WARNING, ERROR
+
