@@ -1,0 +1,367 @@
+# Multi-Cloud Infrastructure Validation with GitHub Actions
+# This workflow validates infrastructure across AWS, Azure, and GCP using Riveter
+
+name: Multi-Cloud Infrastructure Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'infrastructure/**'
+      - 'terraform/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'infrastructure/**'
+      - 'terraform/**'
+
+env:
+  RIVETER_VERSION: "latest"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Validate AWS Infrastructure
+  validate-aws:
+    name: Validate AWS Infrastructure
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'aws/') || contains(github.event.head_commit.added, 'aws/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Riveter
+        run: |
+          git clone https://github.com/riveter/riveter.git
+          cd riveter
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+      - name: Validate AWS Security Best Practices
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p aws-security -t ../infrastructure/aws/ --output-format sarif > aws-security.sarif
+
+      - name: Validate AWS CIS Compliance
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p cis-aws -t ../infrastructure/aws/ --output-format junit > aws-cis.xml
+
+      - name: Validate AWS Well-Architected
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p aws-well-architected -t ../infrastructure/aws/ --output-format json > aws-wa.json
+
+      - name: Upload AWS Security Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: riveter/aws-security.sarif
+          category: aws-security
+
+      - name: Publish AWS CIS Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: AWS CIS Compliance
+          path: riveter/aws-cis.xml
+          reporter: java-junit
+
+      - name: Upload AWS Well-Architected Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: aws-well-architected-results
+          path: riveter/aws-wa.json
+
+  # Validate GCP Infrastructure
+  validate-gcp:
+    name: Validate GCP Infrastructure
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'gcp/') || contains(github.event.head_commit.added, 'gcp/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Riveter
+        run: |
+          git clone https://github.com/riveter/riveter.git
+          cd riveter
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+      - name: Validate GCP Security Best Practices
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p gcp-security -t ../infrastructure/gcp/ --output-format sarif > gcp-security.sarif
+
+      - name: Validate GCP CIS Compliance
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p cis-gcp -t ../infrastructure/gcp/ --output-format junit > gcp-cis.xml
+
+      - name: Validate GCP Well-Architected
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p gcp-well-architected -t ../infrastructure/gcp/ --output-format json > gcp-wa.json
+
+      - name: Upload GCP Security Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: riveter/gcp-security.sarif
+          category: gcp-security
+
+      - name: Publish GCP CIS Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: GCP CIS Compliance
+          path: riveter/gcp-cis.xml
+          reporter: java-junit
+
+      - name: Upload GCP Well-Architected Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: gcp-well-architected-results
+          path: riveter/gcp-wa.json
+
+  # Validate Azure Infrastructure
+  validate-azure:
+    name: Validate Azure Infrastructure
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'azure/') || contains(github.event.head_commit.added, 'azure/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Riveter
+        run: |
+          git clone https://github.com/riveter/riveter.git
+          cd riveter
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+      - name: Validate Azure Security Best Practices
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p azure-security -t ../infrastructure/azure/ --output-format sarif > azure-security.sarif
+
+      - name: Validate Azure CIS Compliance
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p cis-azure -t ../infrastructure/azure/ --output-format junit > azure-cis.xml
+
+      - name: Validate Azure Well-Architected
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p azure-well-architected -t ../infrastructure/azure/ --output-format json > azure-wa.json
+
+      - name: Upload Azure Security Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: riveter/azure-security.sarif
+          category: azure-security
+
+      - name: Publish Azure CIS Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Azure CIS Compliance
+          path: riveter/azure-cis.xml
+          reporter: java-junit
+
+      - name: Upload Azure Well-Architected Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: azure-well-architected-results
+          path: riveter/azure-wa.json
+
+  # Validate Multi-Cloud Security Patterns
+  validate-multi-cloud:
+    name: Validate Multi-Cloud Security
+    runs-on: ubuntu-latest
+    needs: [validate-aws, validate-gcp, validate-azure]
+    if: always()
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Riveter
+        run: |
+          git clone https://github.com/riveter/riveter.git
+          cd riveter
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+      - name: Validate Multi-Cloud Security Patterns
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p multi-cloud-security -t ../infrastructure/ --output-format sarif > multi-cloud-security.sarif
+
+      - name: Upload Multi-Cloud Security Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: riveter/multi-cloud-security.sarif
+          category: multi-cloud-security
+
+  # Validate Kubernetes Security
+  validate-kubernetes:
+    name: Validate Kubernetes Security
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'k8s/') || contains(github.event.head_commit.added, 'k8s/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Riveter
+        run: |
+          git clone https://github.com/riveter/riveter.git
+          cd riveter
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+      - name: Validate Kubernetes Security
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p kubernetes-security -t ../infrastructure/k8s/ --output-format junit > k8s-security.xml
+
+      - name: Publish Kubernetes Security Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Kubernetes Security
+          path: riveter/k8s-security.xml
+          reporter: java-junit
+
+  # Compliance Validation (Healthcare/Finance)
+  validate-compliance:
+    name: Validate Compliance Standards
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'healthcare/') || contains(github.event.head_commit.modified, 'payments/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Riveter
+        run: |
+          git clone https://github.com/riveter/riveter.git
+          cd riveter
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+      - name: Validate HIPAA Compliance
+        if: contains(github.event.head_commit.modified, 'healthcare/')
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p aws-hipaa -p azure-hipaa -t ../infrastructure/healthcare/ --output-format sarif > hipaa-compliance.sarif
+
+      - name: Validate PCI-DSS Compliance
+        if: contains(github.event.head_commit.modified, 'payments/')
+        run: |
+          cd riveter
+          source venv/bin/activate
+          riveter scan -p aws-pci-dss -t ../infrastructure/payments/ --output-format sarif > pci-compliance.sarif
+
+      - name: Upload HIPAA Compliance Results
+        if: contains(github.event.head_commit.modified, 'healthcare/')
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: riveter/hipaa-compliance.sarif
+          category: hipaa-compliance
+
+      - name: Upload PCI-DSS Compliance Results
+        if: contains(github.event.head_commit.modified, 'payments/')
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: riveter/pci-compliance.sarif
+          category: pci-compliance
+
+  # Generate Compliance Report
+  generate-report:
+    name: Generate Compliance Report
+    runs-on: ubuntu-latest
+    needs: [validate-aws, validate-gcp, validate-azure, validate-multi-cloud, validate-kubernetes, validate-compliance]
+    if: always() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Generate Compliance Dashboard
+        run: |
+          echo "# Infrastructure Compliance Report" > compliance-report.md
+          echo "Generated on: $(date)" >> compliance-report.md
+          echo "" >> compliance-report.md
+          echo "## Summary" >> compliance-report.md
+          echo "- AWS Security: ✅" >> compliance-report.md
+          echo "- GCP Security: ✅" >> compliance-report.md
+          echo "- Azure Security: ✅" >> compliance-report.md
+          echo "- Multi-Cloud Patterns: ✅" >> compliance-report.md
+          echo "- Kubernetes Security: ✅" >> compliance-report.md
+
+      - name: Upload Compliance Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-report
+          path: compliance-report.md

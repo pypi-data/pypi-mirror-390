@@ -1,0 +1,73 @@
+# Performance-Optimized Riveter Configuration
+# This configuration is tuned for maximum performance with large Terraform configurations.
+
+# Minimal rule packs for faster processing
+rule_packs:
+  - aws-security      # Essential security rules only
+
+# Limit custom rule directories
+rule_dirs:
+  - ./critical-rules  # Only critical custom rules
+
+# JSON output for fastest processing
+output_format: json
+
+# Only show errors to reduce processing
+min_severity: error
+
+# Minimal rule filtering for performance
+include_rules:
+  - "*critical*"      # Only critical rules
+  - "*error*"         # Only error-level rules
+
+exclude_rules:
+  - "*info*"          # Exclude info-level rules
+  - "*warning*"       # Exclude warning-level rules
+  - "*optional*"      # Exclude optional rules
+
+# Performance-optimized settings
+debug: false                            # Disable debug for performance
+parallel: true                          # Enable parallel processing
+cache_dir: /tmp/riveter-perf-cache     # Fast temporary cache
+baseline: /tmp/riveter-baseline.json   # Use baseline for incremental scanning
+
+# Minimal logging for performance
+log_level: ERROR                        # Only log errors
+log_format: json                        # Structured format is faster
+
+# Performance environment
+environment: performance
+
+# Performance tuning parameters
+performance:
+  # Maximum parallel workers (adjust based on CPU cores)
+  max_workers: 8
+
+  # Timeout settings
+  timeout: 120                          # 2-minute timeout
+  rule_timeout: 5                       # 5-second timeout per rule
+
+  # Memory management
+  max_memory_mb: 2048                   # 2GB memory limit
+  batch_size: 100                       # Process resources in batches
+
+  # Caching settings
+  cache_ttl: 3600                       # 1-hour cache TTL
+  cache_max_size: 1000                  # Maximum cached items
+
+  # I/O optimization
+  buffer_size: 8192                     # 8KB buffer size
+  concurrent_files: 4                   # Process multiple files concurrently
+
+# Resource limits
+limits:
+  max_rules: 50                         # Limit number of rules
+  max_resources: 10000                  # Limit number of resources
+  max_file_size_mb: 100                 # 100MB max file size
+
+# Monitoring and metrics
+monitoring:
+  enabled: true
+  metrics_format: json
+  performance_tracking: true
+  memory_profiling: false               # Disable for production performance

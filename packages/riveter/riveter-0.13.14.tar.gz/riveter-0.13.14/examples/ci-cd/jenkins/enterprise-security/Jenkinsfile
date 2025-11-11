@@ -1,0 +1,473 @@
+#!/usr/bin/env groovy
+
+/**
+ * Jenkins Pipeline for Enterprise Security Scanning with Riveter
+ * 
+ * This pipeline demonstrates enterprise-grade infrastructure validation
+ * with comprehensive security scanning, compliance checking, and governance.
+ */
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                  - name: terraform
+                    image: hashicorp/terraform:1.5.0
+                    command:
+                    - sleep
+                    args:
+                    - 99d
+                  - name: riveter
+                    image: alpine:latest
+                    command:
+                    - sleep
+                    args:
+                    - 99d
+                  - name: security-tools
+                    image: aquasec/trivy:latest
+                    command:
+                    - sleep
+                    args:
+                    - 99d
+            """
+        }
+    }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['development', 'staging', 'production'],
+            description: 'Target environment for deployment'
+        )
+        booleanParam(
+            name: 'SKIP_SECURITY_SCAN',
+            defaultValue: false,
+            description: 'Skip security scanning (not recommended for production)'
+        )
+        booleanParam(
+            name: 'FORCE_DEPLOY',
+            defaultValue: false,
+            description: 'Force deployment even with non-critical security issues'
+        )
+    }
+
+    environment {
+        TERRAFORM_VERSION = '1.5.0'
+        RIVETER_VERSION = 'latest'
+        AWS_DEFAULT_REGION = 'us-east-1'
+        
+        // Security scanning configuration
+        SECURITY_THRESHOLD_CRITICAL = '0'
+        SECURITY_THRESHOLD_HIGH = '5'
+        SECURITY_THRESHOLD_MEDIUM = '20'
+        
+        // Compliance frameworks
+        COMPLIANCE_FRAMEWORKS = 'soc2-security,cis-aws,aws-security'
+    }
+
+    stages {
+        stage('Preparation') {
+            steps {
+                script {
+                    // Set build display name
+                    currentBuild.displayName = "#${BUILD_NUMBER} - ${params.ENVIRONMENT}"
+                    
+                    // Validate parameters
+                    if (params.ENVIRONMENT == 'production' && params.SKIP_SECURITY_SCAN) {
+                        error("Security scanning cannot be skipped for production deployments")
+                    }
+                }
+                
+                // Checkout code
+                checkout scm
+                
+                // Install Riveter
+                container('riveter') {
+                    sh '''
+                        apk add --no-cache curl jq
+                        curl -L https://github.com/riveter/riveter/releases/latest/download/riveter-linux-amd64 -o /usr/local/bin/riveter
+                        chmod +x /usr/local/bin/riveter
+                        riveter --version
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform Validation') {
+            parallel {
+                stage('Syntax Validation') {
+                    steps {
+                        container('terraform') {
+                            dir("environments/${params.ENVIRONMENT}") {
+                                sh '''
+                                    terraform init -backend=false
+                                    terraform validate
+                                    terraform fmt -check=true
+                                '''
+                            }
+                        }
+                    }
+                }
+                
+                stage('Security Linting') {
+                    when {
+                        not { params.SKIP_SECURITY_SCAN }
+                    }
+                    steps {
+                        container('security-tools') {
+                            dir("environments/${params.ENVIRONMENT}") {
+                                sh '''
+                                    # Run Trivy for Terraform security scanning
+                                    trivy config . --format json --output trivy-results.json
+                                    
+                                    # Check for critical issues
+                                    critical_count=$(jq '[.Results[]?.Misconfigurations[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json)
+                                    echo "Critical security issues found: $critical_count"
+                                    
+                                    if [ "$critical_count" -gt 0 ]; then
+                                        echo "Critical security issues detected by Trivy:"
+                                        jq '.Results[]?.Misconfigurations[]? | select(.Severity == "CRITICAL")' trivy-results.json
+                                    fi
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/trivy-results.json", allowEmptyArchive: true
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Riveter Security Validation') {
+            when {
+                not { params.SKIP_SECURITY_SCAN }
+            }
+            steps {
+                container('riveter') {
+                    dir("environments/${params.ENVIRONMENT}") {
+                        script {
+                            // Determine rule pack based on environment
+                            def rulePack = "../../rule-packs/${params.ENVIRONMENT}-rules.yml"
+                            
+                            sh """
+                                # Run comprehensive Riveter validation
+                                riveter scan \\
+                                    -r ${rulePack} \\
+                                    -p ${env.COMPLIANCE_FRAMEWORKS} \\
+                                    -t *.tf \\
+                                    --output-format json \\
+                                    --output-file riveter-results.json
+                                
+                                # Generate security summary
+                                jq '{
+                                    summary: .summary,
+                                    critical_issues: [.results[] | select(.severity == "critical" and .status == "FAIL")],
+                                    high_issues: [.results[] | select(.severity == "high" and .status == "FAIL")],
+                                    medium_issues: [.results[] | select(.severity == "medium" and .status == "FAIL")]
+                                }' riveter-results.json > security-summary.json
+                                
+                                # Display summary
+                                echo "Security Validation Summary:"
+                                jq '.summary' security-summary.json
+                            """
+                            
+                            // Check security thresholds
+                            def securitySummary = readJSON file: "environments/${params.ENVIRONMENT}/security-summary.json"
+                            def criticalCount = securitySummary.critical_issues.size()
+                            def highCount = securitySummary.high_issues.size()
+                            def mediumCount = securitySummary.medium_issues.size()
+                            
+                            echo "Security Issues Found:"
+                            echo "  Critical: ${criticalCount}"
+                            echo "  High: ${highCount}"
+                            echo "  Medium: ${mediumCount}"
+                            
+                            // Evaluate security thresholds
+                            if (criticalCount > env.SECURITY_THRESHOLD_CRITICAL.toInteger()) {
+                                if (params.FORCE_DEPLOY) {
+                                    echo "WARNING: Critical security issues found but deployment forced"
+                                } else {
+                                    error("Critical security issues exceed threshold (${criticalCount} > ${env.SECURITY_THRESHOLD_CRITICAL})")
+                                }
+                            }
+                            
+                            if (highCount > env.SECURITY_THRESHOLD_HIGH.toInteger()) {
+                                if (params.FORCE_DEPLOY) {
+                                    echo "WARNING: High severity security issues found but deployment forced"
+                                } else {
+                                    error("High severity security issues exceed threshold (${highCount} > ${env.SECURITY_THRESHOLD_HIGH})")
+                                }
+                            }
+                            
+                            if (mediumCount > env.SECURITY_THRESHOLD_MEDIUM.toInteger()) {
+                                echo "WARNING: Medium severity security issues exceed threshold (${mediumCount} > ${env.SECURITY_THRESHOLD_MEDIUM})"
+                            }
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/riveter-results.json", allowEmptyArchive: true
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/security-summary.json", allowEmptyArchive: true
+                    
+                    // Publish security results
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "environments/${params.ENVIRONMENT}",
+                        reportFiles: 'security-summary.json',
+                        reportName: 'Security Validation Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Compliance Validation') {
+            when {
+                anyOf {
+                    environment 'staging'
+                    environment 'production'
+                    equals expected: 'staging', actual: params.ENVIRONMENT
+                    equals expected: 'production', actual: params.ENVIRONMENT
+                }
+            }
+            steps {
+                container('riveter') {
+                    dir("environments/${params.ENVIRONMENT}") {
+                        sh '''
+                            # Run compliance-focused validation
+                            riveter scan \\
+                                -p soc2-security \\
+                                -p cis-aws \\
+                                -t *.tf \\
+                                --output-format json \\
+                                --output-file compliance-results.json
+                            
+                            # Generate compliance report
+                            jq '{
+                                compliance_summary: .summary,
+                                soc2_controls: {
+                                    passed: [.results[] | select(.tags[]? == "soc2" and .status == "PASS") | .name],
+                                    failed: [.results[] | select(.tags[]? == "soc2" and .status == "FAIL") | .name]
+                                },
+                                cis_controls: {
+                                    passed: [.results[] | select(.tags[]? == "cis" and .status == "PASS") | .name],
+                                    failed: [.results[] | select(.tags[]? == "cis" and .status == "FAIL") | .name]
+                                }
+                            }' compliance-results.json > compliance-report.json
+                            
+                            echo "Compliance Validation Results:"
+                            jq '.compliance_summary' compliance-report.json
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/compliance-results.json", allowEmptyArchive: true
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/compliance-report.json", allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                container('terraform') {
+                    dir("environments/${params.ENVIRONMENT}") {
+                        withCredentials([
+                            [
+                                $class: 'AmazonWebServicesCredentialsBinding',
+                                credentialsId: "aws-${params.ENVIRONMENT}",
+                                accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                            ]
+                        ]) {
+                            sh '''
+                                terraform init
+                                terraform plan -out=tfplan -detailed-exitcode
+                            '''
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/tfplan", allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Approval Gate') {
+            when {
+                anyOf {
+                    equals expected: 'staging', actual: params.ENVIRONMENT
+                    equals expected: 'production', actual: params.ENVIRONMENT
+                }
+            }
+            steps {
+                script {
+                    def approvers = []
+                    def message = "Approve deployment to ${params.ENVIRONMENT}?"
+                    
+                    if (params.ENVIRONMENT == 'production') {
+                        approvers = ['security-team', 'platform-team', 'compliance-team']
+                        message = "PRODUCTION DEPLOYMENT: Approve deployment to production environment?"
+                    } else {
+                        approvers = ['platform-team']
+                    }
+                    
+                    timeout(time: 30, unit: 'MINUTES') {
+                        input(
+                            message: message,
+                            submitterParameter: 'APPROVER',
+                            submitter: approvers.join(',')
+                        )
+                    }
+                    
+                    echo "Deployment approved by: ${env.APPROVER}"
+                }
+            }
+        }
+
+        stage('Deploy Infrastructure') {
+            steps {
+                container('terraform') {
+                    dir("environments/${params.ENVIRONMENT}") {
+                        withCredentials([
+                            [
+                                $class: 'AmazonWebServicesCredentialsBinding',
+                                credentialsId: "aws-${params.ENVIRONMENT}",
+                                accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                                secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                            ]
+                        ]) {
+                            sh '''
+                                terraform apply -auto-approve tfplan
+                                terraform output -json > terraform-outputs.json
+                            '''
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/terraform-outputs.json", allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Post-Deployment Validation') {
+            steps {
+                container('riveter') {
+                    dir("environments/${params.ENVIRONMENT}") {
+                        sh '''
+                            # Wait for resources to stabilize
+                            sleep 30
+                            
+                            # Run post-deployment validation
+                            riveter scan \\
+                                -r ../../rule-packs/${ENVIRONMENT}-rules.yml \\
+                                -t *.tf \\
+                                --output-format json \\
+                                --output-file post-deploy-validation.json
+                            
+                            # Check for any new issues
+                            failed_count=$(jq '.summary.failed' post-deploy-validation.json)
+                            if [ "$failed_count" -gt 0 ]; then
+                                echo "Post-deployment validation found $failed_count issues:"
+                                jq '.results[] | select(.status == "FAIL")' post-deploy-validation.json
+                                exit 1
+                            fi
+                            
+                            echo "Post-deployment validation passed successfully"
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "environments/${params.ENVIRONMENT}/post-deploy-validation.json", allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up workspace
+            cleanWs()
+        }
+        
+        success {
+            script {
+                // Send success notification
+                def message = """
+                    ✅ Infrastructure deployment successful!
+                    
+                    Environment: ${params.ENVIRONMENT}
+                    Build: ${env.BUILD_URL}
+                    Commit: ${env.GIT_COMMIT}
+                    Approved by: ${env.APPROVER ?: 'N/A'}
+                """
+                
+                // Send to Slack/Teams/Email
+                slackSend(
+                    channel: '#infrastructure',
+                    color: 'good',
+                    message: message
+                )
+            }
+        }
+        
+        failure {
+            script {
+                // Send failure notification
+                def message = """
+                    ❌ Infrastructure deployment failed!
+                    
+                    Environment: ${params.ENVIRONMENT}
+                    Build: ${env.BUILD_URL}
+                    Stage: ${env.STAGE_NAME}
+                    
+                    Please check the build logs for details.
+                """
+                
+                // Send to Slack/Teams/Email
+                slackSend(
+                    channel: '#infrastructure-alerts',
+                    color: 'danger',
+                    message: message
+                )
+            }
+        }
+        
+        unstable {
+            script {
+                // Send warning notification for unstable builds
+                def message = """
+                    ⚠️ Infrastructure deployment completed with warnings
+                    
+                    Environment: ${params.ENVIRONMENT}
+                    Build: ${env.BUILD_URL}
+                    
+                    Please review the security and compliance reports.
+                """
+                
+                slackSend(
+                    channel: '#infrastructure',
+                    color: 'warning',
+                    message: message
+                )
+            }
+        }
+    }
+}
