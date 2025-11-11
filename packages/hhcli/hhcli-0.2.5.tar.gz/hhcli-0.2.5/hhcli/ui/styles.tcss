@@ -1,0 +1,672 @@
+/* --- 0. Дизайн-система: токены компонентов --- */
+
+$surface-app: $background1;
+$surface-panel: $background2;
+$surface-elevated: $background3;
+
+$text-muted: $foreground1;
+$text-base: $foreground2;
+$text-strong: $foreground3;
+$text-disabled: $foreground2 50%;
+
+$border-subtle: $background3;
+$border-strong: $foreground1;
+
+$accent-primary: $primary;
+$accent-primary-soft: $primary 35%;
+$accent-secondary: $secondary;
+$accent-secondary-soft: $secondary 40%;
+
+$status-success: $green;
+$status-warning: $yellow;
+$status-error: $red;
+$status-info: $secondary;
+
+$focus-ring: $primary;
+$selection-surface: $surface-elevated 35%;
+
+$overlay-scrim: $scrim;
+
+$control-background: $surface-panel;
+$control-border: $border-subtle;
+$control-text: $text-strong;
+$control-placeholder: $text-base;
+
+/* --- 1. Глобальные стили и стили по-умолчанию --- */
+
+* {
+    scrollbar-size: 1 1;
+    scrollbar-background: $surface-elevated;
+    scrollbar-color: $accent-primary;
+    scrollbar-background-hover: $surface-panel;
+    scrollbar-color-hover: $accent-secondary;
+    link-color: $accent-primary;
+}
+
+Screen {
+    background: $surface-app;
+    color: $text-base;
+}
+
+Static, Label {
+    color: $text-strong;
+}
+
+Markdown {
+    background: $surface-panel;
+    color: $text-strong;
+    padding: 0 1;
+    border: round $border-subtle;
+    border-title-align: left;
+}
+
+Markdown h1,
+Markdown h2,
+Markdown h3,
+Markdown h4,
+Markdown h5,
+Markdown h6 {
+    background: transparent;
+    color: $text-strong;
+    border: none;
+    text-style: bold;
+}
+
+LoadingIndicator,
+.loading-indicator {
+    color: $accent-secondary;
+}
+
+
+/* --- 2. Основная структура приложения --- */
+
+#vacancy_screen,
+#config_screen {
+    height: 100%;
+}
+
+Footer {
+    background: $surface-panel;
+    color: $text-muted;
+    dock: bottom;
+    height: auto;
+    min-height: 1;
+    padding: 0 1;
+}
+
+Footer > .footer--description {
+    color: $text-base;
+}
+
+Footer > .footer--key {
+    background: $surface-elevated 60%;
+    color: $text-strong;
+    text-style: bold;
+}
+
+Footer > .footer--highlight {
+    background: $accent-primary-soft;
+    color: $text-strong;
+    text-style: bold;
+}
+
+Footer > .footer--highlight-key {
+    background: $accent-primary;
+    color: $surface-app;
+    text-style: bold;
+}
+
+
+/* --- 3. Экран просмотра вакансий --- */
+
+.pane {
+    background: $surface-panel;
+    border: round $border-subtle;
+    border-title-color: $text-muted;
+    border-title-background: $surface-elevated;
+    border-title-align: left;
+    padding: 1 0 0 0;
+    margin: 0;
+    height: 1fr;
+}
+
+#vacancy_layout {
+    height: 1fr;
+    padding: 0;
+}
+
+#vacancy_panel {
+    margin-left: 0;
+}
+
+#details_panel {
+    padding: 0 0 0 0;
+}
+
+#details_pane {
+    padding: 0 0 0 0;
+    background: transparent;
+}
+
+#vacancy_details {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+#history_details {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+#vacancy_list_header {
+    background: transparent;
+    color: $text-base;
+    padding: 0 0 0 4;
+    text-style: bold;
+}
+
+#history_list_header {
+    background: transparent;
+    color: $text-base;
+    padding: 0 0 0 1;
+    text-style: bold;
+}
+
+
+/* --- 4. Виджеты для выбора (Списки и Таблицы) --- */
+
+SelectionList {
+    background: transparent;
+    padding: 0;
+    height: 1fr;
+    border: none;
+}
+
+SelectionList:focus {
+    border: none;
+}
+
+SelectionList > .selection-list--button,
+SelectionList > .selection-list--button-highlighted,
+SelectionList > .selection-list--button-selected,
+SelectionList > .selection-list--button-selected-highlighted {
+    background: transparent;
+    border: none;
+    padding: 0 1;
+}
+
+SelectionList > .selection-list--button-highlighted,
+SelectionList > .selection-list--button-selected-highlighted {
+    background: $selection-surface;
+}
+
+SelectionList > .selection-list--button-selected,
+SelectionList > .selection-list--button-selected-highlighted {
+    color: $accent-primary;
+}
+
+DataTable {
+    background: transparent;
+    color: $text-strong;
+    border: none;
+    scrollbar-color: $accent-primary;
+    scrollbar-background: $selection-surface;
+}
+
+DataTable:focus {
+    border: none;
+}
+
+DataTable > .datatable--header {
+    background: $surface-elevated;
+    color: $text-muted;
+}
+
+#resume_table,
+#profile_table {
+    min-height: 20;
+}
+
+
+/* --- 5. Экран настроек и формы --- */
+
+#config-form {
+    padding: 1 2;
+    background: $surface-panel;
+    border: round $border-subtle;
+}
+
+#config-form > .header {
+    background: $surface-elevated;
+    color: $text-muted;
+    padding: 1;
+    margin: 1 0;
+    text-style: bold;
+    text-align: center;
+}
+
+/* Элементы формы: Поля ввода */
+Input,
+TextArea {
+    background: $control-background;
+    color: $control-text;
+    border: round $control-border;
+    padding: 0;
+}
+
+Input:focus,
+TextArea:focus {
+    border: round $focus-ring;
+}
+
+TextArea {
+    min-height: 12;
+    scrollbar-color: $accent-secondary;
+}
+
+#cover_letter {
+    height: 15;
+}
+
+/* Элементы формы: Переключатели */
+Switch {
+    background: $surface-app;
+    border: round $control-border;
+}
+
+Switch:focus {
+    border: round $focus-ring;
+}
+
+.switch-container {
+    align-vertical: middle;
+    padding: 0 1;
+    background: transparent;
+    height: auto;
+}
+
+.switch-label {
+    height: 100%;
+    content-align-vertical: middle;
+}
+
+.switch-container > Switch {
+    background: transparent;
+    width: auto;
+    margin-right: 2;
+}
+
+/* Элементы формы: Выпадающие списки */
+Select {
+    background: transparent;
+    padding: 0;
+}
+
+SelectCurrent {
+    background: $control-background;
+    color: $control-text;
+    border: round $control-border;
+    padding: 0 1;
+}
+
+SelectCurrent Static#label {
+    color: $control-placeholder;
+    background: transparent;
+}
+
+SelectCurrent.-has-value Static#label {
+    color: $control-text;
+}
+
+SelectCurrent .arrow {
+    color: $control-placeholder;
+    background: transparent;
+}
+
+Select:focus > SelectCurrent {
+    border: round $focus-ring;
+}
+
+Select > SelectOverlay {
+    width: 1fr;
+}
+
+SelectOverlay {
+    background: $surface-panel;
+    color: $text-strong;
+    border: round $control-border;
+    padding: 0 1;
+}
+
+SelectOverlay:focus {
+    border: round $focus-ring;
+}
+
+SelectOverlay > .option-list--option {
+    background: transparent;
+    color: $text-strong;
+}
+
+SelectOverlay > .option-list--option-highlighted,
+SelectOverlay > .option-list--option-hover,
+SelectOverlay:focus > .option-list--option-highlighted,
+SelectOverlay > .option-list--option-hover-highlighted {
+    background: $selection-surface;
+    color: $text-base;
+}
+
+SelectOverlay > .option-list--option-disabled,
+SelectOverlay > .option-list--option-highlighted-disabled,
+SelectOverlay > .option-list--option-hover-disabled,
+SelectOverlay > .option-list--option-hover-highlighted-disabled {
+    color: $text-disabled;
+    background: transparent;
+}
+
+/* Элементы формы: Контейнеры выбора региона/ролей */
+.summary-label {
+    margin: 1 0 0 0;
+}
+
+.value-display {
+    padding: 0 0 1 0;
+    color: $text-strong;
+}
+
+#pickers-container {
+    layout: horizontal;
+    grid-size: 2;
+    grid-gutter-horizontal: 2;
+    height: auto;
+    margin: 1 0;
+}
+
+.picker-group {
+    height: auto;
+    padding: 0 1 1 1;
+    border: round $border-subtle;
+    width: 1fr;
+    background: $surface-panel;
+}
+
+.picker-group .summary-label {
+    margin-bottom: 1;
+}
+
+.picker-group .value-display {
+    height: 3;
+    min-height: 3;
+    content-align-vertical: top;
+}
+
+.picker-group Button {
+    width: 100%;
+}
+
+/* Элементы формы: Модальные окна выбора */
+.picker {
+    background: $surface-panel;
+    border: round $border-subtle;
+    padding: 1;
+    height: auto;
+}
+
+.picker__title {
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+.picker__buttons {
+    padding-top: 1;
+}
+
+.picker__hint {
+    color: $text-base;
+    padding-top: 1;
+}
+
+/* Настройки отображения экранов */
+
+#display-settings-container {
+    height: 22;
+    layout: grid;
+    grid-size: 2;
+    grid-columns: 1fr 1fr;
+    grid-gutter: 0 2;
+    margin: 1 0;
+}
+
+.display-settings-group {
+    height: 26;
+    padding: 1;
+    border: round $border-subtle;
+    border-title-color: $text-muted;
+    border-title-background: $surface-elevated;
+    width: 1fr;
+    background: $surface-panel;
+}
+
+.display-settings-row {
+    layout: horizontal;
+    grid-gutter-horizontal: 2;
+
+    height: 3;
+    align: left middle;
+}
+
+.display-settings-label {
+    width: 1fr;
+    height: 100%;
+    color: $text-muted;
+    content-align: left middle;
+}
+
+.display-settings-input {
+    width: 12;
+    background: $control-background;
+    border: round $control-border;
+    text-align: right;
+    color: $control-text;
+    margin: 0;
+}
+
+.display-settings-input:focus {
+    border: round $focus-ring;
+}
+
+/* --- 6. Модальное подтверждение настроек --- */
+
+ConfigUnsavedChangesDialog,
+ApplyConfirmationDialog {
+    layer: modal;
+    align: center middle;
+    background: $overlay-scrim;
+}
+
+ConfigUnsavedChangesDialog #config-confirm-center {
+    width: 30%;
+    height: 20%;
+}
+
+ApplyConfirmationDialog #config-confirm-center {
+    width: 30%;
+    height: 29%;
+}
+
+ConfigUnsavedChangesDialog #config-confirm-dialog,
+ApplyConfirmationDialog #config-confirm-dialog {
+    border-title-color: $accent-primary;
+    background: $surface-panel;
+    border: round $accent-primary;
+}
+
+ConfigUnsavedChangesDialog #config-confirm-dialog > .config-confirm__message,
+ApplyConfirmationDialog #config-confirm-dialog > .config-confirm__message {
+    color: $text-strong;
+    text-style: bold;
+    text-align: center;
+    content-align: center middle;
+    width: 100%;
+    padding: 1 0;
+}
+
+ConfigUnsavedChangesDialog .config-confirm__buttons,
+ApplyConfirmationDialog .config-confirm__buttons {
+    width: 100%;
+    content-align-horizontal: center;
+    align: center bottom;
+    padding-bottom: 1;
+}
+
+ConfigUnsavedChangesDialog .config-confirm__buttons > Button,
+ApplyConfirmationDialog .config-confirm__buttons > Button {
+    min-width: 16;
+    margin: 0 1;
+}
+
+ApplyConfirmationDialog #apply_confirm_input {
+    content-align: center middle;
+    width: 80%;
+    margin: 0 0 1 0;
+}
+
+ApplyConfirmationDialog #apply_confirm_error {
+    min-height: 2;
+    color: $status-error;
+    text-align: center;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+#history_list {
+    background: transparent;
+    border: none;
+    padding: 0;
+    height: 1fr;
+}
+
+#history_list .option-list--option,
+#history_list .option-list--option-hover {
+    background: transparent;
+    padding: 0 1;
+}
+
+#history_list .option-list--option-highlighted,
+#history_list .option-list--option-hover-highlighted {
+    background: $selection-surface;
+}
+
+
+/* --- 7. Компоненты --- */
+
+/* Кнопки */
+Button {
+    background: $control-background;
+    color: $text-base;
+    border: round $control-border;
+    text-style: bold;
+}
+
+Button:hover {
+    background: $control-background;
+    color: $text-strong;
+    border: round $focus-ring;
+    text-style: bold;
+}
+
+Button:focus {
+    border: round $border-strong;
+}
+
+Button.-success {
+    margin: 1 0 0 0;
+    background: $control-background;
+    color: $status-success;
+    border: round $control-border;
+}
+
+Button.-success:hover {
+    border: round $status-success;
+    color: $status-success;
+}
+
+Button.-success:focus {
+    color: $text-strong;
+    border: round $status-success;
+}
+
+Button.decline {
+    margin: 1 0 0 0;
+    background: $control-background;
+    color: $status-error;
+    border: round $control-border;
+}
+
+Button.decline:hover {
+    border: round $status-error;
+    color: $status-error;
+}
+
+Button.decline:focus {
+    color: $text-strong;
+    border: round $status-error;
+}
+
+/* Пагинация */
+Pagination {
+    width: 100%;
+    height: auto;
+    align: center middle;
+    padding-top: 1;
+}
+
+Pagination > Button {
+    min-width: 3;
+    width: auto;
+    height: 1;
+    border: none;
+    padding: 0 1;
+    margin: 0 1;
+    background: $surface-elevated;
+}
+
+Pagination > Button:hover {
+    background: $accent-secondary-soft;
+    border: none;
+}
+
+Pagination > Button.-primary,
+Pagination > Button.-primary:hover {
+    background: $accent-primary;
+    color: $surface-app;
+    text-style: bold;
+}
+
+Pagination > Button:focus {
+    border: none;
+    background: $accent-primary;
+    color: $surface-app;
+}
+
+
+/* --- 8. Уведомления --- */
+
+Notification {
+    background: $surface-panel;
+    color: $text-strong;
+    border: round $accent-primary;
+}
+
+Notification.-information {
+    border: round $status-info;
+}
+
+Notification.-warning {
+    border: round $status-warning;
+}
+
+Notification.-error {
+    border: round $status-error;
+}
