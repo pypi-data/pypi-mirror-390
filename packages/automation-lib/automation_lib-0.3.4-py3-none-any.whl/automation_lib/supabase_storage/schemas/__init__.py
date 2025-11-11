@@ -1,0 +1,3 @@
+"""
+Supabase Storage Schemas Module
+"""
