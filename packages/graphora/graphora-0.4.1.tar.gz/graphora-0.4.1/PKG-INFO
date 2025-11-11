@@ -1,0 +1,192 @@
+Metadata-Version: 2.4
+Name: graphora
+Version: 0.4.1
+Summary: Python client for the Graphora API
+Home-page: https://github.com/graphora/graphora-client
+Author: Graphora Team
+Author-email: support@graphora.io
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests>=2.25.0
+Requires-Dist: pydantic>=1.8.0
+Requires-Dist: pyyaml>=5.4.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Graphora Python Client
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue)](https://www.python.org/)
+[![PyPI](https://img.shields.io/pypi/v/graphora.svg)](https://pypi.org/project/graphora/)
+[![Downloads](https://img.shields.io/pypi/dm/graphora.svg)](https://pypi.org/project/graphora/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+> Official Python client for the Graphora API
+
+A Python client for interacting with the Graphora API. This library provides a simple and intuitive interface for working with Graphora's graph-based data processing capabilities.
+Graphora is a Text to Knowledge Graphs platform that helps you transform unstructured text into powerful knowledge graphs.
+
+## Features
+
+- **Complete API Coverage**: Access all Graphora API endpoints
+- **Type Safety**: Fully typed with Pydantic models
+- **User Context**: All API calls are automatically scoped to the specified user
+- **Async Support**: Efficient handling of long-running operations
+- **Minimal Dependencies**: Lightweight with few external dependencies
+- **Comprehensive Documentation**: Detailed guides and API references
+
+## Installation
+
+```bash
+pip install graphora
+```
+
+## Quick Start
+
+```python
+import os
+from graphora import GraphoraClient
+
+# Initialize client with a Clerk-issued bearer token. The base URL defaults to
+# GRAPHORA_API_URL (or https://api.graphora.io if unset), so you can omit it
+# for most cases.
+client = GraphoraClient(
+    auth_token=os.environ["GRAPHORA_AUTH_TOKEN"],
+)
+
+# Upload an ontology
+with open("ontology.yaml", "r") as f:
+    ontology_yaml = f.read()
+
+ontology = client.register_ontology(ontology_yaml)
+
+# Upload documents and wait for processing
+transform = client.transform(
+    ontology_id=ontology.id,
+    files=["document1.pdf", "document2.txt"],
+)
+final_status = client.wait_for_transform(transform.id)
+print("Transform status:", final_status.overall_status)
+
+# Inspect the resulting graph
+graph = client.get_transformed_graph(transform_id=transform.id)
+print(
+    f"Nodes: {graph.total_nodes or len(graph.nodes)} | "
+    f"Edges: {graph.total_edges or len(graph.edges)}"
+)
+
+# Start merging the processed data
+merge = client.start_merge(
+    session_id=ontology.id,
+    transform_id=transform.id,
+)
+```
+
+## Environment Variables
+
+The following environment variables can be used to configure the client:
+
+- `GRAPHORA_AUTH_TOKEN`: Clerk-issued bearer token (preferred)
+- `GRAPHORA_API_KEY`: Legacy API key support (deprecated; replaced by bearer tokens)
+- `GRAPHORA_USER_ID`: Optional user ID for client-side bookkeeping
+- `GRAPHORA_API_URL`: Custom API URL (optional). Defaults to `https://api.graphora.io` if unset.
+
+## Core API Methods
+
+### Ontology Management
+- `register_ontology(ontology_yaml)` - Register and validate an ontology
+- `get_ontology(ontology_id)` - Retrieve an ontology by ID
+
+### Document Processing
+- `transform(ontology_id, files, metadata=None)` - Upload documents for processing
+- `get_transform_status(transform_id)` - Check transformation status
+- `wait_for_transform(transform_id)` - Wait for transformation to complete
+- `cleanup_transform(transform_id)` - Clean up transformation data
+
+### Graph Operations
+- `get_transformed_graph(transform_id)` - Retrieve graph data
+- `update_transform_graph(transform_id, changes)` - Save graph modifications
+
+### Merge Operations
+- `start_merge(session_id, transform_id)` - Start merging processed data
+- `get_merge_status(merge_id)` - Check merge status
+- `get_conflicts(merge_id)` - Get conflicts requiring resolution
+- `resolve_conflict(merge_id, conflict_id, ...)` - Resolve specific conflicts
+- `get_merge_statistics(merge_id)` - Get merge statistics
+- `get_merged_graph(merge_id, transform_id)` - Retrieve merged graph
+
+## Documentation
+
+For detailed documentation, see the [docs directory](./docs) or visit our [official documentation website](https://docs.graphora.io).
+
+## Examples
+
+Check out the [examples directory](./examples) for sample code demonstrating various use cases:
+
+- `manage_ontology.py` - Ontology creation and management
+- `upload_and_transform.py` - Document upload and transformation
+- `modify_graph.py` - Graph data manipulation
+- `merge_graph_data.py` - Merging and conflict resolution
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Before Contributing
+
+1. Read the [Code of Conduct](CODE_OF_CONDUCT.md)
+2. Sign the [Contributor License Agreement](CLA.md)
+3. Check out [good first issues](https://github.com/graphora/graphora-client/labels/good%20first%20issue)
+
+## Documentation
+
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute
+- [Security Policy](SECURITY.md) - How to report security issues
+- [Support](SUPPORT.md) - How to get help
+- [Trademark Policy](TRADEMARK.md) - Trademark usage guidelines
+- [Examples](examples/) - Code examples
+
+## Related Repositories
+
+- **Frontend**: [graphora/graphora-fe](https://github.com/graphora/graphora-fe)
+- **Backend API**: [graphora/graphora-api](https://github.com/graphora/graphora-api)
+
+## License
+
+This project is licensed under the **MIT License**.
+
+See [LICENSE](LICENSE) for full terms.
+
+**Note**: While this client library is MIT licensed, the Graphora backend services are AGPL v3 licensed. For commercial use of the backend, contact **sales@graphora.io**
+
+## Community
+
+- **GitHub Discussions**: [Ask questions, share ideas](https://github.com/graphora/graphora-client/discussions)
+- **Discord**: Coming soon
+- **Twitter**: Coming soon
+
+## Security
+
+Please report security vulnerabilities to **support@graphora.io**
+
+See [SECURITY.md](SECURITY.md) for details.
+
+---
+
+Made with ❤️ by [Arivan Labs](https://arivanlabs.com)
