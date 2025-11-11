@@ -1,0 +1,248 @@
+# ============================================================================
+# CONVERSATION EXTENSION - PRODUCTION-READY CONFIG
+# ============================================================================
+# Production configuration with commonly used features enabled
+# Optional/advanced features are commented out for clarity
+# Uncomment features as needed for your specific use case
+# ============================================================================
+
+# ============================================================================
+# PIPELINE TYPE (REQUIRED)
+# ============================================================================
+pipeline: conversation_extension
+
+# ============================================================================
+# WORKSPACE ISOLATION (Optional - Recommended for production)
+# ============================================================================
+# Identifies this specific generation run for tracking and organization
+workspace_id: "your-project-name-v1"  # Example: "general-q1-q5-datasets_chat_q4_v2"
+
+# ============================================================================
+# PROVIDERS (REQUIRED)
+# ============================================================================
+# Configure LLM providers for each role
+# Two roles: user_followup (generate user questions) and assistant_response (generate answers)
+providers:
+  user_followup:
+    name: openrouter                          # Provider: ultrasafe, openai, anthropic, openrouter
+    api_key: ${OPENROUTER_API_KEY}            # Use environment variable for security
+    model: openrouter/polaris-alpha           # Model name
+    temperature: 0.7                          # Creativity level (0.0-2.0)
+    max_tokens: 4096                          # Maximum response length
+    max_concurrent_calls: 70                  # Rate limiting (parallel requests)
+    
+    # Optional: Additional parameters
+    # additional_params:
+    #   top_p: 0.9
+    #   frequency_penalty: 0.5
+    #   presence_penalty: 0.3
+  
+  assistant_response:
+    name: openrouter
+    api_key: ${OPENROUTER_API_KEY}
+    model: openrouter/polaris-alpha
+    temperature: 0.7
+    max_tokens: 8192                          # Larger for detailed responses
+    max_concurrent_calls: 70
+    
+    # Optional: Additional parameters
+    # additional_params:
+    #   top_p: 0.95
+
+# ============================================================================
+# GENERATION SETTINGS (REQUIRED)
+# ============================================================================
+generation:
+  num_conversations: 0                        # 0 = process ALL conversations
+  
+  turn_range:
+    min: 1                                    # Minimum turns to add
+    max: 1                                    # Maximum turns to add
+  
+  parallel_workers: 70                        # Concurrent workers (match max_concurrent_calls)
+  extension_mode: "smart"                     # Handle multi-turn conversations properly
+  skip_invalid: true                          # Skip malformed/invalid conversations
+  turn_calculation: "total"                   # "total" = stay within range | "additional" = add to existing
+  
+  # Token tracking and cost monitoring
+  track_tokens: true                          # Enable token usage tracking
+  token_pricing:                              # Set to 0 to disable cost display
+    input_cost_per_million: 0                 # Input token cost (e.g., 1.0 for $1 per 1M tokens)
+    output_cost_per_million: 0                # Output token cost (e.g., 2.0 for $2 per 1M tokens)
+
+# ============================================================================
+# INPUT DATA (REQUIRED)
+# ============================================================================
+base_data:
+  enabled: true
+  source_type: file                           # Use "jsonl" for file input
+  file_path: data/input/conversations.jsonl   # Path to input file
+  format: conversations
+  # shuffle: false                            # Optional: shuffle input data
+
+# ============================================================================
+# OUTPUT STORAGE (REQUIRED)
+# ============================================================================
+storage:
+  type: jsonl
+  output_file: data/output/output.jsonl       # Successfully processed conversations
+  partial_file: data/output/partial.jsonl     # In-progress conversations
+  failed_file: data/output/failed.jsonl       # Failed conversations (API errors + quality validation failures)
+  
+  # Optional: MongoDB storage (uncomment to use)
+  # type: mongodb
+  # mongodb:
+  #   connection_string: mongodb://localhost:27017
+  #   database: omnigen
+  #   collection: conversations
+
+# ============================================================================
+# CHECKPOINT & RESUME (Recommended for production)
+# ============================================================================
+checkpoint:
+  enabled: true
+  checkpoint_file: data/checkpoint/checkpoint.json  # Checkpoint file path
+  validate_input_hash: true                   # Detect if input file changed
+  resume_mode: auto                           # Automatically resume from checkpoint
+  
+  # Batch save optimization (RECOMMENDED - saves every N items OR every M seconds)
+  batch_save_items: 100                       # Save every 100 items
+  batch_save_seconds: 10                      # OR every 10 seconds (whichever first)
+  
+  # Optional: Advanced features
+  # version: "v1"                             # Run versioning (creates checkpoint_v1.json.gz)
+  # force_new: false                          # Delete existing checkpoint and start fresh
+  # migrate_from_version: "v1"                # Migrate from another version
+  
+# ============================================================================
+# OPTIONAL FEATURES (Comment out if not needed)
+# ============================================================================
+
+# Datetime injection - Add timestamps to conversations
+# datetime_config:
+#   enabled: true
+#   mode: random_from_range
+#   timezone: UTC
+#   format: "%Y-%m-%d %H:%M:%S"
+#   range:
+#     start: "2025-01-01 00:00:00"
+#     end: "2025-12-31 23:59:59"
+
+# System messages - Add to saved conversations
+system_messages:
+  prepend_always:
+    enabled: false
+  append_always:
+    enabled: false
+  add_if_missing:
+    enabled: false
+
+# Generation system messages - Guide LLM during generation (NOT saved to dataset)
+# These messages help the LLM understand its role but don't pollute the final data
+generation_system_messages:
+  user_followup:
+    enabled: false  # Set to true to add system message for user question generation
+    # content: "You are generating natural follow-up questions from a user's perspective."
+  assistant_response:
+    enabled: false  # Set to true to add system message for assistant response generation
+    # content: "You are USF Mini, a helpful AI assistant developed by UltraSafe AI."
+
+# ============================================================================
+# PROMPTS (Optional)
+# ============================================================================
+# Custom prompts for generation
+prompts:
+  followup_question: |
+    ## Your Task
+    Generate an intelligent follow-up user question based on conversation history.
+    
+    ### CONVERSATION HISTORY:
+    {history}
+    
+    ### INSTRUCTIONS:
+    - Generate a meaningful follow-up question
+    - Be conversational and natural
+    - Vary your phrasing and tone
+    - Build on the assistant's last response
+    - Make the question specific to the conversation context
+    - All follow-up queries should be unique, written in same language as main question or previous question
+    
+    Return your follow-up question wrapped in XML tags:
+    <user>Your follow-up question here</user>
+
+# ============================================================================
+# ERROR HANDLING & VALIDATION
+# ============================================================================
+
+# Error handling for API failures
+error_handling:
+  max_retries: 3                              # Retry failed API calls
+  fail_fast: true                             # Stop on non-retryable errors
+  save_partial_on_error: true                 # Save progress before stopping
+
+# Conversation-level quality validation (enabled by default)
+quality_validation:
+  enabled: true
+  max_retries: 3                              # Retry up to 3 times if validation fails
+  fail_on_quality_issues: true                # Mark as failed (saves to failed_file)
+  filter_failed_validations: false            # Save failed validations to failed_file
+  min_message_length: 1                       # Minimum message length (1 = allows "Yes", "No", "OK", etc.)
+  checks:
+    empty_content: true                       # Check for empty message content
+    repeated_messages: true                   # Check for duplicate messages
+    short_responses: true                     # Check for very short responses
+    alternation: false                        # Optional: Check user/assistant alternation
+    tool_calls: false                         # Optional: Check tool calling consistency
+
+# Optional: Message-level validation (uncomment to enable)
+# message_validation:
+#   enabled: true
+#   max_retries: 2
+#   user_checks:
+#     empty_content: true
+#     no_duplicate_in_history: true
+#   assistant_checks:
+#     empty_content: true
+#     no_duplicate_in_history: true
+
+# ============================================================================
+# DEBUG & LOGGING (Optional)
+# ============================================================================
+debug:
+  log_api_timing: true                        # Log API call timings
+  log_parallel_status: true                   # Log parallel processing status
+
+# ============================================================================
+# PRODUCTION TIPS
+# ============================================================================
+#
+# PERFORMANCE:
+# - Set parallel_workers to match your rate limits
+# - Use max_concurrent_calls to prevent API throttling
+# - Enable track_tokens to monitor costs
+# - Set batch_save_items higher (500-1000) for better performance with less I/O
+#
+# RELIABILITY:
+# - Always enable checkpoint for long-running jobs
+# - Set validate_input_hash: true to detect file changes
+# - Use error_handling.save_partial_on_error: true
+# - Monitor failed_file for debugging
+#
+# QUALITY CONTROL:
+# - Uncomment message_validation for strict quality checks
+# - Use quality_validation for final conversation validation
+# - Review partial_file to analyze incomplete conversations
+#
+# CUSTOMIZATION:
+# - Modify prompts to match your use case
+# - Adjust turn_range for conversation length
+# - Use workspace_id to identify different runs
+# - Set token_pricing to monitor costs
+#
+# SCALING:
+# - Use num_conversations: 0 to process all data
+# - Increase parallel_workers for faster processing (watch rate limits!)
+# - Use checkpoint versioning for parallel experiments
+# - Consider MongoDB storage for large datasets
+#
+# ============================================================================
