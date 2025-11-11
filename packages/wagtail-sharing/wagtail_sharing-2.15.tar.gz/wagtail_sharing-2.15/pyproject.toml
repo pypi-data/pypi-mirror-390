@@ -1,0 +1,108 @@
+[project]
+name = "wagtail-sharing"
+version = "2.15"
+description = "Easier sharing of Wagtail drafts"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = {text = "CC0"}
+authors = [
+    {name = "CFPB", email = "tech@cfpb.gov" }
+]
+dependencies = [
+    "wagtail>=6.2",
+]
+classifiers = [
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.1",
+    "Framework :: Wagtail",
+    "Framework :: Wagtail :: 6",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "License :: Public Domain",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+testing = [
+    "coverage[toml]",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/cfpb/wagtail-sharing"
+"Bug Reports" = "https://github.com/cfpb/wagtail-sharing/issues"
+"Source" = "https://github.com/cfpb/wagtail-sharing"
+
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+inventory = [
+    "templates/wagtailsharing/*",
+]
+
+[tool.black]
+line-length = 79
+target-version = ["py313"]
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.tox
+    | \*.egg-info
+    | _build
+    | build
+    | dist
+    | migrations
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 79
+lines_after_imports = 2
+skip = [".tox", "migrations", ".venv", "venv"]
+known_django = ["django"]
+known_wagtail = ["wagtail"]
+default_section = "THIRDPARTY"
+sections = [
+    "STDLIB",
+    "DJANGO",
+    "WAGTAIL",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "LOCALFOLDER"
+]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".tox",
+    "__pycache__",
+    "*/migrations/*.py",
+    "*/tests/shareable_routable_testapp/migrations/*.py",
+    "docs",
+    ".venv",
+    "venv",
+]
+
+[tool.ruff.lint]
+ignore = []
+select = [
+    "E",
+    "F",
+    "W",
+]
+
+[tool.coverage.run]
+omit = [
+    "wagtailsharing/tests/*",
+]
