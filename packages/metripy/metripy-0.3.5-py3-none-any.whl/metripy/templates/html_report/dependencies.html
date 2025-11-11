@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Analysis - Code Metrics Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dependency-list {
+            max-width: 100%;
+            margin: auto;
+        }
+
+        .dependency {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(255, 255, 255, 0.95) 100%);
+            border: 1px solid var(--border-light);
+            border-left: 4px solid var(--primary-color);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-normal);
+        }
+
+        .dependency:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+            border-left-color: var(--primary-dark);
+        }
+
+        .dependency .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .dependency h2 {
+            margin: 0;
+            font-size: 1.375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .dependency h2::before {
+            content: '📦';
+            font-size: 1.5rem;
+        }
+
+        .dependency a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        .dependency a:hover {
+            color: var(--primary-dark);
+            text-decoration: none;
+        }
+
+        .status {
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            transition: all var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .status:hover::before {
+            left: 100%;
+        }
+
+        .status.latest {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+        }
+
+        .status.latest::after {
+            content: '✓';
+            margin-left: 0.375rem;
+            font-weight: bold;
+        }
+
+        .status.outdated {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+        }
+
+        .status.outdated::after {
+            content: '⚠';
+            margin-left: 0.375rem;
+        }
+
+        .description {
+            margin: var(--spacing-md) 0;
+            font-size: 0.9375rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-style: normal;
+            padding: var(--spacing-md);
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            border-left: 3px solid var(--info-color);
+        }
+
+        .details {
+            list-style: none;
+            padding: 0;
+            margin: var(--spacing-md) 0 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            align-items: center;
+        }
+
+        .details li {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background-color: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            font-size: 0.8125rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .details li:hover {
+            background-color: var(--bg-tertiary);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .details li strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .details li:not(:has(strong)) {
+            color: var(--text-secondary);
+        }
+
+        /* Add icons to specific detail items */
+        .details li:first-child::before {
+            content: '🔖';
+            font-size: 0.875rem;
+        }
+
+        .details li:nth-child(2)::before {
+            content: '🏷️';
+            font-size: 0.875rem;
+        }
+
+        .details li:nth-child(3)::before {
+            content: '🏷️';
+            font-size: 0.875rem;
+        }
+
+        .details li:nth-child(4)::before {
+            content: '⭐';
+            font-size: 0.875rem;
+        }
+
+        .details li:nth-child(5)::before {
+            content: '📊';
+            font-size: 0.875rem;
+        }
+
+        .details li:nth-child(6)::before {
+            content: '📜';
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .dependency {
+                padding: var(--spacing-lg);
+            }
+
+            .dependency .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-md);
+            }
+
+            .dependency h2 {
+                font-size: 1.125rem;
+            }
+
+            .details {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .details li {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="images/logo.svg" alt="Metripy Logo" class="logo-icon">
+                    <h2>Metripy</h2>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="files.html" class="nav-link">
+                            <i class="fas fa-file-code"></i>
+                            <span>Files</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="top_offenders.html" class="nav-link">
+                            <i class="fa-solid fa-stethoscope"></i>
+                            <span>Top Offenders</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="git_analysis.html" class="nav-link">
+                            <i class="fab fa-git-alt"></i>
+                            <span>Git Analysis</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="dependencies.html" class="nav-link">
+                            <i class="fas fa-cubes"></i>
+                            <span>Dependencies</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="trends.html" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Trends</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="project-info">
+                    <h4>Project: {{project_name}}</h4>
+                    <p>Last updated: {{last_updated}}</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="page-header">
+                <div class="header-content">
+                    <h1>Dependency Details</h1>
+                    <p class="subtitle">Dependency details and stats</p>
+                </div>
+            </header>
+
+            {{#IF has_dependencies_data}}
+
+            <!-- License Chart Section -->
+            <section class="chart-section" style="grid-template-columns: 1fr; max-width: 600px;">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>License Distribution</h3>
+                        <p>Licenses used across dependencies</p>
+                    </div>
+                    <div class="chart-content">
+                        <canvas id="licenseTypesChart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <div class="info-card">
+                <div>
+                    {{#EACH dependencies AS dependency}}
+                    
+                        <div class="dependency">
+                            <div class="header">
+                              <h2><a href="{{dependency.repository}}">{{dependency.name}}</a></h2>
+                              <span class="status {{dependency.status}}">{{dependency.status}}</span>
+                            </div>
+                            <p class="description">{{dependency.description}}</p>
+                            <ul class="details">
+                              <li><strong>Type:</strong> {{dependency.type}}</li>
+                              <li><strong>Required Version:</strong> {{dependency.version}}</li>
+                              <li><strong>Latest Version:</strong> {{dependency.latest}}</li>
+                              <li><strong>GitHub Stars:</strong> ⭐ {{dependency.github_stars}}</li>
+                              <li><strong>Monthly Downloads:</strong> 📦 {{dependency.downloads_monthly}}</li>
+                              <li><strong>License:</strong> {{dependency.licenses}}</li>
+                            </ul>
+                          </div>
+                    {{/EACH}}
+                </div>
+            </div>
+
+            <!-- No Dependencies Data State -->
+            {{#ELSE}}
+            <div class="empty-state">
+                <i class="fas fa-chart-line"></i>
+                <h3>No Dependency Data Available</h3>
+                <p>Enable analysis of dependencies in your config file.</p>
+            </div>
+            {{/IF}}
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Embed data directly from template engine
+        window.DEPENDENCIES_DATA = {{dependencies_json}};
+    </script>
+    <script>
+        function createLicenseTypesChart() {
+            const canvas = document.getElementById('licenseTypesChart');
+            if (!canvas) {
+                console.warn('License types chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            
+            // Extract and aggregate license data from dependencies
+            const licenseCounts = {};
+            
+            if (window.DEPENDENCIES_DATA && Array.isArray(window.DEPENDENCIES_DATA)) {
+                window.DEPENDENCIES_DATA.forEach(dep => {
+                    if (dep.licenses) {
+                        const licenses = Array.isArray(dep.licenses) ? dep.licenses : [dep.licenses];
+                        licenses.forEach(license => {
+                            if (license && license !== 'Unknown' && license !== 'N/A') {
+                                licenseCounts[license] = (licenseCounts[license] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+            }
+
+            // If no license data found, use sample data
+            const chartData = Object.keys(licenseCounts).length > 0 ? licenseCounts : {
+                "MIT": 3,
+                "BSD-3-Clause": 1,
+                "Apache-2.0": 1,
+                "Apache 2.0": 1
+            };
+
+            // Generate colors for the chart
+            const colors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+                '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+                '#f97316', '#14b8a6', '#6366f1', '#a855f7'
+            ];
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(chartData),
+                    datasets: [{
+                        label: "License Types",
+                        data: Object.values(chartData),
+                        backgroundColor: colors.slice(0, Object.keys(chartData).length),
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        title: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create chart when page loads
+        document.addEventListener('DOMContentLoaded', createLicenseTypesChart);
+    </script>
+</body>
+</html>

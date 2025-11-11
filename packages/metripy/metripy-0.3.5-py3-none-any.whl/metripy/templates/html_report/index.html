@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Metrics Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="images/logo.svg" alt="Metripy Logo" class="logo-icon">
+                    <h2>Metripy</h2>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active">
+                        <a href="#overview" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="files.html" class="nav-link">
+                            <i class="fas fa-file-code"></i>
+                            <span>Files</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="top_offenders.html" class="nav-link">
+                            <i class="fa-solid fa-stethoscope"></i>
+                            <span>Top Offenders</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="git_analysis.html" class="nav-link">
+                            <i class="fab fa-git-alt"></i>
+                            <span>Git Analysis</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="dependencies.html" class="nav-link">
+                            <i class="fas fa-cubes"></i>
+                            <span>Dependencies</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="trends.html" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Trends</span>
+                        </a>
+                    </li>
+    </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="project-info">
+                    <h4>Project: {{ project_name }}</h4>
+                    <p>Last updated: {{ last_updated }}</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="page-header">
+                <div class="header-content">
+                    <h1>Code Metrics Overview</h1>
+                    <p class="subtitle">Comprehensive analysis of your codebase quality and maintainability</p>
+                </div>
+            </header>
+
+            <!-- Metrics Cards Row -->
+            <section class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon loc">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Lines of Code</h3>
+                            <p>Total codebase size</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value" id="total-loc">{{total_code_metrics.loc}}</span>
+                        <span class="unit">lines</span>
+                        {{#IF has_total_code_metrics_trend}}
+                        <span class="trend-badge {{total_code_metrics_trend.loc_trend_type}}" title="vs last analysis">
+                            <i class="fas fa-{{total_code_metrics_trend.loc_trend_icon}}"></i>
+                            <span class="trend-value">{{total_code_metrics_trend.loc_delta}}</span>
+                        </span>
+                        {{/IF}}
+                    </div>
+                    <div class="metric-segmentation">
+                        <div class="segment-bar">
+                            <div class="segment good" data-segment="small"></div>
+                            <div class="segment okay" data-segment="medium"></div>
+                            <div class="segment warning" data-segment="large"></div>
+                            <div class="segment critical" data-segment="very-large"></div>
+                        </div>
+                        <div class="segment-labels">
+                            <div class="segment-label good">
+                                <div class="segment-count" data-count="small">0</div>
+                                <div class="segment-text">Small</div>
+                            </div>
+                            <div class="segment-label okay">
+                                <div class="segment-count" data-count="medium">0</div>
+                                <div class="segment-text">Medium</div>
+                            </div>
+                            <div class="segment-label warning">
+                                <div class="segment-count" data-count="large">0</div>
+                                <div class="segment-text">Large</div>
+                            </div>
+                            <div class="segment-label critical">
+                                <div class="segment-count" data-count="very-large">0</div>
+                                <div class="segment-text">Very Large</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-description">
+                        <p>Total size of your codebase. Larger codebases require more maintenance effort and are harder to understand.</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon complexity">
+                            <i class="fas fa-sitemap"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Avg. Complexity</h3>
+                            <p>Cyclomatic complexity per function</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value" id="avg-complexity">{{total_code_metrics.avgCcPerFunction}}</span>
+                        <span class="unit">per function</span>
+                        {{#IF has_total_code_metrics_trend}}
+                        <span class="trend-badge {{total_code_metrics_trend.avgCcPerFunction_trend_type}}" title="vs last analysis">
+                            <i class="fas fa-{{total_code_metrics_trend.avgCcPerFunction_trend_icon}}"></i>
+                            <span class="trend-value">{{total_code_metrics_trend.avgCcPerFunction_delta}}</span>
+                        </span>
+                        {{/IF}}
+                    </div>
+                    <div class="metric-segmentation">
+                        <div class="segment-bar">
+                            <div class="segment good" data-segment="simple"></div>
+                            <div class="segment okay" data-segment="moderate"></div>
+                            <div class="segment warning" data-segment="complex"></div>
+                            <div class="segment critical" data-segment="very-complex"></div>
+                        </div>
+                        <div class="segment-labels">
+                            <div class="segment-label good">
+                                <div class="segment-count" data-count="simple">0</div>
+                                <div class="segment-text">Simple</div>
+                            </div>
+                            <div class="segment-label okay">
+                                <div class="segment-count" data-count="moderate">0</div>
+                                <div class="segment-text">Moderate</div>
+                            </div>
+                            <div class="segment-label warning">
+                                <div class="segment-count" data-count="complex">0</div>
+                                <div class="segment-text">Complex</div>
+                            </div>
+                            <div class="segment-label critical">
+                                <div class="segment-count" data-count="very-complex">0</div>
+                                <div class="segment-text">Very Complex</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-description">
+                        <p>Lower complexity (1-4) is better. Values above 10 indicate functions that are hard to test and maintain.</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon maintainability">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Maintainability</h3>
+                            <p>Maintainability index</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value" id="maintainability-index">{{total_code_metrics.maintainabilityIndex}}</span>
+                        <span class="unit">/ 100</span>
+                        {{#IF has_total_code_metrics_trend}}
+                        <span class="trend-badge {{total_code_metrics_trend.maintainabilityIndex_trend_type}}" title="vs last analysis">
+                            <i class="fas fa-{{total_code_metrics_trend.maintainabilityIndex_trend_icon}}"></i>
+                            <span class="trend-value">{{total_code_metrics_trend.maintainabilityIndex_delta}}</span>
+                        </span>
+                        {{/IF}}
+                    </div>
+                    <div class="metric-segmentation">
+                        <div class="segment-bar">
+                            <div class="segment good" data-segment="excellent"></div>
+                            <div class="segment okay" data-segment="good"></div>
+                            <div class="segment warning" data-segment="fair"></div>
+                            <div class="segment critical" data-segment="poor"></div>
+                        </div>
+                        <div class="segment-labels">
+                            <div class="segment-label good">
+                                <div class="segment-count" data-count="excellent">0</div>
+                                <div class="segment-text">Excellent</div>
+                            </div>
+                            <div class="segment-label okay">
+                                <div class="segment-count" data-count="good">0</div>
+                                <div class="segment-text">Good</div>
+                            </div>
+                            <div class="segment-label warning">
+                                <div class="segment-count" data-count="fair">0</div>
+                                <div class="segment-text">Fair</div>
+                            </div>
+                            <div class="segment-label critical">
+                                <div class="segment-count" data-count="poor">0</div>
+                                <div class="segment-text">Poor</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-description">
+                        <p>Higher is better. Values above 80 indicate highly maintainable code, below 60 suggests refactoring needed.</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-icon avg-loc">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div class="metric-title">
+                            <h3>Avg. Method Size</h3>
+                            <p>Average lines per method</p>
+                        </div>
+                    </div>
+                    <div class="metric-value">
+                        <span class="value" id="avg-method-size">{{total_code_metrics.avgLocPerFunction}}</span>
+                        <span class="unit">lines</span>
+                        {{#IF has_total_code_metrics_trend}}
+                        <span class="trend-badge {{total_code_metrics_trend.avgLocPerFunction_trend_type}}" title="vs last analysis">
+                            <i class="fas fa-{{total_code_metrics_trend.avgLocPerFunction_trend_icon}}"></i>
+                            <span class="trend-value">{{total_code_metrics_trend.avgLocPerFunction_delta}}</span>
+                        </span>
+                        {{/IF}}
+                    </div>
+                    <div class="metric-segmentation">
+                        <div class="segment-bar">
+                            <div class="segment good" data-segment="concise"></div>
+                            <div class="segment okay" data-segment="optimal"></div>
+                            <div class="segment warning" data-segment="large"></div>
+                            <div class="segment critical" data-segment="too-large"></div>
+                        </div>
+                        <div class="segment-labels">
+                            <div class="segment-label good">
+                                <div class="segment-count" data-count="concise">0</div>
+                                <div class="segment-text">Concise</div>
+                            </div>
+                            <div class="segment-label okay">
+                                <div class="segment-count" data-count="optimal">0</div>
+                                <div class="segment-text">Optimal</div>
+                            </div>
+                            <div class="segment-label warning">
+                                <div class="segment-count" data-count="large">0</div>
+                                <div class="segment-text">Large</div>
+                            </div>
+                            <div class="segment-label critical">
+                                <div class="segment-count" data-count="too-large">0</div>
+                                <div class="segment-text">Too Large</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-description">
+                        <p>Shorter methods (10-20 lines) are easier to understand and test. Methods over 50 lines should be refactored.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Git Commits Chart Row -->
+            <section class="chart-section">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Git Activity</h3>
+                        <p>Commit frequency over time</p>
+                    </div>
+                    <div class="chart-content">
+                        <canvas id="gitCommitsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container small">
+                    <div class="chart-header">
+                        <h3>License Types</h3>
+                        <p>Distribution by license</p>
+                    </div>
+                    <div class="chart-content">
+                        <canvas id="licenseTypesChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Embed data directly from template engine to avoid CORS issues
+        window.GIT_STATS_DATA = {{git_stats_data}};
+        window.METRICS_DATA = {
+            totalLoc: {{total_code_metrics.loc}},
+            avgComplexity: {{total_code_metrics.avgCcPerFunction}},
+            maintainabilityIndex: {{total_code_metrics.maintainabilityIndex}},
+            avgMethodSize: {{total_code_metrics.avgLocPerFunction}},
+            segmentation: {{segmentation_data}},
+        };
+    </script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/charts.js"></script>
+    <script>
+
+
+    function createLicenseTypesChart() {
+        const canvas = document.getElementById('licenseTypesChart');
+        if (!canvas) {
+            console.warn('License types chart canvas not found');
+            return;
+        }
+        console.log("creating licenses chart")
+        const ctx = canvas.getContext('2d');
+        const chartData = {
+            "MIT": 3,
+            "BSD-3-Clause": 1,
+            "Apache-2.0": 1,
+            "Apache 2.0": 1
+        };
+        console.log(Chart.version);
+        this.charts.licenseTypes = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(chartData),
+                datasets: [{
+                    label: "License Types",
+                    data: Object.values(chartData),
+                    backgroundColor: [
+                        '#FF6384',
+                        '#36A2EB',
+                        '#FFCE56',
+                        '#4BC0C0'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'License Types Distribution'
+                    }
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: true
+                }
+            }
+        });
+
+        // Add chart resize handler
+        //this.addResizeHandler('licenseTypes');
+    }
+    createLicenseTypesChart();
+    </script>
+</body>
+</html>
