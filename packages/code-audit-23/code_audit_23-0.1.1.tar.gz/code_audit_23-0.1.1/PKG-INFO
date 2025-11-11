@@ -1,0 +1,184 @@
+Metadata-Version: 2.4
+Name: code-audit-23
+Version: 0.1.1
+Summary: A simple local scanner for code audits (Trivy, SonarQube, for Brain Station 23)
+Author-email: Ahmad Al-Sajid <ahmad.sajid@brainstation23.com>
+License-Expression: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: click<9.0,>=8.1.7
+Requires-Dist: python-dotenv<2.0,>=1.0
+Requires-Dist: requests<3.0,>=2.31
+Dynamic: license-file
+
+# Code Audit 23
+
+[![PyPI Version](https://img.shields.io/pypi/v/code-audit-23.svg)](https://pypi.org/project/code-audit-23/)
+[![Python Version](https://img.shields.io/pypi/pyversions/code-audit-23.svg)](https://pypi.org/project/code-audit-23/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Code Audit 23 is a comprehensive command-line interface (CLI) tool that unifies multiple code quality and security scanning tools into a single, easy-to-use interface. It's designed to help developers maintain high code quality and security standards across their projects.
+
+## ✨ Features
+
+- **Unified Interface**: Single command to run multiple code quality and security scans
+- **Multiple Tools Integration**:
+  - **SonarQube** - Code quality and security analysis
+  - **Gitleaks** - Detect hardcoded secrets and credentials
+  - **Trivy** - Vulnerability scanning for dependencies and container images
+- **Interactive Menu**: User-friendly command-line interface
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+- **SARIF Reports**: Standardized output format for all scan results
+- **No Installation Required**: Self-contained executable available
+
+## 🚀 Installation
+
+### Prerequisites
+
+- Python 3.9 or higher
+- Java 11+ (for SonarQube Scanner)
+- [Git](https://git-scm.com/) (for Gitleaks)
+
+### Install from PyPI
+
+```bash
+pip install code-audit-23
+```
+
+### Install from Source
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/BrainStation-23/CodeAudit23.git
+   cd CodeAudit23
+   ```
+
+2. Create and activate a virtual environment:
+   ```bash
+   # Linux/macOS
+   python -m venv venv
+   source venv/bin/activate
+   
+   # Windows
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -e .
+   ```
+
+## 🔧 Configuration
+
+1. Create a `.env` file in your project root with the following variables:
+   ```env
+   SONAR_HOST_URL=https://your-sonarqube-instance.com
+   SONAR_LOGIN=your_sonarqube_token
+   ```
+
+2. The first time you run a scan, the tool will prompt you for SonarQube credentials if they're not in the `.env` file.
+
+## 🛠 Usage
+
+### Basic Usage
+
+Run the interactive menu:
+```bash
+code-audit-23
+```
+
+### Command Line Options
+
+```
+Usage: code-audit-23 [OPTIONS]
+
+  Interactive entrypoint for Audit Scanner
+
+Options:
+  --help  Show this message and exit.
+```
+
+### Menu Options
+
+1. **Quick Scan** - Run all security scans in sequence (SonarQube + Gitleaks + Trivy)
+2. **Gitleaks Scan** - Scan for secrets and sensitive information
+3. **Trivy Scan** - Scan for vulnerabilities in dependencies and container images
+4. **SonarQube Scan** - Analyze code quality and security issues
+
+## 📊 Output
+
+All scan reports are saved in the `reports/` directory in SARIF format:
+- `reports/gitleaks.sarif` - Results from Gitleaks scan
+- `reports/trivy.sarif` - Results from Trivy scan
+- SonarQube results are available on your SonarQube server
+
+## 🧪 Development
+
+### Project Structure
+
+```
+code_audit_23/
+├── __init__.py
+├── main.py           # Main CLI entry point
+├── sonarqube_cli.py  # SonarQube scanner implementation
+└── logger.py         # Logging configuration
+```
+
+### Dependencies
+
+- `click` - Command line interface creation
+- `requests` - HTTP requests
+- `python-dotenv` - Environment variable management
+
+### Building & Publishing to PyPI
+
+1. Update the version in `pyproject.toml` (and optionally `__init__.py` if you mirror it there). Commit the change.
+2. Ensure you have the packaging tooling:
+   ```bash
+   python -m pip install --upgrade build twine
+   ```
+3. Clean any previous artifacts:
+   ```bash
+   rm -rf dist build *.egg-info
+   ```
+4. Build the source distribution and wheel:
+   ```bash
+   python -m build
+   ```
+5. (Optional but recommended) Validate the archives locally:
+   ```bash
+   twine check dist/*
+   ```
+6. (Optional) Publish to TestPyPI before the main release:
+   ```bash
+   python -m twine upload --repository testpypi dist/*
+   ```
+7. Once satisfied, publish to PyPI:
+   ```bash
+   python -m twine upload dist/*
+   ```
+8. Tag the release in git, e.g.:
+   ```bash
+   git tag -a v0.1.0 -m "Release v0.1.0"
+   git push origin v0.1.0
+   ```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](./CONTRIBUTING.md) for details on how to submit pull requests, report issues, or suggest new features.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [SonarQube](https://www.sonarqube.org/) - For the amazing code quality platform
+- [Gitleaks](https://github.com/gitleaks/gitleaks) - For the secrets detection
+- [Trivy](https://github.com/aquasecurity/trivy) - For the vulnerability scanning
+
+## 📧 Contact
+
+For any questions or feedback, please contact [Ahmad Al-Sajid](mailto:ahmad.sajid@brainstation-23.com).
