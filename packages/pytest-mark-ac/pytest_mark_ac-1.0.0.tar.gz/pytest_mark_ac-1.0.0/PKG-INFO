@@ -1,0 +1,206 @@
+Metadata-Version: 2.4
+Name: pytest-mark-ac
+Version: 1.0.0
+Summary: Provides a marker to reference acceptance criteria from PyTest tests through annotations
+Project-URL: Homepage, https://gitlab.com/Kencho1/pytest-mark-ac
+Project-URL: Documentation, https://gitlab.com/Kencho1/pytest-mark-ac/-/blob/main/README.md
+Project-URL: Repository, https://gitlab.com/Kencho1/pytest-mark-ac.git
+Project-URL: Issues, https://gitlab.com/Kencho1/pytest-mark-ac/-/issues
+Author: Jesús Alonso Abad
+License-Expression: MIT
+License-File: LICENSE
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Plugins
+Classifier: Framework :: Pytest
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Testing
+Requires-Python: >=3.11
+Requires-Dist: pytest>=9.0.0
+Provides-Extra: dev
+Requires-Dist: ruff>=0.8.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# pytest-mark-ac
+
+A pytest plugin that provides a marker to reference acceptance criteria from tests through annotations. This plugin modifies test node IDs to include acceptance criteria references, enabling traceability between tests and user stories/acceptance criteria.
+
+## Installation
+
+### From Source
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd pytest-mark-test
+
+# Install in development mode
+pip install -e .
+
+# Or build and install
+pip install .
+```
+
+### From PyPI (when published)
+
+```bash
+pip install pytest-mark-ac
+```
+
+## Usage
+
+The plugin automatically registers when installed. Use the `@pytest.mark.ac` decorator to annotate tests with acceptance criteria references.
+
+### Basic Syntax
+
+```python
+@pytest.mark.ac(story_id, criteria_ids, ref_prefix="ac", ref_suffix="")
+```
+
+**Parameters:**
+- `story_id` (int): The user story ID
+- `criteria_ids` (Sequence[int]): List of acceptance criterion IDs
+- `ref_prefix` (str, optional): Prefix for the reference (default: "ac")
+- `ref_suffix` (str, optional): Suffix for the reference (default: "")
+
+**Effect:** Appends `__<ref_prefix><story_id>_<criterion_id><ref_suffix>` to the test node ID
+
+## Use Cases and Examples
+
+### Use Case 1: Simple Function Test
+
+Link a single test to multiple acceptance criteria:
+
+```python
+import pytest
+
+@pytest.mark.ac(1, [1, 2, 3])
+def test_user_login():
+    # Test implementation
+    assert True
+```
+
+**Result:** Test node ID becomes `test_file.py::test_user_login__ac1_1__ac1_2__ac1_3`
+
+Note `range` can be used for sequential ACs as well:
+
+```python
+import pytest
+
+@pytest.mark.ac(1, *range(1, 4))
+def test_user_login():
+    # Test implementation
+    assert True
+```
+
+also becomes `test_file.py::test_user_login__ac1_1__ac1_2__ac1_3`
+
+### Use Case 2: Parametrized Tests with Different Criteria
+
+Apply different acceptance criteria to individual parametrized test cases:
+
+```python
+from contextlib import nullcontext
+
+@pytest.mark.ac(1, [1])  # Applies to all test cases
+@pytest.mark.parametrize(
+    'a,b,expected',
+    [
+        pytest.param(4, 2, nullcontext(2), marks=pytest.mark.ac(2, [1])),
+        pytest.param(5, 1, nullcontext(5), marks=pytest.mark.ac(2, [1, 2])),
+        pytest.param(3, 2, nullcontext(1.5), marks=pytest.mark.ac(2, [3])),
+        pytest.param(3, 0, pytest.raises(ZeroDivisionError), marks=pytest.mark.ac(2, [4])),
+    ],
+)
+def test_division(a, b, expected):
+    with expected as exp_result:
+        assert (a / b) == exp_result
+```
+
+**Result:**
+- `test_division[4-2-expected0]__ac1_1__ac2_1`
+- `test_division[5-1-expected1]__ac1_1__ac2_1__ac2_2`
+- `test_division[3-2-expected2]__ac1_1__ac2_3`
+- `test_division[3-0-expected3]__ac1_1__ac2_4`
+
+### Use Case 3: Custom Reference Format
+
+Customize the reference format for your organization's conventions:
+
+```python
+@pytest.mark.ac(123, [5, 6], ref_prefix="AC", ref_suffix="_v1")
+def test_feature():
+    assert True
+```
+
+**Result:** Test node ID becomes `test_file.py::test_feature__AC123_5_v1__AC123_6_v1`
+
+### Use Case 4: Testing Edge Cases with Acceptance Criteria
+
+```python
+@pytest.mark.parametrize(
+    'value,expected',
+    [
+        pytest.param(0, True, marks=pytest.mark.ac(5, [1])),  # Zero case
+        pytest.param(-1, True, marks=pytest.mark.ac(5, [2])),  # Negative case
+        pytest.param(100, False, marks=pytest.mark.ac(5, [3])),  # Boundary case
+    ],
+)
+def test_validation(value, expected):
+    assert validate(value) == expected
+```
+
+### Use Case 5: Multiple Stories on One Test
+
+A test can verify acceptance criteria from multiple user stories:
+
+```python
+@pytest.mark.ac(10, [1, 2])  # Story 10, criteria 1-2
+@pytest.mark.ac(11, [3])     # Story 11, criterion 3
+def test_integrated_feature():
+    # Tests functionality spanning multiple stories
+    assert True
+```
+
+**Result:** `test_file.py::test_integrated_feature__ac10_1__ac10_2__ac11_3`
+
+## Running Tests with Acceptance Criteria
+
+```bash
+# Run all tests (shows modified node IDs)
+pytest -v
+
+# Run tests for specific acceptance criterion
+pytest -v -k "ac1_1"
+
+# Run tests for specific story
+pytest -v -k "ac5"
+
+# Show test collection without running
+pytest --collect-only
+```
+
+## Benefits
+
+- **Traceability**: Direct link between tests and acceptance criteria
+- **Test Reports**: Node IDs in reports show which criteria are covered
+- **Selective Execution**: Run tests by acceptance criteria using `-k` flag
+- **Documentation**: Tests serve as executable documentation of acceptance criteria
+- **Duplicate Prevention**: Automatically removes duplicate criteria references
+
+## Requirements
+
+- Python >= 3.11
+- pytest >= 9.0.0
+
+## License
+
+MIT
