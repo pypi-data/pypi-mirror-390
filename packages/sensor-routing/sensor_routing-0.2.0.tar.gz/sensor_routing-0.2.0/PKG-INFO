@@ -1,0 +1,340 @@
+Metadata-Version: 2.4
+Name: sensor-routing
+Version: 0.2.0
+Summary: Optimal routing for CRNS mobile sensor data collection
+Home-page: https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing
+Author: Can Topaclioglu
+Author-email: Can Topaclioglu <can.topaclioglu@ufz.de>
+Maintainer-email: Can Topaclioglu <can.topaclioglu@ufz.de>
+License: EUPL-1.2
+Project-URL: Homepage, https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing
+Project-URL: Repository, https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing
+Project-URL: Issues, https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing/-/issues
+Keywords: sensor-routing,CRNS,cosmic-ray-neutron-sensing,geospatial,routing-optimization,network-analysis,path-finding
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: GIS
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=2.2.0
+Requires-Dist: pandas>=2.2.3
+Requires-Dist: geopandas>=1.0.1
+Requires-Dist: osmnx>=2.0.0
+Requires-Dist: shapely>=2.0.6
+Requires-Dist: pyproj>=3.7.0
+Requires-Dist: pyogrio>=0.10.0
+Requires-Dist: networkx>=3.4.2
+Requires-Dist: scipy>=1.11.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: annotated-types>=0.6.0
+Requires-Dist: tqdm>=4.66.0
+Requires-Dist: requests>=2.32.3
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# Sensor Routing
+
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-EUPL--1.2-green.svg)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
+
+Optimal routing solution for mobile Cosmic Ray Neutron Sensing (CRNS) data collection. This package provides sophisticated algorithms for calculating efficient routes that maximize information value while minimizing travel distance and time.
+
+## Features
+
+- 🗺️ **Geospatial Route Optimization**: Calculate optimal routes using real-world road networks from OpenStreetMap
+- 📊 **Information Value Maximization**: Balance between spatial coverage and information gain
+- 🔄 **Multiple Routing Strategies**: Support for both standard and economical routing approaches
+- 🎯 **Point Mapping**: Map sensor locations to road networks with advanced filtering
+- 📈 **Benefit Calculation**: Evaluate information value of different route segments
+- 🛣️ **Path Finding**: Dijkstra-based algorithms with custom cost functions
+- 🔍 **Hull Point Extraction**: Optimize sensor placement using convex hull analysis
+
+## Installation
+
+### From PyPI (recommended)
+
+```bash
+pip install sensor-routing
+```
+
+### From source
+
+```bash
+git clone https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing.git
+cd sensor-routing
+pip install -e .
+```
+
+### Development installation
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### Command Line Interface
+
+The package provides a command-line interface for the full pipeline:
+
+```bash
+sensor-routing --wd /path/to/work_directory
+```
+
+### Python API
+
+```python
+from sensor_routing import point_mapping, benefit_calculation, path_finding, route_finding
+
+# Map points to road network
+pm_output = point_mapping.point_mapping(
+    points_path="input/points.csv",
+    osm_path="input/osm_data.geojson",
+    output_path="output"
+)
+
+# Calculate benefits
+bc_output = benefit_calculation.benefit_calculation(
+    pm_output=pm_output,
+    output_path="output"
+)
+
+# Find optimal path
+pf_output = path_finding.path_finding(
+    bc_output=bc_output,
+    output_path="output"
+)
+
+# Generate final route
+route = route_finding.route_finding(
+    pf_output=pf_output,
+    output_path="output"
+)
+```
+
+## Requirements
+
+- Python 3.12 or higher
+- See `requirements.txt` for full dependency list
+
+### Key Dependencies
+
+- **NumPy** & **Pandas**: Numerical and data processing
+- **GeoPandas**: Geospatial data handling
+- **OSMnx**: OpenStreetMap network analysis
+- **NetworkX**: Graph-based routing algorithms
+- **Shapely**: Geometric operations
+- **SciPy** & **scikit-learn**: Scientific computing and machine learning
+- **Pydantic**: Data validation
+
+## Project Structure
+
+```
+sensor_routing/
+├── point_mapping.py          # Map sensor points to road network
+├── benefit_calculation.py    # Calculate information value
+├── path_finding.py           # Find optimal paths
+├── route_finding.py          # Generate final routes
+├── hull_points_extraction.py # Extract convex hull points
+├── econ_mapping.py           # Economic point mapping variant
+├── econ_benefit.py           # Economic benefit calculation variant
+├── econ_paths.py             # Economic path finding variant
+├── econ_route.py             # Economic route finding variant
+└── full_pipeline_cli.py      # Command-line interface
+```
+
+## Usage
+
+### Working Directory Structure
+
+The pipeline expects a working directory with the following structure:
+
+```
+work_dir/
+├── input/
+│   ├── converted.csv         # Sensor point locations (EPSG:25832)
+│   └── osm_data.geojson      # OpenStreetMap road network
+├── transient/                # Intermediate pipeline outputs
+└── debug/                    # Debug outputs (optional, if DEBUG=True)
+```
+
+### Input Data Format
+
+**converted.csv** (sensor locations):
+```csv
+x,y,value
+33395000,5695000,150
+33396000,5696000,145
+...
+```
+
+**osm_data.geojson**: GeoJSON file containing road network from OpenStreetMap
+
+### Pipeline Parameters
+
+The pipeline can be configured via `full_pipeline_parameters.json`:
+
+```json
+{
+    "CRS": "EPSG:25832",
+    "EPSG": 25832,
+    "information_weight": 0.5,
+    "start_node": null,
+    "end_node": null,
+    "max_iterations": 100,
+    "enable_module_debug": false
+}
+```
+
+### Debug Mode
+
+Enable debug output by setting `ENABLE_MODULE_DEBUG = True` in `full_pipeline_cli.py` or via parameters file. This will:
+- Print detailed progress information
+- Save intermediate results to `debug/` directory
+- Show progress bars for long-running operations
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+### Code Formatting
+
+```bash
+black sensor_routing/
+flake8 sensor_routing/
+```
+
+### Type Checking
+
+```bash
+mypy sensor_routing/
+```
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Merge Request
+
+## Documentation
+
+For detailed documentation on specific modules:
+
+- **Point Mapping**: See `HOW_TO_USE_FOR_ROUTING.md`
+- **Benefit Calculation**: See `IMPROVED_INFORMATION_VALUE_EXPLANATION.md`
+- **Debug Control**: See `DEBUG_CONTROL_GUIDE.md`
+- **Information Weights**: See `INFORMATION_WEIGHT_RANGES.md`
+
+## Citation
+
+If you use this software in your research, please cite:
+
+```bibtex
+@software{sensor_routing,
+  author = {Topaclioglu, Can},
+  title = {Sensor Routing: Optimal routing for CRNS mobile sensor data collection},
+  year = {2024},
+  url = {https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing}
+}
+```
+
+## License
+
+This project is licensed under the European Union Public License 1.2 (EUPL-1.2). See the [LICENSE](LICENSE) file for details.
+
+## Authors
+
+- **Can Topaclioglu** - *Initial work* - [UFZ](https://www.ufz.de/)
+
+## Acknowledgments
+
+- Helmholtz Centre for Environmental Research (UFZ)
+- Department of Monitoring and Exploration Technologies
+
+## Support
+
+For questions, issues, or feature requests:
+- Open an issue on [GitLab](https://codebase.helmholtz.cloud/ufz/tb5-smm/met/wg7/sensor-routing/-/issues)
+- Contact: can.topaclioglu@ufz.de
+
+## Changelog
+
+### Version 0.2.0 (Current)
+- ✨ Added comprehensive debug control system
+- ✨ Migrated to Pydantic V2
+- ✨ Added economic routing variants
+- 🐛 Fixed multiple debug output issues
+- 📦 Prepared for PyPI distribution
+- 📝 Improved documentation
+
+### Version 0.1.15
+- Initial release with basic routing functionality
+
+
+## Suggestions for a good README
+
+Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+
+## Name
+Choose a self-explaining name for your project.
+
+## Description
+Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+
+## Badges
+On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+
+## Visuals
+Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+
+## Installation
+Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+
+## Usage
+Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+
+## Support
+Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+
+## Roadmap
+If you have ideas for releases in the future, it is a good idea to list them in the README.
+
+## Contributing
+State if you are open to contributions and what your requirements are for accepting them.
+
+For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+
+You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+
+## Authors and acknowledgment
+Show your appreciation to those who have contributed to the project.
+
+## License
+For open source projects, say how it is licensed.
+
+## Project status
+If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
