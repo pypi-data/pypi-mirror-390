@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "toonify"
+version = "0.0.2"
+description = "TOON (Token-Oriented Object Notation) - A compact, human-readable serialization format for LLMs"
+readme = "README.md"
+authors = [
+    {name = "TOON Format Contributors"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing",
+]
+keywords = ["serialization", "toon", "json", "csv", "llm", "token-efficient"]
+requires-python = ">=3.8"
+dependencies = [
+    "tiktoken>=0.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ScrapeGraphAI/toonify"
+Repository = "https://github.com/ScrapeGraphAI/toonify"
+Documentation = "https://github.com/ScrapeGraphAI/toonify#readme"
+
+[project.scripts]
+toon = "toon.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["toon"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=toon --cov-report=term-missing"
