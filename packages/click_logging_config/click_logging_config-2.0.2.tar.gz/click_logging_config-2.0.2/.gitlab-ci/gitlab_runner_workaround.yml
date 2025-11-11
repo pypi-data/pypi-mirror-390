@@ -1,0 +1,33 @@
+---
+.git-work-around:
+  before_script:
+    # https://gitlab.com/gitlab-org/gitlab/-/issues/350100#note_946527787
+    # HACK This is a workaround for the GitLab Runner bug
+    #      <https://gitlab.com/gitlab-org/gitlab/-/issues/350100>.
+    # If we are on CI,
+    # and we are (supposed to be) building a branch,
+    # and the SHA of that branch is given
+    # and the branch to be built does not exist, locally,
+    # create it,
+    # check it out,
+    # and set its remote tracking branch, if available.
+    # NOTE This should also work on local machines,
+    #      GitHub Actions and other CI systems,
+    #      as there it should result in a no-op,
+    #      because the `CI_*` variables will not be set,
+    #      and the branch will already exist.
+    - |
+      if \
+          [ -n "$CI" ] && \
+          [ -n "$CI_COMMIT_BRANCH" ] && \
+          [ -n "$CI_COMMIT_SHA" ] && \
+          ! git show-ref --verify --quiet "refs/heads/$CI_COMMIT_BRANCH"
+      then
+          git branch "$CI_COMMIT_BRANCH" "$CI_COMMIT_SHA"
+          git checkout "$CI_COMMIT_BRANCH"
+          # Sets the upstream branch, if it exists
+          if git show-ref --verify --quiet "refs/remotes/origin/$CI_COMMIT_BRANCH"
+          then
+              git branch --set-upstream-to="origin/$CI_COMMIT_BRANCH"
+          fi
+      fi

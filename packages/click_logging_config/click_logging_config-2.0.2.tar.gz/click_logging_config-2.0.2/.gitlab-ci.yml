@@ -1,0 +1,123 @@
+stages:
+  - setup
+  - static-analysis
+  - package
+  - tests
+  - publish
+
+variables:
+  DEFAULT_PYTHON_VERSION: "3.14"
+
+  FLIT_ROOT_INSTALL: 1
+  GIT_STRATEGY: clone
+  GIT_DEPTH: "0"
+  BUILDHARNESS_LOG_LEVEL: debug
+
+  PACKAGE_NAME: click_logging_config
+  PROJECT_NAME: click-logging-config
+
+  PYPI_API_USER: __token__
+
+  VENV_BIN: /venv/bin
+
+
+include:
+  - local: '.gitlab-ci/*.yml'
+
+
+workflow:
+  rules:
+    # NOTE: Gitlab-CI conditionals are not strictly shell compliant and must
+    #       not use curly brackets.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+
+.declare-artifacts: &declare-artifacts
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - dist/
+
+.python-image:
+  image: ${CI_REGISTRY_IMAGE}/build-image:${python_version}-${CI_COMMIT_SHORT_SHA}
+
+
+formatting-check:
+  extends: .python-image
+  parallel:
+    matrix:
+      - python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+  stage: static-analysis
+
+  before_script:
+    - ./build_harness/scripts/set-python-release.sh "${python_version}"
+  script:
+    - ./build_harness/scripts/check-formatting.sh
+
+
+linter-check:
+  extends: .python-image
+  parallel:
+    matrix:
+      - python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+  stage: static-analysis
+
+  before_script:
+    - ./build_harness/scripts/set-python-release.sh "${python_version}"
+  script:
+    - ./build_harness/scripts/check-linting.sh
+
+
+run-tests:
+  extends: .python-image
+  parallel:
+    matrix:
+      - python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+  stage: tests
+  # Use Gitlab shared runners (untagged) for IO intensive test
+  tags:
+
+  before_script:
+    - ./build_harness/scripts/set-python-release.sh "${python_version}"
+  script:
+    - ./build_harness/scripts/run-ci-tests.sh
+
+
+run-tests-coverage:
+  extends: .python-image
+  stage: tests
+  # Use Gitlab shared runners (untagged) for IO intensive test
+  tags:
+  variables:
+    python_version: "${DEFAULT_PYTHON_VERSION}"
+    TARGET: unit-test --check ${UNITTEST_COVERAGE_THRESHOLD}
+
+  before_script:
+    - !reference [.git-work-around, before_script]
+  script:
+    - ./build_harness/scripts/run-ci-tests-coverage.sh "${PACKAGE_NAME}"
+
+  <<: *declare-artifacts
+
+
+sonarcloud-check:
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  only:
+    - merge_requests
+    - master
+    - main
+  script:
+    - sonar-scanner -X
+  stage: static-analysis
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task

@@ -1,0 +1,35 @@
+FROM python:3.14-slim AS package_versions
+
+ARG requirements_src
+
+ARG apt_requirements="/tmp/${requirements_src}.txt"
+ARG get_versions=/tmp/get_versions.sh
+ARG requirements_lock="/tmp/${requirements_src}.lock"
+
+# NOTE: This dockerfile is intended to be built manually for use locally to
+#       update the requirements lock file.
+COPY "./${requirements_src}.txt" "${apt_requirements}"
+COPY ./get_versions.sh "${get_versions}"
+
+RUN /bin/bash -c \
+  "set -ex; \
+  chmod +x \"${get_versions}\"; \
+  apt-get update; \
+  \"${get_versions}\" \"${apt_requirements}\" \"${requirements_lock}\""
+
+
+FROM python:3.14-slim
+
+ARG requirements_src
+ARG requirements_lock_src="/tmp/${requirements_src}.lock"
+ARG requirements_lock_dest="/media/${requirements_src}.lock"
+
+COPY --from=package_versions "${requirements_lock}" "${requirements_lock}"
+
+ENV REQ_SRC="${requirements_lock_src}"
+ENV REQ_DEST="${requirements_lock_dest}"
+
+VOLUME /media
+
+# copy the generated lock file to the volume
+CMD ["sh", "-c", "cp \"${REQ_SRC}\" \"${REQ_DEST}\""]

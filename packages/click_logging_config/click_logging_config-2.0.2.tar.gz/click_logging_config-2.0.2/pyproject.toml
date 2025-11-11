@@ -1,0 +1,116 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+
+[project]
+authors = [{ name = "Russell Smiley", email = "russell@bytingchipmunk.com" }]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Typing :: Typed",
+]
+dynamic = ["description", "version"]
+license = "MIT"
+name = "click_logging_config"
+readme = "README.rst"
+
+# Drop support for EOL Python versions
+# https://devguide.python.org/versions/
+requires-python = ">=3.10"
+
+dependencies = [
+    "click >=8.3",
+    "json_log_formatter >=1.0",
+    "pendulum >=3.1",
+    "pydantic >=2, <3",
+    "pytz >=2025.2",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "invoke >=2.2.0",
+    "mypy>=1.18.2",
+    "pre_commit >=4.3",
+    "ruff>=0.14.4",
+    "types-pytz >=2025.2",
+    "uv >=0.9.8",
+]
+doc = [
+    # NOTE: Can't update to sphinx v8 yet because it requires Python >=3.11 &
+    #       we want to support Python >=3.10.
+    "sphinx >=7.4.7",
+    "sphinx_rtd_theme >=2.0",
+]
+test = [
+    "pytest >=8.4.2",
+    "pytest-cov >=7.0",
+    "pytest-mock >=3.15.1",
+]
+
+
+[project.urls]
+source = "https://gitlab.com/ci-cd-devops/click_logging_config"
+
+
+[tool.coverage.html]
+directory = "dist/coverage-ci"
+
+
+[tool.coverage.report]
+exclude_lines = [
+    "except ImportError",
+    "raise NotImplementedError",
+    "pass",
+    "ABCmeta",
+    "abstractmethod",
+    "warnings.warn",
+]
+fail_under = 90
+precision = 0
+show_missing = true
+
+
+[tool.coverage.run]
+# branch and concurrency settings seem to be needed due to this problem:
+# pytest-cov internal error "Can't combine line data with arc data"
+# https://github.com/pytest-dev/pytest-cov/issues/243
+branch = true
+concurrency = ["multiprocessing"]
+omit = ["click_logging_config/.venv/*"]
+source = ["click_logging_config"]
+
+
+[tool.coverage.xml]
+output = "dist/coverage-ci/coverage-ci.xml"
+
+
+[tool.hatch.version]
+path = "click_logging_config/_version.py"
+search-paths = ["."]
+source = "code"
+
+
+[tool.mypy]
+exclude = []
+
+
+[tool.ruff]
+# NOTE: Don't want to exclude `tests` from formatting, but do want to exclude
+#       it from linting.
+exclude = [
+    "tests",
+]
+indent-width = 4
+line-length = 80
+
+
+[tool.ruff.lint]
+fixable = ["ALL"]
+# enable pydocstyle checks
+select = ["E"]
+
+
+[tool.uv]
+package = true

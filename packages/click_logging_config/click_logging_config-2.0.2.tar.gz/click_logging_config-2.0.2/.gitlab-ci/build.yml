@@ -1,0 +1,35 @@
+---
+build-packages:
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - dist/
+      - build_harness.log
+      - release_flow.log
+    when: always
+  extends: .python-image
+  stage: package
+  variables:
+    python_version: "${DEFAULT_PYTHON_VERSION}"
+
+  script:
+    - |
+      ./build_harness/scripts/build-packages.sh \
+        "${PACKAGE_NAME}" \
+        "${CI_DEFAULT_BRANCH}" \
+        "${CI_COMMIT_TAG}"
+
+
+install-check:
+  extends: .python-image
+  needs:
+    - job: build-packages
+      artifacts: true
+  stage: tests
+  variables:
+    python_version: "${DEFAULT_PYTHON_VERSION}"
+
+  before_script:
+    - ./build_harness/scripts/set-python-release.sh "${python_version}"
+  script:
+    - ./build_harness/scripts/check-package-install.sh "${PACKAGE_NAME}"

@@ -1,0 +1,42 @@
+---
+publish-packages:
+  # NOTE: There is no need for a rule at this level because the job must always
+  #       run. The scripting contains the release/non-release detection logic &
+  #       will only do a dry run for non-releases.
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - build_harness.log
+      - publish_flow.log
+    when: on_failure
+  extends: .python-image
+  needs:
+    - job: build-packages
+      artifacts: true
+  stage: publish
+  variables:
+    python_version: "${DEFAULT_PYTHON_VERSION}"
+
+  script:
+    - |
+      PUBLISH_THIS=$(./build_harness/scripts/publish-packages.sh \
+        "${CI_COMMIT_TAG}" \
+        "${CI_PIPELINE_SOURCE}")
+      export PUBLISH_THIS
+      # NOTE: using the `--password` option to read from environment variable as
+      #       this is the most likely to be available in a CI system (but not
+      #       necessarily the most secure).
+      # NOTE: This command need to be in the CI shell to correctly extract 
+      #       PYPI_API_USER, PYPI_API_TOKEN masked variables.
+      if [[ "yes" == "${PUBLISH_THIS}" ]]; then
+        "${VENV_BIN}/uv" \
+          publish \
+            --username $PYPI_API_USER \
+            --password $PYPI_API_TOKEN
+      else
+        "${VENV_BIN}/uv" \
+          publish \
+            --username $PYPI_API_USER \
+            --password $PYPI_API_TOKEN \
+            --dry-run
+      fi
