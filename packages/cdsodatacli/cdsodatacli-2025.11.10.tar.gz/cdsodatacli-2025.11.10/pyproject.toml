@@ -1,0 +1,186 @@
+[project]
+name = "cdsodatacli"
+description = "OData client for Copernicus Data Space catalog"
+readme = "README.md"
+authors = [{ name = "Antoine Grouazel" }, { name = "Jean-Renaud Miadana" }]
+license = { text = "MIT" }
+#repository = "https://github.com/umr-lops/cdsodatacli"
+#homepage = "https://github.com/umr-lops/cdsodatacli"
+
+keywords = ["Odata", "copernicus-data-space", "api"]
+
+# Pypi classifiers: https://pypi.org/classifiers/
+classifiers = [ #! Update me
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+]
+dependencies = [
+  "geopandas",
+  "geodatasets",
+  "numpy",
+  "requests",
+  "shapely",
+  'tqdm',
+  'pyyaml',
+  'cartopy',
+  "python-dotenv",
+]
+
+
+dynamic = ["version"]
+[project.optional-dependencies]
+dev = [
+  "pre-commit",
+  "pytest",
+  "pytest-cov",
+  "pytest-env",
+  "pytest-xdist",
+  "pytest-timeout",
+  "ruff>=0.8.0",
+  "sphinx",
+  "sphinx_autosummary_accessors",
+
+]
+
+[project.scripts]
+queryCDS = "cdsodatacli.query:query_client"
+downloadFromCDS = "cdsodatacli.download:main"
+downloadMuliThreadMultiUser = 'cdsodatacli.scripts.download_multithread_multiuser:entrypoint'
+
+
+[build-system]
+requires = ["setuptools>=64.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+# [tool.setuptools]
+# packages = ["cdsodatacli"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cdsodatacli*"]
+
+[tool.setuptools_scm]
+fallback_version = "999"
+local_scheme = "no-local-version"
+
+[tool.black]
+# https://github.com/psf/black
+target-version = ["py39"]
+line-length = 88
+color = true
+
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | env
+    | venv
+    | tests_metiers
+)/
+'''
+
+[tool.isort]
+# https://github.com/timothycrosley/isort/
+py_version = 39
+line_length = 88
+
+known_typing = [
+  "typing",
+  "types",
+  "typing_extensions",
+  "mypy",
+  "mypy_extensions",
+]
+sections = [
+  "FUTURE",
+  "TYPING",
+  "STDLIB",
+  "THIRDPARTY",
+  "FIRSTPARTY",
+  "LOCALFOLDER",
+]
+include_trailing_comma = true
+profile = "black"
+multi_line_output = 3
+indent = 4
+color_output = true
+
+[tool.mypy]
+# https://mypy.readthedocs.io/en/latest/config_file.html#using-a-pyproject-toml-file
+python_version = 3.9
+pretty = true
+show_traceback = true
+color_output = true
+
+allow_redefinition = false
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+implicit_reexport = false
+no_implicit_optional = true
+show_column_numbers = true
+show_error_codes = true
+show_error_context = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+
+[tool.pytest.ini_options]
+# https://docs.pytest.org/en/6.2.x/customize.html#pyproject-toml
+# Directories that are not visited by pytest collector:
+norecursedirs = [
+  "hooks",
+  "*.egg",
+  ".eggs",
+  "dist",
+  "build",
+  "docs",
+  ".tox",
+  ".git",
+  "__pycache__",
+]
+doctest_optionflags = [
+  "NUMBER",
+  "NORMALIZE_WHITESPACE",
+  "IGNORE_EXCEPTION_DETAIL",
+]
+
+# Extra options:
+addopts = [
+  "--strict-markers",
+  "--tb=short",
+  "--doctest-modules",
+  "--doctest-continue-on-failure",
+]
+
+[tool.coverage.run]
+source = ["tests"]
+
+[coverage.paths]
+source = "cdsodatacli"
+
+[coverage.run]
+branch = true
+
+[coverage.report]
+fail_under = 50
+show_missing = true
