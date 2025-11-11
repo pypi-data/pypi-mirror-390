@@ -1,0 +1,68 @@
+[build-system]
+requires = ["poetry>=0.12", "grpcio-tools"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "bfportal_grpc_bf6"
+version = "0.1.6"
+description = "bf6 portal web grpc as python package "
+readme = "Readme.md"
+authors = ["iiTzArcur <arcur@gametools.network>"]
+# license = { file = "LICENSE" }
+classifiers = [
+    # "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["bfportal", "grpc", "Battlefield portal"]
+repository = "https://github.com/community-network/bfportal-grpc-bf6"
+packages = [{ include = "bfportal_grpc_bf6" }]
+
+[tool.poetry.dependencies]
+aiohttp = "^3.13.0"
+protobuf = "^6.32.1"
+grpcio = "^1.75.1"
+python = "^3.10"
+proto-compile = "^0.1.7"
+python-dotenv = "^1.1.1"
+httpcore = { extras = ["http2", "asyncio"], version = "^1.0.9" }
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/community-network/bfportal-grpc-bf6/issues"
+
+[tool.poetry.scripts]
+compile-proto = "bfportal_grpc_bf6.helpers.compile:compile_proto"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.4.2"
+black = "25.9.0"
+isort = "6.1.0"
+grpcio-tools = "^1.76.0"
+pytest-xdist = {extras = ["psutil"], version = "^3.8.0"}
+pytest-asyncio = "^1.2.0"
+
+[tool.poetry.build]
+generate-setup-file = false
+script = "bfportal_grpc_bf6/helpers/compile.py"
+
+[tool.isort]
+profile = "black"
+import_heading_stdlib = "Standard library imports"
+import_heading_thirdparty = "Third party imports"
+import_heading_firstparty = "Reader imports"
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+module = "feedparser"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode="auto"
+testpaths = ["tests"]
+addopts = [
+    "--import-mode=importlib",
+]
+
