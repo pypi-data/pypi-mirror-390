@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools~=80.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name        = "python-typing-update"
+version     = "0.8.1"  # template: x.x.x[.dev0]
+license     = "MIT"
+license-files = ["LICENSE", "AUTHORS"]
+description = "Update Python typing syntax"
+readme      = "README.md"
+authors     = [{name = "Marc Mueller"}]
+keywords    = ["typing", "pep585", "pep604"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development",
+]
+requires-python = ">=3.10"
+dependencies    = [
+    "aiofiles==25.1.0",
+    "autoflake==2.3.1",
+    "isort==7.0.0",
+    "pyupgrade==3.21.1",
+    "reorder-python-imports==3.16.0",
+]
+
+[project.urls]
+"Source Code" = "https://github.com/cdce8p/python-typing-update"
+
+[project.optional-dependencies]
+black = [
+    "black==25.11.0",
+]
+ruff = [
+    "ruff==0.14.4",
+]
+
+[project.scripts]
+python-typing-update = "python_typing_update.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["python_typing_update*"]
+
+[tool.isort]
+# https://pycqa.github.io/isort/docs/configuration/options.html
+multi_line_output = 4
+line_length = 72
+combine_as_imports = true
+force_sort_within_sections = true
+known_first_party = [
+    "python_typing_update",
+    "tests",
+]
+forced_separate = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["fixtures"]
+console_output_style = "count"
+log_level = "NOTSET"
+# https://pytest-asyncio.readthedocs.io/en/latest/reference/configuration.html
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+# https://mypy.readthedocs.io/en/stable/config_file.html
+python_version = "3.10"
+show_error_codes = true
+ignore_missing_imports = true
+strict = true
+follow_imports = "normal"
+exclude = "tests/fixtures/.+\\.py"
+# Untyped definitions and calls
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+# None and optional handeling
+no_implicit_optional = true
+strict_optional = true
+# Configure warnings
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unused_configs = true
+# Misc
+implicit_reexport = false
+strict_equality = true
+enable_error_code = ["ignore-without-code"]
+# TODO
+allow_any_generics = true
+
+# [[tool.mypy.overrides]]
+# module = "tests.*"
+# # Untyped definitions and calls
+# disallow_untyped_calls = false
+# disallow_untyped_defs = false
+# disallow_incomplete_defs = false
+
+[tool.flake8]
+max_line_length = 119
+extend_exclude = [
+    ".github",
+    ".vscode",
+    "tests/fixtures",
+    "venv*",
+]
