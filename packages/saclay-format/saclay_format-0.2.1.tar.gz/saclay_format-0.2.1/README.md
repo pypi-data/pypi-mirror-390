@@ -1,0 +1,97 @@
+# Saclay_format (v0.2.1)
+
+This repository contains a proposal format definition to exchange inputs/outputs
+between some mean-field theory codes in the nuclear physics and astrophysics communities.
+This format relies on a series of custom binary files containing the raw data along with
+a YAML header containing metadata. It adheres to the results of the 05/2025 and 10/2025 ESNT 
+workshops entitled *"Simulating dense matter on three-dimensional coordinate space meshes (part I and II)"*.
+
+## Content
+
+* `saclay_format` — Python3 package to parse and visualize this format  
+* `docs` — documentation of the format (not yet up to date)  
+* `examples` — nuclear mean-field outputs in this format  
+* `tests` — unit tests of the package (not yet up to date)
+
+## Requirements
+
+* `pyyaml` — Python3 package for YAML parsing  
+* `h5py` — Python3 package for HDF5 parsing  
+
+## Running the parser
+
+From a Python terminal, import the `parser` module and use its `read()` and `write()` methods.
+To see the expected structure of the data dictionary, check the 
+`create_dummy_data()` function in `tests/test_saclay_format.py`.
+
+Example:
+```bash
+cd tests/
+python3 test_saclay_format.py
+```
+
+## Examples
+
+### Example structure
+
+```
+examples/20Ne_bcs/
+├── 20Ne_rho_n.wdat
+├── 20Ne_state
+├── 20Ne.h5
+├── 20Ne.yaml
+└── README.md
+
+examples/alpha_alpha_3MeV/
+├── reaction_alpha_alpha_3MeV_header.yml
+├── reaction_alpha_alpha_3MeV_rho_n.bin
+├── reaction_alpha_alpha_3MeV_rho_p.bin
+├── README_visualisation_convert.md
+└── script_test.convert.sh
+
+examples/Ca40_ev8/
+├── Ca40_HF_SLy4.yaml
+├── Ca40_HF_SLy4_*.dat
+└── README_test.md
+```
+
+### Conversion test
+
+```bash
+python3 ../../saclay_format/hdf5_yaml_converter.py -h5 Ca40_HF_SLy4.yaml
+python3 ../../saclay_format/ev8_to_ev1.py Ca40_HF_SLy4.h5 -o Ca40_HF_SLy4_ev1.h5
+python3 ../../saclay_format/ev1_to_cr1.py Ca40_HF_SLy4_ev1.h5 -o Ca40_HF_SLy4_cr1.h5
+```
+
+### Visualization test
+
+Static:
+```bash
+python3 ../../saclay_format/visualisation_rho.py reaction_alpha_alpha_3MeV_header.yml
+```
+
+Dynamic:
+```bash
+python3 ../../saclay_format/visualisation_rho_TD.py -H reaction_alpha_alpha_3MeV_header.yml
+```
+
+Conversion and round-trip test:
+```bash
+python3 ../../saclay_format/hdf5_yaml_converter.py -h5 reaction_alpha_alpha_3MeV_header.yml
+mv reaction_alpha_alpha_3MeV_header.h5 reaction_alpha_alpha_3MeV_converted.h5
+python3 ../../saclay_format/visualisation_rho_TD.py reaction_alpha_alpha_3MeV_converted.h5
+python3 ../../saclay_format/hdf5_yaml_converter.py -yaml reaction_alpha_alpha_3MeV_converted.h5
+python3 ../../saclay_format/visualisation_rho_TD.py reaction_alpha_alpha_3MeV_converted.yaml
+rm reaction_alpha_alpha_3MeV_converted*
+```
+
+## Todo
+
+- Test the format  
+- Add documentation  
+- Update unit tests  
+
+## Project layout
+
+This project follows the structure recommended by the Hitchhiker’s Guide to Python:  
+[https://docs.python-guide.org/writing/structure](https://docs.python-guide.org/writing/structure)
