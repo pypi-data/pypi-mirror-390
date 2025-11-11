@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package ltc5586;
+import public "datatypes.proto";
+
+service LTC5586Service {
+    // Power adjustment
+    rpc SetAttenuation (sdr.datatypes.IndexedUInt)  returns (sdr.datatypes.Empty) {}
+    rpc GetAttenuation (sdr.datatypes.EndpointIndex)  returns (sdr.datatypes.UInt) {}
+    rpc SetGain (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetGain (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetGainError (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetGainError (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetGainErrordB (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+    rpc GetGainErrordB (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+    // Frequency adjustment. Main SetLoMatchMHz call calculates manufacturer's recommendations
+    rpc SwitchToHighBand (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc SwitchToLowBand (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc GetBand (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+    rpc SetLoBias (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetLoBias (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetLoMatchC1 (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetLoMatchC1 (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetLoMatchC2 (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetLoMatchC2 (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetLoMatchInductor (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetLoMatchInductor (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetLoMatchMHz (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetLoMatchMHz (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+    // Phase error
+    rpc SetPhaseError (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetPhaseError (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetPhaseErrorDeg (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+    rpc GetPhaseErrorDeg (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+    // I/Q specific configurations
+    rpc SetDcOffsetI (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetDcOffsetI (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetDcOffsetImV (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+    rpc GetDcOffsetImV (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+    rpc SetDcOffsetQ (sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+    rpc GetDcOffsetQ (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    rpc SetDcOffsetQmV (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+    rpc GetDcOffsetQmV (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+    rpc SetVectorAdjust (WriteVector) returns (sdr.datatypes.Empty) {}
+    rpc GetVectorAdjust (VectorReg) returns (ReturnVector) {}
+
+    // Chip control
+    rpc EnableRfSwitch (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc DisableRfSwitch (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc GetRfSwitch (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+    rpc EnableSdoReadback (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc DisableSdoReadback (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc GetSdoReadback (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+    rpc Reset (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc Initial (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc UpdateRead (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+	rpc UpdateWrite (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {} 
+}
+
+// Vector stuff
+message WriteVector {
+	sdr.datatypes.EndpointIndex index=1;
+	string name=2;
+    oneof x_optional {
+        uint32 x=3;
+    }
+    oneof y_optional {
+        uint32 y=4;
+    }
+}
+message VectorReg {
+    sdr.datatypes.EndpointIndex index=1;
+    string name=2;
+}
+message ReturnVector {
+    uint32 x=1;
+    uint32 y=2;
+}

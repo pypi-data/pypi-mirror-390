@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+
+package stimulation;
+import "datatypes.proto";
+
+
+service StimulationService {
+    /**
+     * @brief Enables one of the submodules.
+     * 
+     * The enable will start dataprocessing or stop it. Enable for normal operation.
+     * @param msg Endpoint ID
+     * @return void
+     */
+    rpc Enable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+    /**
+     * @brief Disables one of the submodules.
+     * 
+     * The enable will start dataprocessing or stop it. Enable for normal operation.
+     * @param msg Endpoint ID
+     * @return void
+     */
+    rpc Disable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+    /**
+     * @brief Get the enabled Status of one submodule
+     * 
+     * The enable will start dataprocessing or stop it. Enable for normal operation.
+     * @param msg Endpoint ID
+     * @return True if enabled.
+     */
+    rpc GetEnable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+    /**
+     * @brief Issues reset of the core
+     *
+     * @param msg Specify the Endpoint ID
+     * @return void
+     */
+    rpc Reset(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+    /**
+     * @brief Get the sample type.
+     * 
+     * @param msg Endpoint ID of the submodule.
+     * @return true if complex
+     * @return false if real
+     */
+    rpc IsComplexSamples(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+
+    /**
+     * @brief Get the minimal distance between two frequencies.
+     * 
+     * @param msg Endpoint ID of the submodule.
+     * @return double Frequency distance in Hz
+     */
+    rpc GetDeltaFrequency (sdr.datatypes.EndpointIndex)  returns (sdr.datatypes.Double) {}
+
+    /**
+     * @brief Get the sample rate of the module.
+     *
+     * The samplerate is also defined due to the parallel samples per
+     * module clock(@link GetModuleClkRate @endlink).
+     * @param msg Endpoint ID of the submodule.
+     * @return msg Sample rate in Hz.
+     */
+     rpc GetSampleRate (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+     /**
+      * @brief Get the Sample Count of the memory.
+      * 
+      * The sample count is always the total amount of indivdual DAC samples.
+      * For complex valued usage this ist amount of I+Q.
+      *
+      * @param msg Start and end with Endpoint ID of the submodule
+      * @return int Sample count.
+      */
+    rpc GetSampleCount (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+
+    /**
+      * @brief Get the RF center frequency
+      * 
+      * Returns the RF center frequency of a specific subband.
+      * This is required to select the proper module for generating 
+      * a specific tone in the rf domain
+      *
+      * @param msg Start and end with Endpoint ID of the submodule
+      * @return double rf center frequency in Hz
+      */
+      rpc GetRFCenterFrequency (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+    /**
+      * @brief Set the RF center frequency
+      * 
+      * Sets the RF center frequency of a specific subband.
+      * This is required to select the proper module for generating 
+      * a specific tone in the rf domain
+      *
+      * @param msg Start and end with Endpoint ID of the submodule and the center frequency in Hz
+      * @return empty
+      */
+      rpc SetRFCenterFrequency (sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+
+
+    /**
+     * @brief Function to add a tone to the output of the module.
+     * 
+     * @param frequency Frequency in Hz, can be negative if @link isComplexSamples @endlink
+     * @param amplitude Amplitude, must be smaller than 1.0, sum must be also smaller.
+     * @param phase Phase of the tone in radians
+     * @param phaseIQI IQI correction parameter for phase, difference in rad (0.0 default)
+     * @param amplitudeIQI IQI correction parameter for amplitude, in factor (1.0 default)
+     * @return double returns the actual frequency (@link getDeltaFrequency @endlink)
+     */
+    rpc AddTone (IndexedToneSpecs) returns (sdr.datatypes.Double) {}
+
+    /**
+     * @brief Function to add multiple tones to the output of the module.
+     * 
+     * For full docs see @link addTone @endlink.
+     * 
+     * @param toneSpecs tuple of tuples of frequecy, amplitude, phase, phaseIQI, amplitudeIQI
+     * @return returns and vector of actual frequencies (@link getDeltaFrequency @endlink)
+     */
+    rpc AddTones (IndexedToneSpecsVector) returns (DoubleArray) {}
+
+    /**
+     * @brief Set the begin and the end of the repeating sequence
+     *
+     * The the start and end of the interval will define a subinterval
+     * of the complete sequence. The playback interval is between 0 and
+     * @link GetSliceCount @endlink. 
+     * The minimum stepsize depend on sample size in bytes and 
+     * bytes per "Slice" @link GetBytesPerSlice @endlink. 
+     * 
+     * @param msg Start and end with Endpoint ID of the submodule
+     * @return void
+     */
+    rpc SetPlaybackInterval (Interval) returns (sdr.datatypes.Empty) {}
+
+    /**
+     * @brief Gets the begin and end of the repeating sequence.
+     *
+     * The the start and end of the interval will define a subinterval
+     * of the complete sequence. The playback interval is between 0 and
+     * @link GetSliceCount @endlink. 
+     * The minimum stepsize depend on sample size in bytes and 
+     * bytes per "Slice" @link GetBytesPerSlice @endlink. 
+     * 
+     * @param msg Endpoint ID of the submodule
+     * @return Start and end of the interval
+     */
+    rpc GetPlaybackInterval (sdr.datatypes.EndpointIndex) returns (Interval) {}
+
+    /**
+     * @brief Get the Playback Interval Step Size
+     * 
+     * Minimum step size between samples to set the start and end time.
+     * 
+     * @param msg Endpoint ID of the submodule
+     * @return double Stepsize in seconds.
+     */
+    rpc GetPlaybackIntervalStepSize (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+    /**
+     * @brief Write raw values to the sample memory. Values must be < 1.0.
+     * 
+     * Values will be written to memory beginning at zero interval offset.
+     * The remaining samples will be set to zero.\n
+     * Optionally the playback interval can be adjusted to the length of rawData.
+     * 
+     * @param rawData Endpoint ID, double vector of samples 
+     * and boolean for adjusting playback interval.
+     * @return None
+     */
+    rpc WriteRawData (RawData) returns (sdr.datatypes.Empty) {}
+    
+    /**
+     * @brief Clear all samples in class and memory.
+     *
+     * @param msg Endpoint ID of the submodule
+     * @return None
+     */
+    rpc ClearSamples (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+    /**
+     * @brief Modulate the generated signals
+     *
+     * Applies an amplitude modulation on the stored samples.
+     *
+     * @param msg Endpoint ID and Modulation parameters
+     * @return None
+     */
+    rpc SetModulation(Modulation) returns (sdr.datatypes.Empty) {}
+
+    /**
+     * TODO: Needed?
+     * @brief Get the sample rate of the module.
+     *
+     * The samplerate is also defined due to the parallel samples per
+     * module clock(@link GetSampleRate @endlink).
+     * @param msg Endpoint ID of the submodule.
+     * @return msg Clock frequency of module in Hz.
+     */
+    //rpc GetModuleClkRate (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+    /**
+     * @brief Get the amount of slices in the buffer.
+     * TODO: Needed?
+     * 
+     * A slice is one block of data that is hand over in parallel to the
+     * next module. 
+     * @param msg Endpoint ID of the submodule
+     * @return Total amount of slices in buffer.
+     */
+    //rpc GetSliceCount (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    
+    /**
+     * TODO: Needed?
+     * @brief
+     *
+     * A slice is one block of data that is hand over in parallel to the
+     * next module. The returned value defines how many bytes handed over in
+     * parallel.
+     * Depended on the sample size this defines the parallel
+     * samples per clock cycle.
+     * @param msg Endpoint ID of the submodule.
+     * @return Amount of bytes per slice.
+     */
+    //rpc GetBytesPerSlice (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+}
+
+
+
+
+message ToneSpecs{
+    double frequency = 1; // Frequency in Hz
+    double amplitude = 2; // Amplitude in DAC counts
+    double phase = 3; // Phase in radians
+    double phaseIQI = 4; // Phase IQI in radians, I=a*cos(f*t+phaseIQI), use 0 as default
+    double amplitudeIQI = 5; // amplitude IQI in relative factor: I*amplitudeIQI, use 1 as default
+}
+message IndexedToneSpecs{
+    sdr.datatypes.EndpointIndex index = 1;
+    ToneSpecs specs = 2; // Tone parameters
+}
+message IndexedToneSpecsVector{
+    sdr.datatypes.EndpointIndex index = 1;
+    repeated ToneSpecs specs = 2; // Vector of tone parameters
+}
+
+message RawData{
+    sdr.datatypes.EndpointIndex index = 1;
+    repeated double value = 2; // Vector of values <=1 
+    bool adjustPlaybackInterval = 3; // Adjust playback interval to vector length
+}
+
+message Interval{
+    sdr.datatypes.EndpointIndex index = 1;
+    double start = 2; // Start in seconds
+    double end = 3; // End in seconds
+}
+
+message Modulation{
+    sdr.datatypes.EndpointIndex index = 1;
+    double frequency = 2; // Frequency in Hz
+    double amplitude = 3; // Amplitude 1 is max.
+    double offset = 4; // Offset 1 is max.
+    double phase = 5; // Phase offset in rad
+}
+
+message DoubleArray {
+    repeated double value = 1;
+}

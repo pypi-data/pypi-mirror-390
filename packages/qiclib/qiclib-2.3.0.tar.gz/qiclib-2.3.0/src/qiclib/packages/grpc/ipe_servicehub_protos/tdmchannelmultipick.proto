@@ -1,0 +1,27 @@
+syntax="proto3";
+
+package tdmchannelmultipick;
+import "datatypes.proto";
+
+service TDMChannelMultipickService {
+
+  rpc GetChannelCount(sdr.datatypes.EndpointIndex) returns (ChannelCount) {}
+
+  /**
+   * @brief Read the mixer frequency
+   * 
+   * @param msg sdr.datatypes.EndpointIndex
+   * @return msg Double
+   */
+  rpc SetActiveChannels(Configuration) returns (sdr.datatypes.Empty) {}
+}
+
+message ChannelCount {
+  uint32 input_channel_count = 1;
+  uint32 output_channel_count = 2;
+}
+
+message Configuration {
+  sdr.datatypes.EndpointIndex index = 1;
+  repeated uint32 channels = 2;
+}

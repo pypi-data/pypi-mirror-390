@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package multilateration;
+import "datatypes.proto";
+
+service MultilaterationService {
+  // read_control -> set_ready = 1
+  rpc Activate(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+  // trigger _> manual_trigger = 1
+  rpc TriggerManually(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+
+  // read_info
+  rpc GetStatus(sdr.datatypes.EndpointIndex) returns (StatusFlags) {}
+
+  rpc GetTriggerTime(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.LUInt) {}
+  rpc GetLostTriggerCount(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+  
+  rpc GetDecimationFactor(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+  rpc SetDecimationFactor(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+
+  rpc GetSignalDelay(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+  rpc SetSignalDelay(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+
+  // trigger -> trigger_value
+  rpc GetTriggerThreshold(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+  rpc SetTriggerThreshold(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+
+  rpc GetMixerFrequency(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+  rpc SetMixerFrequency(sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+
+  rpc GetMixerPhase(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+  rpc SetMixerPhase(sdr.datatypes.IndexedDouble) returns (sdr.datatypes.Empty) {}
+
+  rpc GetMixerFirEnable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+  rpc SetMixerFirEnable(sdr.datatypes.IndexedBool) returns (sdr.datatypes.Empty) {}
+
+  rpc GetConditioningMatrix(sdr.datatypes.EndpointIndex) returns (CondMatrix) {}
+  rpc SetConditioningMatrix(CondMatrix) returns (sdr.datatypes.Empty) {}
+
+  rpc GetConditioningOffset(sdr.datatypes.EndpointIndex) returns (CondOffset) {}
+  rpc SetConditioningOffset(CondOffset) returns (sdr.datatypes.Empty) {}
+
+  rpc GetFullTimetrace(sdr.datatypes.EndpointIndex) returns (Timetrace) {}
+  rpc GetPartialTimetrace(sdr.datatypes.EndpointIndex) returns (Timetrace) {}
+
+  // More highlevel -> return trigger time of all endpoints and reactivate them if data_available was true
+  rpc GetAllTriggerTimes(sdr.datatypes.Empty) returns (AllCounters) {}
+}
+
+message StatusFlags {
+  bool data_available = 1;
+  bool saving = 2;
+}
+
+message AllCounters {
+  repeated uint64 values = 1;
+}
+
+message CondMatrix{
+  sdr.datatypes.EndpointIndex index = 1;
+  double ii = 2;
+  double iq = 3;
+  double qi = 4;
+  double qq = 5;
+}
+
+message CondOffset{
+  sdr.datatypes.EndpointIndex index = 1;
+  int32 i = 2;
+  int32 q = 3;
+}
+
+message Timetrace {
+  repeated int32 i = 1;
+  repeated int32 q = 2;
+}

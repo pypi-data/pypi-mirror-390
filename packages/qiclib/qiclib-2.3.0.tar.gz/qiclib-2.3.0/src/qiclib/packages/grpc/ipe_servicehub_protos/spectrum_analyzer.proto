@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package spectrum_analyzer;
+import "datatypes.proto";
+
+service SpectrumAnalyzerService {
+
+  /**
+   * @brief Fetches the data from all currently active channels
+   *
+   * The resulting stream will emit once with the data for each channel.
+   * Once
+   */
+  rpc FetchAllChannels(sdr.datatypes.Empty) returns (stream BufferData);
+
+  /**
+   * Returns the sampling frequency of the core in Hertz
+   */
+  rpc GetSamplingFrequency(sdr.datatypes.Empty) returns (SamplingFrequency);
+
+  /**
+   * Returns the currently active hold-mode (i.e. preprocessing
+   * of the data to smooth it out) for a given channel.
+   *
+   * When the channel is not active, returns `NONE`
+   */
+  rpc GetHoldMode(Channel) returns (HoldMode);
+
+  /**
+   * Sets the hold-mode (i.e. preprocessing of the data to smooth
+   * it out) for a given channel.
+   *
+   * Has no effect when the channel is not active
+   */
+  rpc SetHoldMode(ChanneledHoldMode) returns (sdr.datatypes.Empty);
+
+  /**
+   * Enables a channel so that subsequent calls to
+   * `FetchAllChannels` will return the data at this channel
+   */
+  rpc EnableChannel(Channel) returns (sdr.datatypes.Empty);
+
+  /**
+   * Disables a channel so that subsequent calls to
+   * `FetchAllChannels` will no longer contain the data associated
+   * with this channel
+   */
+  rpc DisableChannel(Channel) returns (sdr.datatypes.Empty);
+
+  /**
+   * Refreshes the state of the channel when a new channel-
+   * type should be used. The hold-mode and active status is kept
+   * the same.
+   */
+  rpc RefreshChannel(Channel) returns (sdr.datatypes.Empty);
+
+  /**
+   * Returns whether or not the given channel is currently active
+   */
+  rpc IsChannelEnabled(Channel) returns (sdr.datatypes.Bool);
+
+  /**
+   * Returns the amount of channels that the Spectrum Analyzer handles
+   */
+  rpc ChannelCount(sdr.datatypes.Empty) returns (sdr.datatypes.LUInt);
+
+  /**
+   * Returns information about the current state of a channel.
+   * The type of the passed channel is ignored
+   */
+  rpc GetChannelInfo(Channel) returns (ChannelInfo);
+}
+
+/**
+ * Contains information about a channel
+ */
+message ChannelInfo {
+  /**
+   * Whether the channel is enabled and records data
+   */
+  bool enabled = 2;
+  Channel.Type type = 3;
+  HoldMode.Mode mode = 4;
+}
+
+message Channel {
+  uint32 number = 1;
+  /**
+   * The type that a channel can be,
+   * - SINGLE: A single channel where incoming data is interpreted as one complex-valued channel
+   * - DUAL: Resembles two channels where each channel is interpreted as a single real-valued channel
+   */
+  enum Type {
+    SINGLE = 0;
+    DUAL = 1;
+  }
+  Type type = 2;
+}
+
+message BufferData {
+  repeated double magnitude = 1;
+  /**
+   * The channel that this came from
+   */
+  uint32 channel_index = 2;
+  /**
+   * If present, the sub-index of this channel.
+   * For a single channel, this field is always 0.
+   * For a dual channel, this field is 0 or 1, dependent on the channel
+   */
+  uint32 channel_sub_index = 3;
+}
+
+message SamplingFrequency {
+  double hertz = 1;
+}
+
+message HoldMode {
+  enum Mode {
+    /** No holding of the data should be applied */
+    NONE = 0;
+    /** Performs a moving-average calculation once new data arrives.
+     * The behavior can be changed using the `alpha` parameter
+     * See https://en.wikipedia.org/wiki/Exponential_smoothing for the
+     * meaning of alpha
+     */
+    EMA = 1;
+    /** When updating data, always uses the maximum value between new arriving data
+     * and the old, stored data
+     */
+    MAX_HOLD = 2;
+  }
+  Mode mode = 1;
+  /** Sets the alpha-parameter for the exponential-moving average function.
+   * If you wish to include this field, `has_alpha` has to be set as well.
+   * This will work, even if the hold-mode is not `EMA` (but effects can only
+   * be seen if he hold mode is actually `EMA`)
+   */
+  double alpha = 2;
+  bool has_alpha = 3;
+}
+
+message ChanneledHoldMode {
+  Channel channel = 1;
+  HoldMode hold_mode = 2;
+}

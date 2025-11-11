@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+package qic_unitcell;
+import "datatypes.proto";
+
+service UnitCellService {
+  /**
+   * Returns the amount of cells that are present in the current design
+   */
+  rpc GetCellCount(sdr.datatypes.Empty) returns (sdr.datatypes.UInt) {}
+  rpc GetCellInfo(sdr.datatypes.UInt) returns (CellInfo) {}
+  rpc GetAllCellInfo(sdr.datatypes.Empty) returns (AllCellInfo) {}
+  rpc StartCells(StartCellInfo) returns (sdr.datatypes.Empty) {}
+  rpc GetBusyCells(sdr.datatypes.Empty) returns (BusyCellInfo) {}
+  rpc GetSyncCells(sdr.datatypes.Empty) returns (CellIndexes) {}
+  rpc GetDataSyncCells(sdr.datatypes.Empty) returns (CellIndexes) {}
+  rpc GetQubitStates(sdr.datatypes.Empty) returns (QubitStateCellInfo) {}
+  rpc GetPlatformInfo(sdr.datatypes.Empty) returns (PlatformInfo) {}
+  rpc GetConverterStatus(sdr.datatypes.Empty) returns (ConverterStatus) {}
+  rpc ClearConverterStatus(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+  /**
+   * Return what module of the Unit Cell every DAC is connected to
+   */
+  rpc GetDACSignalTypes(sdr.datatypes.Empty) returns (DACSignalTypes) {}
+  /**
+   * Return all the cells a DAC is connected to
+   */
+  rpc GetDACRoutingSelect(DACIndex) returns (CellIndexes) {}
+  /**
+   * Route a DAC to a number of cells and inside these cells to a sub-module
+   * (for example, manipulation, readout, e.t.c.)
+   */
+  rpc SetDACRoutingSelect(DACRouting) returns (sdr.datatypes.Empty) {}
+  /**
+   * Returns the indices of the cells that are connected to an ADC
+   */
+  rpc GetADCConnectedCells(sdr.datatypes.Empty) returns (CellIndexes) {}
+  /**
+   * Returns the ADC that is connected to a cell.
+   * Note that the output of this method does not change once an ADC is
+   * disconnected, it only changes when an ADC is connected.
+   */
+  rpc GetADCRoutingSelect(sdr.datatypes.Empty) returns (ADCIndexes) {}
+  /**
+   * Connects an ADC to some cells or disconnects an ADC from cells
+   */
+  rpc SetADCRoutingSelect(ADCRouting) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Runs a preloaded experiment on the QiController and processes the
+   * results.
+   *
+   * @param msg ExperimentParameters
+   * The parameters after which to run the experiment.
+   * @return ExperimentResults
+   * containing the measured and processed data of the experiment.
+   */
+  rpc RunExperiment(ExperimentParameters) returns (stream ExperimentResults) {}
+
+  rpc Submit(Job) returns (sdr.datatypes.UInt);
+
+  rpc GetJobStatus(sdr.datatypes.UInt) returns (JobStatus);
+
+  rpc GetResults(sdr.datatypes.UInt) returns (ExperimentResults);
+
+  rpc StreamResults(sdr.datatypes.UInt) returns (stream ExperimentResults);
+}
+
+message CellIndexes { repeated uint32 cells = 1; } // Indices of multiple cells
+
+message CellInfo {
+  uint32 sequencer = 1;
+  uint32 recording = 2;
+  uint32 readout = 3;
+  uint32 manipulation = 4;
+  uint32 coupling = 5;
+  uint32 storage = 6;
+  uint32 digital_trigger = 7;
+}
+message AllCellInfo { repeated CellInfo cells = 1; }
+message StartCellInfo {
+  bool all_cells = 1; // If true, all cells will be started
+  // If not all_cells=True, then the cells to start are given here
+  repeated uint32 cells = 2;
+}
+message BusyCellInfo {
+  bool busy = 1;             // True if any cell is busy
+  repeated uint32 cells = 2; // Indices of all the busy cells
+}
+message QubitStateCellInfo {
+  uint32 states = 1; // Qubit states of all cells
+}
+
+message PlatformInfo {
+  uint32 cell_count = 1;
+  uint32 dac_count = 2;
+  uint32 adc_count = 3;
+}
+message DACStatus {
+  bool ready = 1;
+  bool overflow = 2;
+}
+message ADCStatus {
+  bool valid = 1;
+  bool over_voltage = 2;
+  bool over_range = 3;
+}
+message ConverterStatus {
+  bool error = 1;
+  string report = 2;
+  repeated DACStatus dacs = 3;
+  repeated ADCStatus adcs = 4;
+}
+
+message DACIndex { uint32 value = 1; }
+// Type of Signal for every DAC (not connected = 0, manipulation = 1, readout =
+// 2, coupling0 = 3, coupling1 = 4)
+message DACSignalTypes { repeated uint32 types = 1; }
+// DAC Routing Configuration
+message DACRouting {
+  uint32 type = 1; // Type of DAC Signal to be connected
+  uint32 dac = 2;  // DAC Selection
+  repeated uint32 cells =
+      3; // Indexes of all the cells to be connected with the selected DAC
+}
+
+message ADCIndexes { repeated uint32 adcs = 1; } // Indices of multiple ADC's
+message ADCRouting {
+  uint32 adc = 1; // // ADC Selection
+  repeated uint32 cells =
+      2; // Indexes of all the cells to be connected with the selected ADC
+  uint32 mode =
+      3; // Valid Modes are disconnect = 0, connect = 1 and disconnect all = 2
+}
+
+enum DataCollectionMode {
+  AVERAGE = 0;
+  AMPLITUDE_PHASE = 1;
+  IQCLOUD = 2;
+  RAW_TRACE = 3;
+  STATES = 4;
+  STATE_COUNT = 5;
+  QM_JUMPS = 6;
+}
+
+message ExperimentParameters {
+  // In which way the data should be collected and processed
+  DataCollectionMode mode = 1;
+  // How many experiment repetitions to perform (i.e. no. of averages)
+  uint32 shots = 2;
+  // Which cells to address in this experiment
+  repeated uint32 cells = 3;
+  // How many recordings each of the addressed cells returns
+  repeated uint32 recordings = 4;
+}
+
+message ExperimentResults {
+  uint32 progress = 1;
+  uint32 max_progress = 2;
+  bool finished = 3;
+  // In which way the data was collected and processed
+  DataCollectionMode mode = 4;
+
+  // Define result types for the different data collection modes
+  // Unused fields will just stay empty (default value)
+  message SingleCellResults {
+    // Data fields for AVERAGE, AMPLITUDE_PHASE, RAW_TRACE
+    repeated double data_double_1 = 1;
+    repeated double data_double_2 = 2;
+    // Data fields for IQCLOUD
+    repeated sint32 data_sint32_1 = 3;
+    repeated sint32 data_sint32_2 = 4;
+    // Data field for STATES, STATE_COUNT (only one cell returns result)
+    repeated uint32 data_uint32 = 5;
+  }
+  // The result data for each cell
+  repeated SingleCellResults results = 5;
+}
+
+import "pulsegen.proto";
+import "digital_trigger.proto";
+import "pulse_player.proto";
+import "sequencer.proto";
+
+// Configuration for the readout of a cell
+// This contains configurations for readout as well as
+// recording
+message ReadoutConfig {
+  // The pulses used for readout
+  repeated pulsegen.Pulse pulses = 1;
+  // The frequency at which the readout is performed
+  double readout_frequency = 2;
+  // The frequency at which the recording is performed
+  // This is usually the same as the readout frequency
+  double recording_frequency = 3;
+  // The duration of the recording
+  double recording_duration = 4;
+  // The offset of the recording
+  double recording_offset = 5;
+}
+
+message DriveConfig {
+  // The pulses used for drive
+  repeated pulsegen.Pulse pulses = 1;
+  // The frequency at which the drive is performed
+  double frequency = 2;
+}
+
+message SequencerConfig { sequencer.Program program = 1; }
+
+message TaskRunnerConfig {
+  // Unimplemented
+}
+
+message DigitalTriggerConfig {
+  repeated digital_trigger.IndexedTriggerSet trigger_sets = 1;
+}
+
+message CellConfig {
+  sdr.datatypes.EndpointIndex index = 1;
+  ReadoutConfig readout_config = 2;
+  DriveConfig drive_config = 3;
+  DigitalTriggerConfig digital_trigger_config = 4;
+  SequencerConfig sequencer_config = 5;
+}
+
+message CouplerConfig { repeated pulse_player.IndexedPulses pulses = 1; }
+
+message Job {
+  repeated CellConfig cell_configs = 1;
+  repeated CouplerConfig coupler_configs = 2;
+  ExperimentParameters parameters = 3;
+}
+
+message JobStatus {
+  enum Status {
+    // The job was enqueued and will be executed if not canceled
+    ENQUEUED = 0;
+    // The job is currently running
+    RUNNING = 1;
+    // The job is finished and results can be obtained
+    FINISHED = 2;
+    // The job is not present; either because all results were already fetched
+    // or because the job was never submitted.
+    NOT_PRESENT = 3;
+  }
+
+  Status status = 1;
+}

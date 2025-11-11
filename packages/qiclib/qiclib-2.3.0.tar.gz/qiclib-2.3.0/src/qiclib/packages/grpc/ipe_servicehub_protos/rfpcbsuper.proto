@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package rfpcbsuper;
+import public "datatypes.proto";
+
+service RFPCBSuperService {
+   /**
+   * @brief Calls Reset/Init for all named functionality-endpoints.
+   * Possible names: "TXPL", "RXPL", "IFLO", "RFLO", "Demod"
+   * 
+   * @param EndpointIndex
+   * @param EndpointList: Array of string
+   * @return void
+   */
+   rpc Reset (EndpointList) returns (sdr.datatypes.Empty) {}
+
+   /**
+   * @brief Makes most of the necessary calls befor being able to start a sweep
+   *
+   * @param EndpointIndex
+   * @param Array of LMXStart: Power up specific LOs/Pilots. Syntax:
+   *     - name: "TXPL", "RXPL", "IFLO" or "RFLO"
+   *     - optional power_a/power_b [dB]: 
+   *         - if both omitted, power down and disable both outputs
+   *         - if only one given, power up and enable repsective output with given power value, disable other output
+   *         - if both given, power up and enable both outputs with their respective power value
+   * @param optional LTCStart: gain [dB], gain error [dB], phase error [1°]
+   * @return void
+   */
+   rpc Startup (StartInfo) returns (sdr.datatypes.Empty) {}
+
+   /**
+   * @brief Set RFLO and IFLO for a sweep
+   * 
+   * @param EndpointIndex
+   * @param SweepInput: 
+   *     - frequency [Hz]: Target frequency
+   *     - offset [Hz]: offset from target frequency. Default 100MHz if omitted
+   *     - power [dB]: Attenuator value (! High value -> more attenuation -> less output power !)
+   *     - method: "mixsweep" (default if omitted), "ifsweep", "ifsweep_extended", "rfsweep" or "rfsweep_extended"
+   * @return void
+   */
+   rpc Sweep (SweepInput) returns (sdr.datatypes.Empty) {}
+
+   /**
+   * @brief Calculates current target frequency from RFLO and IFLO. Only supports "mixsweep" so far 
+   *
+   * @param EndpointIndex
+   * @return Double: Frequency [Hz]
+   */
+   rpc GetDeviceFreq (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+
+   /**
+	 * @brief Sets the pcb's output attenuation by converting dB value to desired DAC voltage of AD5672_5684
+	 * 
+	 * @param Double.value: Attenuation from 0 dB to 30dB
+	 */
+    rpc SetAttenuation (sdr.datatypes.IndexedDouble)  returns (sdr.datatypes.Empty) {}
+
+   /**
+   * @brief Returns temperature of Demod via AD7291 voltage and LTC5586 temperature diode
+   *
+   * @return Double: Temperature [°C]
+   */
+   rpc GetDemodTemp (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double) {}
+}
+
+// Helpers
+enum Device {
+   TXPL = 0;
+   RXPL = 1;
+   IFLO = 2;
+   RFLO = 3;
+   DEMOD = 4;
+};
+
+message LMXStart {
+   Device device = 1; // using Demod here will cause errors!
+   oneof a_optional {
+      double power_a = 2; //dB
+   }
+   oneof b_optional {
+      double power_b = 3; //dB
+   }
+}
+message LTCStart {
+   oneof gain_optional {
+      uint32 gain = 1; //dB
+   }
+   oneof gain_error_optional {
+      double gain_error = 2; //cdB
+   }
+   oneof phase_error_optional {
+      double phase_error = 3; //Deg
+   }
+}
+
+// Send Types
+
+message EndpointList {
+   sdr.datatypes.EndpointIndex index = 1;
+   repeated Device devices = 2;
+}
+
+message SweepInput {
+   enum Method {
+      MIXSWEEP = 0;
+      IFSWEEP = 1;
+      IFSWEEP_EXTENDED = 2;
+      RFSWEEP = 3;
+      RFSWEEP_EXTENDED = 4;
+   };
+   sdr.datatypes.EndpointIndex index = 1;
+   double frequency = 2;
+   double power = 3;
+   oneof offset_optional {
+      double offset = 4; // Default 100 MHz if not set
+   }
+   oneof method_optional {
+      SweepInput.Method method = 5; // Default "mixsweep" if not set
+   }
+}
+
+message StartInfo {
+   sdr.datatypes.EndpointIndex index = 1;
+   repeated LMXStart lmx_list = 2;
+   LTCStart ltc = 3;
+}

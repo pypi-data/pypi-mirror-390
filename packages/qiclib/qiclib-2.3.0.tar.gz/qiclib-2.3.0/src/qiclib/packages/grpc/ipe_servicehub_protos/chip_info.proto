@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package chip_info;
+import "datatypes.proto";
+
+service ChipInfoService
+{
+    /**
+     * @brief Returns json-formatted string containing information
+     * about the requested chips
+     *
+     * @param ProtocolDriversMap requested chips
+     * @return String chips-info
+     */
+    rpc GetChipsInfo(ProtocolDriversMap) returns (sdr.datatypes.String) {}
+}
+
+message ProtocolDriversMap
+{
+    message ProtocolDriversEntry
+    {
+        string protocol = 1;
+        repeated string drivers = 2;
+    }
+    repeated ProtocolDriversEntry entries = 1;
+}

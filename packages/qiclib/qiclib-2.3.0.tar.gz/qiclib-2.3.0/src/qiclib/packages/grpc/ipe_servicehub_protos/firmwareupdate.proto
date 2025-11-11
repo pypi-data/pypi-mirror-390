@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package firmwareupdate;
+import "datatypes.proto";
+service FirmwareUpdateService {
+  rpc ListAvailable(sdr.datatypes.Empty) returns(FirmwareNames) {}
+  rpc ExecuteUpdate(UpdateRequest) returns(FirmwareError) {}
+  rpc Delete(Firmware) returns(sdr.datatypes.Empty) {}
+  rpc UploadChunk(FirmwareChunk) returns(sdr.datatypes.Empty) {}
+}
+
+message Firmware {
+  string name = 1;
+  bytes data = 2;
+}
+message FirmwareNames { repeated string value = 1; }
+message UpdateRequest {
+  string name = 1;
+  bool clean = 2;
+}
+message FirmwareChunk {
+  bytes data = 1;
+  bool isLast = 2;
+  string name = 3;
+}
+message FirmwareError {
+  bool ocurred = 1;
+  string msg = 2;
+}

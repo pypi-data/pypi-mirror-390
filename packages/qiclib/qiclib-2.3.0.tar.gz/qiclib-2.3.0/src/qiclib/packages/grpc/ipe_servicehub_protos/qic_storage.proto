@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package qic_storage;
+import "datatypes.proto";
+
+service Storage {
+    rpc Reset(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+    rpc SetStateHandling(StateHandling) returns (sdr.datatypes.Empty) {}
+    rpc GetStateHandling(sdr.datatypes.EndpointIndex) returns (StateHandling) {}
+    rpc GetStateAccumulation(sdr.datatypes.EndpointIndex) returns (StateAccumulation) {}
+    rpc SetResultHandling(ResultHandling) returns (sdr.datatypes.Empty) {}
+    rpc GetResultHandling(sdr.datatypes.EndpointIndex) returns (ResultHandling) {}
+    rpc SetAveragedHandling(AveragedHandling) returns (sdr.datatypes.Empty) {}
+    rpc GetAveragedHandling(sdr.datatypes.EndpointIndex) returns (AveragedHandling) {}
+    rpc SetBramControl(BramControl) returns (sdr.datatypes.Empty) {}
+    rpc GetBramStatus(BramIndex) returns (BramStatus) {}
+    rpc ResetBramData(BramIndex) returns (sdr.datatypes.Empty) {}
+    rpc GetBramResultData(sdr.datatypes.EndpointIndex) returns (ResultData) {}
+    rpc GetBramAveragedData(sdr.datatypes.EndpointIndex) returns (AveragedData) {}
+    rpc GetBramStateData(sdr.datatypes.EndpointIndex) returns (StateData) {}
+    rpc GetBramDataUInt32(BramIndex) returns (BramDataUInt32) {}
+    rpc GetBramDataInt32(BramIndex) returns (BramDataInt32) {}
+    rpc GetBramLatestData(BramIndex) returns (LatestData) {}
+    rpc IsDataLost(sdr.datatypes.EndpointIndex) returns (DataLost) {}
+
+    rpc ReadData(ReadDataRequest) returns (ReadDataResponse);
+    rpc WriteData(WriteDataRequest) returns (sdr.datatypes.Empty);
+}
+
+message StateHandling {
+    sdr.datatypes.EndpointIndex index = 1;
+    bool store = 2;
+    bool accumulate = 3;
+    uint32 destination = 4;
+    bool dense_mode = 5;
+  }
+
+message StateAccumulation {
+    uint32 accu_states = 1;
+    uint32 accu_counter = 2;
+  }
+
+message ResultHandling {
+    sdr.datatypes.EndpointIndex index = 1;
+    bool store = 2;
+    uint32 destination = 3;
+  }
+
+message AveragedHandling {
+    sdr.datatypes.EndpointIndex index = 1;
+    bool store = 2;
+    uint32 destination = 3;
+  }
+
+message BramControl {
+    sdr.datatypes.EndpointIndex index = 1;
+    bool reset = 2;
+    bool wrap = 3;
+    uint32 bram = 4;
+  }
+
+  message BramStatus {
+    bool full = 1;
+    bool empty = 2;
+    bool overflow = 3;
+    uint32 next_address = 4;
+  }
+
+message BramIndex {
+    sdr.datatypes.EndpointIndex index = 1;
+    uint32 bram = 2;
+  }
+
+message ResultData {
+  repeated int32 result_i = 1;
+  repeated int32 result_q = 2;
+}
+
+message AveragedData {
+  repeated int32 averaged = 1;
+}
+
+message StateData {
+  repeated uint32 state = 1;
+}
+
+message BramDataUInt32 {
+  repeated uint32 data = 1;
+  uint32 bram = 2;
+}
+
+message BramDataInt32 {
+  repeated int32 data = 1;
+  uint32 bram = 2;
+}
+
+message LatestData {
+    int32 data= 1;
+    uint32 bram = 2;
+  }
+
+message DataLost {
+    bool single_result = 1;
+    bool state_accumulation = 2;
+    bool qubit_state = 3;
+    bool averaged_result = 4;
+    bool bram_input = 5;
+  }
+
+message WriteDataRequest {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 address = 2;
+  repeated uint32 data = 3;
+}
+
+message ReadDataRequest {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 address = 2;
+  uint32 count = 3;
+}
+
+message ReadDataResponse {
+  repeated uint32 data = 1;
+}

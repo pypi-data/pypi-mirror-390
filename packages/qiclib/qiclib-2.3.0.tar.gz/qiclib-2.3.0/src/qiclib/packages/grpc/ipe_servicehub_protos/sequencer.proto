@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package sequencer;
+import "datatypes.proto";
+
+service SequencerService {
+  rpc GetBusy (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+  rpc GetRelaxed(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {}
+  rpc GetAverages(sdr.datatypes.EndpointIndex) returns (Average){}
+  rpc SetAverages(Average) returns (sdr.datatypes.Empty) {}
+  rpc GetProgramCounter(sdr.datatypes.EndpointIndex) returns (ProgramCounter){}
+  rpc GetRegister(RegisterIndex) returns (Register){}
+  rpc SetRegister(Register) returns (sdr.datatypes.Empty){}
+  rpc GetAllRegisters(sdr.datatypes.EndpointIndex) returns (RegisterList){}
+  rpc SetDelay(Delay) returns (sdr.datatypes.Empty){}
+  rpc LoadProgram(Program) returns (sdr.datatypes.Empty){}
+  rpc StartAt(ProgramCounter) returns (sdr.datatypes.Empty){}
+  rpc GetStartAddress(sdr.datatypes.EndpointIndex) returns (ProgramCounter){}
+  rpc SetStartAddress(ProgramCounter) returns (sdr.datatypes.Empty){} 
+  rpc Resume(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+  rpc Reset (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+  rpc Stop (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+  rpc ReportStatus (sdr.datatypes.EndpointIndex) returns (StatusReport){}
+  rpc IsEnabled(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool);
+  rpc SetEnabled(sdr.datatypes.IndexedBool) returns (sdr.datatypes.Empty);
+}
+
+message Average {
+  sdr.datatypes.EndpointIndex index =1;
+  uint32 value =2;
+}
+message RegisterIndex{
+  sdr.datatypes.EndpointIndex endpoint = 1;
+  uint32 index = 2;
+}
+message Register{
+  RegisterIndex index = 1;
+  uint32 value = 2;
+}
+message RegisterList{
+  repeated uint32 list = 1;
+}
+message ProgramCounter{
+  sdr.datatypes.EndpointIndex index =1;
+  uint32 value =2;
+}
+message Delay{
+  sdr.datatypes.EndpointIndex index =1;
+  uint32 reg = 2;
+  double time = 3;
+  uint32 cycles = 4;
+}
+message Program{
+  sdr.datatypes.EndpointIndex index =1;
+  repeated uint32 program_data = 2;
+  string description =3;
+}
+message StatusReport{
+  bool busy = 1;
+  bool relaxed = 2;
+  bool wait_on_sync = 3;
+  string error = 4;
+  repeated string warnings = 5;
+}

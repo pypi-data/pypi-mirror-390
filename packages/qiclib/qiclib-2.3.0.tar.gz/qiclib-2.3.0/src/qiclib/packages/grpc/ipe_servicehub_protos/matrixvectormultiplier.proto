@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package matrixvectormultiplier;
+import "datatypes.proto";
+
+service MatrixVectorMultiplierService {
+  /**
+   * @brief Issues reset of the core
+   *
+   * The reset will set all values to zero, such as phases, frequencies.
+   * It also disables the core. Use @link NCO @endlink the set the phases aferwards.
+   *
+   * @param msg Specify the Endpoint ID
+   * @return void
+   */
+  rpc Reset (sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty) {}
+  
+  /**
+   * @brief Enables one of the submodules.
+   * 
+   * The enable will start dataprocessing or stop it. Enable for normal operation.
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc Enable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Disables one of the submodules.
+   * 
+   * The enable will start dataprocessing or stop it. Enable for normal operation.
+   * @param msg Endpoint ID
+   * @return void
+   */
+  rpc Disable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Get the enabled Status of one submodule
+   * 
+   * The enable will start dataprocessing or stop it. Enable for normal operation.
+   * @param msg Endpoint ID
+   * @return True if enabled.
+   */
+  rpc isEnabled(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool) {} 
+
+  /**
+   * @brief Get the enable bit.
+   * 
+   * Returns true if the core is processing data.
+   *
+   * @param msg Endpoint ID of the submodule.
+   * @return True if core is enable
+   */
+  rpc GetEnable(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Bool){}
+
+  /**
+   * @brief Get the amount of channels that are processed in TDM.
+   *
+   * The processing core processes one channel each clock cycle. 
+   * Usually the clock is n times faster than the sample rate.
+   * Therefore n channels can be processed during the time of one
+   * sample.
+   *
+   * @param msg Endpoint ID of the submodule.
+   * @return Amount of TDM channels
+   */
+  rpc GetTDMChannels(sdr.datatypes.EndpointIndex) returns (Channels){}
+
+  /**
+   * @brief Function to fill the identity Matrix
+   *
+   * This function will set all values in the matrix diagonal to 1.
+   * @param msg Endpoint ID of the submodule.
+   */
+  rpc FillIdentity(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Fill a custom matrices in the multiplier.
+   *
+   * The function takes N Array of Arrays(Matrix) and
+   * fills it in the multiplier, where the amount of Channels is N
+   * (@link GetTDMChannels @endlink). 
+   * The amount of entries must fit the
+   * matrix dimensions (@link GetMatrixDimension @endlink).
+   * The columns must have the same length.
+   * 
+   * @param msg Matrix structure, Array of Arrays of Arrays and the submodule index.
+   */
+  rpc FillMatrix(Matrices) returns (sdr.datatypes.Empty){}
+
+  /**
+   * @brief Returns the dimensions of the square Matrix.
+   *
+   * The matrix vector multiplier is limited to a squared
+   * matrix. The dimension will be returned by this function.
+   *
+   * @param msg Endpoint ID of the submodule.
+   * @returns The dimension of the matrix.
+   */
+  rpc GetMatrixDimension(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt){}
+}
+
+message Channels{
+  int64 value = 1; // The amount of TDM channels.
+}
+
+message Vector{
+  repeated double value = 1; // Values of matrix entries.
+}
+
+message Matrix{
+  repeated Vector column = 1; // Column vectors
+}
+
+message Matrices{
+  repeated Matrix channelMatrix = 1; // Matrix for each channel
+  sdr.datatypes.EndpointIndex index = 2; // ID of submodule
+}

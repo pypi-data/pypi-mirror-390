@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package dma;
+
+import "datatypes.proto";
+service DMAService {
+
+  /**
+  * @brief request a limited stream of 8-bit data
+  *
+  * Will start data acquisition for a given amount of 8-bit samples. 
+  * If multiple channels are transmitted in time domain multiplex,
+  * individual channels can be selected by the channels parameter. \n 
+  * An empty list will select all channels.
+  * Note that this will affect the data rate. Operating at low data rates
+  * a timeout needs to be set (see @link StreamRequest @endlink).
+  * 
+  * @param msg Combination of sample count, channel list and timeout in ms.
+  * @returns stream of acquired data.
+  **/
+  rpc Snapshot (StreamRequest) returns (stream AcquiredData) {}
+
+  /**
+  * @brief request a limited stream of 32-bit data
+  *
+  * Will start data acquisition for a given amount of 32-bit samples. 
+  * If multiple channels are transmitted in time domain multiplex,
+  * individual channels can be selected by the channels parameter. 
+  * An empty list will select all channels.
+  * Note that this will affect the data rate. Operating at low data rates
+  * a timeout needs to be set (see @link StreamRequest @endlink).
+  * 
+  * @param msg Combination of sample count, channel list and timeout in ms.
+  * @returns stream of acquired data.
+  **/
+  rpc Snapshot32 (StreamRequest) returns (stream AcquiredData) {}
+
+  /**
+  * @brief request unlimited 32-bit datastream
+  *
+  * Will start data acquisition for a given amount of 8-bit samples. 
+  * If multiple channels are transmitted in time domain multiplex,
+  * individual channels can be selected by the channels parameter. \n 
+  * An empty list will select all channels.
+  * Note that this will affect the data rate. Operating at low data rates
+  * a timeout needs to be set (see @link StreamRequest @endlink).
+  * Stop acquisiton by calling cancel on the stream reply from the server.
+  * 
+  * @param msg Combination of channel list and timeout in ms.
+  * @returns stream of acquired data.
+  **/
+  rpc StreamContinuous (StreamRequest) returns (stream AcquiredData) {}
+
+  /**
+  * @brief Get Package Loss info of latest stream request.
+  *
+  * For the acquisition the data stream is buffered in a FIFO on hardware level.
+  * If writing the data into the FIFO does not succeed (e.g. if the FIFO is full)
+  * the data is lost. 
+  * 
+  * Software loss occurrs, if user does not fetch data quick enough. 
+  * The buffer in kernel space will overflow.
+  * 
+  * @returns Combination of bytes lost in hardware and bytes lost in software.
+  **/
+  rpc GetPackageLossInfo (sdr.datatypes.Empty) returns (PackageLossInfo) {}
+
+  /**
+  * @brief request unlimited 32-bit datastream to file
+  *
+  * Will start data acquisition for a given amount of 8-bit samples. 
+  * If multiple channels are transmitted in time domain multiplex,
+  * individual channels can be selected by the channels parameter. 
+  * An empty list will select all channels.
+  * Note that this will affect the data rate. Operating at low data rates
+  * a timeout needs to be set (see @link StreamRequest @endlink).
+  * TODO: How to stop Acquisition?
+  *
+  * The name and subdirectory for the data file can be set.
+  * The disk type parameter passed must match the device mounted 
+  * into the directory set in servicehub_conf.json
+  * 
+  * @param msg Combination of file name, subdirectory, disk type and @link StreamRequest @endlink
+  * @returns data loss in hardware and software, see @link GetPackageLossInfo @endlink
+  **/
+  rpc FileStreamContinuous (FileWriteCommand) returns (PackageLossInfo) {}
+
+  /**
+  * @brief request a limited stream of 8-bit data to file
+  *
+  * Will start data acquisition for a given amount of 32-bit samples. 
+  * If multiple channels are transmitted in time domain multiplex,
+  * individual channels can be selected by the channels parameter. \n
+  * An empty list will select all channels.
+  * Note that this will affect the data rate. Operating at low data rates
+  * a timeout needs to be set (see @link StreamRequest @endlink).
+  * 
+  * @param msg Combination of file name, subdirectory, disk type and @link StreamRequest @endlink
+  * @returns data loss in hardware and software, see @link GetPackageLossInfo @endlink
+  **/
+  rpc FileSnapshot (FileWriteCommand) returns (PackageLossInfo) {}
+
+  /**
+  * @brief request a limited stream of 32-bit data to file
+  *
+  * Will start data acquisition for a given amount of 32-bit samples. 
+  * If multiple channels are transmitted in time domain multiplex,
+  * individual channels can be selected by the channels parameter. \n
+  * An empty list will select all channels.
+  * Note that this will affect the data rate. Operating at low data rates
+  * a timeout needs to be set (see @link StreamRequest @endlink).
+  * 
+  * @param msg Combination of file name, subdirectory, disk type and @link StreamRequest @endlink
+  * @returns data loss in hardware and software, see @link GetPackageLossInfo @endlink
+  **/
+  rpc FileSnapshot32 (FileWriteCommand) returns (PackageLossInfo) {}
+
+  /**
+  * @brief return binary stream of file content
+  *
+  * @param Combination of file name, subdirectory and disk type.
+  * The path is built as follows <mount_dir(disk_type)>/DMAModule/<sub_path(if set)>/<FileName> \n
+  * The mount directories for different disk types are configured in the servicehub configuration file. See @link FileWriteCommand @endlink.
+  * @returns binary stream of file content
+  **/
+  rpc FileDownload (FileRequest) returns (stream FileContent) {}
+
+  // rpc DebugCounterTest (DebugInfo) returns (sdr.datatypes.Empty){}
+}
+
+enum DiskType {
+  SD = 0;
+  SSD = 2;
+  USB = 3;
+  RAMDISK=4;
+}
+
+message FileWriteCommand{
+  string FileName = 1;  // name including file extension
+  string SubPath = 2;   // sub directory (optional, will be created if it does not exist)
+  DiskType DiskType = 3; // Disk type must match device mounted in directory specified in servicehub_conf.json \n Mount point is not checked. If disk is not mounted a folder will be created on the SD card.
+  StreamRequest streamInfo = 4; // see @link StreamRequest @endlink
+}
+
+message FileRequest{
+  string FileName = 1;
+  string SubPath = 2;
+  DiskType DiskType = 3;
+}
+
+message FileContent{
+  bytes value = 1;
+}
+
+message StreamRequest{
+  uint64 count=1; // total amount of samples to be acquired
+  repeated uint32 channels = 2; // list of TDM channels to be acquired, default is all channels
+  uint32 TimeoutInMSecs = 3;//  Time in ms to wait for a block of data. If the data rate is below 256kB/s the user should raise the value. \n Default is 1000 ms.
+}
+
+message AcquiredData{
+  repeated uint32 value = 1;
+}
+
+message PackageLossInfo{
+  uint64 LostInHardware = 1; // Bytes lost in hardware
+  uint64 LostInSoftware = 2; // Bytes lost in software
+}
+
+
+

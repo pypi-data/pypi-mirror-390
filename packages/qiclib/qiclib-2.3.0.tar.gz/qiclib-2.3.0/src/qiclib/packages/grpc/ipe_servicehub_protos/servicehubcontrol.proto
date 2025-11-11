@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package servicehubcontrol;
+import "datatypes.proto";
+
+service ServicehubControlService {
+  /**
+   * @brief Shutdown and restart grpc server with new profile found under the given name.
+   *        Will not shutdown or restart on failure to read and parse config file.
+   *
+   * @return the most empty void of them all
+   */
+  rpc LoadNewProfile (sdr.datatypes.String) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Shutdown and restart grpc server with new config passed as a string.
+   *        Will not shutdown or restart on failure to parse config.
+   *
+   * @return void
+   */
+  rpc LoadNewConfig (sdr.datatypes.String) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Shutdown and restart grpc server with new config, device tree overlay and bitstream passed as arguments.
+   *        Will not shutdown or restart on failure to parse config.
+   *
+   * @return void
+   */
+  rpc LoadNewConfigAndPLAndDTOs (ReloadData) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Shutdown and restart grpc server
+   *
+   * @return void
+   */
+  rpc Reload (sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Shutdown and restart platform
+   *
+   * @return void
+   */
+  rpc Reboot (sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}
+
+  /**
+   * @brief Returns log of every registered plugin. 
+   *
+   * @return Array of logs containing name, path and content
+   */
+  rpc GetLogs (sdr.datatypes.Empty) returns (MultiLog) {}
+
+  /**
+   * @brief Cleans module logs. 
+   *
+   * @param msg MultiLog If left empty, cleans all logs; if defined cleans specified logs
+   * @return if everything was alright; return names of logs that could not be deleted
+  */
+  rpc CleanLogs (MultiLog) returns (MultiLog) {}
+
+  /**
+   * @brief Returns a json dict of registered plugins. 
+   *
+   * @return Dictionary of registered plugins and its config in json format
+   */
+  rpc GetPlugins(sdr.datatypes.Empty) returns (Plugins) {}
+
+  /**
+   * @brief Returns a list of registered plugins.
+   * 
+   * @return Vector of registered plugin names as strings.
+   */
+  rpc GetPluginList(sdr.datatypes.Empty) returns (StringVector) {}
+
+  /**
+   * @brief Returns a list of Endpoints of plugins.
+   *
+   * @param msg Name of a plugin
+   * @return Vector of registered Endpoints names as strings.
+   */
+  rpc GetEndpointsOfPlugin(String) returns (StringVector) {}
+
+  /**
+   * @brief Get the index of a Endpoint from a Plugin
+   *
+   * @param msg Names of Plugin and Endpoint
+   * @return Index as integer
+   */
+  rpc GetEndpointIndexOfPlugin(EndpointIndexRequest) returns (Integer) {}
+
+  /**
+   * @brief Returns the git version of the service hub
+   *
+   * @param msg Name of a plugin
+   * @return Version of the common, hub and proto repo.
+   */
+   rpc GetServiceHubVersion(sdr.datatypes.Empty) returns (ServiceHubVersions) {}
+
+  /**
+   * @brief Returns the build path and dumps coverage info. Fails if not a coverage build.
+   *
+   * @param sdr.datatypes.Empty
+   * @return Build path
+   */
+   rpc DumpCoverageData(sdr.datatypes.Empty) returns (BuildPath) {}
+
+    /**
+   * @brief Just an RPC that can be called to check if the gRPC server is reachable and responsive.
+   *
+   * @param sdr.datatypes.Empty
+   * @return sdr.datatypes.Empty
+   */
+   rpc IsAlive(sdr.datatypes.Empty) returns (sdr.datatypes.Empty) {}  
+}
+
+message ReloadData {
+  string config = 1;
+  string device_tree_overlay = 2;
+  bytes bitstream = 3;
+  repeated string additional_device_tree_overlays = 4;
+}
+
+message Log {
+  string name = 1; // Name of the logfile, e.g. of the module
+  string path = 2; // Path in which the log was stored
+  string content = 3; // Log content
+}
+
+message BuildPath {
+  string str = 1;
+}
+message MultiLog {
+  repeated Log log = 1; // Array of log entries
+}
+
+message PluginInfo {
+  string plugin_name = 1; // Plugin name
+  string plugin_config = 2; // Plugin configuration (json)
+}
+
+message Plugins {
+  repeated PluginInfo pi = 1; // Array of Plugins with its configurations
+}
+
+message EndpointIndexRequest {
+  string plugin_name = 1; // Name of the plugin
+  string endpoint_name = 2; // Name of the endpoint within one plugin
+}
+
+message String {
+  string str = 1;
+}
+
+message StringVector {
+  repeated string str = 1;
+}
+
+message Integer {
+  int32 val = 1;
+}
+
+message PluginVersions {
+  string driver_version = 1;
+  string proto_version = 2;
+  string common_version = 3;
+}
+
+message ServiceHubVersions {
+  string servicehub_version = 1;
+  string proto_version = 2;
+  string common_version = 3;
+}

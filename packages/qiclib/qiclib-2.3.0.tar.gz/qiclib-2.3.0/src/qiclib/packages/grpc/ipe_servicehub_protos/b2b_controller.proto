@@ -1,0 +1,17 @@
+syntax = "proto3";
+package b2b_controller;
+import "google/protobuf/wrappers.proto";
+import "datatypes.proto";
+
+// Service used to query information about peer poards.
+// Each endpoint denotes one peer.
+service B2BControllerService {
+    // Get the AXI Link status. When this is `true`, data transfer from one board to a neighbour may commence.
+    rpc GetAxiLinkStatus(sdr.datatypes.EndpointIndex) returns (google.protobuf.BoolValue);
+
+    // Get the Coyote Link status. When this is `true`, signals such as trigger or start are received by the peer.
+    rpc GetCoyoteLinkStatus(sdr.datatypes.EndpointIndex) returns (google.protobuf.BoolValue);
+
+    // Get the propagation delay to the peer board.
+    rpc GetPdelay(sdr.datatypes.EndpointIndex) returns (google.protobuf.DoubleValue);
+}

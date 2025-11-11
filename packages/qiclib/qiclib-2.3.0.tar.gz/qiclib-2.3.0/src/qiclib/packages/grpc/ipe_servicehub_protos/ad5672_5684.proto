@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package ad5672_5684;
+import public "datatypes.proto";
+
+service AD5672_5684Service {
+    /*
+     * @brief Applies given voltage on specific DAC channel
+     *
+     * @param Write.ep_index: Index of endpoint in servicehub plugin
+     * @param Write.channel: DAC channel number [0...7]
+     * @param dac_value: To be set DAC value: 
+     * *either*
+     * @param Write.volt: Output voltage [0...5]
+     * *or*
+     * @param Write.reg Register value [0...]
+     */
+    rpc SetOutput (Write) returns (sdr.datatypes.Empty) {}
+}
+
+message Write {
+    sdr.datatypes.EndpointIndex ep_index = 1;
+    uint32 channel = 2;
+    oneof dac_value {
+        uint32 reg = 3;
+        double volt = 4;
+    }
+}
+
+

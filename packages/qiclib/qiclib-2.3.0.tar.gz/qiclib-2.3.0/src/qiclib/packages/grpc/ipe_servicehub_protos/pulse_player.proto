@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package pulse_player;
+import public "datatypes.proto";
+
+service PulsePlayerService {
+
+  /**
+   * Resets the module. Also clears the pulse memory.
+   */
+  rpc Reset(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty);
+
+  /**
+   * Sets the value of a pulse.
+   */
+  rpc SetPulse(IndexedPulses) returns (sdr.datatypes.Empty);
+
+  /**
+   * Returns a subset of all pulses.
+   */
+  rpc GetPulse(PulseIndex) returns (Pulse);
+
+  rpc SetOffset(Offset) returns (sdr.datatypes.Empty);
+ 
+  rpc GetOffset(sdr.datatypes.EndpointIndex) returns (Offset);
+
+  /**
+   * Trigger a specific pulse
+   */
+  rpc Trigger(PulseIndex) returns (sdr.datatypes.Empty);
+
+  /**
+   * Returns the amount of pulses that this component can handle.
+   * Note that the count a user can set is one less because there is a zero pulse
+   * which cannot be overwritten.
+   */
+  rpc GetPulseCapacity(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt);
+
+  /**
+   * Returns the sample rate in Hertz for the given endpoint index.
+   */
+  rpc GetSampleRate(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Double);
+}
+
+/// A single pulse
+message Pulse {
+  uint32 index = 1;
+  repeated double values = 2;
+}
+
+/// Multiple pulses with associated endpoint index
+message IndexedPulses {
+  sdr.datatypes.EndpointIndex index = 1;
+  Pulse pulse = 2;
+}
+
+/// The single index of a pulse
+message PulseIndex {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 pulse = 2;
+}
+
+message Offset {
+  sdr.datatypes.EndpointIndex index = 1;
+  double offset_value = 2;
+}

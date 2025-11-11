@@ -1,0 +1,548 @@
+syntax="proto3";
+
+package fluxrampdemod;
+import "datatypes.proto";
+
+service FluxRampDemodService {
+    /**
+    * @brief Selects output data type
+    *
+    * If False input data will be demodulated
+    * If True demodulation will be bypassed, replacing the least 
+    * significant bit with the sync signal of the ramp generator.
+    * Will then issue a resync, see @link SetResync @endlink .
+    * To enable full data bypassing use @link SetFluxRampDemodAddSyncBypass @endlink .
+    * To delay the sync flag use @link SetSyncDelay @endlink .
+    *
+    * @param IndexedBool see datatypes.proto
+    * @return void
+    */
+    rpc SetFluxRampDemodBypassAct (sdr.datatypes.IndexedBool)        returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Append sync flag to bypassed data stream
+    *
+    * If True the least significant bit of data stream will be replaced by the sync 
+    * signal of the ramp generator. 
+    *
+    * @param IndexedBool see datatypes.proto
+    * @return void
+    */
+    rpc SetFluxRampDemodAddSyncBypass (sdr.datatypes.IndexedBool)    returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Reset Synchronization.
+    *
+    * Manually resynchronize the start of demodulation on the (delayed) sync flag.
+    * Note: Resync is executed by default during configuration of FluxRampLength, NCO and SyncDelay 
+    *
+    * @param Endpoint ID
+    * @return void
+    */
+    rpc SetResync(sdr.datatypes.EndpointIndex)                 returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the frequencies and phases of the MultiChannelNCO and the signal offsets for each channel. 
+    *
+    * The field length should match @link GetChannelCount @endlink.
+    * Frequency in Hz, Phase in radian, Offset in int16
+    *
+    * @param msg Combination of Endpoint ID, NCO frequencies (double array), NCO Phases (double array) and Offsets (int32 array)
+    * @return void
+    */
+    rpc SetNCOData(NCOData)                     returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the frequencies of the MultiChannelNCO. 
+    *
+    * The field length should match @link GetChannelCount @endlink.
+    * Pass frequencies in Hz
+    * To set only one channel use @link SetNCOFrequency @endlink
+    *
+    * @param msg Combination of Endpoint ID and double array
+    * @return void
+    */
+    rpc SetNCOFrequencies(DoubleArray)      returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the phases of the MultiChannelNCO.
+    *
+    * The field length should match @link GetChannelCount @endlink.
+    * Pass phases in radian.
+    * To set only one channel use @link SetNCOPhase @endlink 
+    *
+    * @param msg Combination of Endpoint ID and double array
+    * @return void
+    */
+    rpc SetNCOPhases(DoubleArray)           returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the Offsets for each channel
+    *
+    * The offsets will be substracted from the raw data prior to convolution 
+    * with the reference NCO data.
+    * The field length should match @link GetChannelCount @endlink.
+    * Pass the offsets as int16 values.
+    * To set only one channel use @link SetOffset @endlink 
+    *
+    * @param msg Combination of Endpoint ID and (signed) int32 array
+    * @return void
+    */
+    rpc SetOffsets(Signed32Array)          returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the frequency of one channel of the MultiChannelNCO.
+    *
+    * Pass frequency in Hz.
+    *
+    * @param msg Combination of Endpoint ID, channel index, and double value
+    * @return void
+    */
+    rpc SetNCOFrequency (ChannelDouble)           returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the phase of one channel of the MultiChannelNCO.
+    *
+    * Pass phase in radian.
+    *
+    * @param msg Combination of Endpoint ID, channel index, and double value
+    * @return void
+    */
+    rpc SetNCOPhase (ChannelDouble)               returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set the offset of one channel.
+    *
+    * Pass a offset as int16.
+    *
+    * @param msg Combination of Endpoint ID, channel index, and signed int32 value
+    * @return void
+    */
+    rpc SetOffset(ChannelData)               returns (sdr.datatypes.Empty) {}
+    /**
+    * @brief Apply current NCO and offset configuration.
+    *
+    * NOTE: This is a relic from old times. Each Setter will apply the whole config by default.
+    *
+    * @param msg Channel ID
+    * @return void
+    */
+    rpc ApplyNCOData(sdr.datatypes.EndpointIndex)              returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Apply Configuration of RampGenerator
+    *
+    * pass the number of cycles for one ramp and the sample rate of the ramp generator in Hz.
+    * These values will be used to calculate the number of samples received during one ramp (FluxRampLength).
+    * NOTE: This is a relic from old times. Use SetFluxRampLength and calculate the ramp frequency thereof.
+    *
+    * @param msg Combination of Channel ID, ramp cycle count (uint32) and RampGen sample rate (double)
+    * @return void
+    */
+    rpc SetRampGenData(RampGenData)             returns(sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set number of samples during one ramp
+    *
+    * The number of samples N during one ramp is given by 
+    *  N = f_clk / f_ramp / N_pipelines,
+    * where f_clk is the clock rate of the demodulation module, f_ramp the ramp frequency and N_pipelines  
+    * is the number of pipelines used for demodulation (see @link GetTDMPipelines @endlink).
+    * So in each channel N samples can be used for demodulation.
+    * Note that non integer values for N result in a desynchronization of demodulation and ramp generation.
+    *
+    * @param msg Combination of Channel ID and sample count (uint32)
+    * @return void
+    **/
+    rpc SetFluxRampLength(sdr.datatypes.IndexedUInt)             returns(sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set start and end of demodulation interval
+    *
+    * The NCO reference signals will be set to zero for sample indices outside the given interval.
+    * If start = end = 0, the whole range will be used for demodulation. 
+    * NOTE: If the hardware build supports windowing it is recommended to use window functions to set the interval.
+    *
+    * @param msg Combination of Channel ID, start and stop index (each uint32)
+    * @return void
+    **/
+    rpc SetAccumulationRange(StartAndEnd)         returns(sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set delay of sync signal
+    *
+    * Set the number of clock cycles N used to delay the sync flag of the ramp generator.
+    * NOTE: N = N_channels * (delay in samples)
+    * Will then issue a resync, see @link SetResync @endlink  
+    *
+    * @param msg Combination of Channel ID and delay in clock cycles (uint32)
+    * @return void
+    **/
+    rpc SetSyncDelay(sdr.datatypes.IndexedUInt)                  returns(sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Set delay of sync signal
+    *
+    * Set the number of samples used to delay the sync flag of the ramp generator.
+    * Will then issue a resync, see @link SetResync @endlink  
+    *
+    * @param msg Combination of Channel ID and delay in samples (uint32)
+    * @return void
+    **/
+    rpc SetSyncDelaySamples(sdr.datatypes.IndexedUInt) returns (sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Get sample rate of demodulation module 
+    *
+    * @param msg Channel ID
+    * @return Combination of Endpoint ID, dummy (uint),sample rate in Hz (double)
+    **/
+    rpc GetSampleRate(sdr.datatypes.EndpointIndex)             returns(ChannelDouble) {}
+
+    /**
+    * @brief Get the amount of Channels that are processed in TDM
+    * 
+    * The processing core processes one channel each clock cycle.
+    * Usually the clock is n times faster than the sample rate.
+    * Therefore n channels can be processed during the time of one sample.
+    * NOTE: For n = 4 see @link GetTDMPipelineCount @endlink.
+    *
+    * @param msg Combination of Channel ID 
+    * @return Amount of TDM Channels
+    **/
+    rpc GetChannelCount(sdr.datatypes.EndpointIndex)           returns(sdr.datatypes.UInt) {}
+    
+    /**
+    * @brief Get the amount of Pipelines that are processed in TDM
+    *
+    * See @link GetChannelCount @endlink. 
+    * For low channel counts the processing of each channel is split up
+    * into two pipelines, restricting @link SetFluxRampLength @endlink to 
+    * even values.
+    *
+    * @param msg Combination of Channel ID 
+    * @return Amount of TDM Channels
+    **/
+    rpc GetTDMPipelineCount(sdr.datatypes.EndpointIndex)      returns(sdr.datatypes.UInt) {}
+
+    /**
+    * @brief Get the sample rate for each channel
+    * 
+    * The channel sample rate f_s is given by the module clock rate f_clk and 
+    * the number of channels n (@link GetChannelCount @endlink).
+    *   f_s = f_clk/n
+    * 
+    * @param msg Endpoint ID
+    * @return the sample frequency in Hz (uint32)
+    **/
+    rpc GetChannelSampleRate(sdr.datatypes.EndpointIndex)     returns(sdr.datatypes.UInt) {}
+
+    /**
+    * @brief Get the amount of samples during one flux ramp. 
+    * 
+    * See @link SetFluxRampLength @endlink.
+    * 
+    * @param msg Endpoint ID
+    * @return sample count during one ramp
+    **/
+    rpc GetFluxRampLength(sdr.datatypes.EndpointIndex)       returns(sdr.datatypes.UInt) {}
+    
+    /**
+    * @brief Get the demodulation interval 
+    * 
+    * See @link SetAccumulationRange @endlink.
+    * 
+    * @param msg Endpoint ID
+    * @return start and end index (int32)
+    **/
+    rpc GetAccumulationRange(sdr.datatypes.EndpointIndex)    returns(Signed32Array) {}  
+    
+    /**
+    * @brief Get the delay of the sync signal in clock cycles 
+    * 
+    * See @link SetSyncDelay @endlink.
+    * 
+    * @param msg Endpoint ID
+    * @return sync delay in clock cycles (uint32)
+    **/
+    rpc GetSyncDelay(sdr.datatypes.EndpointIndex)            returns(sdr.datatypes.UInt) {}
+    
+    /**
+    * @brief Get the delay of the sync signal in samples
+    * 
+    * See @link SetSyncDelaySamples @endlink.
+    * 
+    * @param msg Endpoint ID
+    * @return sync delay in clock cycles (uint32)
+    **/
+    rpc GetSyncDelaySamples(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.UInt) {}
+    
+    /**
+    * @brief Set the starting value of the RampGen Windowing module 
+    * 
+    * Set starting value of Window if RampGen is implemented as windowing module.
+    * NOTE: Debug function, the whole window config can be set by @link SetWindow @endlink
+    * 
+    * @param msg Endpoint ID and starting value (int32)
+    * @return void 
+    **/
+    rpc SetWindowPreloadValue(sdr.datatypes.IndexedInt)          returns(sdr.datatypes.Empty) {}
+    
+    /**
+    * @brief Set the amount of samples to hold the starting value
+    * 
+    * NOTE: Debug function, the whole window config can be set by @link SetWindow @endlink
+    * 
+    * @param msg Endpoint ID and starting value (uint32)
+    * @return void 
+    **/
+    rpc SetWindowPreloadCycles(sdr.datatypes.IndexedUInt)        returns(sdr.datatypes.Empty) {}
+    
+    /**
+    * @brief Set the step size of the RampGen Windowing module 
+    * 
+    * Set step size of Window if RampGen is implemented as windowing module.
+    * NOTE: Debug function, the whole window config can be set by @link SetWindow @endlink
+    * 
+    * @param msg Endpoint ID and step size (int32)
+    * @return void 
+    **/
+    rpc SetWindowStepSizes(sdr.datatypes.IndexedInt)             returns(sdr.datatypes.Empty) {}
+    
+    /**
+    * @brief Set the number of steps of the RampGen Windowing module 
+    * 
+    * Both the step count for rising and falling edge.
+    * NOTE: Debug function, the whole window config can be set by @link SetWindow @endlink
+    * 
+    * @param msg Endpoint ID and step count (uint32)
+    * @return void 
+    **/
+    rpc SetWindowRampCycles(sdr.datatypes.IndexedUInt)           returns(sdr.datatypes.Empty) {}
+        
+    /**
+    * @brief Set the sample count to hold the ramp before descending again. 
+    * 
+    * Set starting value of Window if RampGen is implemented as windowing module.
+    * NOTE: Debug function, the whole window config can be set by @link SetWindow @endlink
+    * 
+    * @param msg Endpoint ID and hold count (uint32)
+    * @return void 
+    **/
+    rpc SetWindowHoldCycles(sdr.datatypes.IndexedUInt)           returns(sdr.datatypes.Empty) {}
+        
+    /**
+    * @brief Get the starting value of the RampGen Windowing module 
+    * 
+    * See @link SetWindowPreloadValue @endlink
+    * 
+    * @param msg Endpoint ID 
+    * @return starting value (int32)
+    **/
+    rpc GetWindowPreloadValue(sdr.datatypes.EndpointIndex)     returns(sdr.datatypes.Int) {}
+        
+    /**
+    * @brief Set the number of steps of the RampGen Windowing module 
+    * 
+    * Both the step count for rising and falling edge.
+    * NOTE: Debug function, the whole window config can be set by @link SetWindow @endlink
+    * 
+    * See @link SetWindowPreloadCycles @endlink
+    * 
+    * @param msg Endpoint ID 
+    * @return samle count to hold starting value (uint32)
+    **/
+    rpc GetWindowPreloadCycles(sdr.datatypes.EndpointIndex)    returns(sdr.datatypes.UInt) {}
+        
+    /**
+    * @brief Get the starting value of the RampGen Windowing module 
+    * 
+    * See @link SetWindowPreloadValue @endlink
+    * 
+    * @param msg Endpoint ID 
+    * @return step size of rising and falling  (int32)
+    **/    
+    rpc GetWindowStepSizes(sdr.datatypes.EndpointIndex)        returns(sdr.datatypes.Int) {}
+        
+    /**
+    * @brief Get the starting value of the RampGen Windowing module 
+    * 
+    * See @link SetWindowRampCycles @endlink
+    * 
+    * @param msg Endpoint ID 
+    * @return samle count of rising and falling ramp (uint32)
+    **/
+    rpc GetWindowRampCycles(sdr.datatypes.EndpointIndex)       returns(sdr.datatypes.UInt) {}
+        
+    /**
+    * @brief Get the starting value of the RampGen Windowing module 
+    * 
+    * See @link SetWindowHoldCycles @endlink
+    * 
+    * @param msg Endpoint ID 
+    * @return samle count to hold peak value (uint32)
+    **/
+    rpc GetWindowHoldCycles(sdr.datatypes.EndpointIndex)       returns(sdr.datatypes.UInt) {}
+
+    /**
+    * @brief Set a custom window function
+    * 
+    * Write a custom Window if BRAM windowing is implemented.
+    * Pass an array of int16 values of length @link GetFluxRampLength @endlink
+    * If length does not fit FluxRampLength, window and ramp signal will desynchronize.
+    * Predefined functions can be set by @link SetWindow @endlink.
+    * 
+    * @param msg Combination of Endpoint ID and int32 array
+    * @return void
+    **/
+    rpc SetRawWindow(Signed32Array)             returns(sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Get the start and end address of window
+    * 
+    * relative address of the start and end value of the window in the BRAM
+    *   window length is (end - start + 1) 
+    * 
+    * @param msg Endpoint ID 
+    * @return start and end address (uint32)
+    **/
+    rpc GetBRAMOffsets(sdr.datatypes.EndpointIndex)            returns(Signed32Array) {}
+
+    /**
+    * @brief Set a predefined window function  
+    * 
+    * Depending on the windowing module several functions are implemented:
+    *  rectangular, blackman (only for BRAM), bartlett, trapezoid
+    * To ignore the first m samples, an offset can be set.
+    * Also the window length can be set. 
+    * For zero length, the whole range will be used ignoring the offset parameter.
+    * Using blackman or trapezoid a parameter (param) can be set:
+    *   for blackman param denotes alpha, see https://en.wikipedia.org/wiki/Window_function#Blackman_window
+    *   for trapezoid param denotes the ratio of the length of maximum weight to the total length.
+    *   therefore param=0 results in a bartlett window, while param=1 is a rectangular window.
+    *
+    * @param msg Endpoint ID, window name, length, offset and param
+    * @return void
+    **/
+    rpc SetWindow(WindowRequest)                returns(sdr.datatypes.Empty) {}
+
+    /**
+    * @brief Get the window parameters
+    * 
+    * See @link SetWindow @endlink 
+    * 
+    * @param msg Endpoint ID 
+    * @return window name, length, offset, param
+    **/    
+    rpc GetWindow(sdr.datatypes.EndpointIndex)                 returns(Window) {}
+
+    /**
+    * @brief Get the window function
+    * 
+    * Note the values are given in int32 format, but only contain values in the range of int16
+    * 
+    * @param msg Endpoint ID 
+    * @return window as array of int32 values
+    **/    
+    rpc GetRawWindow(sdr.datatypes.EndpointIndex)              returns(Signed32Array) {}
+
+    /**
+    * @brief Get NCO frequencies 
+    * 
+    * See @link SetNCOFrequencies @endlink 
+    * Values in Hz 
+    *
+    * @param msg Endpoint ID 
+    * @return double array
+    **/    
+    rpc GetNCOFrequencies(sdr.datatypes.EndpointIndex)       returns(DoubleArray) {}
+
+    /**
+    * @brief Get NCO phases 
+    * 
+    * See @link SetNCOPhases @endlink 
+    * Values in radian
+    *
+    * @param msg Endpoint ID 
+    * @return double array
+    **/    
+    rpc GetNCOPhases(sdr.datatypes.EndpointIndex)            returns(DoubleArray) {}
+
+    /**
+    * @brief Get Offsets
+    * 
+    * See @link SetNCOFrequencies @endlink 
+    * int16
+    *
+    * @param msg Endpoint ID 
+    * @return int32 array
+    **/    
+    rpc GetOffsets(sdr.datatypes.EndpointIndex)           returns(Signed32Array) {}
+}
+
+message Window
+{
+    string name = 1;
+    uint32 length = 2;
+    uint32 offset = 3;
+    double param = 4;
+}
+
+message WindowRequest
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    Window properties = 2;
+}
+
+message Unsigned32Array
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    repeated uint32 value = 2;
+}
+
+message Signed32Array
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    repeated int32 value = 2;
+}
+
+message NCOData
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    repeated double frequencies = 2; // length = ChannelCount
+    repeated double phases = 3; // length = ChannelCount
+    repeated int32 offsets = 4; // length = ChannelCount
+}
+
+message DoubleArray
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    repeated double value = 2; // length = ChannelCount
+}
+message ChannelData
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    uint32 channel = 2; // channel < TDM Channel Count
+    uint32 value = 3;
+}
+
+message ChannelDouble
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    uint32 channel = 2; // channel < TDM Channel Count
+    double value = 3;
+}
+
+message RampGenData
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    uint32 rampperiodecycles = 2;
+    double rampsamplerate = 3;
+}
+
+message StartAndEnd
+{
+    sdr.datatypes.EndpointIndex index = 1;
+    uint32 start = 2; // Index of start sample, >0, < fluxramp length-1 or end
+    uint32 end = 3; // Index of end sample, > start, < fluxramp length-1
+}

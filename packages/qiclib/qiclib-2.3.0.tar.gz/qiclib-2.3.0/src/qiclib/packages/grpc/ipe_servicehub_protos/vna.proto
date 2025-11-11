@@ -1,0 +1,309 @@
+syntax = "proto3";
+
+package vna;
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+/**
+ * Allows access to the VNA via gRPC.
+ *
+ * Theory of operation:
+ *
+ * To measure the Transmission coefficients, set the
+ * Frequencies to measure (`SetFreqRange`), the sample-time (`SetSample`)
+ * and optionally the Setup-Time (`SetSetupTime`). Make sure no errors
+ * occurred since some parameter-sets might be incompatible
+ * You can then call the `MeasureTransmission` method to retrieve
+ * The S-Parameter of the Device under Test.
+ */
+service VNAService
+{
+
+    /**
+     * Resets the core
+     */
+    rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+    /**
+     * Returns `true` when there is any ongoing measurement,
+     * `false` otherwise
+     */
+    rpc IsBusy(google.protobuf.Empty) returns (google.protobuf.BoolValue);
+
+    /**
+     * Sets the three relevant frequencies in hertz that control the VNA
+     * when measuring the transmission parameters.
+     * The passed `FrequencyRange` message is flexible in that it allows
+     * multiple configurations how one would want to define frequency spans.
+     * See the message documentation for more.
+     *
+     * No frequency may be greater than half the sampling-frequency
+     * (half the sampling frequency is usually 500 MHz) and no frequency
+     * may be lower than half the negative sampling frequency (-500 MHz).
+     */
+    rpc SetFreqSpec(FrequencySpec) returns (google.protobuf.Empty);
+
+    /**
+     * Returns start, step and stop frequencies.
+     */
+    rpc GetFreqSpec(google.protobuf.Empty) returns (FrequencySpec);
+
+    /**
+     * Sets the sample-time in clock-cycle periods.
+     *
+     * A higher sample-time takes longer but generally produces better results.
+     *
+     * This will interrupt ongoing measurements
+     */
+    rpc SetAverages(google.protobuf.UInt32Value)
+        returns (google.protobuf.Empty);
+
+    /**
+     * Returns the sample-time in clock-cycle periods.
+     */
+    rpc GetAverages(google.protobuf.Empty)
+        returns (google.protobuf.UInt32Value);
+
+    rpc SetMultiplier(google.protobuf.DoubleValue) 
+        returns (google.protobuf.Empty);
+        
+    rpc GetMultiplier(google.protobuf.Empty)
+        returns (google.protobuf.DoubleValue);
+    /**
+     * When measuring the transmission parameters, this is an extra time
+     * where a signal has time to propagate over the system during which
+     * no measurements are done.
+     *
+     * The time is given in seconds.
+     *
+     * This will interrupt ongoing measurements
+     */
+    rpc SetSetupTime(google.protobuf.DoubleValue)
+        returns (google.protobuf.Empty);
+
+    /**
+     * Return the setup-time in seconds.
+     */
+    rpc GetSetupTime(google.protobuf.Empty)
+        returns (google.protobuf.DoubleValue);
+
+    /**
+     * Executes one measurement, sweeping the provided frequency range.
+     *
+     * The stream will emit data until all Transmission coefficients in the
+     * frequency-range given via `SetFreqRange` have completed.
+     */
+    rpc Sweep(google.protobuf.Empty) returns (stream Transmission);
+
+    /**
+     * Sets a correction factor when a longer cable is used.
+     */
+    rpc SetPhaseCorr(google.protobuf.DoubleValue)
+        returns (google.protobuf.Empty);
+
+    /**
+     * Returns the correction factor
+     */
+    rpc GetPhaseCorr(google.protobuf.Empty)
+        returns (google.protobuf.DoubleValue);
+
+    /**
+     * Detect Resonators in a frequency spectrum
+     */
+    rpc GetResonators(ResonatorOptions) returns (DetectedResonators);
+
+    rpc SetPhaseUnit(PhaseUnit_) returns (google.protobuf.Empty);
+    rpc SetMagnitudeUnit(MagnitudeUnit_) returns (google.protobuf.Empty);
+    rpc SetUnwrapPhase(google.protobuf.BoolValue)
+        returns (google.protobuf.Empty);
+
+    rpc SetTransmissionOptions(TransmissionOptions)
+        returns (google.protobuf.Empty);
+
+    rpc GetTransmissionOptions(google.protobuf.Empty)
+        returns (TransmissionOptions);
+
+    /**
+     * Issue a calibration command
+     *
+     * This will launch all the required steps to perform the calibration
+     * of the VNA.
+     */
+    rpc Calibrate(CalibrationOptios) returns (google.protobuf.Empty);
+
+    rpc RemoveCalibration(google.protobuf.StringValue)
+        returns (google.protobuf.BoolValue);
+
+    rpc GetAvailableCalibrations(google.protobuf.Empty)
+        returns (AvailableCalibrations);
+
+    rpc DownloadCalibration(google.protobuf.StringValue)
+        returns (CalibrationData);
+
+    rpc UploadCalibration(CalibrationData) returns (google.protobuf.Empty);
+
+    // if the value is not set; remove the current cal
+    rpc SetActiveCalibration(google.protobuf.StringValue)
+        returns (google.protobuf.Empty);
+
+    rpc GetActiveCalibration(google.protobuf.Empty)
+        returns (google.protobuf.StringValue);
+}
+
+message CalibrationData
+{
+    string name = 1;
+    string json = 2;
+}
+
+message CalibrationOptios
+{
+    string name = 1;
+    string comment = 2;
+    uint32 fulcrums = 3;
+    uint32 averages = 4;
+}
+
+message CalibrationInfo
+{
+    string comment = 2;
+    double start_frequency = 3;
+    double step_frequency = 4;
+    uint32 frequency_count = 5;
+    google.protobuf.Timestamp time = 6;
+}
+
+message AvailableCalibrations { map<string, CalibrationInfo> values = 1; }
+
+message ResonatorOptions
+{
+    /**
+     * How many resonators the sample contains
+     */
+    uint32 n_resonators = 1;
+    /**
+     * modify SMA smoothing on data
+     */
+    uint32 smoothing_window = 2;
+    /**
+     * modify SMA smoothing on derivative
+     */
+    uint32 derivative_smoothing_window = 3;
+    /**
+     * for optimisation: make a measurement or choose a sample to use for
+     * analysis instead
+     */
+    uint32 sample_option = 4;
+    /**
+     * filtering window for the resonator detection
+     */
+    uint32 filtering_window = 5;
+}
+
+message DetectedResonators
+{
+    /**
+     * smoothed amplitude frequency spectrum
+     */
+    repeated double smoothed_spectrum = 1;
+    /**
+     * unsmoothed amplitude frequency spectrum
+     */
+    repeated double unsmoothed_spectrum = 2;
+    /**
+     * phase frequency spectrum
+     */
+    repeated double phase = 3;
+    /**
+     * amplitude derivative (of smoothed spectrum)
+     */
+    repeated double derivative = 4;
+    /**
+     * the indices of the detected resonators
+     */
+    repeated uint32 resonator_indices = 5;
+    /**
+     * true if measurement is complete and resonator indices have been found
+     */
+    bool detection_successful = 6;
+}
+
+message FrequencySpec
+{
+    double start = 1;
+    double step = 2;
+    double count = 3;
+}
+
+enum PhaseUnit
+{
+    RADIAN = 0;
+    DEGREES = 1;
+}
+
+message PhaseUnit_ { PhaseUnit phase_unit = 1; }
+
+enum MagnitudeUnit
+{
+    /// Normalized units, linear
+    LINEAR = 0;
+    /// decibel, referenced to the full scale input.
+    DB_FS = 1;
+}
+
+message MagnitudeUnit_ { MagnitudeUnit magnitude_unit = 1; }
+
+/**
+ * Define how the magnitude and phase should be formatted.
+ * omitting any of these field will use the default value
+ */
+message TransmissionOptions
+{
+    /**
+     * Define the unit that the magnitude will be returned in
+     */
+    MagnitudeUnit magnitude_unit = 1;
+
+    /**
+     * Return the unit that the phase will be returned in
+     */
+    PhaseUnit phase_unit = 2;
+
+    /**
+     * true: unwrap the phase
+     * false: return the phase unchanged
+     */
+    bool unwrap_phase = 3;
+}
+
+/**
+ * Represents a complex number in Polar form.
+ */
+message Polar
+{
+    /**
+     * The magnitude (radius) of the complex value
+     */
+    double magnitude = 1;
+    /**
+     * The phase (angle) of the complex value
+     */
+    double phase = 2;
+}
+
+/**
+ * A transmission spectrum containing a list of measured complex values.
+ * The frequency span is always dependent on the value of the set frequency
+ * range.
+ */
+message Transmission { repeated Polar values = 1; }
+
+message CalData
+{
+    double f_min = 1;
+    double f_max = 2;
+
+    repeated double magnitude = 3;
+    repeated double phase = 4;
+}

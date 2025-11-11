@@ -1,0 +1,154 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_FORCE_HTTPS: true
+  UV_VERSION: '0.9'
+  PYTHON_VERSION: '3.10'
+  BASE_LAYER: bookworm
+  UV_SYSTEM_PYTHON: 1
+  GITHUB_PUBLISH_USER: quantuminterfaceBot
+  GITHUB_PUBLISH_REPO: quantuminterface/qiclib
+
+stages: [analysis, test, build, deploy]
+
+default:
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
+
+.base_ruff:
+  interruptible: true
+  before_script:
+    - export UV_TOOL_BIN_DIR=/usr/local/bin
+    - cd $CI_PROJECT_DIR
+
+unit_tests:
+  extends: .base_ruff
+  stage: test
+  script:
+    - uv run pytest --junitxml tests.xml --cov=qiclib --cov-fail-under=50 --cov-report xml --cov-report term
+  coverage: "/TOTAL.+ ([0-9]{1,3}%)/"
+  artifacts:
+    when: always
+    paths:
+      - tests.xml
+    reports:
+      junit:
+        - tests.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+check_format:
+  extends: .base_ruff
+  stage: analysis
+  variables:
+    PRE_COMMIT_HOME: ${CI_PROJECT_DIR}/.cache/pre-commit
+  cache:
+    paths:
+      - ${PRE_COMMIT_HOME}
+  script:
+    - git config --global --add safe.directory '*'
+    - uvx pre-commit run --all-files
+
+check_mypy:
+  extends: .base_ruff
+  stage: analysis
+  script:
+    - uv run mypy src --junit-xml mypy.xml --install-types --non-interactive --check-untyped-defs
+  artifacts:
+    when: on_failure
+    paths:
+      - mypy.xml
+    reports:
+      junit: mypy.xml
+
+check_ruff:
+  extends: .base_ruff
+  stage: analysis
+  script:
+    - uv run ruff check --output-format junit > ruff.xml
+  artifacts:
+    when: on_failure
+    paths:
+      - ruff.xml
+    reports:
+      junit: ruff.xml
+
+pylint:
+  extends: .base_ruff
+  stage: analysis
+  before_script:
+    - mkdir -p public/badges
+    - echo undefined > public/badges/$CI_JOB_NAME.score
+  script:
+    - uv run pylint --exit-zero --output-format=text src | tee /tmp/pylint.txt
+    - sed -n 's/^Your code has been rated at \([-0-9.]*\)\/.*/\1/p' /tmp/pylint.txt > public/badges/$CI_JOB_NAME.score
+    - uv run --with pylint-gitlab pylint --exit-zero --output-format=pylint_gitlab.GitlabCodeClimateReporter src > codeclimate.json
+  after_script:
+    - uvx anybadge --overwrite --label $CI_JOB_NAME --value=$(cat public/badges/$CI_JOB_NAME.score) --file=public/badges/$CI_JOB_NAME.svg 4=red 6=orange 8=yellow 10=green
+    - |
+      echo "Your score is: $(cat public/badges/$CI_JOB_NAME.score)"
+  artifacts:
+    paths:
+      - public
+    reports:
+      codequality: codeclimate.json
+    when: always
+
+build_project:
+  extends: .base_ruff
+  stage: build
+  script:
+    - uv build
+    - uvx twine check dist/*
+  artifacts:
+    paths:
+      - dist/
+    when: on_success
+
+mirror_to_github:
+  stage: deploy
+  rules:
+    # Run only for tags matching semver like v1.2.3, v2.0.0-rc.1, v1.0.0+build123, etc.
+    - if: '$CI_COMMIT_TAG =~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/'
+  script:
+    - VERSION="$CI_COMMIT_TAG"
+    - echo "Preparing release $VERSION for GitHub mirror"
+
+    # Prepare a clean directory with the repository contents
+    - mkdir ../mirror
+    - git archive "$VERSION" | tar -x -C ../mirror
+    - cd ../mirror
+    - git init --initial-branch=main
+
+    # Git Identity
+    - git config user.email "quantuminterface@ipe.kit.edu"
+    - git config user.name "Quantuminterface Bot"
+
+    # Pull existing history from GitHub
+    - git remote add origin "https://${GITHUB_PUBLISH_USER}:${GITHUB_PUBLISH_TOKEN}@github.com/${GITHUB_PUBLISH_REPO}.git"
+    - git fetch origin main
+    - git checkout -B main
+    - git reset --soft origin/main
+
+    # Commit the new release snapshot
+    - git add -A
+    - git commit -m "Release $VERSION"
+
+    # Tag and push both branch and tag
+    - git tag "$VERSION"
+    - git push origin main
+    - git push origin "$VERSION"
+
+publish_to_pypi:
+  stage: deploy
+  needs:
+    - build_project
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/'
+  script:
+    - echo "Publishing version $CI_COMMIT_TAG to PyPI"
+
+    # Build the wheel and sdist
+    - uv build
+
+    # Publish to PyPI
+    - uv publish --token "$PYPI_PUBLISH_TOKEN"

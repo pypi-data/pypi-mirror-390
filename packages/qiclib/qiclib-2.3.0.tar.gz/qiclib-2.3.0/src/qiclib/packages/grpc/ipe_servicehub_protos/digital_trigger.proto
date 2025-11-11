@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package digital_trigger;
+import "datatypes.proto";
+
+service DigitalTriggerService {
+  rpc Reset(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty);
+
+  rpc SetTriggerSet(IndexedTriggerSet) returns (sdr.datatypes.Empty);
+
+  rpc GetTriggerSet(TriggerIndex) returns (TriggerSet);
+
+  rpc ClearTriggerSets(sdr.datatypes.EndpointIndex) returns (sdr.datatypes.Empty);
+
+  rpc SetOutputConfig(IndexedOutputConfig) returns (sdr.datatypes.Empty);
+
+  rpc GetOutputConfig(OutputIndex) returns (OutputConfig);
+
+  rpc Trigger(TriggerIndex) returns (sdr.datatypes.Empty);
+}
+
+message TriggerIndex {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 trigger = 2;
+}
+
+message OutputIndex {
+  sdr.datatypes.EndpointIndex index = 1;
+  uint32 output = 2;
+}
+
+message TriggerSet {
+  bool continuous = 1;
+  uint32 duration_cycles = 2;
+  repeated uint32 output_select = 3;
+}
+
+message IndexedTriggerSet {
+  TriggerIndex index = 1;
+  TriggerSet set = 2;
+}
+
+enum OutputLevel {
+  ACTIVE_LOW = 0;
+  ACTIVE_HIGH = 1;
+}
+
+message OutputConfig {
+  OutputLevel level = 1;
+  uint32 duration_cycles = 2;
+}
+
+message IndexedOutputConfig {
+  OutputIndex index = 1;
+  OutputConfig config = 2;
+}
