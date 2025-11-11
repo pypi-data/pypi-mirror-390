@@ -1,0 +1,34 @@
+#
+# simplified version to deploy only without any integrity checks and artifacts
+#
+image: python:{MIN_PYTHON_VERSION}
+
+{TEMPLATE_PLACEHOLDER_ID_PREFIX}{TEMPLATE_INCLUDE_FILE_PLACEHOLDER_ID}{TEMPLATE_PLACEHOLDER_ID_SUFFIX}
+  .gitlab-ci_include_service.yml
+{TEMPLATE_PLACEHOLDER_ARGS_SUFFIX}
+
+{TEMPLATE_PLACEHOLDER_ID_PREFIX}{TEMPLATE_INCLUDE_FILE_PLACEHOLDER_ID}{TEMPLATE_PLACEHOLDER_ID_SUFFIX}
+  .gitlab-ci_include_variables.yml
+{TEMPLATE_PLACEHOLDER_ARGS_SUFFIX}
+
+stages:
+  - deploy
+
+pypi_deploy:
+  stage: deploy
+  rules:
+    # - if: $CI_COMMIT_TAG =~ /^v?[0-9]+[.][0-9]+([.][0-9]+)?$/
+    # CI_COMMIT_TAG is only set if the push does contain a new tag (and no new commit); separate push and rules are
+    # additionally creating duplicate jobs on gitlab CI - finally using release branch to trigger deploy.
+    - if: $CI_COMMIT_BRANCH =~ /^release/
+  variables:
+    # the pushed branch has to be a protected branch in order to get the CI variables for the twine/PyPI authentication.
+    TWINE_USERNAME: $PYPI_USERNAME
+    TWINE_PASSWORD: $PYPI_PASSWORD
+  before_script:
+     - pip install --upgrade pip build twine
+     # removed -r tests/requirements.txt to prevent installation of old/fixed/frozen ae_core/ae_console/...
+     - pip install --upgrade -r requirements.txt
+     - python -m build
+  script:
+    - twine upload {"--repository testpypi " if parent_folder == 'TsT' else ""}--verbose dist/*
