@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools >= 61.0", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datawrapper-mcp"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "datawrapper>=2.0.7",
+    'exceptiongroup; python_version<"3.11"',
+    "mcp[cli]>=1.20.0",
+    "pandas>=2.0.0",
+    'typing_extensions>=4.0.0; python_version<"3.11"',
+]
+authors = [
+  { name="Ben Welsh", email="b@palewi.re" },
+]
+description = "A Model Context Protocol (MCP) server for creating Datawrapper charts using AI assistants"
+license = {text = "MIT"}
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Typing :: Typed",
+]
+keywords = ["datawrapper", "mcp", "model-context-protocol", "charts", "visualization", "ai"]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "setuptools-scm",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-runner",
+    "pytest-cov",
+    "pytest-env",
+    "pytest-vcr",
+    "pytest-xdist",
+]
+mypy = [
+    "mypy",
+    "pandas-stubs",
+    "types-requests",
+]
+
+[project.urls]
+Maintainer = "https://github.com/palewire/"
+Source = "https://github.com/palewire/datawrapper-mcp/"
+Issues = "https://github.com/palewire/datawrapper-mcp/issues/"
+
+[project.scripts]
+datawrapper-mcp = "datawrapper_mcp.server:main"
+
+[tool.setuptools]
+packages = ["datawrapper_mcp"]
+
+[tool.setuptools.package-data]
+datawrapper_mcp = ["py.typed"]
+
+[tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+markers = [
+    "asyncio: mark test as async",
+]
+asyncio_mode = "auto"
