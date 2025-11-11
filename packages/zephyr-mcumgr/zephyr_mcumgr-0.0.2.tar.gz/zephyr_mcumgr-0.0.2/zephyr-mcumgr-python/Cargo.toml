@@ -1,0 +1,44 @@
+[package]
+name = "zephyr-mcumgr-python"
+description = "Python API for Zephyr's MCUmgr protocol"
+
+rust-version = "1.91"
+
+readme = "README.md"
+
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+
+[lib]
+# "cdylib" is necessary to produce a shared library for Python to import from.
+crate-type = ["cdylib", "rlib"]
+doc = false
+
+[[bin]]
+name = "stub_gen"
+path = "src/bin/stub_gen.rs"
+# Force-disable default (extension) mode for this binary
+# and enable the "pyo3-embed" feature instead
+required-features = ["pyo3-embed"]
+
+[features]
+# Default build = produce Python extension module (your current behavior)
+default = ["pyo3-ext"]
+
+# Feature that makes pyo3 behave as extension module
+pyo3-ext = ["pyo3/abi3-py310", "pyo3/extension-module"]
+
+# Feature for building the stub_gen binary (no abi3, no extension-module)
+pyo3-embed = []
+
+[dependencies]
+pyo3 = "0.27.1"
+pyo3-stub-gen = "0.17.0"
+serde-pyobject = "0.8.0"
+serde_json.workspace = true
+zephyr-mcumgr.workspace = true
+serialport.workspace = true
