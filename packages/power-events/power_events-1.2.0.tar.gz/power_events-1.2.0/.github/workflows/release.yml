@@ -1,0 +1,84 @@
+name: "Release"
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  build:
+    name: "Build distribution package"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: "Install 'build' library"
+        run: pip install -U build
+
+      - name: build
+        run: python -m build
+
+      - name: "Upload distribution artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: "Publish to PyPI"
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # IMPORTANT: mandatory for trusted publishing
+    environment:
+      name: pypi
+      url: https://pypi.org/p/power-events
+    steps:
+      - name: "Download distribution artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  gh-release:
+    name: "Create a github release"
+    needs: [ publish-pypi ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # IMPORTANT: mandatory for making GitHub Releases
+      id-token: write # IMPORTANT: mandatory for sigstore
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: "Download distribution artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: "Sign the distribution artifacts with Sigstore"
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: ./dist/*
+
+      - run: pip install commitizen
+
+      - name: "Generate release body"
+        run: ./script/get_latest_changes.py > note.md
+
+      - name: "Create Github release"
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/*"
+          bodyFile: "note.md"
