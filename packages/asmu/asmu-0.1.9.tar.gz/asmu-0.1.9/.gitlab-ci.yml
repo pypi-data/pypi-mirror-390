@@ -1,0 +1,87 @@
+image: python:latest
+
+stages:
+  - codecheck
+  - test
+  - deploy
+  - release
+
+before_script:
+  - apt update && apt install -y portaudio19-dev
+  - python3 -m pip install --upgrade pip
+
+typeecheck:
+  stage: codecheck
+  script: 
+    - python3 -m pip install .[check]
+    - mypy --install-types --non-interactive .    
+  rules:
+    - when: always
+
+stylecheck:
+  stage: codecheck
+  script:
+    - python3 -m pip install .[check]
+    - flake8 --show-source --statistics
+  rules:
+    - when: always
+
+importcheck:
+  stage: codecheck
+  script:
+    - python3 -m pip install .[check]
+    - isort . --check-only --diff
+  rules:
+    - when: always
+
+# Run pytest
+test:
+  stage: test
+  script:
+    - python3 -m pip install -e .[test]
+    - pytest --buffer --calmode --cov=asmu --cov-fail-under=50
+  rules:
+    - when: always
+
+# Generate figures, build documentation and publish to pages
+pages:
+  stage: deploy
+  script:
+    - python3 -m pip install .[docs]
+    - apt install -y graphviz
+    - mkdocs build --strict --verbose --site-dir public
+  artifacts:
+    paths:
+      - docs/imgs/
+      - public
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
+# Build and upload to PyPi
+pypi: 
+    stage: release
+    cache: {}
+    script:
+        - python3 -m pip install build twine
+        - python3 -m build
+        - python3 -m twine upload --verbose --skip-existing dist/*
+    rules:
+        - if: '$CI_COMMIT_TAG =~ /^v.*/'
+
+# Do a GitLab release
+gitlab:
+    stage: release
+    image: registry.gitlab.com/gitlab-org/cli:latest
+    before_script: []
+    script:
+        - echo "running release_job"
+    release:
+        tag_name: '$CI_COMMIT_TAG'
+        description: '$CI_COMMIT_TAG'
+    rules:
+        - if: '$CI_COMMIT_TAG =~ /^v.*/'
+       
+
+
+
+
