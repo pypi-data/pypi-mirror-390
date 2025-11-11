@@ -1,0 +1,18 @@
+vocabulary V {
+    type Node <: Int
+    edge: Node * Node -> Bool
+    reachable: Node * Node -> Bool
+}
+
+theory T:V {
+    {
+        !x, z in Node: reachable(x, z) <- edge(x, z) | ?y in Node: edge(x, y) & reachable(y, z).
+    }
+}
+
+structure S2:V {
+    Node ≜ {1..4}.
+    edge :> {(1,2) -> true, (2, 3) -> false}.
+}
+
+

@@ -1,0 +1,21 @@
+vocabulary {
+    type Animal := {Coco, Skippy}
+    Fly, Bird, AbFly, Ostrich, AbOstrich, SuperOstrich, YoungSuperOstrich, Parrot: Animal -> Bool
+
+}
+theory {
+    { !x in Animal: Fly(x) <- Bird(x) & ~AbFly(x).
+      !x in Animal: AbFly(x) <- Ostrich(x) & ~AbOstrich(x).
+      !x in Animal: AbOstrich(x) <- SuperOstrich(x).
+      !x in Animal: AbFly(x) <- YoungSuperOstrich(x).
+      !x in Animal: Bird(x) <- Ostrich(x).
+      !x in Animal: Bird(x) <- Parrot(x).
+      !x in Animal: Ostrich(x) <- SuperOstrich(x).
+      !x in Animal: SuperOstrich(x) <- YoungSuperOstrich(x).
+      Parrot(Coco) <- true.
+      YoungSuperOstrich(Skippy) <- true.
+    }
+}
+structure {
+}
+

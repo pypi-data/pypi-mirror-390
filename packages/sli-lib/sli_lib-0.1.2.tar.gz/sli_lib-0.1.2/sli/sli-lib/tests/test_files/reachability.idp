@@ -1,0 +1,23 @@
+// Originates from https://gitlab.com/krr/IDP-Z3
+
+vocabulary V {
+    type T := {0..3}
+    p : T*T -> Bool
+    r : T -> Bool
+    s : T*T -> Bool
+}
+
+theory T:V {
+    {
+      !x, y in T: s(x,y) <- p(x,y).
+      !x, y in T: s(x,y) <- p(y,x).
+      !x, y in T: s(x,y) <- ?z in T: s(x,z) & s(z,y).
+      !x in T: r(x) <- ?y in T: r(y) & s(y,x).
+      r(0) <- true.
+    }
+}
+
+structure S:V {
+    p := {(0,1),(0,3)}.
+}
+

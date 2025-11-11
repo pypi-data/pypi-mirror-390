@@ -1,0 +1,32 @@
+vocabulary {
+    type Node := {0..2}
+    triangles: Node * Node * Node -> Bool
+    s: Node -> Bool
+    contained: Node -> Bool
+    selected: Node * Node * Node -> Bool
+    edge: Node * Node -> Bool
+}
+
+theory {
+    {
+        !x, y, z in Node: contained(x) <- selected(x, y, z).
+        !x, y, z in Node: contained(y) <- selected(x, y, z).
+        !x, y, z in Node: contained(z) <- selected(x, y, z).
+    }
+
+    {
+        !x, y, z in Node: triangles(x, y, z) <- edge(x, y) & edge(y, z) & edge(x, z) .
+    }
+
+    !x, y, z in Node: selected(x, y, z) => triangles(x, y, z).
+    !x in Node: s(x) => contained(x).
+}
+
+structure {
+    edge := {
+        (0, 1), (1, 2), (0, 2),
+        (1, 0),
+    }.
+    s := {0}.
+}
+

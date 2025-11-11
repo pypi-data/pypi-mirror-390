@@ -1,0 +1,40 @@
+vocabulary  {
+  type man
+  type woman
+  type score := {1..2}
+  manAssignsScore: man * woman * score -> Bool
+  match: man * woman -> Bool
+  womanAssignsScore: woman * man * score -> Bool
+}
+
+theory {
+    !m, m2 in man, w in woman: match(m, w) & match(m2, w) => m = m2.
+    !w, w2 in woman, m in man: match(m, w) & match(m, w2) => w = w2.
+
+    !m in man: ?w in woman: match(m, w).
+
+    ~(?M, M1 in man, W, W1 in woman, Sm, Sm1, Swm, Swm1 in score:
+        match(M, W1) &
+            manAssignsScore(M, W, Sm) &
+            manAssignsScore(M, W1, Sm1) &
+            Sm > Sm1 &
+        match(M1, W) &
+            W ~= W1 &
+            womanAssignsScore(W, M, Swm) &
+            womanAssignsScore(W, M1, Swm1) &
+            Swm >= Swm1
+    ).
+}
+
+structure {
+    man := {m1, m2}.
+    woman := {w1, w2}.
+    manAssignsScore := {
+        (m1, w1, 2), (m1, w2, 1),
+        (m2, w1, 1), (m2, w2, 2),
+    }.
+    womanAssignsScore := {
+        (w1, m1, 2), (w1, m2, 1),
+        (w2, m1, 1), (w2, m2, 2),
+    }.
+}
