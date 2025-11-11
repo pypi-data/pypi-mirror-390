@@ -1,0 +1,94 @@
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+from slidge import LegacyContact, LegacyRoster
+from slidge.util.types import Avatar
+from slixmpp.exceptions import XMPPError
+
+from . import config
+from .generated import whatsapp
+
+if TYPE_CHECKING:
+    from .session import Session
+
+
+class Contact(LegacyContact[str]):
+    CORRECTION = True
+    REACTIONS_SINGLE_EMOJI = True
+
+    async def update_presence(
+        self, presence: whatsapp.PresenceKind, last_seen_timestamp: int
+    ):
+        last_seen = (
+            datetime.fromtimestamp(last_seen_timestamp, tz=timezone.utc)
+            if last_seen_timestamp > 0
+            else None
+        )
+        if presence == whatsapp.PresenceUnavailable:
+            self.away(last_seen=last_seen)
+        else:
+            self.online(last_seen=last_seen)
+
+    async def update_info(self) -> None:
+        if whatsapp.IsAnonymousJID(self.legacy_id):
+            raise XMPPError(
+                "item-not-found", f"LIDs are not valid contact IDs: {self.legacy_id}"
+            )
+        # If we receive presences, the status will be updated accordingly. But presences do not
+        # work reliably, and having contacts offline has annoying side effects, such as contacts not
+        # appearing in the participant list of groups.
+        self.online()
+
+
+class Roster(LegacyRoster[str, Contact]):
+    session: "Session"
+
+    async def fill(self):
+        """
+        Retrieve contacts from remote WhatsApp service, subscribing to their presence and adding to
+        local roster.
+        """
+        contacts = self.session.whatsapp.GetContacts(refresh=config.ALWAYS_SYNC_ROSTER)
+        for contact in contacts:
+            c = await self.add_whatsapp_contact(contact)
+            if c is not None and c.is_friend:
+                yield c
+
+    async def add_whatsapp_contact(self, data: whatsapp.Contact) -> Contact | None:
+        """
+        Adds a WhatsApp contact to local roster, filling all required and optional information.
+        """
+        # Don't attempt to add ourselves to the roster.
+        if data.JID == self.user_legacy_id:
+            return None
+        contact = await self.by_legacy_id(data.JID)
+        self.session.log.debug("User named %s, friend: %s", data.Name, data.IsFriend)
+        contact.name = data.Name
+        contact.is_friend = data.IsFriend or config.ADD_GROUP_PARTICIPANTS_TO_ROSTER
+        try:
+            unique_id = ""
+            if contact.avatar is not None:
+                unique_id = contact.avatar.unique_id or ""
+            avatar = self.session.whatsapp.GetAvatar(data.JID, unique_id)
+            if avatar.URL and unique_id != avatar.ID:
+                await contact.set_avatar(Avatar(url=avatar.URL, unique_id=avatar.ID))
+            elif avatar.URL == "" and avatar.ID == "":
+                await contact.set_avatar(None)
+        except RuntimeError as err:
+            self.session.log.error(
+                "Failed getting avatar for contact %s: %s", data.JID, err
+            )
+        contact.set_vcard(full_name=contact.name, phone=str(contact.jid.local))
+        return contact
+
+    async def legacy_id_to_jid_username(self, legacy_id: str) -> str:
+        if not "@" in legacy_id:
+            raise XMPPError("item-not-found", "Invalid contact ID, not a JID")
+        return "+" + legacy_id[: legacy_id.find("@")]
+
+    async def jid_username_to_legacy_id(self, jid_username: str) -> str:
+        if jid_username.startswith("#"):
+            raise XMPPError("item-not-found", "Invalid contact ID: group ID given")
+        if not jid_username.startswith("+"):
+            raise XMPPError("item-not-found", "Invalid contact ID, expected '+' prefix")
+        return jid_username.removeprefix("+") + "@" + whatsapp.DefaultUserServer
