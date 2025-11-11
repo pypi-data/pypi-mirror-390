@@ -1,0 +1,119 @@
+---
+title: "SNMF KMERS (202501) vs SNPS OgOb  "
+format: html
+---
+
+# I. SNMF with KMERS
+
+Analyse done using 10 000 000 shuffle kmers (file output_file.8_2_SNMF in rice)
+
+### loading libraries
+```{r}
+library(BEDMatrix)
+library(tidyverse)
+library(LEA)
+library(viridis)
+library(ggplot2)
+library(gridExtra)
+```
+
+### read sample info for kmers
+```{r}
+sample_file <- "/home/orjuela/Documents/2023/OGOB_PAPER/SNMF_RICE/202409/samples_OGOB.txt"
+sample_OgOb <- read.csv(sample_file,sep='\t')
+head(sample_OgOb)
+colnames(sample_OgOb)
+dim(sample_OgOb)
+```
+
+### run snmf on the selected kmers set
+
+```{r}
+# An snmf project can be load in a different session.
+snmf_kmers = load.snmfProject("/home/orjuela/Documents/2023/OGOB_PAPER/SNMF_RICE/202409/output_file.8_2_SNMF/kmer.snmfProject")
+```
+
+
+```{r}
+summary(snmf_kmers)
+```
+
+### plot cross entropy for kmers
+
+```{r}
+plot(snmf_kmers, pch = 16, cex = 1.2, col = "blue")
+```
+
+
+### choose best run based on cross entropy
+
+```{r}
+run_kmers_barplot_by_k <- function(k) {
+  ## choose best run based on cross entropy
+  best_run <- which.min(cross.entropy(snmf_kmers, K = k))
+  best_run
+
+  ## plot ancestry proportion for kmers
+  ind_order_kmers <- LEA::barchart(snmf_kmers, K = k, run = best_run, plot = F)
+  kmer_ref_prop <- as.data.frame(Q(snmf_kmers, K = k, run = best_run))
+  kmer_ref_prop$Label <- sample_OgOb$accession_id
+  kmer_ref_prop$prior <- factor(sample_OgOb$group, levels = c("OG", "OB"))
+
+  ## removing samples from kmers dataframe
+  dim(kmer_ref_prop)
+  kmer_ref_prop<-filter(kmer_ref_prop, !(Label=="OG_TOG5681"))
+  dim(kmer_ref_prop)
+
+  ## pivot du dataframe for kmers
+  col_s = paste0("V", seq(1, k))
+  kmer_ref_prop <- pivot_longer(kmer_ref_prop, cols = col_s, names_to = "ancestry", values_to = "proportion")
+
+  ## rename ancestry
+  #repre <- kmer_ref_prop %>% group_by(ancestry) %>% arrange(desc(proportion)) %>% slice_head(n = 1) %>% slice_tail(n = 1)
+  #kmer_ref_prop$Label <- factor(kmer_ref_prop$Label, levels = unique(kmer_ref_prop$Label)[ind_order_kmers$order], ordered = T)
+  #kmer_ref_prop$ancestry <- sapply(kmer_ref_prop$ancestry, function(i) repre$prior[repre$ancestry == i], USE.NAMES = F)
+
+  ## structure barplot
+  my.colors <- c("brown2", "brown4", "cadetblue3", "turquoise4",  "darkslategray", "seagreen4", "tomato4", "tan2")
+  figure <- ggplot(kmer_ref_prop) +
+    geom_col(aes(x = Label, y = proportion, fill = ancestry), position = position_stack(), width = 0.95, size = 0) +
+    # scale_fill_viridis_d(end = .9)+
+    #scale_fill_manual(values = viridis(8)) +
+    scale_fill_manual(values = my.colors) +
+    #scale_fill_manual(values = turbo(5)) +
+    scale_x_discrete(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    xlab("") +
+    ylab("") +
+    #ylab("Ancestry proportion")  +
+    theme_minimal() +
+      theme(
+      axis.text.x = element_text(angle = 90, size = 5, hjust = 1),
+      axis.title.y = element_text(size = 8),
+      # axis.title.x = element_blank(),
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 8),
+      legend.key.size = unit(3, "mm"),
+      #axis.ticks.y = element_line(size = .1),
+      axis.text.y = element_text(size = 4),
+      panel.spacing = unit(1, "mm"),
+      #strip.text.x = element_text(angle = 90, size = 10, hjust = 1)
+      )
+      #ggsave("snmf_kmers.pdf", width = 40, height = 10, units = "cm")
+      return (figure)
+}
+```
+
+
+```{r}
+### determine k
+kfigure_A = run_kmers_barplot_by_k(2)
+kfigure_B = run_kmers_barplot_by_k(3)
+kfigure_C = run_kmers_barplot_by_k(4)
+kfigure_D = run_kmers_barplot_by_k(5)
+kfigure_E = run_kmers_barplot_by_k(6)
+kfigure_F = run_kmers_barplot_by_k(7)
+kfigure_G = run_kmers_barplot_by_k(8)
+
+grid.arrange(kfigure_A, kfigure_B, kfigure_C, kfigure_D, kfigure_E, ncol=1)
+```
