@@ -1,0 +1,158 @@
+# Data Whisperer
+
+**Intelligent dataset comparison that reveals what truly changed.**
+
+Data Whisperer (`Copydata`) is a command-line tool that compares two versions of tabular datasets and generates insightful reports highlighting meaningful changes. Unlike simple diff tools, it understands your data's structure and semantics.
+
+## Features
+
+- 🔍 **Smart Column Matching** - Automatically detects renamed columns using similarity scoring
+- 📊 **Statistical Analysis** - Compares numeric distributions, outliers, and trends
+- 🏷️ **Category Tracking** - Identifies added/removed categories and value changes
+- 📈 **Change Scoring** - Prioritizes the most significant changes for quick review
+- 📝 **Multiple Formats** - Supports CSV, Excel (XLS/XLSX), and JSON files
+- 📄 **Flexible Output** - Generate markdown reports and/or machine-readable JSON
+
+## Installation
+
+```bash
+pip install data-whisperer
+```
+
+## Quick Start
+
+Compare two datasets:
+
+```bash
+copydata old_data.csv new_data.csv
+```
+
+Save report to file:
+
+```bash
+copydata data_v1.xlsx data_v2.xlsx --output-save --output report.md
+```
+
+Generate both markdown and JSON output:
+
+```bash
+copydata before.csv after.csv --output-save --json
+```
+
+## Usage
+
+```bash
+copydata [-h] [--output OUTPUT] [--output-save] [--json] [--rename-threshold THRESHOLD] a b
+```
+
+### Arguments
+
+- `a` - Path to dataset A (older version)
+- `b` - Path to dataset B (newer version)
+
+### Options
+
+- `--output`, `-o` - Output filename for markdown report (default: `copydata_report.md`)
+- `--output-save` - Save reports to files instead of printing to stdout
+- `--json`, `-j` - Also generate JSON output with full comparison data
+- `--rename-threshold` - Similarity threshold for detecting renamed columns (default: 0.82)
+
+## What Does It Analyze?
+
+### Summary Statistics
+- Row count changes
+- Overall null value percentages
+- Duplicate row detection
+
+### Structural Changes
+- Added columns
+- Removed columns
+- Renamed columns (with similarity scores)
+
+### Column-Level Analysis
+
+**For Numeric Columns:**
+- Mean, median, and standard deviation
+- Min/max value changes
+- Outlier detection using IQR method
+- Percentage changes in key metrics
+
+**For Categorical Columns:**
+- Unique value counts
+- Top value distributions
+- New categories added
+- Categories removed
+- Common category overlap
+
+## Example Output
+
+```markdown
+# Data Whisperer Report
+
+## Summary
+- Row count A: 1000, B: 1200, Δ: 200
+- Total nulls A: 50 (0.50%), B: 75 (0.62%)
+- Duplicate rows A: 5, B: 3, Δ: -2
+
+## Structural Changes
+- Added columns (1): customer_segment
+- Removed columns (0): None
+- Probable renames (1):
+  - user_id -> customer_id (similarity 0.850)
+
+## Column Level Changes
+### revenue
+- Type A: numeric, Type B: numeric
+- Mean: A: 1.23K, B: 1.45K
+- Mean % change: 17.89%
+- Outliers A: 12, B: 18
+```
+
+## Requirements
+
+- Python 3.7+
+- pandas
+- numpy
+
+## Use Cases
+
+- **Data Pipeline Monitoring** - Track changes in daily/weekly data refreshes
+- **Model Retraining** - Understand how training data evolved between versions
+- **ETL Validation** - Verify transformations produced expected changes
+- **Schema Migration** - Document structural changes during database updates
+- **Data Quality Auditing** - Identify unexpected changes in production data
+
+## Advanced Features
+
+### Column Rename Detection
+
+Data Whisperer uses fuzzy string matching to detect renamed columns. Adjust sensitivity:
+
+```bash
+copydata old.csv new.csv --rename-threshold 0.9  # More strict
+copydata old.csv new.csv --rename-threshold 0.7  # More lenient
+```
+
+### Type Inference
+
+Automatically classifies columns as:
+- **Numeric** - For statistical analysis
+- **Categorical** - For tracking value changes (≤20 unique values)
+- **Text** - For high-cardinality strings
+- **Datetime** - For temporal data
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+## License
+
+MIT License
+
+## Author
+
+Data Whisperer - Making dataset evolution transparent and actionable.
+
+---
+
+*Focus on meaningful numeric shifts, category churn, and schema changes.*
