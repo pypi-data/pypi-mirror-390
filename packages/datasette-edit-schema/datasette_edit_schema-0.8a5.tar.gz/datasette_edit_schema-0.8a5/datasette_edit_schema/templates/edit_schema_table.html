@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Edit table {{ table }} in {{ database.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+html body input[type="text"],
+html body input[type="search"] {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    width: 60%;
+    padding: 9px 4px;
+    display: inline-block;
+    font-size: 1em;
+    font-family: Helvetica, sans-serif;
+}
+input[type=submit].button-small {
+    font-size: 0.7em;
+}
+form input[type=submit].button-red {
+    background: red;
+    border-color: rgb(171, 112, 112);
+}
+
+select {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 9px 4px;
+    display: inline-block;
+    font-size: 1em;
+    font-family: Helvetica, sans-serif;
+}
+select.select-smaller {
+    width: 90%;
+}
+html body label {
+    font-weight: bold;
+    display: inline-block;
+    width: auto;
+}
+.sortable-columns {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+.sortable-columns li {
+    /* Without this the element width reduces while being dragged: */
+    width: 100%;
+    margin-bottom: 5px;
+}
+.sort-order {
+    display: none;
+}
+.handle {
+  content: '....';
+  width: 10px;
+  height: 20px;
+  display: inline-block;
+  overflow: hidden;
+  line-height: 5px;
+  padding: 3px 4px;
+  cursor: move;
+  cursor: grab;
+  vertical-align: middle;
+  margin-top: -.7em;
+  margin-right: .3em;
+  font-size: 12px;
+  font-family: sans-serif;
+  letter-spacing: 2px;
+  color: #666;
+  text-shadow: 1px 0 1px black;
+}
+.handle::after {
+  content: '.. .. .. ..';
+}
+</style>
+<script src="{{ base_url }}-/static-plugins/datasette-edit-schema/draggable.1.0.0-beta.11.bundle.min.js"></script>
+<style>
+.draggable-source--is-dragging {
+    visibility: hidden;
+}
+</style>
+{% endblock %}
+
+{% block crumbs %}
+{{ crumbs.nav(request=request, database=database.name, table=table) }}
+{% endblock %}
+
+{% block content %}
+<h1>Edit table <a href="{{ base_url }}{{ database.name|quote_plus }}/{{ tilde_encode(table) }}">{{ database.name }}/{{ table }}</a></h1>
+
+{% if can_rename_table %}
+<h2>Rename table</h2>
+
+<form class="core" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+    <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+    <p><label>New name&nbsp; <input type="text" name="name"></label>
+    <input type="hidden" name="rename_table" value="1">
+    <input type="submit" value="Rename">
+</form>
+{% endif %}
+
+<form class="core" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+<h2>Change existing columns</h2>
+<ul class="sortable-columns">
+{% for column in columns %}
+    <li data-original-name="{{ column.name }}">
+        <input style="width: 25%" type="text" size="10" name="name.{{ column.name }}" value="{{ column.name }}">
+        <label>Type: <select name="type.{{ column.name }}">
+            {% for type in types %}
+                <option{% if type.value == column.type %} selected="selected"{% endif %} value="{{ type.value }}">{{ type.name }}</option>
+            {% endfor %}
+        </select></label>
+        <label class="sort-order">Sort order
+            <input type="number" class="column-sort-input" size="2" name="sort.{{ column.name }}" value="{{ loop.index }}">
+        </label>
+        <label>Delete 
+            <input  name="delete.{{ column.name }}" type="checkbox">
+        </label>
+        <span class="handle"></span>
+        {% if column.examples %}
+            <div style="width: 60%; font-size: 0.7em;">{{ ", ".join(column.examples) }}</div>
+        {% else %}
+            <div style="width: 60%; font-size: 0.7em; color: #666">- no example values -</div>
+        {% endif %}
+    </li>
+{% endfor %}
+</ul>
+<p>
+    <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+    <input type="hidden" name="action" value="update_columns">
+    <input type="submit" value="Apply changes">
+</p>
+</form>
+
+<h2>Add a column</h2>
+
+<form class="core" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+    <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+    <input type="hidden" name="add_column" value="1">
+    <p><label>Name &nbsp;<input type="text" name="name"></label>
+    <label>Column type <select name="type">
+        {% for type in types %}
+            <option value="{{ type.value }}">{{ type.name }}</option>
+        {% endfor %}
+    </select></label></p>
+    <input type="submit" value="Add column">
+</form>
+
+<h2>Update foreign key relationships</h2>
+
+<p>Configure foreign keys on columns so Datasette can link related tables together.</p>
+
+<style type="text/css">
+table.foreign-key-options td {
+    white-space: normal;
+}
+</style>
+
+<form class="core" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+    <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+    <input type="hidden" name="action" value="update_foreign_keys">
+    <table class="foreign-key-options">
+    {% for column in all_columns_to_manage_foreign_keys %}
+      <tr>
+        <td><label for="fk.{{ column.name }}">{{ column.name }}</label></td>
+        <td><select id="fk.{{ column.name }}" name="fk.{{ column.name }}" class="select-smaller">
+            <option value="">-- {% if not column.suggested and not column.foreign_key %}no suggestions{% else %}none{% endif %} --</option>
+            {% for option in column.html_options %}<option value="{{ option.value }}" {% if option.selected %} selected="selected"{% endif %}>{{ option.name }}</option>{% endfor %}
+            </select>
+            {% if column.suggested %}<p style="margin: 0; font-size: 0.8em">Suggested: {{ column.suggested }}</p>{% endif %}
+            </td>
+      </tr>
+    {% endfor %}
+    </table>
+    <input type="submit" value="Update foreign keys">
+</form>
+
+{% if potential_pks %}
+    <h2>{% if is_rowid_table %}Set a primary key{% else %}Change the primary key{% endif %}</h2>
+
+    <p>The primary key column uniquely identifies each row in the table.</p>
+
+    <form class="core" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+        <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+        <input type="hidden" name="action" value="update_primary_key">
+        <label for="primary_key">Primary key column &nbsp;</label>
+        <select id="primary_key" name="primary_key">
+            {% if current_pk %}
+                <option selected="selected" value="{{ current_pk }}">{{ current_pk }} (current)</option>
+            {% endif %}
+            {% for pk in potential_pks %}
+                <option>{{ pk }}</option>
+            {% endfor %}
+        </select>
+        <p><input type="submit" value="Set primary key"></p>
+    </form>
+{% endif %}
+
+{% if non_primary_key_columns or existing_indexes %}
+    <h2>Table indexes</h2>
+
+    <p>Indexes can speed up filter and sort operations against indexed columns.</p>
+
+    <form class="core" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+        <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+        {% if non_primary_key_columns %}
+            <p><label for="id_add_index_column">
+                Add index on column
+            </label> <select name="add_index_column" id="id_add_index_column">
+                {% for column in non_primary_key_columns %}
+                    <option value="{{ column.name }}">{{ column.name }}</option>
+                {% endfor %}
+            </select>
+            <label><input type="checkbox" name="add_index_unique"> Unique</label>
+            <input type="submit" name="add_index" value="Add index">
+        </p>
+        {% endif %}
+        {% if existing_indexes %}
+            <h3>Existing indexes</h3>
+            {% for index in existing_indexes %}
+                <p>
+                    <strong>{{ index.name }}</strong>
+                    {% if index.unique %} (unique){% endif %}
+                    on column{{ 's' if index.columns[1:] else '' }}
+                    <code>{{ index.columns|join(', ') }}</code>
+                    <input class="button-red button-small" type="submit" name="drop_index_{{ index.name }}" value="Drop index">
+                </p>
+            {% endfor %}
+        {% endif %}
+    </form>
+{% endif %}
+
+{% if can_drop_table %}
+    <h2>Drop table</h2>
+
+    <form class="core" id="drop-table-form" action="{{ base_url }}-/edit-schema/{{ database.name|quote_plus }}/{{ tilde_encode(table) }}" method="post">
+        <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+        <input type="hidden" name="drop_table" value="1">
+        <input type="submit" class="button-red" value="Drop this table">
+    </form>
+{% endif %}
+
+<h2>Current table schema</h2>
+<pre>{{ schema }}</pre>
+
+<script>
+let sortableColumns = new Draggable.Sortable(document.querySelectorAll('ul'), {
+    draggable: 'li',
+    handle: '.handle'
+});
+sortableColumns.on('sortable:stop', (ev) => {
+    // Update the .column-sort-input inputs
+    setTimeout(() => Array.from(document.querySelectorAll('.column-sort-input')).forEach((el, i) => {
+        el.value = i + 1;
+    }), 200);
+});
+
+document.getElementById('drop-table-form').addEventListener('submit', function(event) {
+    const userConfirmation = confirm("Are you sure you want to delete this table? This cannot be reversed.");
+    if (!userConfirmation) {
+        event.preventDefault();
+    }
+});
+</script>
+
+{% endblock %}
