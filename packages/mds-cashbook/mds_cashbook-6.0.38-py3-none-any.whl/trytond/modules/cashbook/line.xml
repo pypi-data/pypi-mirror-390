@@ -1,0 +1,278 @@
+<?xml version="1.0"?>
+<!-- This file is part of the cashbook-module from m-ds for Tryton.
+The COPYRIGHT file at the top level of this repository contains the
+full copyright notices and license terms. -->
+<tryton>
+    <data>
+
+        <record model="ir.ui.view" id="cashbook_line_context_form_form">
+            <field name="model">cashbook.line.context</field>
+            <field name="type">form</field>
+            <field name="name">cashbook_line_context_form</field>
+        </record>
+
+        <!-- views -->
+        <record model="ir.ui.view" id="line_view_list">
+            <field name="model">cashbook.line</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="name">line_list</field>
+        </record>
+        <record model="ir.ui.view" id="line_recon_view_list">
+            <field name="model">cashbook.line</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="15"/>
+            <field name="name">line_recon_list</field>
+        </record>
+        <record model="ir.ui.view" id="line_view_form">
+            <field name="model">cashbook.line</field>
+            <field name="type">form</field>
+            <field name="priority" eval="20"/>
+            <field name="name">line_form</field>
+        </record>
+
+        <!-- action view -->
+        <record model="ir.action.act_window" id="act_line_view2">
+            <field name="name">Cashbook Line</field>
+            <field name="res_model">cashbook.line</field>
+            <field name="context_model">cashbook.line.context</field>
+            <field name="context_domain"
+                eval="[
+                    If(Bool(Eval('date_from')), ('date', '&gt;=', Eval('date_from')), ()),
+                    If(Bool(Eval('date_to')), ('date', '&lt;=', Eval('date_to')), ()),
+                    ['OR',
+                        ('state', '=', 'edit'),
+                        If(Bool(Eval('done')), ('state', '=', 'done'), ('state', '=', 'edit')),
+                        If(Bool(Eval('checked')), ('state', 'in', ['check', 'recon']), ('state', '=', 'edit')),
+                    ],
+                    ]"
+                pyson="1"/>
+            <field name="domain"
+                eval="[('cashbook', '=', Eval('cashbook', -1))]"
+                pyson="1"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_line_view2-1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="line_view_list"/>
+            <field name="act_window" ref="act_line_view2"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_line_view2-2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="line_view_form"/>
+            <field name="act_window" ref="act_line_view2"/>
+        </record>
+
+        <!-- domain view -->
+        <record model="ir.action.act_window.domain" id="act_line_domain_current">
+            <field name="name">Current Month</field>
+            <field name="sequence" eval="10"/>
+            <field name="domain" eval="[('month', '=', 0)]" pyson="1"/>
+            <field name="count" eval="True"/>
+            <field name="act_window" ref="act_line_view2"/>
+        </record>
+        <record model="ir.action.act_window.domain" id="act_line_domain_last">
+            <field name="name">Last Month</field>
+            <field name="sequence" eval="20"/>
+            <field name="domain" eval="[('month', '=', 1)]" pyson="1"/>
+            <field name="count" eval="True"/>
+            <field name="act_window" ref="act_line_view2"/>
+        </record>
+        <record model="ir.action.act_window.domain" id="act_line_domain_all">
+            <field name="name">All</field>
+            <field name="sequence" eval="999"/>
+            <field name="domain"/>
+            <field name="act_window" ref="act_line_view2"/>
+        </record>
+
+        <!-- permission -->
+        <!-- anon: deny all -->
+        <record model="ir.model.access" id="access_line-anon">
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <!-- group_cashbook_admin: read/write -->
+        <record model="ir.model.access" id="access_line-group_cashbook_admin">
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <!-- cashbook: read/write -->
+        <record model="ir.model.access" id="access_line-group_cashbook">
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+
+        <!-- permission by rule - admin -->
+        <record model="ir.rule.group" id="rg_line_write_adm">
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+            <field name="name">Administrators: Cashbook line read/write</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <record model="ir.rule" id="rg_line_write_adm-1">
+            <field name="domain" eval="[]" pyson="1"/>
+            <field name="rule_group" ref="rg_line_write_adm"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_line_write_adm-group_cashbook_admin">
+            <field name="rule_group" ref="rg_line_write_adm"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- permission by rule - read/write: owner, reviewer -->
+        <record model="ir.rule.group" id="rg_line_write">
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+            <field name="name">Owners and reviewers: Cashbook line write</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <record model="ir.rule" id="rg_line_write-1">
+            <field name="domain" eval="['OR',
+                    ('cashbook.owner.id', '=', Eval('user', {}).get('id', -1)),
+                    ('cashbook.reviewer.id', 'in', Eval('groups', [])),
+                ]" pyson="1"/>
+            <field name="rule_group" ref="rg_line_write"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_line_write-group_cashbook">
+            <field name="rule_group" ref="rg_line_write"/>
+            <field name="group" ref="group_cashbook"/>
+        </record>
+
+        <!-- permission by rule - read: observer -->
+        <record model="ir.rule.group" id="rg_line_read">
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+            <field name="name">Observer: Cashbook line read</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <record model="ir.rule" id="rg_line_read-1">
+            <field name="domain" eval="[
+                    ('cashbook.observer.id', 'in', Eval('groups', [])),
+                ]" pyson="1"/>
+            <field name="rule_group" ref="rg_line_read"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_line_read-group_cashbook">
+            <field name="rule_group" ref="rg_line_read"/>
+            <field name="group" ref="group_cashbook"/>
+        </record>
+
+        <record model="ir.rule.group" id="rg_line_companies">
+            <field name="name">User in companies</field>
+            <field name="model"
+                search="[('model', '=', 'cashbook.line')]"/>
+            <field name="global_p" eval="True"/>
+        </record>
+        <record model="ir.rule" id="r_line_companies">
+            <field name="domain"
+                eval="[('cashbook.company', 'in', Eval('companies', []))]"
+                pyson="1"/>
+            <field name="rule_group" ref="rg_line_companies"/>
+        </record>
+
+
+        <!-- button - edit -->
+        <record model="ir.model.button" id="line_wfedit_button">
+            <field name="name">wfedit</field>
+            <field name="string">Edit</field>
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfedit_button-group_cashbook_admin">
+            <field name="button" ref="line_wfedit_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfedit_button-group_cashbook_checkline">
+            <field name="button" ref="line_wfedit_button"/>
+            <field name="group" ref="group_cashbook_checkline"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfedit_button-group_cashbook_doneline">
+            <field name="button" ref="line_wfedit_button"/>
+            <field name="group" ref="group_cashbook_doneline"/>
+        </record>
+
+        <!-- button - check -->
+        <record model="ir.model.button" id="line_wfcheck_button">
+            <field name="name">wfcheck</field>
+            <field name="string">Check</field>
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfcheck_button-group_cashbook_admin">
+            <field name="button" ref="line_wfcheck_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfcheck_button-group_cashbook_checkline">
+            <field name="button" ref="line_wfcheck_button"/>
+            <field name="group" ref="group_cashbook_checkline"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfcheck_button-group_cashbook_doneline">
+            <field name="button" ref="line_wfcheck_button"/>
+            <field name="group" ref="group_cashbook_doneline"/>
+        </record>
+
+        <!-- button - recon -->
+        <record model="ir.model.button" id="line_wfrecon_button">
+            <field name="name">wfrecon</field>
+            <field name="string">Reconciled</field>
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfrecon_button-group_cashbook_admin">
+            <field name="button" ref="line_wfrecon_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfrecon_button-group_cashbook_checkline">
+            <field name="button" ref="line_wfrecon_button"/>
+            <field name="group" ref="group_cashbook_checkline"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfrecon_button-group_cashbook_doneline">
+            <field name="button" ref="line_wfrecon_button"/>
+            <field name="group" ref="group_cashbook_doneline"/>
+        </record>
+
+        <!-- button - done -->
+        <record model="ir.model.button" id="line_wfdone_button">
+            <field name="name">wfdone</field>
+            <field name="string">Done</field>
+            <field name="model" search="[('model', '=', 'cashbook.line')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfdone_button-group_cashbook_admin">
+            <field name="button" ref="line_wfdone_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="line_wfdone_button-group_cashbook_doneline">
+            <field name="button" ref="line_wfdone_button"/>
+            <field name="group" ref="group_cashbook_doneline"/>
+        </record>
+
+    </data>
+</tryton>
