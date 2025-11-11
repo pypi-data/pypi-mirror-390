@@ -1,0 +1,138 @@
+Metadata-Version: 2.4
+Name: netlify-python
+Version: 0.3.3
+Summary: Bare-bones python library for the official Netlify API
+Author-email: Chris Brousseau <cbrews@users.noreply.github.com>
+License: MIT
+Keywords: http,netlify,client-library
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Framework :: Pydantic :: 1
+Classifier: Framework :: Pydantic :: 2
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: httpx>=0.23.0
+Requires-Dist: python-dateutil>=2.8.2
+Requires-Dist: pydantic>=1
+Provides-Extra: dev
+Requires-Dist: httpx==0.28.1; extra == "dev"
+Requires-Dist: black==25.9.0; extra == "dev"
+Requires-Dist: mypy==1.18.2; extra == "dev"
+Requires-Dist: ruff==0.14.4; extra == "dev"
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: python-dateutil==2.9.0.post0; extra == "dev"
+Requires-Dist: types-python-dateutil==2.9.0.20251108; extra == "dev"
+Requires-Dist: pytest-cov==7.0.0; extra == "dev"
+Requires-Dist: pytest-httpx==0.35.0; extra == "dev"
+Requires-Dist: pre-commit==4.3.0; extra == "dev"
+Requires-Dist: pytest-mock==3.15.1; extra == "dev"
+Provides-Extra: build
+Requires-Dist: build; extra == "build"
+Requires-Dist: twine; extra == "build"
+Dynamic: license-file
+
+# Netlify Python Client SDK
+
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/cbrews/netlify-python?label=netlify-python)
+[![CI](https://github.com/cbrews/netlify-python/actions/workflows/ci.yml/badge.svg)](https://github.com/cbrews/netlify-python/actions/workflows/ci.yml)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/netlify-python)
+![PyPI - License](https://img.shields.io/pypi/l/netlify-python)
+
+This is a work in progress package designed to wrap the [Netlify APIs](https://docs.netlify.com/api/get-started/) for python client users.
+
+Full openapi docs: https://open-api.netlify.com/
+
+Note that this library is in pre-release and its APIs may be changed in later versions.
+
+## User Guide
+
+This section is intended for developers who want to use the library to make requests to Netlify.
+
+### Installation
+
+⚠ `netlify-python` currently supports python 3.10+.
+
+Recommended installation through [PIP](https://pypi.org/project/netlify-python/) via pypi.
+
+```shell
+$ pip install netlify-python
+```
+
+### Usage
+
+This client currently only supports [Personal Access Tokens](https://app.netlify.com/user/applications#personal-access-tokens).  Navigate to User Settings > Applications > Personal Access Tokens and create a new access token.  This is the token you'll use in your initialization of the client.
+
+This created a client that can send http requests.
+
+```python
+from netlify import NetlifyClient
+
+client = NetlifyClient(access_token="my-access-token")
+
+client.get_current_user() # Get current user information
+client.create_site_deploy('site-id', 'path/to/zip/file.zip')
+```
+
+### API
+
+⚠ This client is currently expanding its API support, more documentation coming soon here.
+
+## For Developers
+
+This section is for developers who want to improve this library.  The default development version is on 3.10.4 but we are currently supporting all python versions >= 3.10
+
+### Development Dependencies
+
+Make sure that you have [`pyenv`](https://github.com/pyenv/pyenv).  You can test this by checking your python version after opening this directory.
+
+```bash
+$ python --version
+Python 3.10.4
+```
+
+Make sure your active python version has `virtualenv` setup via:
+
+```bash
+$ python -m pip install virtualenv
+```
+
+Create and activate your venv
+```bash
+$ python -m venv venv
+$ . venv/bin/activate
+```
+
+### Starting development
+
+Everything here out should be in the venv.
+
+Install your dependencies:
+```bash
+$ pip install .[dev]
+```
+
+Setup pre-commits:
+```bash
+$ pre-commit install
+```
+
+You should be good to go now.
+
+### Building the package
+Get your build dependencies in place:
+
+```bash
+$ pip install .[build]
+```
+
+Then build the package:
+```bash
+$ python -m build
+```

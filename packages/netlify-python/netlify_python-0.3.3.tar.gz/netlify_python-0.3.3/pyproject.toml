@@ -1,0 +1,120 @@
+[project]
+name = "netlify-python"
+description = "Bare-bones python library for the official Netlify API"
+authors = [
+  { name="Chris Brousseau", email="cbrews@users.noreply.github.com" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dynamic = ["version"]
+dependencies = [
+  "httpx>=0.23.0",
+  "python-dateutil>=2.8.2",
+  "pydantic>=1",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "License :: OSI Approved :: MIT License",
+  "Framework :: Pydantic :: 1",
+  "Framework :: Pydantic :: 2",
+]
+keywords = [
+  "http", 
+  "netlify", 
+  "client-library",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "black==25.9.0",
+  "mypy==1.18.2",
+  "ruff==0.14.4",
+  "pytest==8.4.2",
+  "python-dateutil==2.9.0.post0",
+  "types-python-dateutil==2.9.0.20251108",
+  "pytest-cov==7.0.0",
+  "pytest-httpx==0.35.0",
+  "pre-commit==4.3.0",
+  "pytest-mock==3.15.1",
+]
+build = [
+  "build",
+  "twine",
+]
+
+[build-system]
+requires = ['setuptools', 'wheel']
+
+[tool.setuptools.package-data]
+netlify = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = { attr = "netlify.__version__" }
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.10"
+
+explicit_package_bases = true
+warn_unused_configs = true
+warn_redundant_casts = true
+
+strict_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+
+[tool.pytest.ini_options]
+filterwarnings = [
+  "error::DeprecationWarning"
+]
+
+[tool.coverage.run]
+omit = [
+  "*/__main__.py"
+]
+
+[tool.coverage.report]
+fail_under = 100
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "def __repr__",
+  "raise AssertionError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "@(abc.)?abstractmethod",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "Q",   # pyflakes quotes
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "N",   # PEP-8 naming
+  "I",   # isort
+  "PLC", # pylint conventions
+  "PLE", # pylint conventions
+  "PLW", # pylint conventions
+  "RUF",  
+]
