@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Upload CSV{% if selected_name %} to "{{ selected_name }}"{% endif %}{% endblock %}
+
+{% block extra_head %}
+{{ super() }}
+<style type="text/css">
+#file-drop {
+    border: 2px dashed #aaa;
+    border-radius: 1em;
+    width: 80%;
+    font-family: sans-serif;
+    padding: 1em;
+    box-sizing: border-box;
+}
+#file-drop.highlight {
+    border-color: purple;
+    background-color: #8000801f;
+}
+#file-drop label {
+    margin: 0;
+    padding: 1em;
+    font-style: italic;
+    text-align: center;
+    display: block;
+    width: 100%;
+}
+input[type=file] {
+    display: none;
+}
+progress {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    width: 80%;
+    height: 2em;
+    margin-top: 1em;
+}
+progress::-webkit-progress-bar {
+    background-color: #ddd;
+}
+progress::-webkit-progress-value {
+    background-color: #124d77;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Upload CSV</h1>
+
+<form action="/-/upload-csvs" id="uploadForm" method="post" enctype="multipart/form-data">
+
+{% if databases %}
+<p><label>Database &nbsp; &nbsp;
+  <select id="id_database" name="database">
+    {% for database in databases %}
+      <option{% if database.selected %} selected{% endif %}>{{ database.name }}</option>
+    {% endfor %}
+  </select></label>
+</p>
+{% endif %}
+
+<div id="file-drop">
+    <input type="hidden" name="csrftoken" value="{{ csrftoken() }}">
+    <input type="file" name="csv" id="csvUpload">
+    <label for="csvUpload">Select a file to upload or drag and drop one here</label>
+</div>
+<p style="margin-bottom: -0.8em;font-size: 0.8em; display: none;" id="progress-label">Uploading...</p>
+<progress class="progress" value="0" max="100">Uploading...</progress>
+<p style="margin-top: 1em">
+    <label for="id_table_name">Table name</label>&nbsp; &nbsp;
+    <input required id="id_table_name" type="text" name="table_name">
+</p>
+<p><input type="submit" value="Upload file" class="button"></p>
+</form>
+</div>
+
+<script>
+var uploadForm = document.getElementById("uploadForm");
+var fileInput = document.getElementsByName("csv")[0];
+var dropArea = document.getElementById("file-drop");
+var progress = document.getElementsByTagName("progress")[0];
+var progressLabel = document.getElementById("progress-label");
+var label = dropArea.getElementsByTagName("label")[0];
+var tableName = document.getElementById("id_table_name");
+var databaseName = document.getElementById("id_database");
+
+// State that holds the most-recent uploaded File, from a FileList
+let currentFile = null;
+
+progress.style.display = "none";
+fileInput.addEventListener("change", () => {
+  setFile(fileInput.files[0]);
+});
+["dragenter", "dragover", "dragleave", "drop"].forEach(eventName => {
+  dropArea.addEventListener(
+    eventName,
+    e => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    false
+  );
+});
+["dragenter", "dragover"].forEach(eventName => {
+  dropArea.addEventListener(
+    eventName,
+    () => {
+      dropArea.classList.add("highlight");
+    },
+    false
+  );
+});
+
+["dragleave", "drop"].forEach(eventName => {
+  dropArea.addEventListener(
+    eventName,
+    () => {
+      dropArea.classList.remove("highlight");
+    },
+    false
+  );
+});
+
+dropArea.addEventListener(
+  "drop",
+  e => {
+    setFile(e.dataTransfer.files[0]);
+  },
+  false
+);
+
+function formattedBytes(bytes) {
+  if (bytes < 1024) {
+    return bytes + " bytes";
+  }
+  if (bytes < 1024 * 1024) {
+    return (bytes / 1024).toFixed(1) + " KB";
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return (bytes / 1024 / 1024).toFixed(1) + " MB";
+  }
+  if (bytes < 1024 * 1024 * 1024 * 1024) {
+    return (bytes / 1024 / 1024 / 1024).toFixed(1) + " GB";
+  }
+}
+
+function setFile(file) {
+  if (currentFile != file) {
+    currentFile = file;
+  }
+  label.innerText = file.name;
+  label.innerHTML += '<br><span style="font-size: 0.9em">' + formattedBytes(file.size) + '</span>';
+  if (!tableName.value.trim()) {
+    tableName.value = file.name.replace(/\.csv$/i, "").trim();
+  }
+}
+
+// Onsubmit handler
+uploadForm.addEventListener("submit", ev => {
+  ev.preventDefault();
+  if (!tableName.value.trim()) {
+    alert("Please enter a table name");
+    return;
+  }
+  if (!currentFile) {
+    alert("Please select a file");
+    return;
+  }
+  var xhr = new XMLHttpRequest();
+  var formData = new FormData();
+  dropArea.style.display = "none";
+  progressLabel.style.display = "block";
+  xhr.open("POST", fileInput.form.action, true);
+
+  // Add following event listener
+  xhr.upload.addEventListener("progress", function(e) {
+    progress.value = (e.loaded * 100.0) / e.total || 100;
+  });
+  progress.style.display = "block";
+
+  xhr.addEventListener("readystatechange", function(e) {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var data = JSON.parse(xhr.responseText);
+      // Show server-side processing progress bar
+      progressLabel.innerHTML = "Processing...";
+      progress.value = 0;
+      var url = `/${data.database_path}/_csv_progress_.json?id=${data.task_id}&_shape=array`;
+      function pollForProgress() {
+        fetch(url).then(d => d.json()).then(rows => {
+          if (rows[0].error) {
+            alert("An error occurred processing that file:\n\n" + rows[0].error);
+            location.href = location.href;
+          }
+          progress.value = (rows[0].bytes_done * 100.0) / rows[0].bytes_todo;
+          progressLabel.innerHTML = `Processing... ${Number(rows[0].rows_done).toLocaleString()} rows imported`;
+          if (rows[0].bytes_done == rows[0].bytes_todo) {
+              document.location = JSON.parse(xhr.responseText).url;
+          } else {
+              setTimeout(pollForProgress, 1000);
+          }
+        });
+      }
+      pollForProgress();
+    } else if (xhr.readyState == 4 && xhr.status != 200) {
+      alert("Error!");
+    }
+  });
+
+  formData.append("xhr", "1");
+  formData.append("csrftoken", "{{ csrftoken() }}");
+  formData.append("csv", currentFile);
+  formData.append("table", tableName.value);
+  if (databaseName) {
+    formData.append("database", databaseName.value);
+  }
+  xhr.send(formData);
+});
+</script>
+{% endblock %}
