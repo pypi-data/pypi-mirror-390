@@ -1,0 +1,2 @@
+class FilterOperand(object):
+    pass
