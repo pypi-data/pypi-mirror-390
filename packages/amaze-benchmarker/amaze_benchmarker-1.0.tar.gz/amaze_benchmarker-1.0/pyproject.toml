@@ -1,0 +1,95 @@
+[project]
+name = "amaze-benchmarker"
+version = "1.0"
+authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
+description = "Benchmark generator for sighted maze-navigating agents"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  
+  "Programming Language :: Python :: 3 :: Only",
+
+  "License :: OSI Approved :: MIT License",
+
+  "Operating System :: Unix",
+
+  "Intended Audience :: Science/Research", 
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Artificial Life",
+]
+dependencies = [
+  "numpy<2.0.0",
+  "pandas",
+  "PyQt5"
+]
+
+[project.urls]
+Homepage = "https://github.com/kgd-al/amaze"
+Documentation = "https://amaze.readthedocs.io/"
+"Bug Tracker" = "https://github.com/kgd-al/amaze/issues"
+
+[project.scripts]
+amaze = "amaze.bin.main:main"
+amaze-stats = "amaze.bin.tools.stats:main"
+amaze-interpolate = "amaze.bin.tools.interpolator:main"
+
+[build-system]
+requires = [
+  "setuptools>=65.0",
+  "setuptools_scm[toml]",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+sb3 = [
+  "stable_baselines3",
+  "tensorboard",
+  "graphviz"
+]
+
+full = [
+  "amaze-benchmarker[sb3]"
+]
+
+tests = [
+  "amaze-benchmarker",
+  "pytest",
+  "pytest-steps", "pytest-sugar", "pytest-qt",
+  "coverage",
+  "flake8", "flake8-bugbear", "flake8-pyproject",
+  "black",
+  "psutil",
+  "tabulate"
+]
+
+docs = [
+  "amaze-benchmarker[full]",  # Document everything, *everything*
+  "sphinx<7.4.0",
+  "sphinx-pyproject",         # Auto-extract project version
+  "sphinx-qt-documentation",  # Link with qt documentation
+  "sphinx-copybutton",        # Easily copy code
+  "myst-parser",              # Better parser
+  "furo"                      # Style
+]
+
+dev = [
+  "amaze-benchmarker[full,tests,docs]"
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = ["error"]
+testpaths = ["tests"]
+#qt_log_level_fail = "WARNING"
+
+[tool.black]
+line-length = 89
+
+[tool.flake8]
+max-line-length = 88
+extend-select = ['B950']
+extend-ignore = ['E203', 'E501', 'E701']

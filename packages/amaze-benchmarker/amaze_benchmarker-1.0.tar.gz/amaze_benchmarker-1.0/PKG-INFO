@@ -1,0 +1,235 @@
+Metadata-Version: 2.4
+Name: amaze-benchmarker
+Version: 1.0
+Summary: Benchmark generator for sighted maze-navigating agents
+Author-email: Kevin Godin-Dubois <k.j.m.godin-dubois@vu.nl>
+Project-URL: Homepage, https://github.com/kgd-al/amaze
+Project-URL: Documentation, https://amaze.readthedocs.io/
+Project-URL: Bug Tracker, https://github.com/kgd-al/amaze/issues
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Unix
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Scientific/Engineering :: Artificial Life
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy<2.0.0
+Requires-Dist: pandas
+Requires-Dist: PyQt5
+Provides-Extra: sb3
+Requires-Dist: stable_baselines3; extra == "sb3"
+Requires-Dist: tensorboard; extra == "sb3"
+Requires-Dist: graphviz; extra == "sb3"
+Provides-Extra: full
+Requires-Dist: amaze-benchmarker[sb3]; extra == "full"
+Provides-Extra: tests
+Requires-Dist: amaze-benchmarker; extra == "tests"
+Requires-Dist: pytest; extra == "tests"
+Requires-Dist: pytest-steps; extra == "tests"
+Requires-Dist: pytest-sugar; extra == "tests"
+Requires-Dist: pytest-qt; extra == "tests"
+Requires-Dist: coverage; extra == "tests"
+Requires-Dist: flake8; extra == "tests"
+Requires-Dist: flake8-bugbear; extra == "tests"
+Requires-Dist: flake8-pyproject; extra == "tests"
+Requires-Dist: black; extra == "tests"
+Requires-Dist: psutil; extra == "tests"
+Requires-Dist: tabulate; extra == "tests"
+Provides-Extra: docs
+Requires-Dist: amaze-benchmarker[full]; extra == "docs"
+Requires-Dist: sphinx<7.4.0; extra == "docs"
+Requires-Dist: sphinx-pyproject; extra == "docs"
+Requires-Dist: sphinx-qt-documentation; extra == "docs"
+Requires-Dist: sphinx-copybutton; extra == "docs"
+Requires-Dist: myst-parser; extra == "docs"
+Requires-Dist: furo; extra == "docs"
+Provides-Extra: dev
+Requires-Dist: amaze-benchmarker[docs,full,tests]; extra == "dev"
+Dynamic: license-file
+
+# AMaze
+
+[![JOSS](https://joss.theoj.org/papers/bc6892f6873808ced10bc8c4c222e635/status.svg)](https://joss.theoj.org/papers/bc6892f6873808ced10bc8c4c222e635)
+
+[![PyPI version](https://badge.fury.io/py/amaze-benchmarker.svg)](https://badge.fury.io/py/amaze-benchmarker)
+[![Documentation Status](https://readthedocs.org/projects/amaze/badge/?version=latest)](https://amaze.readthedocs.io/en/latest/?badge=latest)
+[![Downloads](https://static.pepy.tech/badge/amaze-benchmarker)](https://pepy.tech/project/amaze-benchmarker)
+
+![main:status](https://github.com/kgd-al/amaze/actions/workflows/test_and_deploy.yml/badge.svg?branch=main)
+![main:test](https://github.com/kgd-al/amaze/actions/workflows/extensive_testing.yml/badge.svg?branch=main)
+
+
+A lightweight maze navigation task generator for sighted AI agents.
+
+## Mazes
+
+AMaze is primarily a maze generator: its goal is to provide an easy way to 
+generate arbitrarily complex (or simple) mazes for agents to navigate in.
+
+Every maze can be described by a unique, human-readable string:
+
+<picture>
+    <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/maze/dark.png">
+    <img
+        alt="Maze sample"
+        src="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/maze/light.png">
+</picture>
+  
+
+Clues point agents towards the correct direction, which is required for them to solve intersections.
+Traps serve the opposite purpose and are meant to provide more challenge to the maze navigation tasks.
+Finally, Lures are low-danger traps that can be detected using local information only (i.e. go into a wall).
+
+> **_NOTE:_** The path to solution as well as the finish flag are only visible to the human
+
+## Agents
+
+Agents in AMaze are loosely embodied with only access to local physical information (the current cell)
+and one step-removed temporal information (direction of the previous cell, if any).
+The input and output spaces can either be discrete or continuous.
+
+### Discrete inputs
+
+<picture>
+    <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/dark-0.png">
+    <img
+        alt="Discrete inputs"
+        src="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/light-0.png">
+</picture>
+
+In the discrete input case, information is provided in an easily intelligible format of fixed size.
+According to the cell highlighted in the previous example, an agent following the optimal trajectory 
+would receive the following inputs:
+
+<picture>
+    <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/dark-1.png">
+    <img
+        alt="Discrete inputs examples"
+        src="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/light-1.png">
+</picture>
+
+Data is provided in direct order. Input vectors for the example above translate to:
+- Start: [1 0 1 1 0 0 0 0] (3 walls at E W S and no sign)
+- Clue: [.5 0 1 0 0 1 0 0] (1 wall east, coming from the east, sign pointing upwards)
+- Lure: [.5 1 1 0 0 0 .25 1] (still coming from east, walls at N E and sign pointing east with magnitude .25)
+- Trap: [1 0 .5 0 0 0 0 .5] (coming from west, wall on east, sign pointing down with magnitude .5)
+- End: [1 1 .5 0 0 0 0 0] (coming from west, walls at E N)
+
+### Continuous inputs
+
+<picture>
+    <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/dark-2.png">
+    <img
+        alt="Continuous inputs"
+        src="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/light-2.png">
+</picture>
+
+For continuous inputs, a raw grayscale image is directly provided to the agent.
+It contains wall information on the outer edge, as well as the same temporal information as with the
+discrete case (centered pixel on the corresponding border).
+The sign, if any, is thus provided as a potentially complex image that the agent must parse and understand:
+
+<picture>
+    <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/dark-3.png">
+    <img
+        alt="Continuous inputs"
+        src="https://raw.githubusercontent.com/kgd-al/amaze/master/docs/latex/agents/light-3.png">
+</picture>
+
+While the term continuous is a bit of stretch for coarse-grain grayscale images, it highlights the
+difference with the discrete case where every possible input is easily enumerable.
+
+In this case, the input buffer is filled first by columns starting in the upper left corner 
+(as depicted in the image). Thus console output of the input buffer is identical to what is displayed
+in the interface.
+
+### Examples
+
+According to the combinations of input and output spaces, the library can work in one of three ways.
+
+#### Fully discrete
+
+![example_dd](https://raw.githubusercontent.com/kgd-al/amaze/master/docs/demo/dd.gif)
+
+#### Hybrid (continuous inputs, discrete outputs)
+
+![example_dd](https://raw.githubusercontent.com/kgd-al/amaze/master/docs/demo/cd.gif)
+
+#### Fully continuous
+
+![example_cc](https://raw.githubusercontent.com/kgd-al/amaze/master/docs/demo/cc.gif)
+
+## Maze space complexity
+
+To properly correlate mazes that may look very different, AMaze provides two complementary
+complexity metrics $S_M$ and $D_M$.
+The former measures the "surprisingness" of the maze, defined as the entropy over every input state.
+The latter corresponds to the deceptiveness which, similarly, is an entropy measure but focused on
+the odds of seeing the same state with different cues.
+More details can be found in the companion
+[article](https://joss.theoj.org/papers/bc6892f6873808ced10bc8c4c222e635).
+
+<picture>
+    <source
+        media="(prefers-color-scheme: dark)"
+        srcset="https://raw.githubusercontent.com/kgd-al/amaze/joss/docs/latex/complexity/dark.png">
+    <img
+        alt="Complexity of maze space"
+        src="https://raw.githubusercontent.com/kgd-al/amaze/joss/docs/latex/complexity/light.png">
+</picture>
+
+The graph above illustrates the respective distribution of five classes of mazes according to these
+two metrics.
+There, one can see that complex mazes (with clues, lures and traps) are very diverse while solely 
+using traps or lures generates mazes with a bias towards Deceptiveness and Surprisingness,
+respectively.
+
+
+
+## Further reading
+The documentation is available at (https://amaze.readthedocs.io/) including
+installation instruction (pip) and detailed examples.
+
+## Contributing
+
+Contributions to the library increasing its ease of use in both the scientific and
+students communities are more than welcome.
+Any such contribution can be made via a pull request while bugs (in the code or the documentation)
+should be reported in the dedicated tracker.
+
+As a rule of thumb, you should attempt not to add any additional dependencies.
+Currently, the library uses:
+- `numpy` and `pandas` for data processing and formatting
+- `PyQt5` for the interface
+
+Continuous integration and deployment is handled by github directly through the
+`test_and_deploy.yml` workflow file.
+While not directly runnable, the commands used therein are encapsulated in the
+generalist script `commands.sh`.
+Call it with `-h` to get a list of available instructions.
+
+Before performing a pull request, make sure to run the deployment tests first either through `commands.sh before-deploy` or by calling the dedicated script (`deploy_tests.sh`) directly.
+It will install the package under a temporary folder in multiple configurations (user, test, ...) and check for formatting and pep8 compliance.
+
+## Acknowledgement
+
+The lead (and currently sole) developer for this library is K. Godin-Dubois.
+K. Miras and A. V. Kononova have contributed in an advisory and management capacity.
+
+This research was funded by the Hybrid Intelligence Center, a 10-year programme
+funded by the Dutch Ministry of Education, Culture and Science through the
+Netherlands Organisation for Scientific Research,
+[https://hybrid-intelligence-centre.nl](https://hybrid-intelligence-centre.nl), grant number 024.004.022.
