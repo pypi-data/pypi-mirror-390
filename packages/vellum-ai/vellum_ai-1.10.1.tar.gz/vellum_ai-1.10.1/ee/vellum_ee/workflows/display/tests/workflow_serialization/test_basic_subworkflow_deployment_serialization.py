@@ -1,0 +1,309 @@
+from datetime import datetime
+from uuid import uuid4
+
+from deepdiff import DeepDiff
+
+from vellum import WorkflowDeploymentRead
+from vellum_ee.workflows.display.workflows.get_vellum_workflow_display_class import get_workflow_display
+
+from tests.workflows.basic_subworkflow_deployment.workflow import BasicSubworkflowDeploymentWorkflow
+
+
+def test_serialize_workflow(vellum_client):
+    # GIVEN a Workflow with stubbed out API calls
+    deployment = WorkflowDeploymentRead(
+        id=str(uuid4()),
+        created=datetime.now(),
+        label="Example Subworkflow Deployment",
+        name="example_subworkflow_deployment",
+        input_variables=[],
+        output_variables=[],
+        last_deployed_on=datetime.now(),
+        last_deployed_history_item_id=str(uuid4()),
+    )
+    vellum_client.workflow_deployments.retrieve.return_value = deployment
+
+    # WHEN we serialize it
+    workflow_display = get_workflow_display(workflow_class=BasicSubworkflowDeploymentWorkflow)
+    serialized_workflow: dict = workflow_display.serialize()
+
+    # THEN we should get a serialized representation of the Workflow
+    assert serialized_workflow.keys() == {
+        "workflow_raw_data",
+        "input_variables",
+        "state_variables",
+        "output_variables",
+    }
+
+    # AND its input variables should be what we expect
+    input_variables = serialized_workflow["input_variables"]
+    assert len(input_variables) == 2
+    assert not DeepDiff(
+        [
+            {
+                "id": "693cc9a5-8d74-4a58-bdcf-2b4989cdf250",
+                "key": "city",
+                "type": "STRING",
+                "required": True,
+                "default": None,
+                "extensions": {"color": None},
+            },
+            {
+                "id": "19a78824-9a98-4ae8-a1fc-61f81a422a17",
+                "key": "date",
+                "type": "STRING",
+                "required": True,
+                "default": None,
+                "extensions": {"color": None},
+            },
+        ],
+        input_variables,
+        ignore_order=True,
+    )
+
+    # AND its output variables should be what we expect
+    output_variables = serialized_workflow["output_variables"]
+    assert len(output_variables) == 2
+    assert not DeepDiff(
+        [
+            {
+                "id": "3f487916-126f-4d6c-95b4-fa72d875b793",
+                "key": "temperature",
+                "type": "NUMBER",
+            },
+            {
+                "id": "45d53a1e-26e8-4c43-a010-80d141acc249",
+                "key": "reasoning",
+                "type": "STRING",
+            },
+        ],
+        output_variables,
+        ignore_order=True,
+    )
+
+    # AND its raw data should be what we expect
+    workflow_raw_data = serialized_workflow["workflow_raw_data"]
+    assert len(workflow_raw_data["edges"]) == 3
+    assert len(workflow_raw_data["nodes"]) == 4
+
+    # AND each node should be serialized correctly
+    entrypoint_node = workflow_raw_data["nodes"][0]
+    assert entrypoint_node == {
+        "id": "f0eea82b-39cc-44e3-9c0d-12205ed5652c",
+        "type": "ENTRYPOINT",
+        "base": None,
+        "definition": None,
+        "inputs": [],
+        "data": {
+            "label": "Entrypoint Node",
+            "source_handle_id": "13d9eb34-aecb-496d-9e57-d5e786b0bc7c",
+        },
+        "display_data": {
+            "position": {"x": 0.0, "y": -50.0},
+        },
+    }
+
+    subworkflow_node = workflow_raw_data["nodes"][1]
+    assert subworkflow_node == {
+        "id": "bb98a2c4-c9a7-4c39-8f31-dc7961dc9996",
+        "type": "SUBWORKFLOW",
+        "inputs": [
+            {
+                "id": "8107cec2-8215-4730-b52c-859e87a1c116",
+                "key": "city",
+                "value": {
+                    "rules": [
+                        {
+                            "type": "INPUT_VARIABLE",
+                            "data": {"input_variable_id": "693cc9a5-8d74-4a58-bdcf-2b4989cdf250"},
+                        }
+                    ],
+                    "combinator": "OR",
+                },
+            },
+            {
+                "id": "3487e51a-e7fe-4b2c-a1f9-f72c83a329db",
+                "key": "date",
+                "value": {
+                    "rules": [
+                        {
+                            "type": "INPUT_VARIABLE",
+                            "data": {"input_variable_id": "19a78824-9a98-4ae8-a1fc-61f81a422a17"},
+                        }
+                    ],
+                    "combinator": "OR",
+                },
+            },
+        ],
+        "data": {
+            "label": "Example Subworkflow Deployment Node",
+            "error_output_id": None,
+            "source_handle_id": "ff99bf0c-c239-4b8b-8ac1-483b134f94f4",
+            "target_handle_id": "d6194ccf-d31b-4846-8e24-3e189d84351a",
+            "variant": "DEPLOYMENT",
+            "workflow_deployment_id": deployment.id,
+            "release_tag": "LATEST",
+        },
+        "display_data": {"position": {"x": 200.0, "y": -50.0}},
+        "base": {
+            "module": ["vellum", "workflows", "nodes", "displayable", "subworkflow_deployment_node", "node"],
+            "name": "SubworkflowDeploymentNode",
+        },
+        "definition": {
+            "module": ["tests", "workflows", "basic_subworkflow_deployment", "workflow"],
+            "name": "ExampleSubworkflowDeploymentNode",
+        },
+        "trigger": {
+            "id": "d6194ccf-d31b-4846-8e24-3e189d84351a",
+            "merge_behavior": "AWAIT_ANY",
+        },
+        "ports": [{"id": "ff99bf0c-c239-4b8b-8ac1-483b134f94f4", "name": "default", "type": "DEFAULT"}],
+    }
+
+    assert not DeepDiff(
+        [
+            {
+                "id": "18170041-1a70-4836-9fa0-adceba2a1f4f",
+                "type": "TERMINAL",
+                "base": {
+                    "module": [
+                        "vellum",
+                        "workflows",
+                        "nodes",
+                        "displayable",
+                        "final_output_node",
+                        "node",
+                    ],
+                    "name": "FinalOutputNode",
+                },
+                "definition": None,
+                "data": {
+                    "label": "Final Output",
+                    "name": "temperature",
+                    "target_handle_id": "23117248-df28-4519-bebc-abcb24f966b3",
+                    "output_id": "3f487916-126f-4d6c-95b4-fa72d875b793",
+                    "output_type": "NUMBER",
+                    "node_input_id": "6f4955d8-8a3f-4db7-8293-7affc5877dcd",
+                },
+                "inputs": [
+                    {
+                        "id": "6f4955d8-8a3f-4db7-8293-7affc5877dcd",
+                        "key": "node_input",
+                        "value": {
+                            "rules": [
+                                {
+                                    "type": "NODE_OUTPUT",
+                                    "data": {
+                                        "node_id": "bb98a2c4-c9a7-4c39-8f31-dc7961dc9996",
+                                        "output_id": "d901cbed-9905-488c-be62-e2668f85438f",
+                                    },
+                                }
+                            ],
+                            "combinator": "OR",
+                        },
+                    }
+                ],
+                "display_data": {"position": {"x": 400.0, "y": -175.0}},
+            },
+            {
+                "id": "94afd0ac-1ec4-486b-a6fb-fa1ec7029d19",
+                "type": "TERMINAL",
+                "base": {
+                    "module": [
+                        "vellum",
+                        "workflows",
+                        "nodes",
+                        "displayable",
+                        "final_output_node",
+                        "node",
+                    ],
+                    "name": "FinalOutputNode",
+                },
+                "definition": None,
+                "data": {
+                    "label": "Final Output",
+                    "name": "reasoning",
+                    "target_handle_id": "c3aeba92-4faf-4814-9842-eec7436ee555",
+                    "output_id": "45d53a1e-26e8-4c43-a010-80d141acc249",
+                    "output_type": "STRING",
+                    "node_input_id": "74337307-3fcb-42c5-9aed-98bd4a79caef",
+                },
+                "inputs": [
+                    {
+                        "id": "74337307-3fcb-42c5-9aed-98bd4a79caef",
+                        "key": "node_input",
+                        "value": {
+                            "rules": [
+                                {
+                                    "type": "NODE_OUTPUT",
+                                    "data": {
+                                        "node_id": "bb98a2c4-c9a7-4c39-8f31-dc7961dc9996",
+                                        "output_id": "68de689c-fe8a-4189-b7d0-82c620ac30f9",
+                                    },
+                                }
+                            ],
+                            "combinator": "OR",
+                        },
+                    }
+                ],
+                "display_data": {"position": {"x": 400.0, "y": 75.0}},
+            },
+        ],
+        workflow_raw_data["nodes"][2:],
+        ignore_order=True,
+    )
+
+    # AND each edge should be serialized correctly
+    serialized_edges = workflow_raw_data["edges"]
+    assert not DeepDiff(
+        [
+            {
+                "id": "4a08ef93-c0f4-4a3a-9a24-5d79ee4d85fc",
+                "source_handle_id": "13d9eb34-aecb-496d-9e57-d5e786b0bc7c",
+                "source_node_id": "f0eea82b-39cc-44e3-9c0d-12205ed5652c",
+                "target_handle_id": "d6194ccf-d31b-4846-8e24-3e189d84351a",
+                "target_node_id": "bb98a2c4-c9a7-4c39-8f31-dc7961dc9996",
+                "type": "DEFAULT",
+            },
+            {
+                "id": "69933897-e91e-4c6c-9ba3-ed3e3c265c73",
+                "source_handle_id": "ff99bf0c-c239-4b8b-8ac1-483b134f94f4",
+                "source_node_id": "bb98a2c4-c9a7-4c39-8f31-dc7961dc9996",
+                "target_handle_id": "c3aeba92-4faf-4814-9842-eec7436ee555",
+                "target_node_id": "94afd0ac-1ec4-486b-a6fb-fa1ec7029d19",
+                "type": "DEFAULT",
+            },
+            {
+                "id": "86a9af31-f78e-45ac-b170-f66bbba98f9d",
+                "source_handle_id": "ff99bf0c-c239-4b8b-8ac1-483b134f94f4",
+                "source_node_id": "bb98a2c4-c9a7-4c39-8f31-dc7961dc9996",
+                "target_handle_id": "23117248-df28-4519-bebc-abcb24f966b3",
+                "target_node_id": "18170041-1a70-4836-9fa0-adceba2a1f4f",
+                "type": "DEFAULT",
+            },
+        ],
+        serialized_edges,
+        ignore_order=True,
+    )
+
+    # AND the display data should be what we expect
+    display_data = workflow_raw_data["display_data"]
+    assert display_data == {
+        "viewport": {
+            "x": 0.0,
+            "y": 0.0,
+            "zoom": 1.0,
+        }
+    }
+
+    # AND the definition should be what we expect
+    definition = workflow_raw_data["definition"]
+    assert definition == {
+        "name": "BasicSubworkflowDeploymentWorkflow",
+        "module": [
+            "tests",
+            "workflows",
+            "basic_subworkflow_deployment",
+            "workflow",
+        ],
+    }
