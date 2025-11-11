@@ -1,0 +1,149 @@
+import contextlib
+import logging.config
+from collections.abc import AsyncIterator
+from logging import getLogger
+from typing import Any
+
+from apluggy import PluginManager
+from dynaconf import Dynaconf
+from rich import print
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+
+from .config import load_settings
+from .hook import load_plugins
+
+
+class App(Starlette):
+    '''A wrap of ASGI App to attach hook and config.'''
+
+    def set_hook(self, hook: PluginManager) -> 'App':
+        self.hook = hook
+        return self
+
+    def set_config(self, config: Dynaconf) -> 'App':
+        self.config = config
+        return self
+
+
+def create_app_for_test(
+    extra_plugins: list[object] | None = None,
+    enable_external_plugins: bool = False,
+    enable_logging_configuration: bool = False,
+    print_settings: bool = False,
+) -> App:
+    '''`create_app()` with default parameters suitable for tests.'''
+    return create_app(
+        extra_plugins=extra_plugins,
+        enable_external_plugins=enable_external_plugins,
+        enable_logging_configuration=enable_logging_configuration,
+        print_settings=print_settings,
+    )
+
+
+def create_app(
+    extra_plugins: list[object] | None = None,
+    enable_external_plugins: bool = True,
+    enable_logging_configuration: bool = True,
+    print_settings: bool = True,
+) -> App:
+    '''App factory for Uvicorn.
+
+    Parameters
+    ----------
+    extra_plugins
+        Additional plugins to load. (Used for tests.)
+    enable_external_plugins
+        Do not load external plugins if False. (Used for tests.)
+    enable_logging_configuration
+        Leave logging configuration intact if False. (Used for tests.)
+    print_settings
+        Do not print settings if False. (Used for tests.)
+
+    Returns
+    -------
+    Starlette
+        The configured ASGI application instance.
+
+    Notes
+    -----
+    Use the factory option to run with Uvicorn:
+
+    $ uvicorn --factory nextlinegraphql:create_app
+
+    See Also
+    --------
+    Uvicorn Application Factories : https://www.uvicorn.org/#application-factories
+
+    '''
+
+    hook, config = create_hook_and_config(
+        extra_plugins=extra_plugins,
+        enable_external_plugins=enable_external_plugins,
+        enable_logging_configuration=enable_logging_configuration,
+        print_settings=print_settings,
+    )
+
+    app = create_app_from(hook, config)
+    return app
+
+
+def create_hook_and_config(
+    extra_plugins: list[object] | None,
+    enable_external_plugins: bool,
+    enable_logging_configuration: bool,
+    print_settings: bool,
+) -> tuple[PluginManager, Dynaconf]:
+    hook = load_plugins(external=enable_external_plugins, plugins=extra_plugins)
+    config = load_settings(hook)
+    if print_settings:
+        print('Settings:', config.as_dict())
+
+    if enable_logging_configuration:
+        configure_logging(config.logging)
+    logger = getLogger(__name__)
+    logger.info('Logging configured')
+
+    hook.hook.configure(settings=config, hook=hook)
+
+    plugin_names = [n for n, p in hook.list_name_plugin() if p]
+    logger.info(f'Pluggy project name: {hook.project_name!r}')
+    logger.info(f'Loaded plugins: {plugin_names}')
+    return hook, config
+
+
+def configure_logging(config: dict) -> None:
+    logging.config.dictConfig(config)
+
+    # https://pypi.org/project/logging_tree/
+    # import logging_tree
+    # logging_tree.printout()
+
+
+def create_app_from(hook: PluginManager, config: Dynaconf) -> App:
+    @contextlib.asynccontextmanager
+    async def lifespan(app: App) -> AsyncIterator[None]:
+        context = dict[Any, Any]()
+        await hook.ahook.update_lifespan_context(app=app, hook=hook, context=context)
+        async with hook.awith.lifespan(
+            app=app, hook=hook, context=context
+        ):  # pragma: no branch
+            yield
+
+    middleware = [
+        Middleware(
+            CORSMiddleware,
+            allow_origins=config.cors['allow_origins'],
+            allow_methods=['GET', 'POST', 'OPTIONS'],
+            allow_headers=config.cors['allow_headers'],
+            allow_credentials=config.cors['allow_credentials'],
+        )
+    ]
+
+    app = (
+        App(debug=True, lifespan=lifespan, middleware=middleware)
+        .set_hook(hook)
+        .set_config(config)
+    )
+    return app
