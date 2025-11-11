@@ -1,0 +1,64 @@
+import rnftools.mishmash
+
+import time
+import re
+
+
+##################################
+#    TODO
+# - randomization
+# - random generators seeds
+#
+
+
+rule mishmash_clean:
+	run:
+		for sample in rnftools.mishmash.samples():
+			sample.clean()
+
+
+for i, sample in enumerate(rnftools.mishmash.samples()):
+	rule:
+		"""
+			Rules for samples (final FASTQ files)
+		"""
+		input:
+			sample.get_input()
+		output:
+			sample.fq_fns()
+		params:
+			i=str(i)
+		run:
+			rnftools.mishmash.samples()[int(params.i)].create_fq()
+
+
+for i, source in enumerate(rnftools.mishmash.sources()):
+	rule:
+		"""
+			Rules for reference files
+		"""
+		input:
+			source.fa0_fn()
+		output:
+			source.fa_fn()
+		params:
+			i=str(i)
+		run:
+			rnftools.mishmash.sources()[int(params.i)].create_fa()
+
+
+for i, source in enumerate(rnftools.mishmash.sources()):
+	rule:
+		"""
+			Rules for individual sources (intermediate FASTQ files)
+		"""
+		input:
+			source.get_input()
+		output:
+			source.get_output()
+		params:
+			i=str(i)
+		threads:
+			source.get_number_of_required_cores()
+		run:
+			rnftools.mishmash.sources()[int(params.i)].create_fq()

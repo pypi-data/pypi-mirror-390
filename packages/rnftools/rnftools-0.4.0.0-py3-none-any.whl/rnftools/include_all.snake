@@ -1,0 +1,20 @@
+from snakemake.utils import min_version
+
+include: "mishmash/mishmash.snake"
+include: "lavender/lavender.snake"
+
+rule index_fasta:
+	output:
+		"{filename}.{suffix}.fai"
+	input:
+		"{filename}.{suffix}"
+	message:
+		"Creating index for a FASTA file ({input})."
+	shell:
+		"""
+			(
+		 		samtools faidx "{input}"
+			) > /dev/null
+		"""
+
+
