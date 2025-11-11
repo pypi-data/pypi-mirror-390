@@ -1,0 +1,110 @@
+Metadata-Version: 2.4
+Name: asdf_compression
+Version: 0.1.0
+Summary: Asdf extension to support various compression algorithms
+Author: The ASDF Developers
+Project-URL: documentation, https://asdf-compression.readthedocs.io/en/latest
+Project-URL: repository, https://github.com/asdf-format/asdf-compression
+Project-URL: tracker, https://github.com/asdf-format/asdf-compression/issues
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.10
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: asdf>=2.15
+Provides-Extra: tests
+Requires-Dist: pytest>=6; extra == "tests"
+Provides-Extra: blsc
+Requires-Dist: blosc>=1.9.2; extra == "blsc"
+Provides-Extra: lz4f
+Requires-Dist: lz4>=0.10; extra == "lz4f"
+Provides-Extra: zstd
+Requires-Dist: zstandard>=0.21.0; extra == "zstd"
+Provides-Extra: all
+Requires-Dist: asdf_compression[blsc,lz4f,zstd]; extra == "all"
+Dynamic: license-file
+
+ASDF support for various compression algorithms
+-----------------------------------------------
+
+.. image:: https://github.com/asdf-format/asdf-compression/workflows/CI/badge.svg
+    :target: https://github.com/asdf-format/asdf-compression/actions
+    :alt: CI Status
+
+This packages includes a plugin for the Python library
+`asdf <https://asdf.readthedocs.io/en/latest/>`__ to add support
+for reading and writing various compression algorithms including:
+
+* `Blosc <https://www.blosc.org/python-blosc/reference.html>`__
+* `LZ4 Frame <https://python-lz4.readthedocs.io/en/stable/lz4.frame.html>`__
+* `Zstandard <http://facebook.github.io/zstd/>`__
+
+
+Installation
+------------
+
+This plugin is not yet stable and released on PyPi.
+
+To install all compression algorithms supported by asdf-compression, install
+using the ``all`` optional parameters.
+
+.. code-block:: console
+
+    $ pip install "asdf-compression[all] @ git+https://github.com/asdf-format/asdf-compression"
+
+Or alternatively by cloning and installing this repository.
+
+.. code-block:: console
+
+    $ git clone https://github.com/asdf-format/asdf-compression
+    $ cd asdf-compression
+    $ pip install ".[all]"
+
+If only a specific algorithm is needed, just that algorithm can be installed.
+
+.. code-block:: console
+
+    $ pip install ".[zstd]"
+
+Or a subset can be selected
+
+.. code-block:: console
+
+    $ pip install ".[zstd,blsc]"
+
+Usage
+-----
+
+When installed ``asdf-compression`` will register any supported and available
+compression algorithms with asdf using the
+`Compressor <https://asdf.readthedocs.io/en/latest/asdf/extending/compressors.html>`__
+interface.
+
+The following example shows saving an array with ``zstandard`` compression provided
+via ``asdf-compression``.
+
+.. code-block:: python
+
+    import asdf, numpy as np
+
+    af = asdf.AsdfFile({"arr": np.arange(42)})
+    af.set_array_compression(af["arr"], "zstd")
+    af.write_to("test.asdf")
+
+
+Testing
+-------
+
+`pytest <https://docs.pytest.org>`__ is used for testing.
+Tests can be run (from the source checkout of this repository):
+
+.. code-block:: console
+
+    $ pytest
+
+
+Contributing
+------------
+
+We welcome feedback and contributions to this project.
