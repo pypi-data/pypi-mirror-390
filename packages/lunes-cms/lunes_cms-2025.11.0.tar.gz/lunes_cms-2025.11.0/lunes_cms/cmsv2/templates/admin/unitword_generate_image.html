@@ -1,0 +1,35 @@
+{% extends "admin/generate_image_base.html" %}
+{% load i18n %}
+
+{% block image_title %}Generate Image for "{{ unitword_instance.word.word }}"{% endblock %}
+
+{% block breadcrumb_items %}
+    <li class="breadcrumb-item">
+        <a href="{% url "admin:cmsv2_unit_change" unitword_instance.unit.pk %}">{{ unitword_instance.unit.title }}</a>
+        &harr;
+        <a href="{% url "admin:cmsv2_word_change" unitword_instance.word.pk %}">{{ unitword_instance.word.word }}</a>
+    </li>
+    <li class="breadcrumb-item active">{% trans "Generate Image" %}</li>
+{% endblock %}
+
+{% block image_info %}
+    <div>
+        <strong>Word Text:</strong> {{ unitword_instance.word.word }}
+    </div>
+    <div>
+        <strong>Unit Title:</strong> {{ unitword_instance.unit.title }}
+    </div>
+{% endblock %}
+
+{% block store_url %}{% url "cmsv2:unitword_store_generated_image_permanently" unitword_instance.pk %}{% endblock %}
+
+{% block store_button_text %}Store to Image Field{% endblock %}
+
+{% block generate_url %}{% url "cmsv2:generate_image_via_openai" %}{% endblock %}
+
+{% block form_data_builder %}
+function(formData) {
+    formData.append("word_text", "{{ unitword_instance.word.word }}")
+    formData.append("unit_title", "{{ unitword_instance.unit.title }}")
+}
+{% endblock %}
