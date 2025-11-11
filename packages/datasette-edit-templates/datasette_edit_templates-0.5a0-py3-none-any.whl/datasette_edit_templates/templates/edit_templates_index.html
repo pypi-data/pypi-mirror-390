@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Edit templates{% endblock %}
+
+{% block content %}
+<h1>Edit templates</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Template</th>
+            <th>Last updated</th>
+            <th>Number of revisions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for template in templates %}
+            <tr>
+                <td><a href="{{ urls.path("/-/edit-templates/" + template.name) }}">{{ template.name }}</a></td>
+                <td>{{ pretty_datetime(template.last_updated) }}</td>
+                <td>{{ template.revisions }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<form action="{{ urls.path("/-/edit-templates/") }}" method="get">
+    <h2>Create a new template</h2>
+    <p><input type="text" name="template" placeholder="Name of new template"></p>
+    <p><input type="submit" value="Create"></p>
+</form>
+{% endblock %}
