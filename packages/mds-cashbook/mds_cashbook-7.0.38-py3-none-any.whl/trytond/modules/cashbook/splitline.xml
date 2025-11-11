@@ -1,0 +1,129 @@
+<?xml version="1.0"?>
+<!-- This file is part of the cashbook-module from m-ds for Tryton.
+The COPYRIGHT file at the top level of this repository contains the
+full copyright notices and license terms. -->
+<tryton>
+    <data>
+
+        <!-- views -->
+        <record model="ir.ui.view" id="split_view_list">
+            <field name="model">cashbook.split</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="name">split_list</field>
+        </record>
+        <record model="ir.ui.view" id="split_view_form">
+            <field name="model">cashbook.split</field>
+            <field name="type">form</field>
+            <field name="priority" eval="20"/>
+            <field name="name">split_form</field>
+        </record>
+
+        <!-- permission -->
+        <!-- anon: deny all -->
+        <record model="ir.model.access" id="access_split-anon">
+            <field name="model" search="[('model', '=', 'cashbook.split')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <!-- group_cashbook_admin: read/write -->
+        <record model="ir.model.access" id="access_split-group_cashbook_admin">
+            <field name="model" search="[('model', '=', 'cashbook.split')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <!-- cashbook: read/write -->
+        <record model="ir.model.access" id="access_split-group_cashbook">
+            <field name="model" search="[('model', '=', 'cashbook.split')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+
+        <!-- permission by rule - admin -->
+        <record model="ir.rule.group" id="rg_split_write_adm">
+            <field name="model" search="[('model', '=', 'cashbook.split')]"/>
+            <field name="name">Administrators: Splitbooking line read/write</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <record model="ir.rule" id="rg_split_write_adm-1">
+            <field name="domain" eval="[]" pyson="1"/>
+            <field name="rule_group" ref="rg_split_write_adm"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_split_write_adm-group_cashbook_admin">
+            <field name="rule_group" ref="rg_split_write_adm"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- permission by rule - read/write: owner, reviewer -->
+        <record model="ir.rule.group" id="rg_split_write">
+            <field name="model" search="[('model', '=', 'cashbook.split')]"/>
+            <field name="name">Owners and reviewers: Splitbooking line write</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <record model="ir.rule" id="rg_split_write-1">
+            <field name="domain" eval="['OR',
+                    ('line.cashbook.owner.id', '=', Eval('user_id', -1)),
+                    ('line.cashbook.reviewer.id', 'in', Eval('groups', [])),
+                ]" pyson="1"/>
+            <field name="rule_group" ref="rg_split_write"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_split_write-group_cashbook">
+            <field name="rule_group" ref="rg_split_write"/>
+            <field name="group" ref="group_cashbook"/>
+        </record>
+
+        <!-- permission by rule - read: observer -->
+        <record model="ir.rule.group" id="rg_split_read">
+            <field name="model" search="[('model', '=', 'cashbook.split')]"/>
+            <field name="name">Observer: Splitbooking line read</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <record model="ir.rule" id="rg_split_read-1">
+            <field name="domain" eval="[
+                    ('line.cashbook.observer.id', 'in', Eval('groups', [])),
+                ]" pyson="1"/>
+            <field name="rule_group" ref="rg_split_read"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_split_read-group_cashbook">
+            <field name="rule_group" ref="rg_split_read"/>
+            <field name="group" ref="group_cashbook"/>
+        </record>
+
+        <record model="ir.rule.group" id="rg_split_companies">
+            <field name="name">User in companies</field>
+            <field name="model"
+                search="[('model', '=', 'cashbook.split')]"/>
+            <field name="global_p" eval="True"/>
+        </record>
+        <record model="ir.rule" id="r_split_companies">
+            <field name="domain"
+                eval="[('line.cashbook.company', 'in', Eval('companies', []))]"
+                pyson="1"/>
+            <field name="rule_group" ref="rg_split_companies"/>
+        </record>
+
+    </data>
+</tryton>

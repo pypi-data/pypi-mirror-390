@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<!-- This file is part of the cashbook-module from m-ds for Tryton.
+The COPYRIGHT file at the top level of this repository contains the
+full copyright notices and license terms. -->
+<tryton>
+    <data>
+
+        <!-- views -->
+        <record model="ir.ui.view" id="category_view_list">
+            <field name="model">cashbook.category</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="name">category_list</field>
+        </record>
+        <record model="ir.ui.view" id="category_view_tree">
+            <field name="model">cashbook.category</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="field_childs">childs</field>
+            <field name="name">category_tree</field>
+        </record>
+        <record model="ir.ui.view" id="category_view_form">
+            <field name="model">cashbook.category</field>
+            <field name="type">form</field>
+            <field name="priority" eval="20"/>
+            <field name="name">category_form</field>
+        </record>
+
+        <!-- action view - list -->
+        <record model="ir.action.act_window" id="act_category_list">
+            <field name="name">Category</field>
+            <field name="res_model">cashbook.category</field>
+        </record>
+        <record model="ir.action.act_window.view" id="act_category_list-1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="category_view_list"/>
+            <field name="act_window" ref="act_category_list"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_category_list-2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="category_view_form"/>
+            <field name="act_window" ref="act_category_list"/>
+        </record>
+
+        <!-- domain view - list -->
+        <record model="ir.action.act_window.domain" id="act_category_list_domain_in">
+            <field name="name">Revenue</field>
+            <field name="sequence" eval="10"/>
+            <field name="domain" eval="[('cattype', '=', 'in')]" pyson="1"/>
+            <field name="act_window" ref="act_category_list"/>
+        </record>
+        <record model="ir.action.act_window.domain" id="act_category_list_domain_out">
+            <field name="name">Expense</field>
+            <field name="sequence" eval="20"/>
+            <field name="domain" eval="[('cattype', '=', 'out')]" pyson="1"/>
+            <field name="act_window" ref="act_category_list"/>
+        </record>
+
+        <!-- action view - tree -->
+        <record model="ir.action.act_window" id="act_category_tree">
+            <field name="name">Category</field>
+            <field name="res_model">cashbook.category</field>
+            <field name="domain" eval="[('parent', '=', None)]" pyson="1"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_category_tree-1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="category_view_tree"/>
+            <field name="act_window" ref="act_category_tree"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_category_tree-2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="category_view_form"/>
+            <field name="act_window" ref="act_category_tree"/>
+        </record>
+
+        <!-- domain view - tree -->
+        <record model="ir.action.act_window.domain" id="act_category_tree_domain_in">
+            <field name="name">Revenue</field>
+            <field name="sequence" eval="10"/>
+            <field name="domain" eval="[('cattype', '=', 'in')]" pyson="1"/>
+            <field name="act_window" ref="act_category_tree"/>
+        </record>
+        <record model="ir.action.act_window.domain" id="act_category_tree_domain_out">
+            <field name="name">Expense</field>
+            <field name="sequence" eval="20"/>
+            <field name="domain" eval="[('cattype', '=', 'out')]" pyson="1"/>
+            <field name="act_window" ref="act_category_tree"/>
+        </record>
+
+
+        <!-- permission -->
+        <!-- anon: deny all -->
+        <record model="ir.model.access" id="access_category-anon">
+            <field name="model" search="[('model', '=', 'cashbook.category')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <!-- group_cashbook_admin: read/write -->
+        <record model="ir.model.access" id="access_category-group_cashbook_admin">
+            <field name="model" search="[('model', '=', 'cashbook.category')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <!-- cashbook: read -->
+        <record model="ir.model.access" id="access_category-group_cashbook">
+            <field name="model" search="[('model', '=', 'cashbook.category')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+
+        <record model="ir.rule.group" id="rg_category_companies">
+            <field name="name">User in companies</field>
+            <field name="model"
+                search="[('model', '=', 'cashbook.category')]"/>
+            <field name="global_p" eval="True"/>
+        </record>
+        <record model="ir.rule" id="r_category_companies">
+            <field name="domain"
+                eval="[('company', 'in', Eval('companies', []))]"
+                pyson="1"/>
+            <field name="rule_group" ref="rg_category_companies"/>
+        </record>
+
+    </data>
+</tryton>

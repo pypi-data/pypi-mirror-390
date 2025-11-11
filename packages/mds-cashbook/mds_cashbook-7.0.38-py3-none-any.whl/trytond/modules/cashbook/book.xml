@@ -1,0 +1,503 @@
+<?xml version="1.0"?>
+<!-- This file is part of the cashbook-module from m-ds for Tryton.
+The COPYRIGHT file at the top level of this repository contains the
+full copyright notices and license terms. -->
+<tryton>
+    <data>
+
+        <!-- views -->
+        <record model="ir.ui.view" id="book_view_list">
+            <field name="model">cashbook.book</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="name">book_list</field>
+        </record>
+        <record model="ir.ui.view" id="book_view_tree">
+            <field name="model">cashbook.book</field>
+            <field name="type">tree</field>
+            <field name="priority" eval="10"/>
+            <field name="field_childs">childs</field>
+            <field name="name">book_tree</field>
+        </record>
+        <record model="ir.ui.view" id="book_view_form">
+            <field name="model">cashbook.book</field>
+            <field name="type">form</field>
+            <field name="priority" eval="20"/>
+            <field name="name">book_form</field>
+        </record>
+
+        <!-- action view - list -->
+        <record model="ir.action.act_window" id="act_book_view">
+            <field name="name">Cashbook</field>
+            <field name="res_model">cashbook.book</field>
+            <field name="domain" eval="[('btype', '!=', None)]" pyson="1"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_book_view-1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="book_view_list"/>
+            <field name="act_window" ref="act_book_view"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_book_view-2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="book_view_form"/>
+            <field name="act_window" ref="act_book_view"/>
+        </record>
+
+        <!-- action view - tree -->
+        <record model="ir.action.act_window" id="act_book_tree">
+            <field name="name">Cashbook</field>
+            <field name="res_model">cashbook.book</field>
+            <field name="domain" eval="[('parent', '=', None)]" pyson="1"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_book_tree-1">
+            <field name="sequence" eval="10"/>
+            <field name="view" ref="book_view_tree"/>
+            <field name="act_window" ref="act_book_tree"/>
+        </record>
+        <record model="ir.action.act_window.view" id="act_book_tree-2">
+            <field name="sequence" eval="20"/>
+            <field name="view" ref="book_view_form"/>
+            <field name="act_window" ref="act_book_tree"/>
+        </record>
+
+        <!-- permission -->
+        <!-- anon: deny all -->
+        <record model="ir.model.access" id="access_book-anon">
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <!-- group_cashbook_admin: read/write -->
+        <record model="ir.model.access" id="access_book-group_cashbook_admin">
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <!-- cashbook: read/write, no: create/delete -->
+        <record model="ir.model.access" id="access_book-group_cashbook">
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+
+        <!-- permission by rule - admin -->
+        <record model="ir.rule.group" id="rg_book_write_adm">
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+            <field name="name">Administrators: Cashbook read/write</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_delete" eval="True"/>
+        </record>
+        <record model="ir.rule" id="rg_book_write_adm-1">
+            <field name="domain" eval="[]" pyson="1"/>
+            <field name="rule_group" ref="rg_book_write_adm"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_book_write_adm-group_cashbook_admin">
+            <field name="rule_group" ref="rg_book_write_adm"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- permission by rule - read/write: owner -->
+        <record model="ir.rule.group" id="rg_book_rw_owner">
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+            <field name="name">Owners: Cashbook read/write</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <record model="ir.rule" id="rg_book_rw_owner-1">
+            <field name="domain" eval="[
+                ('owner.id', '=', Eval('user_id', -1)),
+                ]" pyson="1"/>
+            <field name="rule_group" ref="rg_book_rw_owner"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_book_rw_owner-group_cashbook">
+            <field name="rule_group" ref="rg_book_rw_owner"/>
+            <field name="group" ref="group_cashbook"/>
+        </record>
+
+        <!-- permission by rule - read: reviewer, observer -->
+        <record model="ir.rule.group" id="rg_book_read_nonowner">
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+            <field name="name">Observers and Reviewers: Cashbook read</field>
+            <field name="global_p" eval="False"/>
+            <field name="default_p" eval="False"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_delete" eval="False"/>
+        </record>
+        <record model="ir.rule" id="rg_book_read_nonowner-1">
+            <field name="domain" eval="['OR',
+                    ('observer.id', 'in', Eval('groups', [])),
+                    ('reviewer.id', 'in', Eval('groups', [])),
+                ]" pyson="1"/>
+            <field name="rule_group" ref="rg_book_read_nonowner"/>
+        </record>
+        <record model="ir.rule.group-res.group" id="rg_book_read_nonowner-group_cashbook">
+            <field name="rule_group" ref="rg_book_read_nonowner"/>
+            <field name="group" ref="group_cashbook"/>
+        </record>
+
+        <record model="ir.rule.group" id="rg_book_companies">
+            <field name="name">User in companies</field>
+            <field name="model"
+                search="[('model', '=', 'cashbook.book')]"/>
+            <field name="global_p" eval="True"/>
+        </record>
+        <record model="ir.rule" id="r_book_companies">
+            <field name="domain"
+                eval="[('company', 'in', Eval('companies', []))]"
+                pyson="1"/>
+            <field name="rule_group" ref="rg_book_companies"/>
+        </record>
+
+        <!-- button - open -->
+        <record model="ir.model.button" id="book_wfopen_button">
+            <field name="name">wfopen</field>
+            <field name="string">Open</field>
+            <field name="help">An open cashbook can be edited.</field>
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="book_wfopen_button-group_cashbook_admin">
+            <field name="button" ref="book_wfopen_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- button - close -->
+        <record model="ir.model.button" id="book_wfclosed_button">
+            <field name="name">wfclosed</field>
+            <field name="string">Close</field>
+            <field name="help">A closed cashbook can no longer be booked. However, it can be reopened afterwards.</field>
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="book_wfclosed_button-group_cashbook_admin">
+            <field name="button" ref="book_wfclosed_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- button - done -->
+        <record model="ir.model.button" id="book_wfarchive_button">
+            <field name="name">wfarchive</field>
+            <field name="string">Archive</field>
+            <field name="help">An archived cashbook is locked.</field>
+            <field name="model" search="[('model', '=', 'cashbook.book')]"/>
+        </record>
+        <record model="ir.model.button-res.group"
+            id="book_wfarchive_button-group_cashbook_admin">
+            <field name="button" ref="book_wfarchive_button"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- sequence-type -->
+        <record model="ir.sequence.type" id="sequence_type_cashbook_line">
+            <field name="name">Cashbook Line</field>
+        </record>
+        <record model="ir.sequence.type-res.group"
+            id="sequence_type_cashbook_line-group_cashbook_admin">
+            <field name="sequence_type" ref="sequence_type_cashbook_line"/>
+            <field name="group" ref="group_cashbook_admin"/>
+        </record>
+
+        <!-- field-access - anon -->
+        <record model="ir.model.field.access" id="fa_book-company-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'company')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-name-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'name')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-btype-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'btype')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-owner-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'owner')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-reviewer-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reviewer')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-observer-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'observer')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-lines-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'lines')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-reconciliations-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reconciliations')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-number_sequ-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'number_sequ')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-number_atcheck-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'number_atcheck')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-currency-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'currency')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-parent-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'parent')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-childs-anon">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'childs')]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+
+        <!-- field-access - group_cashbook_admin -->
+        <record model="ir.model.field.access" id="fa_book-company-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'company')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-name-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'name')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-btype-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'btype')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-owner-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'owner')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-reviewer-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reviewer')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-observer-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'observer')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-lines-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'lines')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-reconciliations-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reconciliations')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-number_sequ-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'number_sequ')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-number_atcheck-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'number_atcheck')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-currency-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'currency')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-parent-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'parent')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-childs-group_cashbook_admin">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'childs')]"/>
+            <field name="group" ref="group_cashbook_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+
+        <!-- field-access - group_cashbook -->
+        <record model="ir.model.field.access" id="fa_book-company-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'company')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-name-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'name')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-btype-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'btype')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-owner-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'owner')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-reviewer-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reviewer')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-observer-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'observer')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-lines-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'lines')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-reconciliations-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reconciliations')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-number_sequ-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'number_sequ')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-number_atcheck-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'number_atcheck')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-currency-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'currency')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-parent-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'parent')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+        <record model="ir.model.field.access" id="fa_book-childs-group_cashbook">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'childs')]"/>
+            <field name="group" ref="group_cashbook"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+        </record>
+
+        <!-- field-access - group_cashbook_checkline (user must be in group_cashbook too) -->
+        <record model="ir.model.field.access" id="fa_book-reconciliations-group_cashbook_checkline">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reconciliations')]"/>
+            <field name="group" ref="group_cashbook_checkline"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+
+        <!-- field-access - group_cashbook_doneline (user must be in group_cashbook too) -->
+        <record model="ir.model.field.access" id="fa_book-reconciliations-group_cashbook_doneline">
+            <field name="field"
+                search="[('model.model', '=', 'cashbook.book'), ('name', '=', 'reconciliations')]"/>
+            <field name="group" ref="group_cashbook_doneline"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+        </record>
+
+    </data>
+</tryton>
