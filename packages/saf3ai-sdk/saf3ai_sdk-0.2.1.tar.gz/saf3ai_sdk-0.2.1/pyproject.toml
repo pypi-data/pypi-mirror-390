@@ -1,0 +1,93 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "saf3ai-sdk"
+version = "0.2.1"  # Real PyPI version—update only when shipping to the live index
+
+# version = "0.2.2"  # TestPyPI version—update only when shipping to TestPyPI
+
+authors = [
+    { name = "Saf3AI Team", email = "team@saf3ai.com" },
+]
+description = "Observability and Telemetry SDK for AI Agents with Local Storage"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests>=2.28.0,<3.0.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",
+    "opentelemetry-semantic-conventions>=0.40b0",
+    "opentelemetry-instrumentation>=0.40b0",
+    "wrapt>=1.14.0,<2.0.0",
+    "packaging>=21.0,<25.0",
+    "psutil>=5.9.0,<7.0.0",
+    "termcolor>=2.3.0,<2.5.0",
+    "PyYAML>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Github = "https://github.com/saf3ai/saf3ai_sdk"
+TestPyPi = "https://test.pypi.org/project/saf3ai-sdk/"
+PyPI = "https://pypi.org/project/saf3ai-sdk/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["saf3ai_sdk"]
+
+[tool.hatch.build]
+exclude = [
+    "docs/*",
+    "examples/*",
+    "tests/*",
+    ".github/*",
+    "*.gif",
+    "*.png",
+    "dist/*",
+    "build/*",
+    ".pytest_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "*.pyc",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+ignore = [
+    "E712", # Comparison to True/False
+    "E711", # Comparison to None
+    "E722", # Bare except
+]
+
+[tool.black]
+line-length = 120
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 120
