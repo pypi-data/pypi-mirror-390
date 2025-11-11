@@ -1,0 +1,158 @@
+#
+# Copyright (C) 2024 CESNET z.s.p.o.
+#
+# oarepo-requests is free software; you can redistribute it and/or
+# modify it under the terms of the MIT License; see LICENSE file for more
+# details.
+#
+"""Request type for requesting new version of a published record."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, ClassVar, override
+
+import marshmallow as ma
+from invenio_drafts_resources.records import Record as RecordWithDraft
+from invenio_i18n import gettext
+from invenio_i18n import lazy_gettext as _
+from marshmallow.validate import OneOf
+from oarepo_runtime.records.drafts import has_draft
+
+from ..actions.new_version import NewVersionAcceptAction
+from ..utils import classproperty, is_auto_approved, request_identity_matches
+from .generic import NonDuplicableOARepoRecordRequestType
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from flask_babel.speaklater import LazyString
+    from flask_principal import Identity
+    from invenio_records_resources.records import Record
+    from invenio_requests.customizations.actions import RequestAction
+    from invenio_requests.records.api import Request
+
+    from ..utils import JsonValue
+
+
+class NewVersionRequestType(NonDuplicableOARepoRecordRequestType):
+    """Request type for requesting new version of a published record."""
+
+    type_id = "new_version"
+    name = _("New Version")
+    description = _("Request requesting creation of new version of a published record.")  # type: ignore[reportAssignmentType]
+    allowed_on_draft = False
+    editable = False
+    payload_schema: Mapping[str, ma.fields.Field] | None = {
+        "created_topic": ma.fields.Str(),
+        "keep_files": ma.fields.String(validate=OneOf(["yes", "no"])),
+    }
+
+    @classproperty
+    @override
+    def available_actions(cls) -> dict[str, type[RequestAction]]:  # noqa N805 type: ignore[reportIncompatibleVariableOverride]
+        """Return available actions for the request type."""
+        return {
+            **super().available_actions,
+            "accept": NewVersionAcceptAction,
+        }
+
+    def can_create(
+        self,
+        identity: Identity,
+        data: dict,
+        receiver: dict[str, str],
+        topic: Record,
+        creator: dict[str, str],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        """Check if the request can be created."""
+        if not isinstance(topic, RecordWithDraft):
+            raise TypeError(gettext("Trying to create edit request on record without draft support"))
+        if has_draft(topic):
+            raise ValueError(gettext("Trying to create edit request on record with draft"))
+        super().can_create(identity, data, receiver, topic, creator, *args, **kwargs)
+
+    @classmethod
+    def is_applicable_to(cls, identity: Identity, topic: Record, *args: Any, **kwargs: Any) -> bool:
+        """Check if the request type is applicable to the topic."""
+        if not isinstance(topic, RecordWithDraft):
+            raise TypeError(gettext("Trying to create edit request on record without draft support"))
+        # if already editing metadata or a new version, we don't want to create a new request
+        if has_draft(topic):
+            return False
+        return super().is_applicable_to(identity, topic, *args, **kwargs)
+
+    # TODO: used in ui
+    form: ClassVar[JsonValue] = {
+        "field": "keep_files",
+        "ui_widget": "Dropdown",
+        "props": {
+            "label": _("Keep files"),
+            "placeholder": _("Yes or no"),
+            "description": _(
+                "If you choose yes, the current record's files will be linked to the new version of the record. "
+                "Then you will be able to add/remove files in the form."
+            ),
+            "options": [
+                {"id": "yes", "title_l10n": _("Yes")},
+                {"id": "no", "title_l10n": _("No")},
+            ],
+        },
+    }
+
+    @override
+    def stateful_name(
+        self,
+        identity: Identity,
+        *,
+        topic: Record,
+        request: Request | None = None,
+        **kwargs: Any,
+    ) -> str | LazyString:
+        """Return the stateful name of the request."""
+        if is_auto_approved(self, identity=identity, topic=topic):
+            return self.name
+        if not request:
+            return gettext("Request new version access")
+        match request.status:
+            case "submitted":
+                return gettext("New version access requested")
+            case _:
+                return gettext("Request new version access")
+
+    @override
+    def stateful_description(  # noqa PLR0911
+        self,
+        identity: Identity,
+        *,
+        topic: Record,
+        request: Request | None = None,
+        **kwargs: Any,
+    ) -> str | LazyString:
+        """Return the stateful description of the request."""
+        if is_auto_approved(self, identity=identity, topic=topic):
+            return gettext("Click to start creating a new version of the record.")
+
+        if not request:
+            return gettext(
+                "Request permission to update record (including files). "
+                "You will be notified about the decision by email."
+            )
+        match request.status:
+            case "submitted":
+                if request_identity_matches(request.created_by, identity):
+                    return gettext(
+                        "Permission to update record (including files) requested. "
+                        "You will be notified about the decision by email."
+                    )
+                if request_identity_matches(request.receiver, identity):
+                    return gettext(
+                        "You have been asked to approve the request to update the record. "
+                        "You can approve or reject the request."
+                    )
+                return gettext("Permission to update record (including files) requested. ")
+            case _:
+                if request_identity_matches(request.created_by, identity):
+                    return gettext("Submit request to get edit access to the record.")
+                return gettext("You do not have permission to update the record.")
