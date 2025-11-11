@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  change-detection:
+    uses: ./.github/workflows/reusable-change-detection.yml
+
+  cookie:
+    needs: change-detection
+    if: fromJSON(needs.change-detection.outputs.run-cookie)
+    uses: ./.github/workflows/reusable-cookie.yml
+
+  rr-tests:
+    needs: change-detection
+    if: fromJSON(needs.change-detection.outputs.run-rr)
+    uses: ./.github/workflows/reusable-rr-tests.yml
+
+  pass:
+    if: always()
+    needs:
+      - change-detection
+      - cookie
+      - rr-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          allowed-skips: >-
+            ${{
+              fromJSON(needs.change-detection.outputs.run-cookie)
+              && ''
+              || '
+              cookie,
+              '
+            }} ${{
+              fromJSON(needs.change-detection.outputs.run-rr)
+              && ''
+              || '
+              rr-tests,
+              '
+            }}
+          jobs: ${{ toJSON(needs) }}

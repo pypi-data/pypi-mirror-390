@@ -1,0 +1,192 @@
+name: Cookie
+
+on:
+  workflow_call:
+
+env:
+  # Many color libraries just need this to be set to any value, but at least
+  # one distinguishes color depth, where "3" -> "256-bit color".
+  FORCE_COLOR: 3
+
+jobs:
+  pre-commit:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Lint all
+        run: pipx run nox -s 'lint'
+
+  checks:
+    name: Check Python ${{ matrix.python-version }} on ${{ matrix.runs-on }}
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+        runs-on: [ubuntu-latest, windows-latest, macos-latest]
+
+        include:
+          - python-version: pypy-3.11
+            runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install nox
+        run: uv tool install nox
+
+      - name: Test pybind11
+        run: nox -s 'tests(pybind11, novcs)' -s 'tests(pybind11, vcs, sphinx)'
+
+      - name: Test scikit-build
+        run: nox -s 'tests(skbuild, novcs)' -s 'tests(skbuild, vcs, sphinx)'
+
+      - name: Test poetry
+        run: nox -s 'tests(poetry, novcs)' -s 'tests(poetry, vcs, sphinx)'
+
+      - name: Test flit
+        run: nox -s 'tests(flit, novcs)' -s 'tests(flit, vcs, mkdocs)'
+
+      - name: Test uv
+        run: nox -s 'tests(uv, novcs, sphinx)'
+
+      - name: Test pdm
+        run: nox -s 'tests(pdm, novcs)' -s 'tests(pdm, vcs, sphinx)'
+
+      - name: Test maturin
+        run: nox -s 'tests(maturin, novcs, sphinx)'
+
+      - name: Test hatch
+        run: nox -s 'tests(hatch, novcs, sphinx)' -s 'tests(hatch, vcs, sphinx)'
+
+      - name: Test setuptools PEP 621
+        run:
+          nox -s 'tests(setuptools, novcs, sphinx)' -s 'tests(setuptools, vcs,
+          sphinx)'
+
+      - name: Native poetry tooling
+        if: matrix.python-version != 'pypy-3.11'
+        run: |
+          nox -s 'native(poetry, novcs, sphinx)'
+          nox -s 'native(poetry, vcs, sphinx)'
+
+      - name: Native pdm tooling
+        run: nox -s 'native(pdm, novcs, sphinx)' -s 'native(pdm, vcs, sphinx)'
+
+      - name: Activate MSVC for Meson
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Test meson-python
+        run: nox -s 'tests(mesonpy, novcs, sphinx)'
+
+      - name: Compare copier template generation
+        run: nox -s compare_copier
+
+      - name: Compare cruft template generation
+        run: nox -s compare_cruft
+
+  nox:
+    name: Check included Noxfile
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install nox
+        run: uv tool install nox
+
+      - name: Test pybind11
+        run: |
+          nox -s 'nox(pybind11, vcs, sphinx)'
+          nox -s 'nox(pybind11, vcs, sphinx)' -- docs
+
+      - name: Test scikit-build
+        run: |
+          nox -s 'nox(skbuild, vcs, sphinx)'
+          nox -s 'nox(skbuild, vcs, mkdocs)' -- docs
+
+      - name: Test poetry
+        run: |
+          nox -s 'nox(poetry, novcs, sphinx)'
+          nox -s 'nox(poetry, novcs, mkdocs)' -- docs
+
+      - name: Test flit
+        run: |
+          nox -s 'nox(flit, novcs, mkdocs)'
+          nox -s 'nox(flit, novcs, mkdocs)' -- docs
+
+      - name: Test pdm
+        run: |
+          nox -s 'nox(pdm, vcs, sphinx)'
+          nox -s 'nox(pdm, vcs, sphinx)' -- docs
+
+      - name: Test maturin
+        run: |
+          nox -s 'nox(maturin, novcs, sphinx)'
+          nox -s 'nox(maturin, novcs, sphinx)' -- docs
+
+      - name: Test hatch
+        run: |
+          nox -s 'nox(hatch, vcs, mkdocs)'
+          nox -s 'nox(hatch, vcs, mkdocs)' -- docs
+
+      - name: Test setuptools PEP 621
+        run: |
+          nox -s 'nox(setuptools, vcs, sphinx)'
+          nox -s 'nox(setuptools, vcs, sphinx)' -- docs
+
+      - name: Activate MSVC for Meson
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Test meson-python
+        run: |
+          nox -s 'nox(mesonpy, novcs, sphinx)'
+          nox -s 'nox(mesonpy, novcs, sphinx)' -- docs
+
+  dist:
+    name: Distribution build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build sdist and wheel
+        run: pipx run nox -s dist
+
+      - name: Show results
+        run: ls -l dist
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Packages
+          path: dist
+
+  pass:
+    if: always()
+    needs: [dist, nox, checks, pre-commit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
