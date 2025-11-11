@@ -1,0 +1,81 @@
+# Security-Focused Riveter Configuration
+# This configuration prioritizes security validation with comprehensive coverage.
+
+# Security-focused rule packs
+rule_packs:
+  - aws-security      # AWS security best practices
+  - cis-aws          # CIS AWS security benchmark
+  - soc2-security    # SOC 2 security controls
+
+# Security team rule directories
+rule_dirs:
+  - ./security-rules     # Security team custom rules
+  - ./threat-model-rules # Threat model specific rules
+  - ./incident-response-rules # Rules based on past incidents
+
+# SARIF output for security tool integration
+output_format: sarif
+
+# Only show security issues (warnings and errors)
+min_severity: warning
+
+# Focus on security-related rules
+include_rules:
+  - "*security*"      # All security rules
+  - "*encryption*"    # Encryption rules
+  - "*access*"        # Access control rules
+  - "*network*"       # Network security rules
+  - "*iam*"           # Identity and access management
+  - "*compliance*"    # Compliance rules
+
+exclude_rules:
+  - "*performance*"   # Exclude performance rules
+  - "*cost*"          # Exclude cost optimization rules
+
+# Security-focused settings
+debug: false
+parallel: true                          # Enable for faster security scans
+cache_dir: /var/cache/riveter-security # Secure cache location
+baseline: /var/lib/riveter/security-baseline.json
+
+# Security logging
+log_level: WARNING                      # Only log warnings and errors
+log_format: json                        # Structured logs for SIEM integration
+
+# Security environment
+environment: security-scan
+
+# Security-specific configurations
+security:
+  # Fail fast on critical security issues
+  fail_on_critical: true
+
+  # Security severity mapping
+  severity_mapping:
+    encryption: error
+    access_control: error
+    network_security: error
+    data_protection: error
+    identity_management: error
+
+  # Compliance frameworks
+  compliance_frameworks:
+    - SOC2
+    - CIS
+    - NIST
+
+# Performance settings optimized for security scanning
+max_workers: 4
+timeout: 300                           # 5-minute timeout
+
+# Integration with security tools
+integrations:
+  siem:
+    enabled: true
+    format: json
+  vulnerability_scanner:
+    enabled: true
+    format: sarif
+  compliance_dashboard:
+    enabled: true
+    format: json

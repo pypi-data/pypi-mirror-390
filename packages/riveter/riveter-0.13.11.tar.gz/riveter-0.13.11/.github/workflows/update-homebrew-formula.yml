@@ -1,0 +1,265 @@
+name: Update Homebrew Formula
+
+on:
+  workflow_run:
+    workflows: ["Release Binaries"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update formula to'
+        required: true
+        type: string
+      checksums:
+        description: 'Platform checksums (format: macos-intel:sha256,macos-arm64:sha256,linux-x86_64:sha256)'
+        required: false
+        type: string
+
+jobs:
+  update-formula:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout riveter repository
+        uses: actions/checkout@v4
+        with:
+          path: riveter
+
+      - name: Checkout homebrew-riveter repository
+        uses: actions/checkout@v4
+        with:
+          repository: ScottRyanHoward/homebrew-riveter
+          path: homebrew-riveter
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tomli requests
+
+      - name: Wait for binaries if triggered by release
+        if: github.event_name == 'release'
+        run: |
+          echo "🔄 Triggered by release event - waiting for binaries to be built..."
+
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+
+          # Wait up to 10 minutes for binaries to be available
+          max_wait=600  # 10 minutes
+          wait_interval=30  # 30 seconds
+          elapsed=0
+
+          while [ $elapsed -lt $max_wait ]; do
+            echo "⏳ Checking if binaries are available (${elapsed}s elapsed)..."
+
+            # Check if at least one binary is available
+            if curl -s -f "https://github.com/ScottRyanHoward/riveter/releases/download/v${VERSION}/riveter-${VERSION}-macos-intel.tar.gz" > /dev/null; then
+              echo "✅ Binaries are available!"
+              break
+            fi
+
+            echo "⏳ Binaries not ready yet, waiting ${wait_interval} seconds..."
+            sleep $wait_interval
+            elapsed=$((elapsed + wait_interval))
+          done
+
+          if [ $elapsed -ge $max_wait ]; then
+            echo "⚠️ Timeout waiting for binaries, proceeding anyway"
+            echo "The retry logic in the download step will handle missing binaries"
+          fi
+
+      - name: Determine version and checksums
+        id: version_info
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            # Extract version from release tag (remove 'v' prefix if present)
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+            # Download release assets and calculate checksums
+            echo "Downloading release assets to calculate checksums..."
+            mkdir -p /tmp/checksums
+
+            PLATFORMS=("macos-intel" "macos-arm64" "linux-x86_64")
+            CHECKSUMS=""
+
+            for platform in "${PLATFORMS[@]}"; do
+              asset_name="riveter-${VERSION}-${platform}.tar.gz"
+              download_url="https://github.com/ScottRyanHoward/riveter/releases/download/v${VERSION}/${asset_name}"
+
+              echo "Downloading $download_url"
+
+              # Retry download up to 5 times with increasing delays
+              max_attempts=5
+              attempt=1
+              success=false
+
+              while [ $attempt -le $max_attempts ] && [ "$success" = "false" ]; do
+                echo "Download attempt $attempt of $max_attempts for $platform"
+
+                if curl -L -f -o "/tmp/checksums/${asset_name}" "$download_url"; then
+                  checksum=$(sha256sum "/tmp/checksums/${asset_name}" | cut -d' ' -f1)
+                  echo "Checksum for $platform: $checksum"
+                  success=true
+                else
+                  echo "Download failed for $platform, attempt $attempt"
+                  if [ $attempt -lt $max_attempts ]; then
+                    delay=$((attempt * 30))  # 30, 60, 90, 120 seconds
+                    echo "Waiting ${delay} seconds before retry..."
+                    sleep $delay
+                  fi
+                  attempt=$((attempt + 1))
+                fi
+              done
+
+              if [ "$success" = "true" ]; then
+                if [ -n "$CHECKSUMS" ]; then
+                  CHECKSUMS="${CHECKSUMS},"
+                fi
+                CHECKSUMS="${CHECKSUMS}${platform}:${checksum}"
+              else
+                echo "❌ Failed to download $asset_name after $max_attempts attempts"
+                echo "This binary will be skipped in the formula update"
+              fi
+            done
+
+            # Also download and calculate checksum for source archive (needed for rule packs)
+            source_asset_name="riveter-${VERSION}.tar.gz"
+            source_download_url="https://github.com/ScottRyanHoward/riveter/releases/download/v${VERSION}/${source_asset_name}"
+
+            echo "Downloading source archive: $source_download_url"
+
+            max_attempts=5
+            attempt=1
+            source_success=false
+
+            while [ $attempt -le $max_attempts ] && [ "$source_success" = "false" ]; do
+              echo "Source download attempt $attempt of $max_attempts"
+
+              if curl -L -f -o "/tmp/checksums/${source_asset_name}" "$source_download_url"; then
+                source_checksum=$(sha256sum "/tmp/checksums/${source_asset_name}" | cut -d' ' -f1)
+                echo "Source checksum: $source_checksum"
+                source_success=true
+              else
+                echo "Source download failed, attempt $attempt"
+                if [ $attempt -lt $max_attempts ]; then
+                  delay=$((attempt * 30))
+                  echo "Waiting ${delay} seconds before retry..."
+                  sleep $delay
+                fi
+                attempt=$((attempt + 1))
+              fi
+            done
+
+            if [ "$source_success" = "true" ]; then
+              if [ -n "$CHECKSUMS" ]; then
+                CHECKSUMS="${CHECKSUMS},"
+              fi
+              CHECKSUMS="${CHECKSUMS}source:${source_checksum}"
+            else
+              echo "❌ Failed to download source archive after $max_attempts attempts"
+            fi
+
+            echo "checksums=$CHECKSUMS" >> $GITHUB_OUTPUT
+            echo "📊 Final checksums: $CHECKSUMS"
+
+          else
+            # Manual workflow dispatch
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "checksums=${{ github.event.inputs.checksums }}" >> $GITHUB_OUTPUT
+            echo "📊 Manual input - Version: ${{ github.event.inputs.version }}, Checksums: ${{ github.event.inputs.checksums }}"
+          fi
+
+      - name: Update Homebrew formula
+        run: |
+          cd riveter
+
+          # Use the checked-out homebrew repo path
+          homebrew_path="../homebrew-riveter"
+
+          echo "🔍 Debug information:"
+          echo "Version: ${{ steps.version_info.outputs.version }}"
+          echo "Checksums: ${{ steps.version_info.outputs.checksums }}"
+          echo "Homebrew repo path: $homebrew_path"
+
+          # Check if homebrew repo exists
+          if [ ! -d "$homebrew_path" ]; then
+            echo "❌ Homebrew repository not found at $homebrew_path"
+            ls -la ../ || echo "Parent directory listing failed"
+            exit 1
+          fi
+
+          # Check if sync script exists
+          if [ ! -f "scripts/sync_versions.py" ]; then
+            echo "❌ sync_versions.py script not found"
+            ls -la scripts/ || echo "Scripts directory listing failed"
+            exit 1
+          fi
+
+          # Run the formula update with detailed output
+          echo "🍺 Running formula update..."
+          if [ -n "${{ steps.version_info.outputs.checksums }}" ]; then
+            python scripts/sync_versions.py --update-formula --checksums "${{ steps.version_info.outputs.checksums }}" --homebrew-repo "$homebrew_path" --debug
+          else
+            python scripts/sync_versions.py --update-formula --homebrew-repo "$homebrew_path" --debug
+          fi
+
+      - name: Validate formula syntax
+        run: |
+          # Basic Ruby syntax check
+          ruby -c homebrew-riveter/Formula/riveter.rb
+          echo "✅ Formula syntax is valid"
+
+      - name: Commit and push formula update
+        run: |
+          cd homebrew-riveter
+
+          # Configure git with token authentication
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+
+
+          # Check if there are changes to commit
+          if git diff --quiet; then
+            echo "ℹ️ No changes to commit"
+            exit 0
+          fi
+
+          # Add and commit changes
+          git add Formula/riveter.rb
+          git commit -m "Update formula to version ${{ steps.version_info.outputs.version }} [skip ci]"
+
+          # Push directly to main branch
+          git push origin main
+
+          echo "✅ Formula updated and pushed to main branch"
+        env:
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Formula Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version_info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Formula updated**: ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **Syntax validated**: ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes committed**: ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pushed to main**: ✅" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "${{ steps.version_info.outputs.checksums }}" ]; then
+            echo "- **Checksums updated**: ✅" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Checksums**: Using placeholders (manual update required)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Homebrew Repository**: https://github.com/ScottRyanHoward/homebrew-riveter" >> $GITHUB_STEP_SUMMARY

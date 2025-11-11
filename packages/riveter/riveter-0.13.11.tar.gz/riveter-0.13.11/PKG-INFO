@@ -1,0 +1,1736 @@
+Metadata-Version: 2.4
+Name: riveter
+Version: 0.13.11
+Summary: Infrastructure Drift Detection as Code - Define custom drift detection rules
+Author: Riveter Team
+License-File: LICENSE
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: System :: Systems Administration
+Requires-Python: >=3.12
+Requires-Dist: click>=8.0
+Requires-Dist: cryptography>=41.0
+Requires-Dist: python-hcl2>=4.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: rich>=13.0
+Provides-Extra: dev
+Requires-Dist: bandit>=1.7.10; extra == 'dev'
+Requires-Dist: black>=24.0; extra == 'dev'
+Requires-Dist: importlib-metadata>=6.0; extra == 'dev'
+Requires-Dist: isort>=5.13; extra == 'dev'
+Requires-Dist: mypy>=1.13; extra == 'dev'
+Requires-Dist: pre-commit>=3.0.0; extra == 'dev'
+Requires-Dist: pyinstaller>=6.0.0; extra == 'dev'
+Requires-Dist: pytest-cov>=4.0; extra == 'dev'
+Requires-Dist: pytest>=7.0; extra == 'dev'
+Requires-Dist: ruff>=0.8.0; extra == 'dev'
+Requires-Dist: tomli-w>=1.0.0; extra == 'dev'
+Requires-Dist: types-pyyaml>=6.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# Riveter
+**Infrastructure Rule Enforcement as Code**
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## What is Riveter? (30-second pitch)
+
+**Stop infrastructure security issues before they reach production.** Riveter validates your Terraform configurations against security and compliance standards in seconds, not hours. Whether you need CIS benchmarks, SOC 2 compliance, or custom organizational policies, Riveter catches misconfigurations during development—saving you from costly production incidents and compliance failures.
+
+### Before Riveter 😰
+```bash
+# Deploy infrastructure
+terraform apply
+# ❌ Production incident: S3 bucket publicly accessible
+# ❌ Compliance audit failure: Missing encryption
+# ❌ Security team escalation: Overprivileged IAM roles
+# ❌ Emergency hotfix deployment at 2 AM
+```
+
+### After Riveter ✅
+```bash
+# Validate before deployment
+riveter scan -p aws-security -p cis-aws -t main.tf
+# ✅ Caught 3 security issues before deployment
+# ✅ Fixed in development environment
+# ✅ Confident, compliant production deployment
+# ✅ Sleep peacefully at night
+```
+
+### Why Choose Riveter Over Alternatives?
+
+| Feature | Riveter | Checkov | TFLint | Terrascan |
+|---------|---------|---------|---------|-----------|
+| **Ready-to-use compliance packs** | ✅ 15+ frameworks | ❌ Manual setup | ❌ Manual setup | ⚠️ Limited |
+| **Multi-cloud support** | ✅ AWS, Azure, GCP | ✅ Yes | ⚠️ Limited | ✅ Yes |
+| **Custom rule creation** | ✅ Simple YAML | ⚠️ Python required | ⚠️ Go required | ⚠️ Rego required |
+| **CI/CD integration** | ✅ Multiple formats | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Installation simplicity** | ✅ Single binary | ⚠️ Python deps | ✅ Single binary | ⚠️ Multiple deps |
+| **Performance** | ✅ Fast startup | ⚠️ Slower | ✅ Fast | ⚠️ Slower |
+
+**Key Differentiators:**
+- 🚀 **Instant productivity**: Pre-built rule packs for 15+ compliance frameworks
+- 🎯 **Purpose-built**: Designed specifically for Terraform validation
+- 📝 **Simple rule syntax**: Write custom rules in readable YAML, not code
+- ⚡ **Zero dependencies**: Single binary installation via Homebrew
+- 🔄 **Flexible integration**: Works with any CI/CD system
+
+## Choose Your Path
+
+### 👨‍💻 **I'm a Developer**
+*"I want to integrate security validation into my development workflow"*
+
+**Quick Start:** [5-Minute Success Guide](#quick-start) → [CI/CD Integration](#cicd-integration) → [Performance Tips](#troubleshooting)
+
+**Key Features for You:**
+- ⚡ **Local validation** - Catch issues before pushing code
+- 🔧 **IDE integration** - Works with any editor or terminal
+- 🚀 **Fast feedback** - Results in seconds, not minutes
+- 📦 **Easy installation** - Single command via Homebrew
+
+**Common Use Cases:**
+```bash
+# Quick local validation before commit
+riveter scan -p aws-security -t main.tf
+
+# Custom team standards
+riveter scan -r team-rules.yml -p aws-security -t main.tf
+```
+
+### 🔒 **I'm a Security Engineer**
+*"I need to enforce security policies and compliance standards"*
+
+**Quick Start:** [Security Rule Packs](#rule-packs) → [Custom Rules](#writing-custom-rules) → [Compliance Mapping](#rule-packs)
+
+**Key Features for You:**
+- 🛡️ **15+ compliance frameworks** - CIS, SOC 2, HIPAA, PCI-DSS
+- 📋 **Security best practices** - AWS, Azure, GCP security rules
+- 🎯 **Custom policies** - Write organization-specific rules
+- 📊 **SARIF output** - Integrate with security dashboards
+
+**Common Use Cases:**
+```bash
+# Multi-framework compliance validation
+riveter scan -p cis-aws -p soc2-security -p aws-hipaa -t main.tf
+
+# Security-focused validation
+riveter scan -p aws-security -p azure-security -p gcp-security -t main.tf
+
+# Custom security policies
+riveter scan -r security-policies.yml -p multi-cloud-security -t main.tf
+```
+
+### 📊 **I'm a Compliance Officer**
+*"I need to ensure infrastructure meets regulatory requirements"*
+
+**Quick Start:** [Compliance Rule Packs](#rule-packs) → [Audit Reporting](#cli-commands) → [CI/CD Integration](#cicd-integration)
+
+**Key Features for You:**
+- 📋 **Regulatory frameworks** - HIPAA, PCI-DSS, SOC 2, CIS benchmarks
+- 📈 **Audit trails** - JUnit and SARIF reporting for compliance evidence
+- 🔍 **Gap analysis** - Identify non-compliant resources before deployment
+- 📊 **Dashboard integration** - Export results to compliance tools
+
+**Common Use Cases:**
+```bash
+# Healthcare compliance (HIPAA)
+riveter scan -p aws-hipaa -p azure-hipaa -t healthcare-infrastructure/main.tf --output-format sarif
+
+# Financial services compliance (PCI-DSS)
+riveter scan -p aws-pci-dss -t payment-infrastructure/main.tf --output-format junit
+
+# Multi-cloud compliance assessment
+riveter scan -p cis-aws -p cis-azure -p cis-gcp -t infrastructure/main.tf --output-format json
+```
+
+## Visual Feature Showcase
+
+### 🎯 **Riveter in Your Workflow**
+
+```mermaid
+graph LR
+    A["📝 Write<br/>Terraform<br/>Configuration"] --> B["🔍 Run Riveter<br/>Validation"]
+    B --> C{"✅ Validation<br/>Results<br/>Pass?"}
+    C -->|"❌ Issues Found"| D["🔧 Fix Issues<br/>Locally"]
+    C -->|"✅ All Good"| E["🚀 Commit &<br/>Deploy"]
+    D --> B
+    E --> F["🎯 Production<br/>Ready"]
+
+    style A fill:#ffffff,stroke:#2196f3,stroke-width:3px,color:#000000
+    style B fill:#ffffff,stroke:#9c27b0,stroke-width:3px,color:#000000
+    style C fill:#ffffff,stroke:#ff9800,stroke-width:3px,color:#000000
+    style D fill:#ffffff,stroke:#f44336,stroke-width:3px,color:#000000
+    style E fill:#ffffff,stroke:#4caf50,stroke-width:3px,color:#000000
+    style F fill:#ffffff,stroke:#4caf50,stroke-width:3px,color:#000000
+```
+
+### 📊 **Multiple Output Formats**
+
+#### Terminal Output (Default)
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Riveter Infrastructure Validation Results                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ ❌ FAIL │ aws_s3_bucket.example │ S3 bucket must have encryption enabled    │
+│ ❌ FAIL │ aws_instance.web      │ EC2 instance must not have public IP     │
+│ ✅ PASS │ aws_security_group.sg │ Security group follows best practices    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Summary: 2 failures, 1 passed                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### JSON Output (Programmatic)
+```json
+{
+  "summary": {
+    "total_rules": 3,
+    "passed": 1,
+    "failed": 2,
+    "success_rate": 33.33
+  },
+  "results": [
+    {
+      "rule_id": "s3-encryption-enabled",
+      "resource": "aws_s3_bucket.example",
+      "status": "FAIL",
+      "message": "S3 bucket must have encryption enabled",
+      "severity": "error"
+    }
+  ]
+}
+```
+
+#### SARIF Output (Security Tools)
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [{
+    "tool": {
+      "driver": {
+        "name": "Riveter",
+        "version": "1.0.0"
+      }
+    },
+    "results": [...]
+  }]
+}
+```
+
+### 🏗️ **Architecture: How Riveter Works**
+
+```mermaid
+graph TD
+    A["📄 Terraform<br/>Configuration<br/>Files"] --> B["🔍 HCL Parser<br/>(Syntax Analysis)"]
+    C["📦 Pre-built<br/>Rule Packs"] --> D["⚙️ Rule Engine<br/>(Load & Validate)"]
+    E["📝 Custom<br/>Rules"] --> D
+
+    B --> F["🔧 Resource<br/>Extractor"]
+    F --> G["✅ Validation<br/>Engine<br/>(Core Logic)"]
+    D --> G
+
+    G --> H["📊 Results<br/>Processor"]
+    H --> I["💻 Terminal<br/>Output"]
+    H --> J["📋 JSON<br/>Export"]
+    H --> K["🔒 SARIF<br/>Export"]
+    H --> L["🧪 JUnit<br/>XML"]
+
+    style A fill:#ffffff,stroke:#2196f3,stroke-width:3px,color:#000000
+    style B fill:#f8f9fa,stroke:#2196f3,stroke-width:2px,color:#000000
+    style C fill:#ffffff,stroke:#9c27b0,stroke-width:3px,color:#000000
+    style D fill:#ffffff,stroke:#ff9800,stroke-width:3px,color:#000000
+    style E fill:#ffffff,stroke:#9c27b0,stroke-width:3px,color:#000000
+    style F fill:#f8f9fa,stroke:#2196f3,stroke-width:2px,color:#000000
+    style G fill:#ffffff,stroke:#ff9800,stroke-width:3px,color:#000000
+    style H fill:#f8f9fa,stroke:#ff9800,stroke-width:2px,color:#000000
+    style I fill:#ffffff,stroke:#4caf50,stroke-width:3px,color:#000000
+    style J fill:#ffffff,stroke:#4caf50,stroke-width:3px,color:#000000
+    style K fill:#ffffff,stroke:#4caf50,stroke-width:3px,color:#000000
+    style L fill:#ffffff,stroke:#4caf50,stroke-width:3px,color:#000000
+```
+
+### 📦 **Rule Pack Coverage Comparison**
+
+| Cloud Provider | Security Rules | CIS Benchmark | Well-Architected | Compliance (HIPAA/PCI) |
+|----------------|----------------|---------------|-------------------|-------------------------|
+| **AWS** | ✅ 26 rules | ✅ 22 rules | ✅ 34 rules | ✅ 35 HIPAA + 40 PCI |
+| **Azure** | ✅ 28 rules | ✅ 34 rules | ✅ 35 rules | ✅ 30 HIPAA |
+| **GCP** | ✅ 29 rules | ✅ 43 rules | ✅ 30 rules | ⚠️ Coming soon |
+| **Multi-Cloud** | ✅ 40 rules | ➖ N/A | ➖ N/A | ➖ N/A |
+| **Kubernetes** | ✅ 40 rules | ➖ N/A | ➖ N/A | ➖ N/A |
+
+### 🚀 **CI/CD Integration Flow**
+
+```mermaid
+sequenceDiagram
+    participant Dev as "👨‍💻 Developer"
+    participant Git as "📚 Git<br/>Repository"
+    participant CI as "🔄 CI/CD<br/>Pipeline"
+    participant Riveter as "🔍 Riveter<br/>Validator"
+    participant Deploy as "🚀 Deployment<br/>System"
+
+    Dev->>Git: 📤 Push Terraform<br/>configuration changes
+    Git->>CI: ⚡ Trigger automated<br/>pipeline execution
+    CI->>Riveter: 🔍 Execute validation<br/>with rule packs
+    Riveter->>Riveter: ⚙️ Analyze against<br/>security & compliance rules
+
+    alt ✅ Validation Passes
+        Riveter->>CI: ✅ All security checks<br/>passed successfully
+        CI->>Deploy: 🚀 Proceed with<br/>infrastructure deployment
+        Deploy->>Dev: ✅ Deployment completed<br/>successfully
+    else ❌ Validation Fails
+        Riveter->>CI: ❌ Security/compliance<br/>issues detected
+        CI->>Dev: 🚫 Block deployment<br/>+ Send detailed report
+        Dev->>Dev: 🔧 Fix issues in<br/>local environment
+        Dev->>Git: 📤 Push corrected<br/>configuration
+    end
+```
+
+## 🚀 Quick Success (5-Minute Tutorial)
+
+**Get from zero to validated infrastructure in under 5 minutes:**
+
+### Step 1: Install (30 seconds)
+```bash
+# Fastest installation method
+brew install scottryanhoward/homebrew-riveter/riveter
+```
+
+### Step 2: Create Insecure Example (30 seconds)
+```bash
+# Create an intentionally insecure Terraform configuration
+cat > insecure.tf << 'EOF'
+resource "aws_s3_bucket" "example" {
+  bucket = "my-insecure-bucket"
+}
+
+resource "aws_s3_bucket_public_access_block" "example" {
+  bucket = aws_s3_bucket.example.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  associate_public_ip_address = true
+
+  tags = {
+    Name        = "web-server"
+    Environment = "production"
+  }
+}
+
+resource "aws_security_group" "allow_all" {
+  name        = "allow_all"
+  description = "Allow all inbound traffic"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+EOF
+```
+
+### Step 3: See It Fail (30 seconds)
+```bash
+# Run validation on the insecure infrastructure
+riveter scan -p aws-security -t insecure.tf
+
+# Expected output: ❌ 3 security issues found
+# - S3 bucket allows public access
+# - EC2 instance has public IP
+# - Security group allows SSH from anywhere
+```
+
+### Step 4: Create Secure Version and Validate (3 minutes)
+```bash
+# Create a secure version of the configuration
+cat > secure.tf << 'EOF'
+resource "aws_s3_bucket" "example" {
+  bucket = "my-secure-bucket"
+}
+
+resource "aws_s3_bucket_public_access_block" "example" {
+  bucket = aws_s3_bucket.example.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "example" {
+  bucket = aws_s3_bucket.example.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t2.micro"
+
+  associate_public_ip_address = false
+
+  tags = {
+    Name        = "web-server"
+    Environment = "production"
+  }
+}
+
+resource "aws_security_group" "restricted" {
+  name        = "restricted_access"
+  description = "Restricted inbound traffic"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
+  }
+}
+EOF
+
+# Run validation on the secure version
+riveter scan -p aws-security -t secure.tf
+
+# Expected output: ✅ All validations passed!
+```
+
+### Step 5: Success! What's Next? (1 minute)
+
+🎉 **Congratulations!** You've successfully validated Terraform with Riveter.
+
+**Choose your next step based on your role:**
+- **Developers**: [Integrate with your workflow](#cicd-integration)
+- **Security Engineers**: [Explore compliance frameworks](#rule-packs)
+- **Compliance Officers**: [Set up audit reporting](#cli-commands)
+
+**Or explore more:**
+- 📚 [Browse all examples](examples/) - Real-world infrastructure patterns
+- 🛡️ [Security rule packs](#rule-packs) - 15+ compliance frameworks
+- ✍️ [Write custom rules](#writing-custom-rules) - Organization-specific policies
+
+## Installation Options
+
+### 🍺 Homebrew (Recommended)
+**Fastest and easiest installation:**
+```bash
+brew install scottryanhoward/homebrew-riveter/riveter
+```
+
+**Benefits:**
+- ✅ Single binary - no Python dependencies
+- ✅ Automatic updates with `brew upgrade`
+- ✅ Works on any system
+- ✅ Faster startup times
+
+### 🐍 Python/pip (Alternative)
+**For Python developers or custom environments:**
+```bash
+git clone https://github.com/riveter/riveter.git && cd riveter
+python3 -m venv venv && source venv/bin/activate
+pip install -e .
+```
+
+**Note:** Remember to activate your virtual environment each time: `source venv/bin/activate`
+
+### 📦 Other Installation Methods
+- **Docker**: `docker run --rm -v $(pwd):/workspace riveter/riveter scan -p aws-security -t /workspace/main.tf`
+- **GitHub Actions**: See [CI/CD Integration](#cicd-integration) examples
+- **Binary Download**: Check [releases page](https://github.com/riveter/riveter/releases) for direct downloads
+
+## Common Use Cases
+
+### 🏢 Enterprise Compliance
+```bash
+# Validate against multiple compliance frameworks
+riveter scan -p cis-aws -p soc2-security -t main.tf --output-format junit
+riveter scan -p cis-gcp -p gcp-well-architected -t main.tf
+riveter scan -p cis-azure -p azure-well-architected -t main.tf
+```
+
+### 🔒 Security-First Development
+```bash
+# Check cloud security best practices before deployment
+riveter scan -p aws-security -t main.tf      # AWS
+riveter scan -p gcp-security -t main.tf      # GCP
+riveter scan -p azure-security -t main.tf    # Azure
+riveter scan -p multi-cloud-security -t main.tf  # Multi-cloud
+```
+
+### 🏥 Healthcare & Finance Compliance
+```bash
+# HIPAA compliance validation
+riveter scan -p aws-hipaa -t healthcare-infrastructure/main.tf
+riveter scan -p azure-hipaa -t healthcare-infrastructure/main.tf
+
+# PCI-DSS compliance for payment processing
+riveter scan -p aws-pci-dss -t payment-infrastructure/
+```
+
+### ☸️ Container & Kubernetes Security
+```bash
+# Kubernetes security across cloud providers
+riveter scan -p kubernetes-security -t k8s-infrastructure/main.tf
+```
+
+### 🏗️ Well-Architected Frameworks
+```bash
+# Architectural best practices validation
+riveter scan -p aws-well-architected -t main.tf
+riveter scan -p azure-well-architected -t main.tf
+riveter scan -p gcp-well-architected -t main.tf
+```
+
+### 🎯 Custom Organizational Policies
+```bash
+# Combine your custom rules with industry standards
+riveter scan -r company-policies.yml -p aws-security -t main.tf
+```
+
+### 🚀 CI/CD Integration
+```bash
+# Generate SARIF output for security dashboards
+riveter scan -p aws-security -t main.tf --output-format sarif > security-results.sarif
+```
+
+## What You Get
+
+### 📦 Pre-built Compliance Rule Packs
+| Framework | Rules | What It Covers |
+|-----------|-------|----------------|
+| **AWS Security** | 26 rules | EC2, S3, RDS, VPC, IAM, CloudTrail, KMS, Lambda |
+| **GCP Security** | 29 rules | Compute Engine, Cloud Storage, Cloud SQL, VPC, IAM, KMS |
+| **Azure Security** | 28 rules | VMs, Storage Accounts, SQL Databases, Key Vault, NSGs |
+| **CIS AWS** | 22 rules | Identity, Storage, Logging, Networking benchmarks |
+| **CIS Azure** | 34 rules | Security Center, Storage, Database, VMs, Key Vault |
+| **CIS GCP** | 43 rules | IAM, Logging, Monitoring, Networking, VMs, Storage |
+| **AWS Well-Architected** | 34 rules | 6 pillars: Operational Excellence, Security, Reliability, Performance, Cost, Sustainability |
+| **Azure Well-Architected** | 35 rules | 5 pillars: Cost Optimization, Operational Excellence, Performance, Reliability, Security |
+| **GCP Well-Architected** | 30 rules | 5 pillars: Operational Excellence, Security, Reliability, Performance, Cost Optimization |
+| **AWS HIPAA** | 35 rules | Healthcare compliance: Encryption, Access Controls, Audit Logging, Network Security |
+| **Azure HIPAA** | 30 rules | Healthcare compliance: Encryption, Access Controls, Audit Logging, Network Security |
+| **AWS PCI-DSS** | 40 rules | Payment card compliance: Network Segmentation, Encryption, Access Control, Logging |
+| **Multi-Cloud Security** | 40 rules | Common security patterns across AWS, Azure, and GCP |
+| **Kubernetes Security** | 40 rules | Container security for EKS, AKS, and GKE |
+| **SOC 2 Security** | 28 rules | Access Control, Authentication, Encryption, Monitoring |
+
+### 🔧 Flexible Validation Options
+- **Custom Rules**: Write your own YAML rules for organization-specific policies
+- **Mixed Approach**: Combine pre-built packs with custom rules
+- **Advanced Operators**: regex, comparisons, length checks, subset validation
+- **Smart Filtering**: Target specific environments, resource types, or severity levels
+
+### 📊 Multiple Output Formats
+- **Table** (default): Human-readable terminal output
+- **JSON**: For programmatic processing and automation
+- **JUnit XML**: CI/CD pipeline integration
+- **SARIF**: Security tool ecosystem compatibility
+
+## Installation
+
+### Option 1: Homebrew (Recommended)
+
+The easiest way to install Riveter on macOS and Linux:
+
+```bash
+# One-step installation
+brew install scottryanhoward/homebrew-riveter/riveter
+
+# Or two-step installation
+brew tap scottryanhoward/homebrew-riveter
+brew install riveter
+```
+
+**Benefits of Homebrew installation:**
+- ✅ No Python environment management required
+- ✅ Automatic updates with `brew upgrade riveter`
+- ✅ Works on systems without Python
+- ✅ Faster startup times (standalone binary)
+
+### Option 2: Python/pip Installation
+
+**Requirements**: Python 3.12+
+
+```bash
+# Clone and install
+git clone https://github.com/riveter/riveter.git
+cd riveter
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# OR: .\venv\Scripts\activate  # Windows
+pip install -e .
+```
+
+> 💡 **Tip**: Remember to activate the virtual environment (`source venv/bin/activate`) each time you use Riveter when using the Python installation method.
+
+### Migration Guide
+
+Already using the Python/pip installation? See our [Installation Migration Guide](docs/INSTALLATION_MIGRATION_GUIDE.md) for step-by-step instructions to switch to Homebrew.
+
+## Quick Start
+
+**Note**: If you installed via Python/pip, make sure your virtual environment is activated before running the commands below. Homebrew users can skip this step.
+
+### Option 1: Using Pre-built Rule Packs (Recommended)
+
+The fastest way to get started is using pre-built rule packs:
+
+```bash
+# List available rule packs
+riveter list-rule-packs
+
+# Scan with AWS security best practices
+riveter scan -p aws-security -t main.tf
+
+# Scan with multiple rule packs
+riveter scan -p aws-security -p cis-aws -t main.tf
+
+# Output results in JSON format
+riveter scan -p aws-security -t main.tf --output-format json
+```
+
+### Option 2: Using Custom Rules
+
+1. Create a validation rules file (`rules.yml`):
+
+```yaml
+rules:
+  - id: security-group-allowed-ports
+    description: Security groups must only allow HTTP and HTTPS from 0.0.0.0/0
+    resource_type: aws_security_group
+    assert:
+      ingress:
+        - from_port: 443
+          to_port: 443
+          protocol: tcp
+          cidr_blocks: ["0.0.0.0/0"]
+        - from_port: 80
+          to_port: 80
+          protocol: tcp
+          cidr_blocks: ["0.0.0.0/0"]
+
+  - id: ec2-instance-size
+    description: Production EC2 instances must be at least t3.large
+    resource_type: aws_instance
+    filter:
+      tags:
+        Environment: production
+    assert:
+      instance_type: t3.large
+```
+
+2. Create your Terraform configuration (`main.tf`):
+```hcl
+resource "aws_security_group" "web" {
+  name        = "web-server-sg"
+  description = "Allow HTTP and HTTPS traffic"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "web" {
+  instance_type = "t3.large"
+  # ... other configuration ...
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+3. Run Riveter:
+```bash
+riveter scan -r rules.yml -t main.tf
+```
+
+### Option 3: Combining Custom Rules and Rule Packs
+
+You can combine your custom rules with pre-built rule packs:
+
+```bash
+# Use both custom rules and AWS security pack
+riveter scan -r custom-rules.yml -p aws-security -t main.tf
+```
+
+Riveter will validate your Terraform configuration and report any violations of your rules.
+
+## Rule Packs
+
+Rule packs are collections of pre-built rules that implement common compliance frameworks and security best practices. They provide an easy way to get started with infrastructure validation without writing rules from scratch.
+
+### Available Rule Packs
+
+| Rule Pack | Description | Rules | Coverage |
+|-----------|-------------|-------|----------|
+| **Cloud Security Best Practices** | | | |
+| `aws-security` | AWS Security Best Practices | 26 | EC2, S3, RDS, VPC, IAM, CloudTrail, KMS, Lambda, ALB |
+| `gcp-security` | GCP Security Best Practices | 29 | Compute Engine, Cloud Storage, Cloud SQL, VPC, IAM, KMS |
+| `azure-security` | Azure Security Best Practices | 28 | VMs, Storage Accounts, SQL Databases, Key Vault, NSGs |
+| `multi-cloud-security` | Multi-Cloud Security Patterns | 40 | Common security patterns across AWS, Azure, GCP |
+| **CIS Benchmarks** | | | |
+| `cis-aws` | CIS AWS Foundations Benchmark v1.4.0 | 22 | Identity, Storage, Logging, Networking |
+| `cis-azure` | CIS Azure Foundations Benchmark v1.3.0 | 34 | Identity, Security Center, Storage, Database, Logging, Networking, VMs, Key Vault |
+| `cis-gcp` | CIS GCP Foundations Benchmark v1.3.0 | 43 | IAM, Logging, Monitoring, Networking, VMs, Storage, Cloud SQL |
+| **Well-Architected Frameworks** | | | |
+| `aws-well-architected` | AWS Well-Architected Framework | 34 | 6 pillars: Operational Excellence, Security, Reliability, Performance, Cost, Sustainability |
+| `azure-well-architected` | Azure Well-Architected Framework | 35 | 5 pillars: Cost Optimization, Operational Excellence, Performance, Reliability, Security |
+| `gcp-well-architected` | GCP Architecture Framework | 30 | 5 pillars: Operational Excellence, Security, Reliability, Performance, Cost Optimization |
+| **Compliance Standards** | | | |
+| `aws-hipaa` | AWS HIPAA Compliance | 35 | Healthcare: Encryption, Access Controls, Audit Logging, Network Security, Backup |
+| `azure-hipaa` | Azure HIPAA Compliance | 30 | Healthcare: Encryption, Access Controls, Audit Logging, Network Security, Backup |
+| `aws-pci-dss` | AWS PCI-DSS Compliance | 40 | Payment Cards: Network Segmentation, Encryption, Access Control, Logging, Vulnerability Mgmt |
+| **Container & Kubernetes** | | | |
+| `kubernetes-security` | Kubernetes Security | 40 | Pod Security, RBAC, Network Policies, Secrets, Image Security (EKS/AKS/GKE) |
+| **General Compliance** | | | |
+| `soc2-security` | SOC 2 Security Trust Service Criteria | 28 | Access Control, Authentication, Network Security, Encryption, Monitoring |
+
+### Rule Pack Commands
+
+```bash
+# List all available rule packs
+riveter list-rule-packs
+
+# Validate a rule pack file
+riveter validate-rule-pack rule_packs/aws-security.yml
+
+# Create a new rule pack template
+riveter create-rule-pack-template my-company-rules my-rules.yml
+```
+
+### Using Rule Packs
+
+```bash
+# Basic usage with a single rule pack
+riveter scan -p aws-security -t main.tf
+
+# Use multiple rule packs
+riveter scan -p aws-security -p cis-aws -p soc2-security -t main.tf
+
+# Combine rule packs with custom rules
+riveter scan -r custom-rules.yml -p aws-security -t main.tf
+
+# Different output formats
+riveter scan -p aws-security -t main.tf --output-format json
+riveter scan -p aws-security -t main.tf --output-format junit
+riveter scan -p aws-security -t main.tf --output-format sarif
+```
+
+### Rule Pack Examples
+
+#### Cloud Security Best Practices
+```bash
+# AWS Security Best Practices
+riveter scan -p aws-security -t main.tf
+```
+Includes rules for EC2 instances without public IPs in production, encrypted EBS volumes, approved instance types, required tags, S3 bucket encryption and public access controls, RDS encryption and backup settings, VPC security groups and flow logs, IAM policy restrictions, and CloudTrail logging requirements.
+
+```bash
+# GCP Security Best Practices
+riveter scan -p gcp-security -t main.tf
+```
+Covers Compute Engine security (OS Login, no external IPs, Shielded VM), Cloud Storage security (uniform bucket access, encryption, public access prevention), Cloud SQL security (SSL/TLS, backups, no public IP), VPC security (Flow Logs, firewall rules), IAM security (service account keys, no primitive roles), and Cloud KMS security (key rotation).
+
+```bash
+# Azure Security Best Practices
+riveter scan -p azure-security -t main.tf
+```
+Validates VM security (disk encryption, no public IPs, managed identities), Storage Account security (HTTPS only, encryption, no public access), SQL Database security (TDE, firewall rules, threat detection), Network Security Group rules, Key Vault security (soft delete, purge protection), and Azure AD/IAM best practices.
+
+```bash
+# Multi-Cloud Security Patterns
+riveter scan -p multi-cloud-security -t main.tf
+```
+Enforces common security patterns across AWS, Azure, and GCP including encryption at rest and in transit, network security, IAM best practices, logging and monitoring, with cloud provider detection and appropriate validation.
+
+#### CIS Benchmarks
+```bash
+# CIS Compliance across cloud providers
+riveter scan -p cis-aws -t main.tf      # AWS CIS Benchmark v1.4.0
+riveter scan -p cis-azure -t main.tf    # Azure CIS Benchmark v1.3.0
+riveter scan -p cis-gcp -t main.tf      # GCP CIS Benchmark v1.3.0
+```
+Implements specific CIS control requirements with references to control numbers, covering identity and access management, logging and monitoring, networking, storage, and compute security.
+
+#### Well-Architected Frameworks
+```bash
+# AWS Well-Architected Framework (6 pillars)
+riveter scan -p aws-well-architected -t main.tf
+```
+Validates Operational Excellence (CloudWatch alarms, Auto Scaling policies, resource tagging), Security (complement to aws-security), Reliability (Multi-AZ deployments, health checks, backup strategies), Performance Efficiency (CloudFront, ElastiCache, EBS optimization), Cost Optimization (cost allocation tags, lifecycle policies), and Sustainability (region selection, resource utilization).
+
+```bash
+# Azure Well-Architected Framework (5 pillars)
+riveter scan -p azure-well-architected -t main.tf
+```
+Covers Cost Optimization (resource tagging, VM sizing, storage tiers), Operational Excellence (monitoring, automation, naming conventions), Performance Efficiency (CDN, Redis cache, autoscaling), Reliability (availability zones, backup policies, geo-replication), and Security (Security Center, private endpoints).
+
+```bash
+# GCP Architecture Framework (5 pillars)
+riveter scan -p gcp-well-architected -t main.tf
+```
+Validates Operational Excellence (Cloud Monitoring, Cloud Logging, resource labels), Security (Security Command Center, VPC Service Controls), Reliability (regional resources, health checks, Cloud SQL HA), Performance (Cloud CDN, Memorystore, SSD disks), and Cost Optimization (resource labels for billing, committed use discounts, preemptible VMs).
+
+#### Healthcare & Finance Compliance
+```bash
+# HIPAA Compliance for healthcare workloads
+riveter scan -p aws-hipaa -t healthcare-infrastructure/
+riveter scan -p azure-hipaa -t healthcare-infrastructure/
+```
+Validates healthcare-specific requirements including encryption at rest and in transit for PHI data, access controls with MFA, comprehensive audit logging, network security and isolation, and backup and recovery procedures.
+
+```bash
+# PCI-DSS Compliance for payment processing
+riveter scan -p aws-pci-dss -t payment-infrastructure/
+```
+Enforces payment card industry standards including network segmentation for cardholder data environment, encryption requirements, access control with unique user IDs, logging and monitoring for audit trails, and vulnerability management procedures.
+
+#### Container & Kubernetes Security
+```bash
+# Kubernetes Security across EKS, AKS, and GKE
+riveter scan -p kubernetes-security -t k8s-infrastructure/
+```
+Validates pod security (no privileged containers, read-only root filesystem, non-root users), RBAC configuration (role bindings, service accounts, namespace isolation), network policies (default deny, ingress/egress rules), secrets management (external secrets, encryption at rest), and image security (scanning, trusted registries, vulnerability management).
+
+#### SOC 2 Security Criteria
+```bash
+# SOC 2 Trust Service Criteria compliance
+riveter scan -p soc2-security -t main.tf
+```
+Covers security criteria including access controls, authentication, network security, encryption, and monitoring across AWS, Azure, and GCP.
+
+### Creating Custom Rule Packs
+
+You can create your own rule packs for your organization's specific requirements:
+
+```bash
+# Generate a template
+riveter create-rule-pack-template company-standards company-rules.yml
+
+# Edit the template to add your rules
+# Validate your rule pack
+riveter validate-rule-pack company-rules.yml
+
+# Use your custom rule pack
+riveter scan -p company-standards -t main.tf
+```
+
+### Rule Pack Format
+
+Rule packs are YAML files with metadata and rules sections:
+
+```yaml
+metadata:
+  name: my-rule-pack
+  version: 1.0.0
+  description: Custom rule pack for my organization
+  author: My Team
+  created: 2024-01-01
+  updated: 2024-01-01
+  dependencies: []
+  tags: [security, compliance]
+  min_riveter_version: 0.1.0
+
+rules:
+  - id: my_custom_rule
+    resource_type: aws_instance
+    description: Custom rule description
+    severity: error
+    assert:
+      instance_type:
+        regex: "^(t3|m5)\\.(large|xlarge)$"
+    metadata:
+      tags: [ec2, security]
+      references: ["https://example.com/policy"]
+```
+
+## Writing Custom Rules
+
+### Simple Rule Example
+
+```yaml
+rules:
+  - id: require-encryption
+    description: "EBS volumes must be encrypted"
+    resource_type: aws_instance
+    severity: error
+    assert:
+      root_block_device.encrypted: true
+```
+
+### Advanced Rule with Filtering
+
+```yaml
+rules:
+  - id: production-instance-size
+    description: "Production instances must be at least t3.large"
+    resource_type: aws_instance
+    severity: error
+    filter:
+      tags.Environment: production  # Only check production resources
+    assert:
+      instance_type:
+        regex: "^(t3|m5|c5)\\.(large|xlarge|2xlarge)$"
+    metadata:
+      tags: [security, cost-optimization]
+      references: ["https://company.com/aws-standards"]
+```
+
+### Available Operators
+
+| Operator | Example | Description |
+|----------|---------|-------------|
+| `eq` | `instance_type: t3.large` | Exact match (default) |
+| `ne` | `publicly_accessible: {ne: true}` | Not equal |
+| `regex` | `name: {regex: "^prod-.*"}` | Regular expression |
+| `gt/gte` | `volume_size: {gte: 100}` | Greater than (or equal) |
+| `lt/lte` | `max_size: {lte: 10}` | Less than (or equal) |
+| `contains` | `cidr_blocks: {contains: "10.0.0.0/8"}` | List contains value |
+| `length` | `ingress: {length: {lte: 5}}` | List/string length |
+| `present` | `backup_retention_period: present` | Property exists |
+
+### Rule Structure Reference
+
+```yaml
+rules:
+  - id: unique-rule-id           # Required: Unique identifier
+    description: "What it checks" # Recommended: Human-readable description
+    resource_type: aws_instance   # Required: Terraform resource type
+    severity: error               # Optional: error|warning|info (default: error)
+    filter:                       # Optional: Which resources to check
+      tags.Environment: prod      # Filter by tags or other properties
+    assert:                       # Required: Validation conditions
+      property: value             # Simple equality check
+      nested.property: value      # Nested property access
+      property: {operator: value} # Using operators
+    metadata:                     # Optional: Additional information
+      tags: [security]            # Categorization tags
+      references: ["https://..."] # Documentation links
+```
+
+## CLI Commands
+
+### Scan Command
+
+The main command for validating Terraform configurations:
+
+```bash
+# Basic syntax
+riveter scan [OPTIONS] -t TERRAFORM_FILE
+
+# Options:
+#   -r, --rules PATH          Path to custom rules YAML file
+#   -p, --rule-pack NAME      Rule pack name (can be used multiple times)
+#   -t, --terraform PATH      Path to Terraform main.tf file (required)
+#   -f, --output-format FORMAT  Output format: table, json, junit, sarif (default: table)
+
+# Examples:
+riveter scan -r rules.yml -t main.tf
+riveter scan -p aws-security -t main.tf
+riveter scan -p aws-security -p cis-aws -t main.tf --output-format json
+riveter scan -r custom.yml -p aws-security -t main.tf
+```
+
+### Rule Pack Management Commands
+
+```bash
+# List available rule packs
+riveter list-rule-packs
+
+# Validate a rule pack file
+riveter validate-rule-pack RULE_PACK_FILE
+
+# Create a rule pack template
+riveter create-rule-pack-template PACK_NAME OUTPUT_FILE
+```
+
+### Output Formats
+
+- **table** (default): Human-readable table format
+- **json**: JSON format for programmatic processing
+- **junit**: JUnit XML format for CI/CD integration
+- **sarif**: SARIF format for security tools integration
+
+### Exit Codes
+
+- `0`: All validations passed
+- `1`: One or more validation failures or errors
+
+## Troubleshooting
+
+💡 **Quick Help**: For comprehensive troubleshooting, see our [Troubleshooting Guide](docs/user/troubleshooting.md), [FAQ](docs/user/faq.md), and [Error Message Dictionary](docs/user/error-message-dictionary.md).
+
+### Installation Issues
+
+**❌ "riveter: command not found" (Homebrew installation)**
+
+🔧 **Quick Fix**: Add Homebrew to your PATH:
+```bash
+# macOS (Apple Silicon)
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
+
+# macOS (Intel) or Linux
+echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zshrc
+
+# Reload your shell
+source ~/.zshrc
+
+# Verify installation
+which riveter && riveter --version
+```
+
+<details>
+<summary>🔧 More Installation Troubleshooting</summary>
+
+See our comprehensive [Installation Troubleshooting Guide](docs/user/troubleshooting.md#installation-issues) for:
+- Virtual environment issues (Python installation)
+- Permission errors
+- Platform-specific problems
+- Network connectivity issues
+- Step-by-step diagnostic procedures
+
+</details>
+
+**❌ "Error: No available formula with name 'riveter'"**
+```bash
+# Make sure you've tapped the repository first
+brew tap scottryanhoward/homebrew-riveter
+
+# Or use the full tap name
+brew install scottryanhoward/homebrew-riveter/riveter
+```
+
+**❌ Homebrew installation fails on Linux**
+```bash
+# Install Homebrew dependencies first
+sudo apt-get update
+sudo apt-get install build-essential curl file git
+
+# Then install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+**❌ Virtual environment issues (Python installation)**
+```bash
+# Always activate the virtual environment first (Python installation only)
+source venv/bin/activate  # Linux/Mac
+.\venv\Scripts\activate   # Windows
+```
+
+### Runtime Issues
+
+**❌ "Rule pack 'xyz' not found"**
+```bash
+# List available rule packs to see correct names
+riveter list-rule-packs
+```
+
+**❌ "No rules loaded"**
+```bash
+# Make sure to specify either --rules or --rule-pack
+riveter scan -p aws-security -t main.tf  # ✅ Correct
+```
+
+**❌ "Failed to parse Terraform file"**
+- Ensure your `.tf` file has valid HCL syntax
+- Riveter expects standard Terraform resource definitions
+- Check that the file path is correct
+
+**❌ Different results between Homebrew and Python versions**
+```bash
+# Check you're using the same version
+riveter --version
+
+# Ensure you're using the same rule packs
+riveter list-rule-packs
+
+# Compare with identical commands and files
+```
+
+### Platform-Specific Issues
+
+**❌ macOS: "riveter cannot be opened because the developer cannot be verified"**
+```bash
+# Allow the binary to run (one-time setup)
+sudo xattr -rd com.apple.quarantine $(which riveter)
+
+# Or install via Homebrew which handles code signing
+brew install scottryanhoward/homebrew-riveter/riveter
+```
+
+**❌ Linux: Permission denied errors**
+```bash
+# Ensure the binary has execute permissions
+chmod +x $(which riveter)
+
+# Check if the binary is in a restricted directory
+ls -la $(which riveter)
+```
+
+### CI/CD Issues
+
+**❌ GitHub Actions: Homebrew installation fails**
+```yaml
+# Use ubuntu-latest or macos-latest runners
+runs-on: ubuntu-latest  # ✅ Supports Homebrew
+
+# Avoid older or minimal images
+runs-on: ubuntu-18.04   # ❌ May not work
+```
+
+**❌ GitLab CI: Homebrew not found**
+```yaml
+# Install Homebrew in before_script
+before_script:
+  - apt-get update && apt-get install -y curl git
+  - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  - eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+```
+
+**❌ Jenkins: PATH issues with Homebrew**
+```groovy
+// Add Homebrew to PATH in Jenkins pipeline
+environment {
+    PATH = "/home/linuxbrew/.linuxbrew/bin:$PATH"
+}
+```
+
+### Performance Issues
+
+**❌ Slow startup times**
+```bash
+# Homebrew version should be faster - check you're using the right one
+which riveter  # Should show Homebrew path, not Python venv
+
+# For Python installation, ensure venv is activated
+source venv/bin/activate
+```
+
+**❌ High memory usage**
+```bash
+# Homebrew binary uses less memory than Python version
+# Check which version you're running
+riveter --version
+ps aux | grep riveter
+```
+
+### Verifying Installation
+
+To verify your Riveter installation is working correctly:
+
+```bash
+# 1. Check version
+riveter --version
+
+# 2. Verify rule packs are available
+riveter list-rule-packs
+
+# 3. Test with a simple scan (create a test file if needed)
+echo 'resource "aws_instance" "test" { instance_type = "t2.micro" }' > test.tf
+riveter scan -p aws-security -t test.tf
+rm test.tf  # Clean up
+
+# 4. Check help system works
+riveter --help
+```
+
+**Expected output indicators:**
+- Version command shows current version number
+- List-rule-packs shows available rule packs (aws-security, cis-aws, etc.)
+- Test scan completes without "command not found" errors
+- Help shows available commands and options
+
+### Getting Help
+
+```bash
+# Show all available commands
+riveter --help
+
+# Get help for specific commands
+riveter scan --help
+riveter list-rule-packs --help
+```
+
+**Additional Resources:**
+- 📋 **[FAQ](docs/user/faq.md)** - Frequently asked questions and common scenarios
+- 🔧 **[Troubleshooting Guide](docs/user/troubleshooting.md)** - Comprehensive problem-solving steps
+- 📖 **[Error Dictionary](docs/user/error-message-dictionary.md)** - Specific error explanations and solutions
+- 🔄 **[Installation Migration Guide](docs/INSTALLATION_MIGRATION_GUIDE.md)** - Switch from Python to Homebrew
+- 🐛 **[GitHub Issues](https://github.com/riveter/riveter/issues)** - Report bugs or request features
+- 💬 **[GitHub Discussions](https://github.com/riveter/riveter/discussions)** - Ask questions and get help
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+name: Infrastructure Validation
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Riveter
+        run: |
+          # Option 1: Homebrew (faster, no Python setup needed)
+          brew install scottryanhoward/homebrew-riveter/riveter
+
+          # Option 2: Python/pip (alternative)
+          # git clone https://github.com/riveter/riveter.git
+          # cd riveter && pip install -e .
+
+      - name: Validate Infrastructure
+        run: |
+          # For Homebrew installation
+          riveter scan -p aws-security -p cis-aws -t main.tf --output-format junit > results.xml
+
+          # For Python installation (uncomment if using pip method)
+          # cd riveter && source venv/bin/activate
+          # riveter scan -p aws-security -p cis-aws -t ../main.tf --output-format junit > results.xml
+
+      - name: Publish Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Infrastructure Validation
+          path: riveter/results.xml
+          reporter: java-junit
+```
+
+#### Multi-Cloud GitHub Actions Example
+
+```yaml
+name: Multi-Cloud Infrastructure Validation
+on: [push, pull_request]
+
+jobs:
+  validate-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install Riveter
+        run: |
+          # Homebrew installation (recommended)
+          brew install scottryanhoward/homebrew-riveter/riveter
+      - name: Validate AWS Infrastructure
+        run: |
+          riveter scan -p aws-security -p aws-well-architected -p cis-aws -t aws/ --output-format sarif > aws-results.sarif
+      - name: Upload AWS Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: riveter/aws-results.sarif
+
+  validate-gcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install Riveter
+        run: |
+          brew install scottryanhoward/homebrew-riveter/riveter
+      - name: Validate GCP Infrastructure
+        run: |
+          riveter scan -p gcp-security -p gcp-well-architected -p cis-gcp -t gcp/ --output-format sarif > gcp-results.sarif
+      - name: Upload GCP Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: riveter/gcp-results.sarif
+
+  validate-azure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install Riveter
+        run: |
+          brew install scottryanhoward/homebrew-riveter/riveter
+      - name: Validate Azure Infrastructure
+        run: |
+          riveter scan -p azure-security -p azure-well-architected -p cis-azure -t azure/ --output-format sarif > azure-results.sarif
+      - name: Upload Azure Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: riveter/azure-results.sarif
+
+  validate-kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install Riveter
+        run: |
+          brew install scottryanhoward/homebrew-riveter/riveter
+      - name: Validate Kubernetes Infrastructure
+        run: |
+          riveter scan -p kubernetes-security -p multi-cloud-security -t k8s/ --output-format junit > k8s-results.xml
+      - name: Publish K8s Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Kubernetes Security Validation
+          path: riveter/k8s-results.xml
+          reporter: java-junit
+```
+
+### GitLab CI
+
+```yaml
+infrastructure-validation:
+  stage: validate
+  image: ubuntu:latest  # Use Ubuntu for Homebrew support
+  before_script:
+    - apt-get update && apt-get install -y curl git
+    - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    - echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
+    - eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  script:
+    - brew install scottryanhoward/homebrew-riveter/riveter
+    - riveter scan -p aws-security -t main.tf --output-format json > validation-results.json
+  artifacts:
+    reports:
+      junit: riveter/validation-results.json
+    when: always
+```
+
+#### Multi-Cloud GitLab CI Example
+
+```yaml
+stages:
+  - validate
+
+variables:
+  RIVETER_VERSION: "latest"
+
+.riveter_setup: &riveter_setup
+  - apt-get update && apt-get install -y curl git
+  - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  - echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
+  - eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  - brew install scottryanhoward/homebrew-riveter/riveter
+
+validate-aws:
+  stage: validate
+  image: ubuntu:latest
+  script:
+    - *riveter_setup
+    - riveter scan -p aws-security -p aws-well-architected -p cis-aws -t aws/ --output-format junit > aws-results.xml
+  artifacts:
+    reports:
+      junit: riveter/aws-results.xml
+    when: always
+
+validate-gcp:
+  stage: validate
+  image: ubuntu:latest
+  script:
+    - *riveter_setup
+    - riveter scan -p gcp-security -p gcp-well-architected -p cis-gcp -t gcp/ --output-format junit > gcp-results.xml
+  artifacts:
+    reports:
+      junit: riveter/gcp-results.xml
+    when: always
+
+validate-azure:
+  stage: validate
+  image: ubuntu:latest
+  script:
+    - *riveter_setup
+    - riveter scan -p azure-security -p azure-well-architected -p cis-azure -t azure/ --output-format junit > azure-results.xml
+  artifacts:
+    reports:
+      junit: riveter/azure-results.xml
+    when: always
+
+validate-compliance:
+  stage: validate
+  image: ubuntu:latest
+  script:
+    - *riveter_setup
+    - |
+      # Healthcare compliance
+      if [ -d "healthcare/" ]; then
+        riveter scan -p aws-hipaa -p azure-hipaa -t healthcare/ --output-format sarif > healthcare-compliance.sarif
+      fi
+      # Payment processing compliance
+      if [ -d "payments/" ]; then
+        riveter scan -p aws-pci-dss -t payments/ --output-format sarif > pci-compliance.sarif
+      fi
+      # Kubernetes security
+      if [ -d "k8s/" ]; then
+        riveter scan -p kubernetes-security -t k8s/ --output-format junit > k8s-security.xml
+      fi
+  artifacts:
+    reports:
+      junit:
+        - riveter/k8s-security.xml
+    paths:
+      - riveter/healthcare-compliance.sarif
+      - riveter/pci-compliance.sarif
+    when: always
+```
+
+### Jenkins Pipeline
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Validate Infrastructure') {
+            steps {
+                sh '''
+                    # Install Homebrew if not present
+                    if ! command -v brew &> /dev/null; then
+                        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+                    fi
+
+                    # Install Riveter via Homebrew
+                    brew install scottryanhoward/homebrew-riveter/riveter
+                    riveter scan -p aws-security -t Terraform/main.tf --output-format junit > results.xml
+                '''
+            }
+            post {
+                always {
+                    junit 'riveter/results.xml'
+                }
+            }
+        }
+    }
+}
+```
+
+#### Multi-Cloud Jenkins Pipeline Example
+
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        RIVETER_SETUP = '''
+            # Install Homebrew if not present
+            if ! command -v brew &> /dev/null; then
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+            fi
+
+            # Install Riveter via Homebrew
+            brew install scottryanhoward/homebrew-riveter/riveter
+        '''
+    }
+
+    stages {
+        stage('Validate Multi-Cloud Infrastructure') {
+            parallel {
+                stage('AWS Validation') {
+                    steps {
+                        sh '''
+                            ${RIVETER_SETUP}
+                            riveter scan -p aws-security -p aws-well-architected -p cis-aws -t aws/ --output-format junit > aws-results.xml
+                        '''
+                    }
+                    post {
+                        always {
+                            junit 'riveter/aws-results.xml'
+                        }
+                    }
+                }
+
+                stage('GCP Validation') {
+                    steps {
+                        sh '''
+                            ${RIVETER_SETUP}
+                            riveter scan -p gcp-security -p gcp-well-architected -p cis-gcp -t gcp/ --output-format junit > gcp-results.xml
+                        '''
+                    }
+                    post {
+                        always {
+                            junit 'riveter/gcp-results.xml'
+                        }
+                    }
+                }
+
+                stage('Azure Validation') {
+                    steps {
+                        sh '''
+                            ${RIVETER_SETUP}
+                            riveter scan -p azure-security -p azure-well-architected -p cis-azure -t azure/ --output-format junit > azure-results.xml
+                        '''
+                    }
+                    post {
+                        always {
+                            junit 'riveter/azure-results.xml'
+                        }
+                    }
+                }
+
+                stage('Kubernetes Validation') {
+                    steps {
+                        sh '''
+                            ${RIVETER_SETUP}
+                            riveter scan -p kubernetes-security -p multi-cloud-security -t k8s/ --output-format junit > k8s-results.xml
+                        '''
+                    }
+                    post {
+                        always {
+                            junit 'riveter/k8s-results.xml'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Compliance Validation') {
+            when {
+                anyOf {
+                    changeset "healthcare/**"
+                    changeset "payments/**"
+                }
+            }
+            steps {
+                sh '''
+                    ${RIVETER_SETUP}
+
+                    # Healthcare compliance
+                    if [ -d "healthcare/" ]; then
+                        riveter scan -p aws-hipaa -p azure-hipaa -t healthcare/ --output-format sarif > healthcare-compliance.sarif
+                    fi
+
+                    # Payment processing compliance
+                    if [ -d "payments/" ]; then
+                        riveter scan -p aws-pci-dss -t payments/ --output-format sarif > pci-compliance.sarif
+                    fi
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'riveter/*-compliance.sarif', allowEmptyArchive: true
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'riveter',
+                        reportFiles: '*-compliance.sarif',
+                        reportName: 'Compliance Report'
+                    ])
+                }
+            }
+        }
+    }
+}
+```
+
+## Technical Documentation
+
+For detailed technical documentation about how Riveter works internally, please refer to the [TECHNICAL.md](docs/TECHNICAL.md) file in the docs directory. This document provides in-depth explanations of each component, code examples, and architectural details.
+
+## Project Structure
+
+```
+riveter/
+├── src/
+│   └── riveter/              # Python package
+│       ├── __init__.py       # Package initialization
+│       ├── cli.py           # Command-line interface
+│       ├── extract_config.py # Terraform HCL parsing
+│       ├── rules.py         # Rule parsing and validation
+│       ├── rule_packs.py    # Rule pack management system
+│       ├── scanner.py       # Resource scanning logic
+│       └── reporter.py      # Results reporting
+├── rule_packs/              # Pre-built rule packs
+│   ├── aws-security.yml     # AWS Security Best Practices
+│   ├── cis-aws.yml         # CIS AWS Foundations Benchmark
+│   ├── cis-azure.yml       # CIS Azure Foundations Benchmark
+│   └── soc2-security.yml   # SOC 2 Security Trust Service Criteria
+├── docs/                    # Documentation
+│   └── TECHNICAL.md         # Technical documentation
+├── examples/                # Example configurations
+│   └── terraform/           # Terraform examples
+└── tests/                   # Test files
+    ├── fixtures/            # Test fixtures
+    │   └── rule_packs/      # Rule pack test fixtures
+    └── test_*.py           # Test modules
+```
+
+## How It Works
+
+Riveter follows a simple, modular architecture with a clear flow:
+
+1. **Parse Terraform Configuration** → **Load Rules** → **Validate Resources** → **Report Results**
+
+Each component has a specific responsibility:
+
+- **extract_config.py**: Parses Terraform HCL files into a normalized format using python-hcl2
+- **rules.py**: Loads and validates rule definitions from YAML files
+- **scanner.py**: Implements the core validation logic that checks resources against rules
+- **reporter.py**: Formats and displays validation results with rich terminal output
+- **cli.py**: Provides the command-line interface and orchestrates the workflow
+
+📊 **For detailed visual explanations**, see our [Visual Documentation](docs/VISUAL_DOCUMENTATION_INDEX.md) including:
+- [Architecture Diagrams](docs/ARCHITECTURE_DIAGRAMS.md) - System architecture and component interactions
+- [Rule Evaluation Flowcharts](docs/RULE_EVALUATION_FLOWCHARTS.md) - Step-by-step validation process
+- [Rule Pack Comparisons](docs/RULE_PACK_COMPARISONS.md) - Coverage analysis and selection guidance
+
+## Development Roadmap
+
+### Completed Features ✅
+- ✅ Command-line parser with multiple output formats
+- ✅ Rules file parser with YAML validation
+- ✅ Terraform configuration parser (HCL2)
+- ✅ Advanced assertion engine with operators
+- ✅ Rich reporting (table, JSON, JUnit, SARIF)
+- ✅ **Rule Pack System**: Pre-built compliance rule collections
+- ✅ **AWS Security Best Practices**: 26 security rules
+- ✅ **CIS Compliance**: AWS and Azure benchmark rules
+- ✅ **SOC 2 Security**: Trust service criteria rules
+- ✅ **Rule Pack Management**: CLI commands for rule pack operations
+- ✅ **Advanced Operators**: regex, comparisons, length, subset validation
+- ✅ **Rule Filtering**: By severity, resource type, and tags
+- ✅ **Rule Pack Merging**: Combine multiple rule packs
+
+### Planned Features 🚧
+1. **Enhanced Cloud Provider Support**
+   - GCP resource validation expansion
+   - Multi-cloud rule packs
+   - Cloud-specific best practices
+
+2. **Advanced Rule Features**
+   - Custom validation functions
+   - Cross-resource validation
+   - Conditional rule execution
+   - Rule dependencies and ordering
+
+3. **Integration & Automation**
+   - GitHub Actions integration
+   - Terraform Cloud/Enterprise integration
+   - Policy as Code workflows
+   - Automated rule pack updates
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+### Development Setup
+```bash
+# Clone and setup development environment
+git clone https://github.com/riveter/riveter.git
+cd riveter
+python3 -m venv venv
+source venv/bin/activate
+
+# Complete development setup (installs dependencies + pre-commit hooks)
+make dev-setup
+```
+
+### Running Tests
+```bash
+# Run all tests with coverage
+make test
+
+# Run tests without coverage (faster)
+make test-fast
+
+# Run tests with detailed coverage report
+make test-cov
+```
+
+### Code Quality
+```bash
+# Format code
+make format
+
+# Check formatting without changes
+make format-check
+
+# Run linting
+make lint
+
+# Run linting with auto-fix
+make lint-fix
+
+# Type checking
+make type-check
+
+# Quick quality checks (format-check + lint + type-check)
+make quick-check
+
+# Complete quality pipeline (format + lint + type-check + test)
+make all
+```
+
+### Adding New Rule Packs
+
+1. Create your rule pack YAML file in `rule_packs/`
+2. Add comprehensive tests in `tests/fixtures/rule_packs/`
+3. Update documentation
+4. Submit a pull request
+
+See our [Contributing Guide](CONTRIBUTING.md) for detailed guidelines.
+
+## Resources
+
+- 📖 **[Technical Documentation](docs/TECHNICAL.md)** - Deep dive into Riveter's architecture
+- 🎨 **[Visual Documentation](docs/)** - Architecture diagrams, flowcharts, and visual guides
+- 🐛 **[Issue Tracker](https://github.com/riveter/riveter/issues)** - Report bugs or request features
+- 💬 **[Discussions](https://github.com/riveter/riveter/discussions)** - Ask questions and share ideas
+- 🔄 **[Changelog](CHANGELOG.md)** - See what's new in each release
+
+## Related Projects
+
+- **[Terraform](https://terraform.io)** - Infrastructure as Code
+- **[Checkov](https://checkov.io)** - Static analysis for Terraform
+- **[TFLint](https://github.com/terraform-linters/tflint)** - Terraform linter
+- **[Terrascan](https://runterrascan.io)** - Infrastructure security scanner
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Made with ❤️ by the Riveter team**
+
+*Riveter helps you build secure, compliant infrastructure from day one.*
