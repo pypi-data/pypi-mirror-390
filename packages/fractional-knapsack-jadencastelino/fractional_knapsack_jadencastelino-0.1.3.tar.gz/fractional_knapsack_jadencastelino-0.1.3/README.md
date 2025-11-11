@@ -1,0 +1,18 @@
+# fractional-knapsack-jadenC
+
+A tiny Python package that solves **Fractional Knapsack** using the greedy ratio-based approach.
+
+This implements the classical algorithm:
+
+- sort items by `value/weight` ratio
+- take full items until bag capacity
+- take fraction of the last item if needed
+
+Works from terminal as a CLI **AND** as an importable function.
+
+---
+
+## Install
+
+```bash
+pip install fractional-knapsack-jadenc
