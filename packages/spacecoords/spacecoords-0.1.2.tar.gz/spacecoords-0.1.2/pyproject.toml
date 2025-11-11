@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spacecoords"
+version = "0.1.2"
+description = "A collection of coordinate transforms for convenient use"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [{ name = "Daniel Kastinen", email = "daniel.kastinen@irf.se" }]
+maintainers = [{ name = "Daniel Kastinen", email = "daniel.kastinen@irf.se" }]
+license = { file = "LICENSE" }
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Operating System :: OS Independent",
+  "License :: OSI Approved :: MIT License",
+]
+requires-python = ">=3.10"
+dependencies = ["numpy >= 2"]
+
+[project.urls]
+Documentation = "https://danielk.developer.irf.se/spacecoords/"
+Repository = "https://github.com/danielk333/spacecoords"
+
+
+[project.optional-dependencies]
+all = ["astropy>=6", "spiceypy>=8.0.0", "jplephem>=2.23", "requests>=2.20"]
+develop = [
+  "pytest",
+  "pytest-cov",
+  "flake8",
+  "wheel",
+  "build",
+  "twine",
+  "auditwheel",
+  "numpydoc",
+  "black",
+  "matplotlib",
+  "ipykernel",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs-jupyter",
+  "mkdocs-gen-files",
+  "mkdocs-literate-nav",
+  "mkdocs-section-index",
+]
+tests = ["pytest", "pytest-cov"]
+
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]
+
+[project.scripts]
+spacecoords = "spacecoords.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 110
+
+
+[tool.pytest.ini_options]
+addopts = "-v --cov=spacecoords"
+testpaths = ["tests"]
+
+[tool.coverage.report]
+exclude_also = [
+  # Don't complain if tests don't hit defensive assertion code:
+  "raise AssertionError",
+  "raise NotImplementedError",
+
+  # Don't complain if non-runnable code isn't run:
+  "if 0:",
+  "if __name__ == .__main__.:",
+
+  # Don't complain about abstract methods, they aren't run:
+  "@(abc\\.)?abstractmethod",
+]
