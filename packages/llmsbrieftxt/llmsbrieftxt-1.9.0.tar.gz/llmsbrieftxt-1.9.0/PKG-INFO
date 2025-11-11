@@ -1,0 +1,457 @@
+Metadata-Version: 2.4
+Name: llmsbrieftxt
+Version: 1.9.0
+Summary: Generate llms-brief.txt files from documentation websites using AI
+Project-URL: Homepage, https://github.com/stevennevins/llmsbrief
+Project-URL: Repository, https://github.com/stevennevins/llmsbrief
+Project-URL: Issues, https://github.com/stevennevins/llmsbrief/issues
+Project-URL: Documentation, https://github.com/stevennevins/llmsbrief#readme
+Author: llmsbrieftxt contributors
+License: MIT
+License-File: LICENSE
+Keywords: ai,crawling,documentation,llm,llms-brief,llmstxt,openai,summarization,web-scraping
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Internet :: WWW/HTTP :: Indexing/Search
+Classifier: Topic :: Software Development :: Documentation
+Classifier: Topic :: Text Processing :: Markup :: Markdown
+Requires-Python: >=3.10
+Requires-Dist: beautifulsoup4>=4.13.5
+Requires-Dist: httpx<1.0.0,>=0.28.1
+Requires-Dist: openai<2.0.0,>=1.54.0
+Requires-Dist: pydantic<3.0.0,>=2.10.1
+Requires-Dist: tenacity<10.0.0,>=9.1.2
+Requires-Dist: tqdm<5.0.0,>=4.66.0
+Requires-Dist: trafilatura>=2.0.0
+Requires-Dist: ultimate-sitemap-parser>=1.6.0
+Description-Content-Type: text/markdown
+
+# llmsbrieftxt
+
+Generate llms-brief.txt files from any documentation website using AI. A focused, production-ready CLI tool that does one thing exceptionally well.
+
+## Quick Start
+
+```bash
+# Install
+pip install llmsbrieftxt
+
+# Set your OpenAI API key
+export OPENAI_API_KEY="sk-your-api-key-here"
+
+# Generate llms-brief.txt from a documentation site
+llmtxt https://docs.python.org/3/
+
+# Preview URLs before processing
+llmtxt https://react.dev --show-urls
+
+# Use a different model
+llmtxt https://react.dev --model gpt-4o
+```
+
+## What It Does
+
+Crawls documentation websites, extracts content, and uses OpenAI to generate structured llms-brief.txt files. Each entry contains a title, URL, keywords, and one-line summary - making it easy for LLMs and developers to navigate documentation.
+
+**Key Features:**
+- **Smart Crawling**: Breadth-first discovery up to depth 3, with URL deduplication
+- **Content Extraction**: HTML to Markdown using trafilatura
+- **AI Summarization**: Structured output using OpenAI
+- **Automatic Caching**: Summaries cached in `.llmsbrieftxt_cache/` to avoid reprocessing
+- **Production-Ready**: Clean output, proper error handling, scriptable
+
+## Installation
+
+```bash
+# With pip
+pip install llmsbrieftxt
+
+# With uv (recommended)
+uv pip install llmsbrieftxt
+```
+
+## Prerequisites
+
+- **Python 3.10+**
+- **OpenAI API Key**: Required for generating summaries
+  ```bash
+  export OPENAI_API_KEY="sk-your-api-key-here"
+  ```
+
+## Usage
+
+### Basic Command
+
+```bash
+llmtxt <url> [options]
+```
+
+Output is automatically saved to `~/.claude/docs/<domain>.txt` (e.g., `docs.python.org.txt`)
+
+### Options
+
+- `--output PATH` - Custom output path (default: `~/.claude/docs/<domain>.txt`)
+- `--model MODEL` - OpenAI model to use (default: `gpt-5-mini`)
+- `--max-concurrent-summaries N` - Concurrent LLM requests (default: 10)
+- `--show-urls` - Preview discovered URLs with cost estimate (no API calls)
+- `--max-urls N` - Strictly limit number of URLs to process (may stop mid-crawl)
+- `--depth N` - Maximum crawl depth (default: 3)
+- `--cache-dir PATH` - Cache directory path (default: `.llmsbrieftxt_cache`)
+- `--use-cache-only` - Use only cached summaries (fails with exit 1 if no cache exists)
+- `--force-refresh` - Ignore cache and regenerate all summaries
+
+### Examples
+
+```bash
+# Basic usage - saves to ~/.claude/docs/docs.python.org.txt
+llmtxt https://docs.python.org/3/
+
+# Use a different model
+llmtxt https://react.dev --model gpt-4o
+
+# Preview URLs with cost estimate before processing (no API calls)
+llmtxt https://react.dev --show-urls
+
+# Limit scope for testing
+llmtxt https://docs.python.org --max-urls 50
+
+# Custom crawl depth (explore deeper or shallower)
+llmtxt https://example.com --depth 2
+
+# Use only cached summaries (no API calls)
+llmtxt https://docs.python.org/3/ --use-cache-only
+
+# Force refresh all summaries (ignore cache)
+llmtxt https://docs.python.org/3/ --force-refresh
+
+# Custom cache directory
+llmtxt https://example.com --cache-dir /tmp/my-cache
+
+# Custom output location
+llmtxt https://react.dev --output ./my-docs/react.txt
+
+# Process with higher concurrency (if you have high rate limits)
+llmtxt https://fastapi.tiangolo.com --max-concurrent-summaries 20
+```
+
+## Searching and Listing
+
+This tool focuses on **generating** llms-brief.txt files. For searching and listing, use standard Unix tools:
+
+### Search Documentation
+
+```bash
+# Search all docs
+rg "async functions" ~/.claude/docs/
+
+# Search specific file
+rg "hooks" ~/.claude/docs/react.dev.txt
+
+# Case-insensitive search
+rg -i "error handling" ~/.claude/docs/
+
+# Show context around matches
+rg -C 2 "api" ~/.claude/docs/
+
+# Or use grep
+grep -r "async" ~/.claude/docs/
+```
+
+### List Documentation
+
+```bash
+# List all docs
+ls ~/.claude/docs/
+
+# List with details
+ls -lh ~/.claude/docs/
+
+# Count entries in a file
+grep -c "^Title:" ~/.claude/docs/react.dev.txt
+
+# Find all docs and show sizes
+find ~/.claude/docs/ -name "*.txt" -exec wc -l {} +
+```
+
+**Why use standard tools?** They're:
+- Already installed on your system
+- More powerful and flexible
+- Well-documented
+- Composable with other commands
+- Faster than any custom implementation
+
+## How It Works
+
+### URL Discovery
+
+The tool uses a comprehensive breadth-first search strategy:
+- Explores links up to 3 levels deep from your starting URL
+- Automatically excludes assets (CSS, JS, images) and non-documentation pages
+- Sophisticated URL normalization prevents duplicate processing
+- Discovers 100-300+ pages on typical documentation sites
+
+### Content Processing Pipeline
+
+```
+URL Discovery → Content Extraction → LLM Summarization → File Generation
+```
+
+1. **Crawl**: Discover all documentation URLs
+2. **Extract**: Convert HTML to markdown using trafilatura
+3. **Summarize**: Generate structured summaries using OpenAI
+4. **Cache**: Store summaries in `.llmsbrieftxt_cache/` for reuse
+5. **Generate**: Compile into searchable llms-brief.txt format
+
+### Output Format
+
+Each entry in the generated file contains:
+```
+Title: [Page Name](URL)
+Keywords: searchable, terms, functions, concepts
+Summary: One-line description of page content
+
+```
+
+## Development
+
+### Setup
+
+```bash
+# Clone and install with dev dependencies
+git clone https://github.com/stevennevins/llmsbrief.git
+cd llmsbrief
+uv sync --group dev
+```
+
+### Running Tests
+
+```bash
+# All tests
+uv run pytest
+
+# Unit tests only
+uv run pytest tests/unit/
+
+# Specific test file
+uv run pytest tests/unit/test_cli.py
+
+# With verbose output
+uv run pytest -v
+```
+
+### E2E Testing with Ollama (No API Costs)
+
+For testing without OpenAI API costs, use [Ollama](https://ollama.com) as a local LLM provider:
+
+```bash
+# 1. Install Ollama (one-time setup)
+curl -fsSL https://ollama.com/install.sh | sh
+# Or download from: https://ollama.com/download
+
+# 2. Start Ollama service
+ollama serve &
+
+# 3. Pull a lightweight model
+ollama pull tinyllama  # 637MB, fastest
+# Or: ollama pull phi3:mini  # 2.3GB, better quality
+
+# 4. Run E2E tests with Ollama
+export OPENAI_BASE_URL="http://localhost:11434/v1"
+export OPENAI_API_KEY="ollama-dummy-key"
+uv run pytest tests/integration/test_ollama_e2e.py -v
+
+# 5. Or test the CLI directly
+llmtxt https://example.com --model tinyllama --max-urls 5 --depth 1
+```
+
+**Benefits:**
+- ✅ Zero API costs - runs completely local
+- ✅ OpenAI-compatible endpoint
+- ✅ Same code path as production
+- ✅ Cached in GitHub Actions for CI/CD
+
+**Recommended Models:**
+- `tinyllama` (637MB) - Fastest, great for CI/CD
+- `phi3:mini` (2.3GB) - Better quality, still fast
+- `gemma2:2b` (1.6GB) - Balanced option
+
+### Code Quality
+
+```bash
+# Lint code
+uv run ruff check llmsbrieftxt/ tests/
+
+# Format code
+uv run ruff format llmsbrieftxt/ tests/
+
+# Type checking
+uv run mypy llmsbrieftxt/
+```
+
+## Configuration
+
+### Default Settings
+
+- **Crawl Depth**: 3 levels (configurable via `--depth`)
+- **Output Location**: `~/.claude/docs/<domain>.txt` (configurable via `--output`)
+- **Cache Directory**: `.llmsbrieftxt_cache/` (configurable via `--cache-dir`)
+- **OpenAI Model**: `gpt-5-mini` (configurable via `--model`)
+- **Concurrent Requests**: 10 (configurable via `--max-concurrent-summaries`)
+
+### Environment Variables
+
+- `OPENAI_API_KEY` - Required for all operations
+- `OPENAI_BASE_URL` - Optional. Set to use OpenAI-compatible endpoints (e.g., Ollama at `http://localhost:11434/v1`)
+
+## Usage Tips
+
+### Managing API Costs
+
+- **Preview with cost estimate**: Use `--show-urls` to see discovered URLs and estimated API cost before processing
+- **Limit scope**: Use `--max-urls` to limit processing during testing
+- **Automatic caching**: Summaries are cached automatically - rerunning is cheap
+- **Cache-only mode**: Use `--use-cache-only` to generate output from cache without API calls
+- **Force refresh**: Use `--force-refresh` when you need to regenerate all summaries
+- **Cost-effective model**: Default model `gpt-5-mini` is cost-effective for most documentation
+
+### Controlling Crawl Depth
+
+- **Default depth (3)**: Good for most documentation sites (100-300 pages)
+- **Shallow crawl (1-2)**: Use for large sites or to focus on main pages only
+- **Deep crawl (4-5)**: Use for small sites or comprehensive coverage
+- Example: `llmtxt https://example.com --depth 2 --show-urls` to preview scope
+
+### Cache Management
+
+- **Default location**: `.llmsbrieftxt_cache/` in current directory
+- **Custom location**: Use `--cache-dir` for shared caches or different organization
+- **Cache benefits**: Speeds up reruns, reduces API costs, enables incremental updates
+- **Failed URLs tracking**: Failed URLs are written to `failed_urls.txt` next to output file
+
+### Organizing Documentation
+
+All docs are saved to `~/.claude/docs/` by domain name:
+```
+~/.claude/docs/
+├── docs.python.org.txt
+├── react.dev.txt
+├── pytorch.org.txt
+└── fastapi.tiangolo.com.txt
+```
+
+This makes it easy for Claude Code and other tools to find and reference documentation.
+
+## Integrations
+
+### Claude Code
+
+This tool is designed to work seamlessly with Claude Code. Once you've generated documentation files, Claude can search and reference them during development sessions.
+
+### MCP Servers
+
+Generated llms-brief.txt files can be served via MCP (Model Context Protocol) servers. See the [mcpdoc project](https://github.com/langchain-ai/mcpdoc) for an example integration.
+
+## Exit Codes
+
+The CLI returns specific exit codes for scripting and automation:
+
+- `0` - Success (documentation generated successfully)
+- `1` - Failure (all API calls failed, no summaries generated, keyboard interrupt, or other errors)
+
+This enables reliable shell scripting:
+
+```bash
+if llmtxt https://docs.python.org/3/; then
+  echo "Documentation generated successfully"
+else
+  echo "Generation failed - check error message above"
+fi
+```
+
+### Exit Code Behavior by Mode
+
+- **Normal mode**: Exit 0 if any summaries generated (new or cached). Exit 1 only if no summaries generated.
+- **--use-cache-only mode**: Exit 0 if cached summaries found. Exit 1 if no cache exists.
+- **Partial failures**: Exit 0 if some summaries generated (shows WARNING). Exit 1 only if all API calls failed.
+
+## Troubleshooting
+
+### Common Errors
+
+**"ERROR: All API calls failed - no new summaries generated"**
+- **Cause**: OpenAI API unavailable, authentication failed, or rate limited
+- **Solution**: Check `OPENAI_API_KEY`, verify API access, retry with `--force-refresh`, or reduce `--max-concurrent-summaries`
+
+**"ERROR: No cached summaries found"**
+- **Cause**: Using `--use-cache-only` but no cache exists at the specified location
+- **Solution**: Run without `--use-cache-only` to generate new summaries, or check `--cache-dir` location
+
+**"WARNING: Some API calls failed (X/Y successful)"**
+- **Cause**: Some but not all pages were successfully summarized
+- **Solution**: Check network connection, verify API key, retry with `--force-refresh`
+
+### API Key Issues
+
+```bash
+# Verify API key is set
+echo $OPENAI_API_KEY
+
+# Set it if missing
+export OPENAI_API_KEY="sk-your-api-key-here"
+```
+
+### Rate Limiting
+
+If you hit rate limits, reduce concurrent requests:
+```bash
+llmtxt https://example.com --max-concurrent-summaries 5
+```
+
+### Large Documentation Sites
+
+For very large sites (500+ pages):
+1. Start with `--show-urls` to see scope
+2. Use `--max-urls` to process in batches
+3. Increase `--max-concurrent-summaries` if you have high rate limits
+
+## Migrating from 0.x
+
+Version 1.0.0 removes search and list subcommands in favor of Unix tools:
+
+```bash
+# Before (v0.x)
+llmsbrieftxt generate https://docs.python.org/3/
+llmsbrieftxt search "async"
+llmsbrieftxt list
+
+# After (v1.0.0)
+llmtxt https://docs.python.org/3/
+rg "async" ~/.claude/docs/
+ls ~/.claude/docs/
+```
+
+**Why the change?** Focus on doing one thing well. Search and list are better served by mature, powerful Unix tools you already have.
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions welcome! Please:
+1. Run tests: `uv run pytest`
+2. Lint code: `uv run ruff check llmsbrieftxt/ tests/`
+3. Format code: `uv run ruff format llmsbrieftxt/ tests/`
+4. Check types: `uv run mypy llmsbrieftxt/`
+5. Submit a PR
+
+## Links
+
+- **Homepage**: https://github.com/stevennevins/llmsbrief
+- **Issues**: https://github.com/stevennevins/llmsbrief/issues
+- **llms.txt Spec**: https://llmstxt.org/
