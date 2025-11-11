@@ -1,0 +1,83 @@
+Metadata-Version: 2.4
+Name: shared_memory_lock
+Version: 0.1.1
+Summary: A multiprocessing lock implemented using shared memory and atomics.
+Author-email: Raymond Chastain <RaymondLC92@protonmail.com>
+License: MIT
+Keywords: multiprocessing,lock,synchronization,atomic,shared-memory
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Hardware :: Symmetric Multi-processing
+Requires-Python: >=3.13.7
+Description-Content-Type: text/markdown
+Requires-Dist: atomics>=1.0.3
+
+# Shared Memory Lock
+
+A multiprocessing lock implemented using shared memory and atomics.
+
+## Installation
+
+```bash
+uv pip install -e .
+```
+
+## Usage
+
+```python
+from shared_memory_lock import SharedMemoryLock
+
+# Create a lock (first process)
+lock = SharedMemoryLock(name="my_lock", create=True, run_id="app1")
+
+# Connect to the same lock (other processes)
+lock = SharedMemoryLock(name="my_lock", create=False, run_id="app1")
+
+# Use as context manager
+with lock:
+    # Critical section - only one process can be here
+    print("Doing important work...")
+
+# Or manual acquire/release
+if lock.acquire(blocking=False):
+    try:
+        # Got the lock
+        print("Acquired lock!")
+    finally:
+        lock.release()
+else:
+    print("Could not acquire lock")
+
+# Clean up when done
+lock.close()
+lock.unlink()  # Only call from one process
+```
+
+## Features
+
+- **Cross-process synchronization**: Works across multiple processes
+- **Atomic operations**: Uses real atomic compare-and-swap for mutual exclusion
+- **Picklable**: Can be passed to multiprocessing.Process
+- **Context manager**: Supports `with` statements
+- **Non-blocking**: Optional non-blocking acquire with timeout
+
+## Development
+
+```bash
+# Install dependencies
+uv sync
+
+# Run tests
+uv run --python 3.13.7 pytest 
+
+# Run tests with coverage
+uv run --python 3.13.7 pytest --cov=shared_memory_lock
+```
+
+## License
+
+MIT
