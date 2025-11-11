@@ -1,0 +1,22 @@
+image: debian:latest
+
+before_script:
+    - apt update
+    - apt --assume-yes install libsuitesparse-dev
+    - apt --assume-yes install pkg-config
+    - apt update
+    - apt --assume-yes install libhdf5-dev
+    - apt --assume-yes install python3
+    - apt --assume-yes install python3-pip
+    - apt --assume-yes install python3-venv
+    - apt --assume-yes install git
+
+stages:
+    - unit
+
+test:
+    stage: unit
+    script:
+        - python3 -m venv basil-core
+        - source basil-core/bin/activate; python3 -m pip install tox numpy pytest pytest-cov build
+        - source basil-core/bin/activate; make tests
