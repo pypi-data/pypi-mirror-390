@@ -1,0 +1,89 @@
+Metadata-Version: 2.4
+Name: portal-facil-sdk
+Version: 0.3.1
+Summary: Portal Facil CRM API SDK
+Author: Tatianno Alves
+Author-email: tferreiraalves@gmail.com
+License: MIT License
+Keywords: portal facil CRM SDK
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: requests==2.32.5
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: summary
+
+# Portal Fácil SDK
+
+SDK Python para integração com o Portal Fácil CRM, permitindo gerenciar beneficiários e tickets de atendimento de forma simples e eficiente.
+
+## Recursos
+
+- Consulta de beneficiários por documento
+- Abertura de tickets de atendimento
+- Adição de anotações em tickets
+- Gerenciamento automático de autenticação e tokens
+- Cache de token para otimização de requisições
+
+## Instalação
+
+```bash
+pip install portal-facil-sdk
+```
+
+## Como Usar
+
+### Configuração Inicial
+
+```python
+from portal_facil_sdk import AtendimentoController, CrmProvider, CacheService
+
+# Configurar o cache para tokens
+cache = CacheService('token_cache.pkl')
+
+# Configurar o provider
+provider = CrmProvider(
+    app_key='sua_app_key',
+    base_url='url_base_do_crm',
+    username='seu_usuario',
+    password='sua_senha',
+    tipo_entidade_padrao=1,  # configure conforme necessário
+    origem_padrao=1,         # configure conforme necessário
+    subcategoria_padrao=1,   # configure conforme necessário
+    cache=cache
+)
+
+# Criar o controller
+controller = AtendimentoController(provider)
+```
+
+### Consultando um Beneficiário
+
+```python
+beneficiario = controller.consultar_beneficiario('000002-7')
+print(beneficiario.nome)
+print(beneficiario.cpf)
+print(beneficiario.codigo)
+```
+
+### Abrindo um Ticket
+
+```python
+ticket = controller.abrir_chamado(beneficiario, '1137092380')
+print(ticket.id)
+print(ticket.protocolo)
+```
+
+## Licença
+
+Este projeto está licenciado sob a licença MIT - consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## Autor
+
+- **Tatianno Alves** - [tferreiraalves@gmail.com]
