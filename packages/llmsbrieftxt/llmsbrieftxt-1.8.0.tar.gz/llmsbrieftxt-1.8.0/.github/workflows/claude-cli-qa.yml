@@ -1,0 +1,314 @@
+name: Claude CLI QA Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+    paths:
+      - 'llmsbrieftxt/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/claude-cli-qa.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test (leave empty for current branch)'
+        required: false
+        type: string
+      test_scope:
+        description: 'Test scope (quick, standard, thorough)'
+        required: false
+        default: 'standard'
+        type: choice
+        options:
+          - quick
+          - standard
+          - thorough
+
+jobs:
+  cli-qa-tests:
+    name: Agent-Based CLI QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    env:
+      OLLAMA_MODEL: gemma3:270m
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.head_ref || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install package with dependencies
+        run: |
+          uv sync --all-groups
+
+      # Cache Ollama models (most important - saves bandwidth and time)
+      - name: Cache Ollama models
+        id: cache-ollama-models
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama
+          key: ollama-models-${{ runner.os }}-${{ env.OLLAMA_MODEL }}-v1
+          restore-keys: |
+            ollama-models-${{ runner.os }}-
+
+      # Cache Ollama binary installation
+      - name: Cache Ollama binary
+        id: cache-ollama-binary
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/bin/ollama
+            /usr/share/ollama
+          key: ollama-binary-${{ runner.os }}-v1
+          restore-keys: |
+            ollama-binary-${{ runner.os }}-
+
+      - name: Install Ollama
+        if: steps.cache-ollama-binary.outputs.cache-hit != 'true'
+        run: |
+          echo "Installing Ollama for local LLM testing..."
+          curl -fsSL https://ollama.com/install.sh | sh
+
+          # Verify installation
+          ollama --version
+
+      - name: Start Ollama service
+        run: |
+          echo "Starting Ollama service..."
+          ollama serve > ollama.log 2>&1 &
+          echo $! > ollama.pid
+
+          # Wait for Ollama to be ready
+          echo "Waiting for Ollama to be ready..."
+          timeout 60 bash -c 'until curl -s http://localhost:11434/api/tags > /dev/null; do sleep 2; done'
+
+          echo "✓ Ollama service is running"
+
+      - name: Pull Ollama model
+        if: steps.cache-ollama-models.outputs.cache-hit != 'true'
+        run: |
+          echo "Pulling ${{ env.OLLAMA_MODEL }} model for testing..."
+          ollama pull ${{ env.OLLAMA_MODEL }}
+
+          echo "✓ Model pulled successfully"
+
+      - name: Verify Ollama setup
+        run: |
+          echo "Verifying Ollama models..."
+          ollama list
+
+          echo "✓ Model ready"
+
+      - name: Verify CLI installation
+        run: |
+          # Ensure CLI is accessible
+          uv run llmtxt --help
+
+          echo "✓ CLI installed and accessible"
+
+      - name: Determine test scope
+        id: test-scope
+        run: |
+          SCOPE="${{ github.event.inputs.test_scope || 'standard' }}"
+          echo "scope=$SCOPE" >> $GITHUB_OUTPUT
+
+          case "$SCOPE" in
+            quick)
+              echo "max_urls=3" >> $GITHUB_OUTPUT
+              echo "depth=1" >> $GITHUB_OUTPUT
+              ;;
+            thorough)
+              echo "max_urls=20" >> $GITHUB_OUTPUT
+              echo "depth=2" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "max_urls=10" >> $GITHUB_OUTPUT
+              echo "depth=1" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Run Claude CLI QA Agent
+        id: claude-cli-qa
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          # Use Haiku model for faster/cheaper testing
+          claude_args: |
+            --model claude-haiku-4-5-20251001
+            --allowedTools "Bash,Read,Write,Glob,Grep,TodoWrite,Task"
+
+          # Enable progress tracking for PR events only
+          track_progress: ${{ github.event_name == 'pull_request' }}
+
+          prompt: |
+            You are the QA coordinator orchestrating comprehensive CLI tests for llmsbrieftxt.
+
+            **Test Environment (Ready)**:
+            - Python 3.11 with uv package manager
+            - Ollama service running at http://localhost:11434
+            - Model: ${{ env.OLLAMA_MODEL }} (fast, efficient)
+            - CLI: Use `uv run llmtxt` to invoke the CLI
+
+            **Environment Variables for Ollama**:
+            ```bash
+            export OPENAI_BASE_URL="http://localhost:11434/v1"
+            export OPENAI_API_KEY="ollama-dummy-key"
+            ```
+
+            **Test Scope**: ${{ steps.test-scope.outputs.scope }}
+            - quick: TS-001, TS-002, TS-007, TS-011 (critical tests)
+            - standard: quick + TS-003, TS-004A, TS-005, TS-006 (critical + high priority)
+            - thorough: all scenarios TS-001 through TS-012
+
+            **Workflow**:
+            1. Read docs/USER_JOURNEYS.md to understand test scenarios
+            2. For each test flow in scope, launch an individual sub-agent using the Task tool
+            3. Each sub-agent executes ONE test scenario and reports pass/fail with evidence
+            4. Collect results from all sub-agents
+            5. Create aggregated summary with:
+               - Total tests: count
+               - Passed: count + list
+               - Failed: count + list
+               - Critical tests status
+               - High priority tests status
+
+            **Sub-Agent Assignment**:
+            Assign test scenarios based on scope:
+            - TS-001: Fresh Install (ALWAYS include)
+            - TS-002: Preview Mode (ALWAYS include)
+            - TS-003: Depth/Max-URLs (standard+ scope)
+            - TS-004A: Cache-Only (standard+ scope)
+            - TS-004B: Force Refresh (thorough scope only)
+            - TS-005: Custom Paths (standard+ scope)
+            - TS-006: Output Format (standard+ scope)
+            - TS-007: Partial Failures (ALWAYS include)
+            - TS-008: Alternative Model (thorough scope only)
+            - TS-009: Depth Validation (thorough scope only)
+            - TS-010: Cache Reuse (thorough scope only)
+            - TS-011: Ollama Not Running (ALWAYS include)
+            - TS-012: Invalid Model (thorough scope only)
+
+            For each test scenario, launch a sub-agent with clear test task:
+            ```
+            Use the Task tool to launch a specialized QA sub-agent:
+
+            Prompt template (customize for each test):
+            "Execute test scenario [TEST-ID] from docs/USER_JOURNEYS.md.
+
+            Test: [Test Name]
+            Priority: [Priority Level]
+
+            Read the detailed test steps and expected results from docs/USER_JOURNEYS.md.
+            Execute all verification commands.
+            Report:
+            - Test Status: PASS or FAIL
+            - Evidence: Which specific checks passed/failed
+            - Details: Any observations or issues
+
+            Format output as:
+            TEST-ID: [PASS/FAIL]
+            Evidence: [Bullet points of verification results]"
+            ```
+
+            **Aggregation Task**:
+            After all sub-agents complete, create final summary:
+            - Count total tests by priority
+            - Report pass/fail percentages
+            - Highlight any critical failures
+            - Provide clear GO/NO-GO recommendation
+
+      - name: Validate test execution
+        id: validate-tests
+        if: always()
+        run: |
+          echo "=== Validating CLI QA Test Results ==="
+
+          # Check if CLI is accessible via uv run
+          if ! uv run llmtxt --help &> /dev/null; then
+            echo "❌ ERROR: llmtxt CLI not accessible via 'uv run'"
+            exit 1
+          fi
+
+          echo "✅ CLI validation passed (accessible via 'uv run llmtxt')"
+
+      - name: Generate test summary
+        if: always()
+        env:
+          CLAUDE_STATUS: ${{ steps.claude-cli-qa.outcome }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          cat <<'EOF' >> $GITHUB_STEP_SUMMARY
+          ## llmtxt CLI QA Test Summary
+
+          **Test Scope**: ${{ steps.test-scope.outputs.scope }}
+          **Status**: ${{ steps.claude-cli-qa.outcome == 'success' && '✅ Completed' || '❌ Failed' }}
+
+          ### Environment
+          - Python: 3.11
+          - Package Manager: uv
+          - LLM Provider: Ollama (${{ env.OLLAMA_MODEL }})
+          - Max URLs: ${{ steps.test-scope.outputs.max_urls }}
+          - Crawl Depth: ${{ steps.test-scope.outputs.depth }}
+
+          ### Test Categories
+          - Basic Functionality Tests
+          - CLI Flags and Options Tests
+          - Cache Behavior Tests
+          - Error Handling Tests
+          - Output Format Validation
+
+          ### Results
+          The CLI QA agent executed comprehensive tests using the `cli-qa-tester` agent.
+          Detailed test report and findings are available in the workflow logs.
+
+          **View full logs**: [${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          ---
+
+          🤖 **Agent-Based Testing**: This workflow uses Claude Code agents to perform intelligent,
+          adaptive CLI testing without traditional E2E test frameworks.
+          EOF
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-qa-artifacts
+          path: |
+            ~/.claude/docs/
+            .llmsbrieftxt_cache/
+            ollama.log
+            **/test-*.txt
+            **/test-*.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f ollama.pid ]; then
+            kill $(cat ollama.pid) || true
+          fi
+          echo "✓ Cleanup complete"
