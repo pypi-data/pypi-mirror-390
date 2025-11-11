@@ -1,0 +1,23 @@
+from ._base_enum import BaseEnum
+
+
+class ApproachLightCode(BaseEnum):
+    AIR_FORCE_OVERRUN = "AFOVRN"
+    ALSAF = "ALSAF"
+    ALSF_CAT_I = "ALSF1"
+    ALSF_CAT_II_III = "ALSF2"
+    MALS = "MALS"
+    MALS_SEQUENCED = "MALSF"
+    MALS_RUNWAY_ALIGNMENT = "MALSR"
+    RAIL = "RAIL"
+    SALS = "SALS"
+    SALS_SEQUENCED = "SALSF"
+    SIMPLIFIED_SALS = "SSALS"
+    SIMPLIFIED_SALS_SEQUENCED = "SSALF"
+    SIMPLIFIED_SALS_RUNWAY_ALIGNMENT = "SSALR"
+    ODALS = "ODALS"
+    RLLS = "RLLS"
+    MILITARY_OVERRUN = "MIL OVRN"
+    NON_STANDARD = "NSTD"
+    NONE = "NONE"
+    NULL = None
