@@ -1,0 +1,136 @@
+# ============================================================================
+# OMNIGEN - CONVERSATION EXTENSION - MINIMAL CONFIG
+# ============================================================================
+# Production-ready minimal configuration with only essential settings.
+# For full config with all options, see config.yaml
+# ============================================================================
+
+pipeline: conversation_extension
+workspace_id: "your-project-name-v1"
+
+# ============================================================================
+# PROVIDERS
+# ============================================================================
+providers:
+  user_followup:
+    name: openrouter
+    api_key: ${OPENROUTER_API_KEY}
+    model: openrouter/polaris-alpha
+    temperature: 0.7
+    max_tokens: 4096
+    max_concurrent_calls: 70
+
+  assistant_response:
+    name: openrouter
+    api_key: ${OPENROUTER_API_KEY}
+    model: openrouter/polaris-alpha
+    temperature: 0.7
+    max_tokens: 8192
+    max_concurrent_calls: 70
+
+# ============================================================================
+# GENERATION
+# ============================================================================
+generation:
+  num_conversations: 0
+  turn_range:
+    min: 1
+    max: 1
+  parallel_workers: 70
+  extension_mode: smart
+  skip_invalid: true
+  turn_calculation: total
+  track_tokens: true
+  token_pricing:
+    input_cost_per_million: 0
+    output_cost_per_million: 0
+
+# ============================================================================
+# BASE DATA
+# ============================================================================
+base_data:
+  enabled: true
+  source_type: jsonl
+  file_path: data/input/base_data.jsonl
+  format: conversations
+
+# ============================================================================
+# STORAGE
+# ============================================================================
+storage:
+  type: jsonl
+  output_file: data/output/output.jsonl
+  partial_file: data/output/partial.jsonl
+  failed_file: data/output/failed.jsonl
+
+# ============================================================================
+# CHECKPOINT
+# ============================================================================
+checkpoint:
+  enabled: true
+  checkpoint_file: data/checkpoint/checkpoint.json
+  validate_input_hash: true
+  resume_mode: auto
+  batch_save_items: 500
+
+# ============================================================================
+# PROMPTS
+# ============================================================================
+prompts:
+  followup_question: |
+    Based on the conversation history, generate a relevant follow-up question that:
+    1. Builds naturally on the previous exchange
+    2. Is contextually appropriate and relevant
+    3. Maintains the conversation flow
+    4. Shows genuine curiosity or need for clarification
+    5. Is written in same language as main question or previous question
+    
+    Generate only the follow-up question text, without any preamble or explanation.
+
+# ============================================================================
+# SYSTEM MESSAGES
+# ============================================================================
+system_messages:
+  prepend_always:
+    enabled: false
+  append_always:
+    enabled: false
+  add_if_missing:
+    enabled: false
+
+# Generation-only system messages (NOT saved to dataset)
+generation_system_messages:
+  user_followup:
+    enabled: false
+    # content: "Generate natural user questions."
+  assistant_response:
+    enabled: false
+    # content: "You are a helpful AI assistant."
+
+# ============================================================================
+# ERROR HANDLING & VALIDATION
+# ============================================================================
+error_handling:
+  max_retries: 3
+  fail_fast: true
+  save_partial_on_error: true
+
+quality_validation:
+  enabled: true
+  max_retries: 3
+  fail_on_quality_issues: true
+  min_message_length: 1
+  filter_failed_validations: false
+  checks:
+    empty_content: true
+    repeated_messages: true
+    short_responses: true
+    alternation: false
+    tool_calls: false
+
+# ============================================================================
+# DEBUG & LOGGING
+# ============================================================================
+debug:
+  log_api_timing: true
+  log_parallel_status: true
