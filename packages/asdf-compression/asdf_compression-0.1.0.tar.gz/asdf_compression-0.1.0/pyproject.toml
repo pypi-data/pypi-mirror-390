@@ -1,0 +1,83 @@
+[project]
+name = "asdf_compression"
+description = "Asdf extension to support various compression algorithms"
+readme = 'README.rst'
+license-files = ['LICENSE']
+authors = [{ name = 'The ASDF Developers' }]
+requires-python = '>=3.10'
+classifiers = [
+  'Development Status :: 5 - Production/Stable',
+  'Programming Language :: Python',
+  'Programming Language :: Python :: 3',
+]
+dynamic = [
+  'version',
+]
+dependencies = [
+  "asdf >= 2.15",
+]
+
+[project.optional-dependencies]
+tests = [
+  "pytest>=6",
+]
+blsc = [
+   "blosc>=1.9.2",
+]
+lz4f = [
+  "lz4>=0.10",
+]
+zstd = [
+  "zstandard >= 0.21.0",
+]
+all = [
+  "asdf_compression[blsc,lz4f,zstd]"
+]
+
+[project.urls]
+'documentation' = 'https://asdf-compression.readthedocs.io/en/latest'
+'repository' = 'https://github.com/asdf-format/asdf-compression'
+'tracker' = 'https://github.com/asdf-format/asdf-compression/issues'
+
+[build-system]
+build-backend = 'setuptools.build_meta'
+requires = [
+  "setuptools>=60",
+  "setuptools_scm[toml]>=3.4",
+  "wheel",
+]
+
+[project.entry-points]
+'asdf.extensions' = {asdf = 'asdf_compression.extensions:get_extensions'}
+
+[tool.setuptools.packages.find]
+include = ["asdf_compression*"]
+namespaces = false
+
+[tool.setuptools_scm]
+write_to = "asdf_compression/_version.py"
+
+[tool.black]
+line-length = 120
+force-exclude = '''
+^/(
+  (
+      \.eggs
+    | \.git
+    | \.pytest_cache
+    | \.tox
+    | asdf/extern
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.pytest.ini_options]
+addopts = '--color=yes'
+
+[tool.ruff]
+line-length = 120
+
+[tool.codespell]
+skip="*.pdf,*.asdf,.tox,.git,docs/_build"
