@@ -1,0 +1,20 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.schemas.{{ name }}_schema import {{ class_name }}Create, {{ class_name }}Response
+from app.models.{{ name }} import {{ class_name }}
+
+router = APIRouter(prefix="/{{ name }}", tags=["{{ class_name }}"])
+
+@router.get("/", response_model=list[{{ class_name }}Response])
+def list_{{ name }}s(db: Session = Depends(get_db)):
+    return db.query({{ class_name }}).all()
+
+@router.post("/", response_model={{ class_name }}Response)
+def create_{{ name }}(data: {{ class_name }}Create, db: Session = Depends(get_db)):
+    obj = {{ class_name }}(**data.dict())
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
