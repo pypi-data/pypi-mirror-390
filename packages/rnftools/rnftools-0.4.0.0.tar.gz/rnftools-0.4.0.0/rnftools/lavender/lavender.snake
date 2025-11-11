@@ -1,0 +1,159 @@
+import rnftools
+
+rule lavender_clean:
+	run:
+		for report in rnftools.lavender.reports():
+			report.clean()
+
+
+	##############
+	##############
+	### REPORT ###
+	##############
+	##############
+
+####################
+# html
+####################
+for i, report in enumerate(rnftools.lavender.reports()):
+	rule:
+		input:
+			[panel.get_required_files() for panel in report.get_panels()]
+		output:
+			report.html_fn()
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.reports()[int(params.i)].create_html()
+
+
+	#############
+	#############
+	### PANEL ###
+	#############
+	#############
+
+####################
+# svg
+####################
+for i, panel in enumerate(rnftools.lavender.panels()):
+	rule:
+		input:
+			panel.gp_fn(),
+			[bam.roc_fn() for bam in panel.get_bams()],
+		output:
+			panel.svg_fns(),
+			panel.pdf_fns(),
+			panel.tar_fn(),
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.panels()[int(params.i)].create_graphics()
+			rnftools.lavender.panels()[int(params.i)].create_tar()
+
+####################
+# gp
+####################
+for i, panel in enumerate(rnftools.lavender.panels()):
+	rule:
+		input:
+			########################
+		output:
+			panel.gp_fn(),
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.panels()[int(params.i)].create_gp()
+
+
+	###########
+	###########
+	### BAM ###
+	###########
+	###########
+
+####################
+# html
+####################
+for i, bam in enumerate(rnftools.lavender.bams()):
+	rule:
+		input:
+			bam.svg_fn(),
+			bam.roc_fn(),
+		output:
+			bam.html_fn()
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.bams()[int(params.i)].create_html()
+
+####################
+# es
+####################
+
+for i, bam in enumerate(rnftools.lavender.bams()):
+	rule:
+		input:
+			bam.bam_fn(),
+		output:
+			bam.es_fn() if bam.keep_intermediate_files else temp(bam.es_fn())
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.bams()[int(params.i)].create_es()
+
+####################
+# et
+####################
+
+for i, bam in enumerate(rnftools.lavender.bams()):
+	rule:
+		input:
+			bam.es_fn(),
+		output:
+			bam.et_fn() if bam.keep_intermediate_files else temp(bam.et_fn())
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.bams()[int(params.i)].create_et()
+
+####################
+# roc
+####################
+for i, bam in enumerate(rnftools.lavender.bams()):
+	rule:
+		input:
+			bam.et_fn()
+		output:
+			bam.roc_fn()
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.bams()[int(params.i)].create_roc()
+
+####################
+# graphics
+####################
+for i, bam in enumerate(rnftools.lavender.bams()):
+	rule:
+		input:
+			bam.roc_fn(),
+			bam.gp_fn(),
+		output:
+			[bam.svg_fn(),bam.pdf_fn()] if bam.render_pdf_method is not None else bam.svg_fn()
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.bams()[int(params.i)].create_graphics()
+
+####################
+# gp
+####################
+for i, bam in enumerate(rnftools.lavender.bams()):
+	rule:
+		output:
+			bam.gp_fn()
+		params:
+			i=str(i)
+		run:
+			rnftools.lavender.bams()[int(params.i)].create_gp()
