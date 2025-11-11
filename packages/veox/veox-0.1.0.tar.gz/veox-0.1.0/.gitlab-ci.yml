@@ -1,0 +1,52 @@
+stages:
+  - test
+  - build
+  - publish
+
+.python_image: &python_image
+  image: python:3.11-slim
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_CACHE_DIR: "1"
+
+test:
+  <<: *python_image
+  stage: test
+  script:
+    - python -m pip install --upgrade pip
+    - pip install .[dev]
+    - pytest --maxfail=1 --disable-warnings -q
+  artifacts:
+    reports:
+      junit: reports/junit.xml
+    paths:
+      - .pytest_cache/
+    when: always
+
+build:
+  <<: *python_image
+  stage: build
+  needs: ["test"]
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - python -m pip install --upgrade pip
+    - pip install build
+    - python -m build
+  artifacts:
+    paths:
+      - dist/
+
+publish:
+  <<: *python_image
+  stage: publish
+  needs: ["build"]
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - python -m pip install --upgrade pip
+    - pip install twine
+    - twine upload dist/*
+*** End Patch
+

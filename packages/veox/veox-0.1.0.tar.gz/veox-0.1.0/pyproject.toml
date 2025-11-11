@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "veox"
+version = "0.1.0"
+description = "A lightweight client for training and managing models against the DOUG scheduler."
+readme = "docs/README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Veox" }]
+classifiers = [
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-cov",
+  "build",
+  "twine",
+]
+
+[project.urls]
+Homepage = "https://gitlab.com/veox_client/veox_pip"
+Repository = "https://gitlab.com/veox_client/veox_pip"
+Documentation = "https://gitlab.com/veox_client/veox_pip/-/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/veox"]
+
+[tool.hatch.envs.default]
+python = "3.11"
+
+[tool.hatch.envs.default.dependencies]
+dev = ["veox[dev]"]
+
+[tool.hatch.envs.test]
+dependencies = [
+  "veox[dev]",
+]
+
+[tool.pytest.ini_options]
+addopts = "--maxfail=1 --disable-warnings"
+testpaths = ["tests"]
+
