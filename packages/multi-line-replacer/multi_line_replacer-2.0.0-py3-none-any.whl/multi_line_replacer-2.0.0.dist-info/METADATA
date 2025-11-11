@@ -1,0 +1,224 @@
+Metadata-Version: 2.4
+Name: multi-line-replacer
+Version: 2.0.0
+Summary: A CLI utility for replacing multi-line strings in files. Supports textual replacements with wildcard matching and indentation-awareness.
+Keywords: replacements,cli,command-line,utility,multi-line,multiline,string,wildcard,indentation-aware
+Author: Caleb Evans
+Author-email: Caleb Evans <caleb@calebevans.me>
+License-Expression: MIT
+Requires-Dist: rich>=14.0.0,<15.0.0
+Maintainer: Caleb Evans
+Maintainer-email: Caleb Evans <caleb@calebevans.me>
+Requires-Python: >=3.9
+Project-URL: changelog, https://github.com/caleb531/multi-line-replacer/releases
+Project-URL: documentation, https://github.com/caleb531/multi-line-replacer#readme
+Project-URL: homepage, https://github.com/caleb531/multi-line-replacer
+Project-URL: repository, https://github.com/caleb531/multi-line-replacer
+Description-Content-Type: text/markdown
+
+# Multi-Line Replacer (mlr)
+
+*Copyright 2025 Caleb Evans*  
+*Released under the MIT license*
+
+[![tests](https://github.com/caleb531/multi-line-replacer/actions/workflows/tests.yml/badge.svg)](https://github.com/caleb531/multi-line-replacer/actions/workflows/tests.yml)
+[![Coverage Status](https://coveralls.io/repos/caleb531/multi-line-replacer/badge.svg?branch=main)](https://coveralls.io/r/caleb531/multi-line-replacer?branch=main)
+
+Multi-Line Replacer (mlr) is a CLI utility for replacing multi-line hunks of
+strings across one or more files. Matching is mostly textual, but wildcard
+matching is supported, and replacements are indentation-aware.
+
+## Installation
+
+You can install MLR via the [uv][uv] package manager:
+
+```sh
+# via uv
+uv tool install multi-line-replacer
+```
+
+This tool requires Python 3.9 or newer.
+
+## Usage
+
+The workflow takes one or more files on which to run replacements, and then one
+or more "replacement rule" files with the `-r` flag:
+
+```sh
+mlr .github/workflows/*.yml -r example-rules/uv-gha.md
+```
+
+Each replacement rule must be a Markdown file with one or more pairs of GFM
+fenced code blocks ([see documentation][gfm-docs]). Every odd code block
+represents the target text to replace, and every even code block represents the
+textual replacement. All other Markdown formatting is ignored, so feel free to
+add headings, explainer text, or anything else!
+
+````md
+This rule replaces flake8 with ruff in a Github Actions linting workflow.
+
+## flake8
+
+```yml
+- name: Run flake8
+  run: flake8 MATCH_UNTIL_END_OF_LINE
+```
+
+## ruff
+
+```yml
+- name: Run ruff
+  run: |
+    uv run ruff check .
+    uv run ruff format --check .
+```
+````
+
+> [!NOTE]
+The language specifier at the start of each code block is ignored by the
+utility. Still, it is highly recommended to specify so that syntax highlighting
+is enabled in your editor (i.e. it's for you, not the tool).
+
+### Wildcard Matching
+
+There are two special wildcard variables:
+
+- `MATCH_UNTIL_END_OF_LINE` (`([^\n]*)`)
+- `MATCH_ALL_BETWEEN` (`(.*?)`, where `.` matches anything including newlines)
+
+These variables can be used anywhere in any code block representing the target
+text to match. Word boundaries are not required around them (e.g.
+`vMATCH_UNTIL_END_OF_LINE` is allowed).
+
+### Environment Variables
+
+You can also access environment variable values anywhere in your target text or
+replacement text. To do so, simply specify the name of your environment variable
+prefixed with `MATCH_ENV_` (e.g. if your environment variable is `FOO_BAR`, you
+would write `MATCH_ENV_FOO_BAR` into your rule file).
+
+For instance, suppose you wish to upgrade the build system across a number of
+Python projects. If you define `PROJECT_BUILD_SYSTEM`, `PROJECT_BUILD_BACKEND`,
+and `PROJECT_PKG_NAME`, you could write a rule file to use them like so:
+
+````md
+## setuptools build-system
+
+```toml
+[build-system]
+requires = ["MATCH_ENV_PROJECT_BUILD_SYSTEM"]
+build-backend = "MATCH_ENV_PROJECT_BUILD_BACKEND"
+```
+
+## uv_build build-system
+
+```toml
+[build-system]
+requires = ["uv_build>=0.7.19,<0.8.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "MATCH_ENV_PROJECT_PKG_NAME"
+module-root = ""
+```
+````
+
+### Removing Lines
+
+If you want to remove every line that's matched by your target text, simply use
+an empty fenced code block for the replacement block in your rule file.
+
+````md
+## clone with submodules
+
+```yml
+with:
+  submodules: recursive
+```
+
+## disable submodule detection
+
+```yml
+```
+````
+
+### Backreferences
+
+If you use the wildcard variables `MATCH_UNTIL_END_OF_LINE` or
+`MATCH_ALL_BETWEEN` in your target text, you can reference each captured value
+in your replacement text using `MATCH_REF_1`, `MATCH_REF_2`, etc. Backreferences are
+numbered in the (left‑to‑right) order the wildcard variables appear.
+
+In the following example, we refactor a GitHub Actions step that currently
+exports three environment variables inline (hard for later steps to reuse) into
+an `env` block while also composing a friendly echo message. Each wildcard
+captures a semantically distinct value (project name, Python version, and cache
+key) and we then reuse them in multiple places.
+
+````md
+## CI environment variables as code
+
+```yml
+run: |
+  export PROJECT_NAME=MATCH_ALL_BETWEEN
+  export PY_VERSION=MATCH_ALL_BETWEEN
+  export CACHE_KEY=MATCH_ALL_BETWEEN
+  echo "Using ${PROJECT_NAME} on Python ${PY_VERSION} (cache: ${CACHE_KEY})"
+```
+
+## CI environment variables as configuration
+
+```yml
+env:
+  PROJECT_NAME: MATCH_REF_1
+  PY_VERSION: MATCH_REF_2
+  CACHE_KEY: MATCH_REF_3
+run: |
+  echo "Using ${PROJECT_NAME} on Python ${PY_VERSION} (cache: ${CACHE_KEY})"
+```
+````
+
+### Dry Runs
+
+You can perform a dry run of your replacements using the `--dry-run` flag. This
+will simulate all replacements and report the results without actually writing
+any changes to disk.
+
+### Suppressing Output ("Quiet Mode")
+
+You can suppress all output (except for errors) using the `--quiet` or `-q`
+flag.
+
+### Line Ending Handling
+
+The tool supports Unix (LF) and Windows (CRLF) line endings. If a file contains mixed line endings, all line endings in the file are normalized to use whichever line ending appeared first in the file.
+
+### More Examples
+
+To better understand the expected rules format and what's allowed, please see
+the `example-rules` directory.
+
+[gfm-docs]: https://github.github.com/gfm/#fenced-code-blocks
+
+## About
+
+Multi-Line Replacer was built as my solution to an intermediate need I had while
+writing a large migration script. I had 17 Python projects using old tooling,
+and the script was written to migrate these projects to [uv][uv] and
+[ruff][ruff].
+
+Part of this migration process necessitated performing textual replacements on
+multi-line hunks of code. Regular expressions and editors like VS Code could
+somewhat achieve this, although they required escaping special characters and
+carefully specifying indentation. In other words, those tools proved to be too
+rigid and inflexible.
+
+Given these constraints, I conceived of a utility that could perform multi-line
+replacements with a friendlier authoring experience and greater indentation
+awareness. The implementation took several iterations to achieve positive
+results, but by the end, it contributed significantly to the successful
+migration of all 17 projects. From there, I decided to release it to the world
+as a more flexible and automated system for replacing multi-line hunks of code.
+
+[uv]: https://docs.astral.sh/uv/
+[ruff]: https://docs.astral.sh/ruff/
