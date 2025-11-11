@@ -1,0 +1,1266 @@
+# Tests wikipedia and wikidata methods under pytest
+import unittest
+from pathlib import Path
+
+import lxml.etree as ET
+import requests
+from lxml import etree, html
+
+from amilib.ami_dict import AmiDictionary
+from amilib.ami_html import HtmlUtil, HtmlLib
+from amilib.amix import AmiLib
+from amilib.file_lib import FileLib, HEADERS
+from amilib.util import Util
+from amilib.wikimedia import WikidataLookup, MediawikiParser
+# local
+from amilib.wikimedia import WikidataPage, WikidataExtractor, WikidataProperty, WikidataFilter, WikipediaPage, \
+    WikipediaPara, WiktionaryPage, WikipediaInfoBox
+from amilib.xml_lib import XmlLib
+from amilib.ami_html import HtmlEditor
+from test.resources import Resources
+from test.test_all import AmiAnyTest
+import warnings
+import pytest
+import time
+
+"""This runs under Pycharm and also
+cd pyami # toplevel checkout
+python3 -m test.test_wikidata
+"""
+
+WIKIPEDIA_SERVICE_URL="https://en.wikipedia.org"
+WIKIPEDIA_SERVICE_NAME="Wikipedia"
+
+TEST_RESOURCES_DIR = Path(Path(__file__).parent.parent, "test", "resources")
+# TEMP_DIR = Path(Path(__file__).parent.parent, "temp_oldx_delete")
+# DICTIONARY_DIR = Path(os.path.expanduser("~"), "projects", "CEVOpen", "dictionary")
+EO_COMPOUND = "eoCompound"
+EO_COMPOUND_DIR = Path(Resources.TEST_RESOURCES_DIR, EO_COMPOUND)
+
+"""
+tests for Wikimedia routines for Wikipedia and Wikidata
+"""
+
+base_test = unittest.TestCase
+logger = Util.get_logger(__name__)
+
+class WikipediaTest(base_test):
+    """
+    tests Wikipedia lookup
+    """
+
+    def test_wikipedia_lookup_climate_words_short(self):
+        """tests lookup of wikipedia page by name"""
+        wordlist_dir = Path(Resources.TEST_RESOURCES_DIR, "wordlists")
+        stem = "small_2"  # file stem
+        wikipedia_pages = WikipediaPage.lookup_pages_for_words_in_file(stem, wordlist_dir)
+
+
+    def test_wikipedia_page_from_wikidata(self):
+        qitem = "Q144362"  # azulene
+        wpage = WikidataPage(qitem)
+        links = wpage.get_wikipedia_page_links()
+        assert links == {'en': 'https://en.wikipedia.org/wiki/Azulene'}
+        url = wpage.get_wikipedia_page_link("en")
+        assert url == 'https://en.wikipedia.org/wiki/Azulene'
+
+    def test_lookup_wikipedia_commandline(self):
+        """
+
+        """
+        stem = "small_5"
+        wordsfile = Path(Resources.TEST_RESOURCES_DIR, "wordlists", f"{stem}.txt")
+        assert wordsfile.exists(), f"{wordsfile} should exist"
+        pyami = AmiLib()
+        # args = ["DICT", "--help"]
+        # pyami.run_command(args)
+
+        dict_xml = str(Path(Resources.TEMP_DIR, "words", f"{stem}_wikipedia.xml"))
+        dict_html = str(Path(Resources.TEMP_DIR, "words", f"{stem}_wikipedia.html"))
+        args = ["DICT", "--words", str(wordsfile),
+                "--dict", dict_xml,
+                "--wikipedia"]
+        pyami.run_command(args)
+
+    def test_wikipedia_page_first_para(self):
+        """
+        creates WikipediaPage.FirstPage object
+        """
+        wikipedia_page = WikipediaPage.lookup_wikipedia_page_for_term("Greenhouse gas")
+        first_para = wikipedia_page.create_first_wikipedia_para()
+        assert first_para is not None
+
+    def test_wikipedia_page_first_para_bold_ahrefs(self):
+        """
+        creates WikipediaPage.FirstPage object , looks for <b> and <a @href>
+        TODO fails, needs debugging
+        """
+        wikipedia_page = WikipediaPage.lookup_wikipedia_page_for_term("Greenhouse gas")
+        first_para = wikipedia_page.create_first_wikipedia_para()
+        logger.info(f"first_para: {ET.tostring(first_para.para_element)}")
+        assert first_para is not None
+        bolds =  first_para.get_bolds()
+        assert len(bolds) == 2
+        assert bolds[0].text == "Greenhouse gases"
+        ahrefs =  first_para.get_ahrefs()
+        assert len(ahrefs) >= 7
+        assert ahrefs[0].text == "atmosphere"
+        assert ahrefs[0].attrib.get("href") == "/wiki/Atmosphere"
+
+    def test_wikipedia_page_first_para_sentence_span_tails(self):
+        """
+        creates WikipediaPage.FirstPage object
+        wraps all tails (mixed content text) in spans
+        """
+        term = "Greenhouse gas"
+        wikipedia_page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        first_para = wikipedia_page.create_first_wikipedia_para()
+        assert type(first_para) is WikipediaPara
+        # texts = self.get_texts()
+        XmlLib.replace_child_tail_texts_with_spans(first_para.para_element)
+        tostring = ET.tostring(first_para.para_element).decode("UTF-8")
+        print(f"Tailed text: {tostring}")
+        
+        # Check for key structural elements instead of exact string match
+        # This makes the test resilient to Wikipedia content updates
+        assert tostring.startswith('<p class="wpage_first_para">'), "Should start with proper paragraph tag"
+        assert '<b>Greenhouse gases</b>' in tostring, "Should contain 'Greenhouse gases' bold tag"
+        assert '<span> (</span>' in tostring, "Should contain span with opening parenthesis"
+        assert '<b>GHGs</b>' in tostring, "Should contain 'GHGs' bold tag"
+        assert '<a href="/wiki/Atmosphere" title="Atmosphere">atmosphere</a>' in tostring, "Should contain Atmosphere link"
+        assert '<a href="/wiki/Greenhouse_effect"' in tostring, "Should contain Greenhouse effect link"
+        assert '<span> rather than the present average of 15' in tostring, "Should contain temperature comparison text"
+        assert '</p>' in tostring, "Should end with closing paragraph tag"
+
+    @classmethod
+    def get_target_first_para_text(cls, elem_with_a_href):
+
+        a_list = elem_with_a_href.xpath(".//a[@href]")
+        if len(a_list) == 0:
+            elem_text = XmlLib.get_text(elem_with_a_href)
+            logger.debug(f"NO hyperlink for: {elem_text}")
+            return
+        a_elem = a_list[0]
+        href = a_elem.attrib['href']
+        wp_target = f"{WikipediaPage.WIKIPEDIA_EN}{href}"
+        wp_page = WikipediaPage.lookup_wikipedia_page_for_url(wp_target)
+        if wp_page is None:
+            logger.error(f"cannot find page {href}")
+            return
+        desc = wp_page.create_first_wikipedia_para()
+        text = XmlLib.get_text(desc.para_element)
+        print(f"desc {text}")
+
+    def test_create_basic_info_for_page(self):
+        """
+        extract table with basic info for a wikipedia page
+        """
+        url = "https://en.wikipedia.org/wiki/Jawaharlal_Nehru_University"
+        wpage = WikipediaPage.lookup_wikipedia_page_for_url(url)
+        assert wpage is not None
+        basic_info = wpage.get_basic_information()
+        assert basic_info is not None
+        href_id = basic_info.get_wikidata_href_id()
+        assert href_id == ('https://www.wikidata.org/wiki/Special:EntityPage/Q1147063', 'Q1147063')
+        image_url = basic_info.get_image_url()
+        assert image_url == 'https://en.wikipedia.org//wiki/File:Jawaharlal_Nehru_University_Logo_vectorized.svg'
+
+    def test_get_leading_image_in_page(self):
+        """
+from    "https://en.wikipedia.org/wiki/Jawaharlal_Nehru_University
+
+    <div class="thumb tmulti tright">
+      <div class="thumbinner multiimageinner" style="width:234px;max-width:234px">
+        <div class="trow">
+          <div class="tsingle" style="width:232px;max-width:232px">
+            <div class="thumbimage">
+              <span typeof="mw:File">
+                <a href="/wiki/File:JNU_Admin.JPG" class="mw-file-description">
+                  <img alt="Administration building at JNU campus" src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/230px-JNU_Admin.JPG" decoding="async" width="230" height="173" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/345px-JNU_Admin.JPG 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/460px-JNU_Admin.JPG 2x" data-file-width="2048" data-file-height="1536">
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="trow" style="display:flex">
+          <div class="thumbcaption">Administration building at JNU</div>
+        </div>
+      </div>
+    </div>
+
+    OR
+
+THIS SEEMS TO BE THE BEST
+<figure class="mw-default-size" typeof="mw:File/Thumb">
+	<a href="/wiki/File:Stubble_field_in_Brastad.jpg" class="mw-file-description">
+	  <img src="//upload.wikimedia.org/wikipedia/commons/thumb/9/96/Stubble_field_in_Brastad.jpg/220px-Stubble_field_in_Brastad.jpg" decoding="async" width="220" height="147" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/9/96/Stubble_field_in_Brastad.jpg/330px-Stubble_field_in_Brastad.jpg 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/9/96/Stubble_field_in_Brastad.jpg/440px-Stubble_field_in_Brastad.jpg 2x" data-file-width="5472" data-file-height="3648">
+	</a>
+	<figcaption>
+		Stubble field in <a href="/wiki/Brastad" title="Brastad">Brastad</a>, Sweden
+	</figcaption>
+</figure>
+        """
+
+    def test_get_thumb_image(self):
+        """
+        look for first div[@class='thumbimage']
+        """
+        """
+        <div class="thumbimage">
+          <span typeof="mw:File">
+            <a href="/wiki/File:JNU_Admin.JPG" class="mw-file-description">
+              <img alt="Administration building at JNU campus" src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/230px-JNU_Admin.JPG" decoding="async" width="230" height="173" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/345px-JNU_Admin.JPG 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/460px-JNU_Admin.JPG 2x" data-file-width="2048" data-file-height="1536">
+            </a>
+          </span><
+        /div>
+        """
+        """
+        <div class="thumb tmulti tright">
+          <div class="thumbinner multiimageinner" style="width:234px;max-width:234px">
+            <div class="trow">
+              <div class="tsingle" style="width:232px;max-width:232px">
+                <div class="thumbimage">
+                  <span typeof="mw:File">
+                    <a href="/wiki/File:JNU_Admin.JPG" class="mw-file-description">
+                      <img alt="Administration building at JNU campus" src="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/230px-JNU_Admin.JPG" decoding="async" width="230" height="173" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/345px-JNU_Admin.JPG 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/c/c6/JNU_Admin.JPG/460px-JNU_Admin.JPG 2x" data-file-width="2048" data-file-height="1536">
+                    </a>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="trow" style="display:flex">
+              <div class="thumbcaption">Administration building at JNU</div>
+            </div>
+          </div>
+        </div>"""
+        url = "https://en.wikipedia.org/wiki/Jawaharlal_Nehru_University"
+        wpage = WikipediaPage.lookup_wikipedia_page_for_url(url)
+        assert wpage is not None
+        content = wpage.html_elem
+        # thumb_multis = content.xpath(".//div[contains(@class,'thumb ')][div[contains(@class,'thumbinner')][div[@class='troe']]")
+        thumb_multis = content.xpath(".//div[contains(@class,'thumb ') and div[contains(@class,'thumbinner') and div[@class='trow']]]")
+        logger.debug(f"thumb images {len(thumb_multis)}")
+
+    def test_get_table_from_info_box(self):
+        """
+        <body>
+  		  <table class="infobox vcard">
+		    <tbody>
+            <tr>
+              <th colspan="2" class="infobox-above fn org" style="background-color: #cedeff; font-size: 125%;">
+                Bay of Bengal
+              </th>
+            </tr>
+            <tr>
+              <td colspan="2" class="infobox-image" style="line-height: 1.2; border-bottom: 1px solid #cedeff;">
+                <span class="mw-image-border" typeof="mw:File">
+                  <a href="/wiki/File:Bay_of_Bengal_map.png" class="mw-file-description">
+                    <img alt="Map of the Bay of Bengal" src="//upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/264px-Bay_of_Bengal_map.png" decoding="async" width="264" height="269" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/396px-Bay_of_Bengal_map.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/528px-Bay_of_Bengal_map.png 2x" data-file-width="1000" data-file-height="1019">
+                  </a>
+                </span>
+                <div class="infobox-caption">Map of Bay of Bengal</div>
+              </td>
+            </tr>
+            ...
+            </body>
+        """
+        url = "https://en.wikipedia.org/wiki/Bay_of_Bengal"
+        wpage = WikipediaPage.lookup_wikipedia_page_for_url(url)
+        assert wpage is not None
+        infobox = wpage.get_infobox()
+        assert infobox is not None
+        assert type(infobox) is WikipediaInfoBox
+
+        table = infobox.get_table()
+        table_html = XmlLib.element_to_string(table, pretty_print=True)
+        logger.debug(f"infobox {table_html} ")
+
+    def test_get_figure_from_info_box(self):
+        """
+        This is messy. The image and caption are not systematic
+        """
+        """
+        <body>
+  		  <table class="infobox vcard">
+		    <tbody>
+             <tr>
+              <th colspan="2" class="infobox-above fn org" style="background-color: #cedeff; font-size: 125%;">
+                Bay of Bengal
+              </th>
+            </tr>
+            <tr>
+              <td colspan="2" class="infobox-image" style="line-height: 1.2; border-bottom: 1px solid #cedeff;">
+                <span class="mw-image-border" typeof="mw:File">
+                  <a href="/wiki/File:Bay_of_Bengal_map.png" class="mw-file-description">
+                    <img alt="Map of the Bay of Bengal" src="//upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/264px-Bay_of_Bengal_map.png" decoding="async" width="264" height="269" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/396px-Bay_of_Bengal_map.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/528px-Bay_of_Bengal_map.png 2x" data-file-width="1000" data-file-height="1019">
+                  </a>
+                </span>
+                <div class="infobox-caption">Map of Bay of Bengal</div>
+              </td>
+            </tr>
+            ...
+            </body>
+        """
+        url = "https://en.wikipedia.org/wiki/Bay_of_Bengal"
+        wpage = WikipediaPage.lookup_wikipedia_page_for_url(url)
+        assert wpage is not None
+        a_elem = wpage.extract_a_elem_with_image_from_infobox()
+        assert a_elem is not None
+        img_elems = a_elem.xpath("img")
+        assert len(img_elems) > 0
+        # these URLs and their content are fragile
+        assert XmlLib.element_to_string(img_elems[0]) == \
+            '<img alt="A map of the Bay of Bengal" src="//upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/330px-Bay_of_Bengal_map.png" decoding="async" width="264" height="269" class="mw-file-element" srcset="//upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/500px-Bay_of_Bengal_map.png 1.5x, //upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Bay_of_Bengal_map.png/960px-Bay_of_Bengal_map.png 2x" data-file-width="1000" data-file-height="1019"/>\n'
+
+    def cleartest_clean_disambiguation_page(self):
+        """
+        includes or excludes links in WP disambiguation page
+        very empirical!
+        """
+        outdir = Path(Resources.TEMP_DIR, "disambig")
+        FileLib.force_mkdir(outdir)
+        page_names = [
+            "acidification",
+            "anthropogenic",
+            "katrina",
+            "migration",
+            "sequestration",
+            "superdome",
+            "tipping point",
+        ]
+        disambig_include = [
+            "meteorology",
+            "science",
+            "technical",
+        ]
+        disambig_exclude = [
+            "arts",
+            "entertainment",
+            "literature",
+            "media",
+            "music",
+            "people",
+            "places",
+            "proper name",
+            "television",
+        ]
+        for page_name in page_names:
+            page_name1 = page_name.replace(" ", "_").lower()
+            page_dir = Path(outdir, page_name1)
+            page = WikipediaPage.lookup_wikipedia_page_for_term(page_name)
+            if page is not None and page.is_disambiguation_page():
+                new_page = page.disambiguate(
+                    include=disambig_include,
+                    exclude=disambig_exclude
+                )
+                HtmlLib.write_html_file(page.html_elem, Path(page_dir, "disambig.html"), debug=True)
+                HtmlLib.write_html_file(page.html_elem, Path(page_dir, "disambig_clean.html"), debug=True)
+
+    def test_wikipedia_page_first_para_empirical_bold_detection(self):
+        """
+        Empirical approach: Find the first paragraph that starts with a bold or contains a bold near the start.
+        This handles cases where the first few paragraphs are metadata/disambiguation.
+        """
+        term = "Greenhouse gas"
+        wikipedia_page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Get the main content area
+        main_elem = wikipedia_page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        # Find all paragraphs
+        paras = main_elem.xpath('.//p')
+        self.assertGreater(len(paras), 0)
+        
+        # Empirical logic: Find first paragraph with bold near the start
+        first_meaningful_para = None
+        for para in paras:
+            if not para.text_content().strip():  # Skip empty paragraphs
+                continue
+                
+            # Look for bold elements in this paragraph
+            bolds = para.xpath('.//b')
+            if not bolds:
+                continue
+                
+            # Check if any bold is near the start (within first 50 characters of text)
+            para_text = para.text_content()
+            for bold in bolds:
+                # Get the position of this bold element in the paragraph text
+                # This is a simplified approach - we'll refine it later
+                bold_text = bold.text_content()
+                if bold_text and len(bold_text) > 0:
+                    # If bold text appears in first 50 chars, consider it "near the start"
+                    if bold_text in para_text[:50]:
+                        first_meaningful_para = para
+                        break
+            
+            if first_meaningful_para:
+                break
+        
+        # Should find a meaningful paragraph
+        self.assertIsNotNone(first_meaningful_para, "Should find a paragraph with bold near the start")
+        
+        # Verify it has the expected content structure
+        para_text = first_meaningful_para.text_content()
+        self.assertIn("Greenhouse gases", para_text)
+        self.assertIn("GHGs", para_text)
+        
+        # Should have bold elements
+        bolds = first_meaningful_para.xpath('.//b')
+        self.assertGreater(len(bolds), 0)
+        
+        # Should have links
+        links = first_meaningful_para.xpath('.//a[@href]')
+        self.assertGreater(len(links), 0)
+        
+        print(f"Found meaningful paragraph: {para_text[:100]}...")
+        print(f"Bold elements: {[b.text_content() for b in bolds]}")
+        print(f"Link count: {len(links)}")
+
+class WikidataTest(base_test):
+    """
+    lookup wikidata terms, Ids, Requires NET
+    """
+
+    def test_lookup_wikidata_acetone(self):
+        """
+        Lookup single term in Wikidata
+        Needs connectivity
+        :return:
+        """
+        term = "acetone"
+        wikidata_lookup = WikidataLookup()
+        qitem0, desc, wikidata_hits = wikidata_lookup.lookup_wikidata(term)
+        assert qitem0 == "Q49546"
+        assert desc == "chemical compound"
+        # assert wikidata_hits == ['Q49546', 'Q24634417', 'Q329022', 'Q63986955', 'Q4673277']
+        assert 'Q49546' in wikidata_hits and len(wikidata_hits) >= 3
+
+    def test_parse_wikidata_page(self):
+        qitem = "Q144362"  # azulene
+        wpage = WikidataPage(qitem)
+        # note "zz" has no entries
+        ahref_dict = wpage.get_wikipedia_page_links(["en", "de", "zz"])
+        assert ahref_dict == {'en': 'https://en.wikipedia.org/wiki/Azulene',
+                              'de': 'https://de.wikipedia.org/wiki/Azulen'}
+
+    def test_lookup_wiki_properties_chemical_compound(self):
+        """
+        Lookup Wikidata page by Q number and confirm properties
+        :return: None
+        """
+        wiki_page = WikidataPage("Q49546")
+        # wiki_page.debug_page()
+        description = wiki_page.get_description()
+        assert description == "chemical compound"
+
+        type_of_chemical_entity = "Q113145171"  # was "Q11173" (chemical entity)
+        qval = wiki_page.get_predicate_object("P31", type_of_chemical_entity)
+        assert len(qval) == 1
+        wiki_page = WikidataPage("Q24634417")
+        qval = wiki_page.get_predicate_object("P31", type_of_chemical_entity)
+        assert len(qval) == 0
+        # actually a scholarly article
+        qval = wiki_page.get_predicate_object("P31", "Q13442814")
+        assert len(qval) == 1
+
+    def test_lookup_wikidata_commandline(self):
+        """
+
+        """
+        stem = "small_2"
+        wordsfile = Path(Resources.TEST_RESOURCES_DIR, "wordlists", f"{stem}.txt")
+        assert wordsfile.exists(), f"{wordsfile} should exist"
+        pyami = AmiLib()
+        # args = ["DICT", "--help"]
+        # pyami.run_command(args)
+
+        args = ["DICT",
+                "--words", str(wordsfile),
+                "--dict", str(Path(Resources.TEMP_DIR, "words", f"{stem}_wikidata.xml")),
+                "--wikidata"]
+        logger.info(f"args {args}")
+        pyami.run_command(args)
+
+    def test_lookup_multiple_terms_solvents(self):
+        """
+        search multiple terms in Wikidata
+        """
+        terms = ["acetone", "chloroform"]
+        wikidata_lookup = WikidataLookup()
+        qitems, descs = wikidata_lookup.lookup_items(terms)
+        assert qitems == ['Q49546', 'Q172275']
+        assert descs == ['chemical compound', 'chemical compound']
+
+    def test_parse_wikidata_html(self):
+        """find Wikidata items with given property
+        uses the HTML, tacky but works
+
+        in this case the property is P31 (instance-of) and the value is one of
+        three
+        <div class="wikibase-snakview-value wikibase-snakview-variation-valuesnak">
+                                            <a title="Q11173" href="/wiki/Q11173">chemical compound</a>
+                                        </div>
+
+        """
+        """
+    <div class="wikibase-statementgroupview listview-item" id="P31" data-property-id="P31">
+        <div class="wikibase-statementgroupview-property">
+            <div class="wikibase-statementgroupview-property-label" dir="auto">
+                <a title="Property:P31" href="/wiki/Property:P31">instance of</a>
+            </div>
+        </div>
+        <div class="wikibase-statementlistview">
+            <div class="wikibase-statementlistview-listview">
+                <div id="Q407418$8A24EA26-7C5E-4494-B40C-65356BBB3AA4" class="wikibase-statementview wikibase-statement-Q407418$8A24EA26-7C5E-4494-B40C-65356BBB3AA4 wb-normal listview-item wikibase-toolbar-item">
+                    <div class="wikibase-statementview-rankselector">
+                        <div class="wikibase-rankselector ui-state-disabled">
+                            <span class="ui-icon ui-icon-rankselector wikibase-rankselector-normal" title="Normal rank"/>
+                        </div>
+                    </div>
+                    <div class="wikibase-statementview-mainsnak-container">
+                        <div class="wikibase-statementview-mainsnak" dir="auto">
+                            <div class="wikibase-snakview wikibase-snakview-e823b98d1498aa78e139709b1b02f5decd75c887">
+                                <div class="wikibase-snakview-property-container">
+                                    <div class="wikibase-snakview-property" dir="auto"/>
+                                </div>
+                                <div class="wikibase-snakview-value-container" dir="auto">
+                                    <div class="wikibase-snakview-typeselector"/>
+                                    <div class="wikibase-snakview-body">
+                                        <div class="wikibase-snakview-value wikibase-snakview-variation-valuesnak">
+                                            <a title="Q11173" href="/wiki/Q11173">chemical compound</a>
+                                        </div>
+                                        ...
+    """
+        p31 = Path(EO_COMPOUND_DIR, "p31.html")
+        tree = etree.parse(str(p31))
+        root = tree.getroot()
+        child_divs = root.findall("div")
+        assert len(child_divs) == 2  # direct children
+        child_divs = root.findall(".//div")
+        assert len(child_divs) == 109  # all descendants
+        snak_views = root.findall(".//div[@class='wikibase-snakview-body']")
+        assert len(snak_views) == 6  # snkaviwes (boxes on right)
+        # snak_a_views = root.findall(".//div[@class='wikibase-snakview-body']//a[starts-with(@title,'Q')]")
+        snak_a_views = root.xpath(".//div[@class='wikibase-snakview-body']//a[starts-with(@title,'Q')]")
+        assert len(snak_a_views) == 5  #
+        texts = []
+        titles = []
+        for a in snak_a_views:
+            texts.append(a.text)
+            titles.append(a.get('title'))
+        # assert texts == ['chemical compound',\n 'medication',\n 'p-menthan-3-ol',\n 'menthane monoterpenoids',\n 'LIPID MAPS']
+        assert texts == ['chemical compound', 'medication', 'p-menthan-3-ol', 'menthane monoterpenoids', 'LIPID MAPS']
+        assert titles == ['Q11173', 'Q12140', 'Q27109870', 'Q66124573', 'Q20968889']
+
+    def test_get_predicate_value(self):
+        """tests xpath working of predicate_subject test"""
+        tree = html.parse(str(Path(EO_COMPOUND_DIR, "q407418.html")))
+        root = tree.getroot()
+        hdiv_p31 = root.xpath(".//div[@id='P31']")
+        assert len(hdiv_p31) == 1
+        qvals = hdiv_p31[0].xpath(".//div[@class='wikibase-snakview-body']//a[starts-with(@title,'Q')]")
+        assert len(qvals) == 5
+
+    def test_page_get_values_for_property_id(self):
+        """test get all values in triples with given property
+        e.g. ?page wdt:P31 ?p31_value
+        USEFUL
+
+        """
+        page = WikidataPage.create_wikidata_ppage_from_file(Path(EO_COMPOUND_DIR, "q407418.html"))
+        qvals = page.get_qitems_for_property_id("P31")
+        assert len(qvals) == 5
+        assert qvals[0].text == "chemical compound"
+
+    def test_get_property_list(self):
+        """gets property list for a page
+        """
+        page = WikidataPage.create_wikidata_ppage_from_file(Path(EO_COMPOUND_DIR, "q407418.html"))
+        property_list = page.get_data_property_list()
+        assert len(property_list) == 72
+        assert property_list[0].property_name == "instance of"
+        assert property_list[0].id == "P31"
+
+    def test_get_predicate_value_1(self):
+        tree = html.parse(str(Path(EO_COMPOUND_DIR, "q407418.html")))
+        root = tree.getroot()
+        qvals = root.xpath(".//div[@id='P31']")[0].xpath(".//div[@class='wikibase-snakview-body']//a[@title='Q11173']")
+        assert len(qvals) == 1
+        assert qvals[0].text == 'chemical compound'
+        qvals = root.xpath(".//div[@id='P31']//div[@class='wikibase-snakview-body']//a[@title='Q11173']")
+        assert len(qvals) == 1
+        assert qvals[0].text == 'chemical compound'
+
+    def test_get_wikidata_predicate_value(self):
+        """searches for instance-of (P31) chemical_compound (Q11173) in a wikidata page
+        TODO allow for reading local files directly
+        """
+        pred_id = "P31"
+        obj_id = "Q11173"
+        file = str(Path(EO_COMPOUND_DIR, "q407418.html"))
+        page = WikidataPage.create_wikidata_ppage_from_file(file)
+        assert page is not None
+        qval = page.get_predicate_object(pred_id, obj_id)
+        assert qval[0].text == 'chemical compound'
+
+    def test_get_title_of_page(self):
+        qitem = "q407418"
+        page = WikidataPage(qitem)
+        title = page.get_title()
+        if title == "No title":
+            logger.debug(f"page for {qitem}:: {ET.tostring(page.root)}")
+        else:
+            assert title == "L-menthol"
+
+    def test_get_alias_list(self):
+        aliases = WikidataPage("q407418").get_aliases()
+        assert len(aliases) >= 5 and "l-menthol" in aliases
+
+    def test_get_description(self):
+        desc = WikidataPage("q407418").get_description()
+        # assert desc == "chemical compound"
+        assert "compound" in desc  # wikidata changed this!! 'organic compound used as flavouring and for analgesic properties'
+
+    def test_attval_contains(self):
+        """does a concatenated attavl contain a word
+        <th scope="col" class="wikibase-entitytermsforlanguagelistview-cell wikibase-entitytermsforlanguagelistview-language">Language</th>
+
+        """
+        language_elems = WikidataPage("q407418").get_elements_for_attval_containing_word(
+            "class",
+            "wikibase-entitytermsforlanguagelistview-language")
+        assert len(language_elems) == 1
+        assert language_elems[0].text == 'Language'
+
+
+    def test_get_instances(self):
+        """<div class="wikibase-statementview-mainsnak-container">
+<div class="wikibase-statementview-mainsnak" dir="auto"><div class="wikibase-snakview wikibase-snakview-e823b98d1498aa78e139709b1b02f5decd75c887">
+<div class="wikibase-snakview-property-container">
+<div class="wikibase-snakview-property" dir="auto"></div>
+</div>
+<div class="wikibase-snakview-value-container" dir="auto">
+<div class="wikibase-snakview-typeselector"></div>
+<div class="wikibase-snakview-body">
+<div class="wikibase-snakview-value wikibase-snakview-variation-valuesnak"><a title="Q11173" href="/wiki/Q11173">chemical compound</a></div>
+<div class="wikibase-snakview-indicators"></div>
+</div>
+</div>
+</div></div>
+<div class="wikibase-statementview-qualifiers"></div>
+</div>"""
+        pass
+
+
+    def test_wikidata_extractor(self):
+        query = '2-fluorobenzoic acid'
+        extractor = WikidataExtractor('en')
+        id = extractor.search(query)
+        id_dict = extractor.load(id)
+
+    def test_simple_wikidata_query(self):
+        """get ID list for query results
+        see https://www.wikidata.org/w/api.php for options
+        each entry has a small number of attributes (e.g. description, URL, )"""
+        query = "isomerase"
+        url_str = f"https://www.wikidata.org/w/api.php?" \
+                  f"action=wbsearchentities" \
+                  f"&search={query}" \
+                  f"&language=en" \
+                  f"&format=json"
+        try:
+            response = requests.get(url_str, headers=HEADERS, timeout=10)
+            if response.status_code == 429:
+                warnings.warn("Wikidata rate limit (429) encountered. Skipping test.")
+                pytest.skip("Wikidata rate limit (429) encountered. Skipping test.")
+            if response.status_code != 200:
+                warnings.warn(f"Wikidata returned status {response.status_code}. Skipping test.")
+                pytest.skip(f"Wikidata returned status {response.status_code}. Skipping test.")
+            js = response.json()
+            # Basic validation that we got a response
+            assert "search" in js or "error" in js
+        except (requests.RequestException, ValueError) as e:
+            warnings.warn(f"Network or JSON error: {e}. Skipping test.")
+            pytest.skip(f"Network or JSON error: {e}. Skipping test.")
+
+    def test_wikidata_id_lookup(self):
+        """test query wikidata by ID
+        """
+        ids = "Q11966262"  # "Dyschirius politus" a species of insect
+        url_str = f"https://www.wikidata.org/w/api.php?" \
+                  f"action=wbgetentities" \
+                  f"&ids={ids}" \
+                  f"&language=en" \
+                  f"&format=json"
+        response = requests.get(url_str, headers=HEADERS)
+        print(f"First request status: {response.status_code}")
+        if response.status_code == 429:
+            warnings.warn("Wikidata rate limit (429) encountered. Skipping test.")
+            pytest.skip("Wikidata rate limit (429) encountered. Skipping test.")
+        if response.status_code != 200:
+            warnings.warn(f"Wikidata returned status {response.status_code}. Skipping test.")
+            pytest.skip(f"Wikidata returned status {response.status_code}. Skipping test.")
+        response_js = response.json()["entities"][ids]
+        assert list(response_js.keys()) == ['pageid', 'ns', 'title', 'lastrevid', 'modified', 'type', 'id', 'labels',
+                                            'descriptions', 'aliases', 'claims', 'sitelinks']
+        assert response_js["id"] == ids
+        assert response_js["title"] == "Q11966262"
+        assert response_js["labels"]["en"]["value"] == "Dyschirius politus"
+        assert response_js["descriptions"]["en"]["value"] == "species of insect"
+        key_set = set(list(response_js["claims"].keys()))
+        test_set = set(
+            list(['P225', 'P105', 'P171', 'P31', 'P685', 'P846', 'P1939', 'P373', 'P815', 'P3151', 'P3186',
+                  'P3405', 'P2464', 'P1843', 'P7202', 'P7552', 'P6105', 'P6864', 'P8915', 'P3240', 'P2671',
+                  'P3606', 'P8707', 'P10243'])
+        )
+        assert test_set <= key_set
+
+        # Sleep between requests to avoid rate limiting
+        time.sleep(1)
+
+        ids = "P117"  # chemical compound
+        url_str = f"https://www.wikidata.org/w/api.php?" \
+                  f"action=wbgetentities" \
+                  f"&ids={ids}" \
+                  f"&language=en" \
+                  f"&format=json"
+        response = requests.get(url_str, headers=HEADERS)
+        print(f"Second request status: {response.status_code}")
+        if response.status_code == 429:
+            warnings.warn("Wikidata rate limit (429) encountered. Skipping test.")
+            pytest.skip("Wikidata rate limit (429) encountered. Skipping test.")
+        if response.status_code != 200:
+            warnings.warn(f"Wikidata returned status {response.status_code}. Skipping test.")
+            pytest.skip(f"Wikidata returned status {response.status_code}. Skipping test.")
+        response_js = response.json()["entities"][ids]
+        assert list(response_js.keys()) == ['pageid', 'ns', 'title', 'lastrevid', 'modified', 'type', 'datatype', 'id',
+                                            'labels', 'descriptions', 'aliases', 'claims']
+        assert response_js["id"] == "P117"
+        assert response_js["title"] == "Property:P117"
+        assert response_js["labels"]["en"]["value"] == "chemical structure"
+        assert response_js["descriptions"]["en"][
+                   "value"] == "image of a representation of the structure for a chemical compound"
+        assert set(['P31', 'P1855', 'P3254', 'P2302', 'P1629', 'P1647', 'P2875', 'P1659']).issubset(
+            set(list(response_js["claims"].keys()))
+        )
+
+    #        wikidata_page = WikidataPage.create_from_response(response)
+
+    def test_multiple_wikidata_ids(self):
+        ids = "P31|P117"
+        url_str = f"https://www.wikidata.org/w/api.php?action=wbgetentities&ids={ids}&language=en&format=json"
+        response = requests.get(url_str, headers=HEADERS)
+        json_dict = response.json()
+        assert list(json_dict['entities'].keys()) == ['P31', 'P117']
+        assert list(json_dict['entities']['P117'].keys()) == [
+            'pageid', 'ns', 'title', 'lastrevid', 'modified', 'type', 'datatype', 'id', 'labels',
+            'descriptions', 'aliases', 'claims']
+        assert json_dict['entities']['P117']['labels']['en']['value'] == 'chemical structure'
+        assert json_dict['entities']['P31']['labels']['en']['value'] == 'instance of'
+
+    def test_read_wikidata_filter(self):
+        path = Path(Resources.TEST_RESOURCES_DIR, "filter00.json")
+        assert path.exists(), f"{path} should exist"
+        filter = WikidataFilter.create_filter(path)
+        assert filter.json['plugh'] == "xyzzy"
+        assert filter.json['filter']['description'] == "chemical"
+        assert filter.json['filter'][
+                   'regex'] == "(chemical compound|chemical element)", f"found {filter.json['filter']['regex']}"
+
+class WiktionaryTest(AmiAnyTest):
+    """
+    Tests WiktionaryPage routines
+    """
+    """
+    Think the content structure has changed yet again
+    """
+
+    """
+    https://en.wiktionary.org/w/index.php?search=bear&title=Special:Search&profile=advanced&fulltext=1&ns0=1
+    """
+
+    def test_validate_mw_content_FAIL(self):
+        """
+        checks that mw_content_text div is correct
+        FAIL Wiktionary has changed markup
+        """
+        term = "curlicue"
+        outdir = Path(FileLib.get_home(), "junk")
+        nchild = 3
+
+        html_element, mw_content_text = WiktionaryPage.lookup_wiktionary_content(term)
+
+        term = WiktionaryPage.get_term_from_html_element(html_element)
+        WiktionaryPage.validate_mw_content(mw_content_text, term=term, outdir=outdir, nchild=nchild)
+
+class MWParserTest(AmiAnyTest):
+
+    def test_wiktionary_mw_parser_complex(self):
+        """
+        parse complex output
+        """
+        stems = [
+            "bread",
+            "curlicue",
+            "xyzzy"
+        ]
+
+        mw_parser = MediawikiParser(MediawikiParser.WIKTIONARY)
+
+        mw_parser.style_txt = """
+        div {border:1px solid red; margin: 2px;}
+        div.mw-heading2 {border:5px solid red; margin: 5px; background: #eee;}
+        div.mw-heading3 {border:4px solid orange; margin: 4px; background: #ddd;}
+        div.mw-heading4 {border:3px solid yellow; margin: 3px; background: #ccc;}
+        div.mw-heading5 {border:2px solid green; margin: 2px; background: #bbb;}
+        """
+
+        mw_parser.break_classes = [
+            "mw-heading mw-heading2",
+            "mw-heading mw-heading3",
+            "mw-heading mw-heading4",
+            "mw-heading mw-heading5",
+        ]
+
+        mw_parser.levels = [5, 4, 3, 2]
+
+        for stem in stems:
+            input_file = Path(Resources.TEST_RESOURCES_DIR, "wiktionary", f"{stem}.html")
+            output = Path(Resources.TEMP_DIR, "mw_wiki", f"{stem}.html")
+
+            mw_parser.parse_nest_write_entry(input_file, output)
+
+    def test_wiktionary_new_parser(self):
+        stems = [
+            "bread",
+            "curlicue",
+            "xyzzy",
+        ]
+        mw_parser = MediawikiParser(target=MediawikiParser.WIKTIONARY)
+        for stem in stems:
+            input_file = Path(Resources.TEST_RESOURCES_DIR, "wiktionary", f"{stem}.html")
+            output = Path(Resources.TEMP_DIR, "mw_wiki", f"{stem}.html")
+            mw_parser.parse_nest_write_entry(input_file, output)
+
+    def test_wikipedia_mw_parser(self):
+        """
+        parse Wikpedia page with MWParser
+        """
+        stems = [
+            "Net_zero_emissions",
+            "parijat",
+            ]
+        for stem in stems:
+            input_file = Path(Resources.TEST_RESOURCES_DIR, "wikipedia", f"{stem}.html")
+            assert input_file.exists(), f"Wikipedia file should exist {input_file}"
+
+            mw_parser = MediawikiParser()
+            # mw_parser.add_div_style(mw_parser.htmlx)
+            mw_parser.read_file_and_make_nested_divs(input_file)
+            mw_parser.add_div_style(mw_parser.htmlx)
+
+            assert mw_parser.htmlx is not None
+
+            path = Path(Resources.TEMP_DIR, "mw_wiki", f"{stem}.html")
+            logger.debug(f"writing {path}")
+            HtmlLib.write_html_file(mw_parser.htmlx, path)
+
+    def test_wikimedia_remove_non_content_and_empty(self):
+        """
+        Parses an arbitrary wikipedia page and removes all elements whih do not hole content
+        my be recursi
+        """
+        stem = "Net_zero_emissions"
+        input_file = Path(Resources.TEST_RESOURCES_DIR, "wikipedia", f"{stem}.html")
+        assert input_file.exists()
+        # htmlx = HtmlUtil.parse_html_file_to_xml(input_file)
+        # assert htmlx is not None
+        # body = HtmlLib.get_body(htmlx)
+
+        mw_parser = MediawikiParser()
+        input_html, body = mw_parser.read_html_path(
+            input_file, remove_non_content=True, remove_head=True, remove_empty_elements=False)
+        assert input_html is not None and body is not None
+        HtmlUtil.write_html_elem(input_html, Path(Resources.TEMP_DIR, "mw_wiki", f"{stem}.html"))
+
+    def test_wikipedia_lookup_direct_entry(self):
+        """Test Wikipedia lookup for a direct entry (climate term)."""
+        
+        # Test with a climate term that should have a direct Wikipedia entry
+        term = "climate change"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should find the page
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Should not be disambiguation page
+        self.assertFalse(page.is_disambiguation_page())
+        
+        # Should have content
+        main_elem = page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        first_para = page.create_first_wikipedia_para()
+        self.assertIsNotNone(first_para)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_disambiguation(self):
+        """Test Wikipedia lookup for a disambiguation page (climate term)."""
+        
+        # Test with a climate term that leads to disambiguation
+        term = "AGW"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should find the page
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Should be disambiguation page
+        self.assertTrue(page.is_disambiguation_page())
+        
+        # Should have disambiguation options
+        disambig_list = page.get_disambiguation_list()
+        self.assertIsNotNone(disambig_list)
+        self.assertGreater(len(disambig_list), 0)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_redirect(self):
+        """Test Wikipedia lookup for a redirect page (climate term)."""
+        
+        # Test with a climate term that redirects
+        term = "global warming"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should find the page
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Should not be disambiguation page
+        self.assertFalse(page.is_disambiguation_page())
+        
+        # For redirect pages, we can check if the content is different from expected
+        # Redirects often have different content structure
+        main_elem = page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_page_not_found(self):
+        """Test Wikipedia lookup for a non-existent page (climate term)."""
+        
+        # Test with a climate term that doesn't exist
+        term = "nonexistentclimateterm12345"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should not find the page - page object exists but html_elem contains error content
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Check that the content indicates "page not found"
+        main_elem = page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        # Look for indicators that this is a "not found" page
+        text_content = ''.join(main_elem.itertext())
+        self.assertIn("There were no results matching the query", text_content)
+        self.assertIn("does not exist", text_content)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_acronym_direct_entry(self):
+        """Test Wikipedia lookup for acronym with direct entry (climate acronym)."""
+        
+        # Test with a climate acronym that should have a direct entry
+        term = "IPCC"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should find the page
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Should not be disambiguation page
+        self.assertFalse(page.is_disambiguation_page())
+        
+        # Should have content
+        main_elem = page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        first_para = page.create_first_wikipedia_para()
+        self.assertIsNotNone(first_para)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_acronym_disambiguation(self):
+        """Test Wikipedia lookup for acronym with disambiguation (climate acronym)."""
+        
+        # Test with a climate acronym that leads to disambiguation
+        term = "AGW"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should find the page
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Should be disambiguation page
+        self.assertTrue(page.is_disambiguation_page())
+        
+        # Should have disambiguation options
+        disambig_list = page.get_disambiguation_list()
+        self.assertIsNotNone(disambig_list)
+        self.assertGreater(len(disambig_list), 0)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_acronym_redirect(self):
+        """Test Wikipedia lookup for acronym with redirect (climate acronym)."""
+        
+        # Test with a climate acronym that redirects
+        term = "GE"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should find the page
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Should not be disambiguation page
+        self.assertFalse(page.is_disambiguation_page())
+        
+        # For redirect pages, we can check if the content is different from expected
+        # Redirects often have different content structure
+        main_elem = page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_wikipedia_lookup_acronym_page_not_found(self):
+        """Test Wikipedia lookup for non-existent acronym (climate acronym)."""
+        
+        # Test with a climate acronym that doesn't exist
+        term = "NONEXISTENT123"
+        page = WikipediaPage.lookup_wikipedia_page_for_term(term)
+        
+        # Should not find the page - page object exists but html_elem contains error content
+        self.assertIsNotNone(page)
+        self.assertIsNotNone(page.html_elem)
+        
+        # Check that the content indicates "page not found"
+        main_elem = page.get_main_element()
+        self.assertIsNotNone(main_elem)
+        
+        # Look for indicators that this is a "not found" page
+        text_content = ''.join(main_elem.itertext())
+        self.assertIn("There were no results matching the query", text_content)
+        self.assertIn("does not exist", text_content)
+        
+        # Test connection before lookup
+        connection_result = FileLib.check_service_connection(
+            service_url=WIKIPEDIA_SERVICE_URL,
+            service_name=WIKIPEDIA_SERVICE_NAME,
+            timeout=10
+        )
+        self.assertTrue(connection_result['connected'])
+
+    def test_read_encyclopedia_and_count_entries(self):
+        """Test reading encyclopedia  and counting entries using AmiDictionary
+        
+        Input: file containing encyclopedia HTML
+        Operations: use AmiDictionary to read and count entries
+        Output: Count of encyclopedia entries with Wikipedia links
+        """
+        print("🧪 Testing encyclopedia reading from local file using AmiDictionary...")
+        
+        # Local HTML file path
+        html_file = Path(Resources.TEST_RESOURCES_DIR, "dictionary", "html", "ch7_dict.html")
+        
+        # Check if file exists
+        assert html_file.exists(), f"Encyclopedia HTML file not found: {html_file}"
+        
+        try:
+            # Use AmiDictionary to read the HTML file
+            dictionary = AmiDictionary.create_from_html_file(
+                html_file,
+                title="IPCC_WG2_Chapter07_Encyclopedia",
+                ignorecase=True
+            )
+            
+            assert dictionary is not None, "Failed to create dictionary from HTML file"
+            
+            # Count entries using AmiDictionary methods
+            entry_count = dictionary.get_entry_count()
+            entries = dictionary.get_ami_entries()
+            
+            # Count Wikipedia links in the dictionary
+            wikipedia_links = []
+            all_links = []
+            
+            for entry in entries:
+                # entry is an AmiEntry object, get its XML element
+                # entry.element is the XML element that has xpath
+                if hasattr(entry, 'element') and entry.element is not None:
+                    # Get all links in this entry
+                    entry_links = entry.element.xpath(".//a[@href]")
+                    all_links.extend(entry_links)
+                    
+                    # Filter for Wikipedia links
+                    entry_wiki_links = entry.element.xpath(".//a[contains(@href, 'wikipedia.org')]")
+                    wikipedia_links.extend(entry_wiki_links)
+            
+            print(f"✅ Found {entry_count} encyclopedia entries")
+            print(f"✅ Found {len(wikipedia_links)} Wikipedia links")
+            print(f"✅ Found {len(all_links)} total links")
+            
+            # Basic assertions
+            assert entry_count > 0, "Should find at least some encyclopedia entries"
+            assert len(all_links) > 0, "Should find at least some links in the encyclopedia"
+            
+            # Verify dictionary structure
+            assert dictionary.title is not None, "Dictionary should have a title"
+            assert dictionary.root is not None, "Dictionary should have a root element"
+            
+            print("✅ Successfully read and parsed encyclopedia using AmiDictionary")
+            
+        except Exception as e:
+            self.fail(f"Failed to process encyclopedia content: {e}")
+
+    def test_create_html_dictionary_with_wikipedia_urls(self):
+        """Test creating HTML dictionary with Wikipedia URLs included
+        
+        Input: Wordlist file with terms
+        Operations: Create dictionary with Wikipedia lookup, generate HTML, verify URLs
+        Output: HTML dictionary with Wikipedia URLs, definitions, and optional figures
+        """
+        print("🧪 Testing HTML dictionary creation with Wikipedia URLs...")
+        
+        # Use existing wordlist for testing
+        stem = "small_2"
+        words_file = Path(Resources.TEST_RESOURCES_DIR, "wordlists", f"{stem}.txt")
+        assert words_file.exists(), f"Wordlist file not found: {words_file}"
+        
+        try:
+            # Create dictionary from wordlist with Wikipedia lookup
+            xml_ami_dict, outpath = AmiDictionary.create_dictionary_from_wordfile(
+                words_file, 
+                title=stem,
+                wikidata=False,  # Focus on Wikipedia only
+                debug=True
+            )
+            assert xml_ami_dict is not None, "Failed to create dictionary from wordlist"
+            
+            # Add Wikipedia content to entries
+            from amilib.ami_dict import AmiEntry
+            for entry_elem in xml_ami_dict.entries:
+                ami_entry = AmiEntry.create_from_element(entry_elem)
+                wikipedia_page = ami_entry.lookup_and_add_wikipedia_page()
+                if wikipedia_page is not None:
+                    ami_entry.add_figures_to_entry(wikipedia_page)
+            
+            # Generate HTML dictionary
+            html_elem = xml_ami_dict.create_html_dictionary(create_default_entry=False, title=stem)
+            assert html_elem is not None, "Failed to create HTML dictionary"
+            
+            # Save HTML file for inspection
+            html_path = Path(Resources.TEMP_DIR, "words", "html", f"{stem}_with_wikipedia_urls.html")
+            html_path.parent.mkdir(exist_ok=True, parents=True)
+            HtmlLib.write_html_file(html_elem, html_path, debug=True)
+            assert html_path.exists(), "HTML file should be created"
+            
+            # Verify HTML structure contains Wikipedia URLs
+            body = HtmlLib.get_body(html_elem)
+            dictionary_div = body.xpath(".//div[@role='ami_dictionary']")[0]
+            entry_divs = dictionary_div.xpath(".//div[@role='ami_entry']")
+            
+            assert len(entry_divs) > 0, "Should have at least one dictionary entry"
+            
+            # Check that entries contain Wikipedia URLs
+            wikipedia_links_found = 0
+            wikipedia_url_labels = 0
+            for entry_div in entry_divs:
+                # Check for Wikipedia links in the entry
+                wikipedia_links = entry_div.xpath(".//a[contains(@href, 'wikipedia.org')]")
+                wikipedia_url_spans = entry_div.xpath(".//span[text()='Wikipedia URL: ']")
+                
+                if len(wikipedia_links) > 0:
+                    wikipedia_links_found += 1
+                    # Verify the link has proper structure
+                    link = wikipedia_links[0]
+                    assert link.attrib.get("href") is not None, "Wikipedia link should have href"
+                    assert link.text is not None, "Wikipedia link should have page title as text"
+                    # Verify link text is the page title (not full URL)
+                    assert "wikipedia.org" not in link.text, "Link text should be page title, not full URL"
+                
+                if len(wikipedia_url_spans) > 0:
+                    wikipedia_url_labels += 1
+                    # Verify the label is present
+                    span = wikipedia_url_spans[0]
+                    assert span.text == "Wikipedia URL: ", "Should have Wikipedia URL label"
+            
+            print(f"✅ Found {len(entry_divs)} dictionary entries")
+            print(f"✅ Found {wikipedia_links_found} entries with Wikipedia links")
+            print(f"✅ Found {wikipedia_url_labels} entries with Wikipedia URL labels")
+            
+            # Basic assertions
+            assert wikipedia_links_found > 0, "Should find at least some Wikipedia links in entries"
+            assert wikipedia_url_labels > 0, "Should find at least some Wikipedia URL labels in entries"
+            
+            # Verify dictionary structure
+            assert dictionary_div.attrib.get("title") is not None, "Dictionary should have title"
+            
+            print("✅ Successfully created HTML dictionary with Wikipedia URLs")
+            
+        except Exception as e:
+            self.fail(f"Failed to create HTML dictionary with Wikipedia URLs: {e}")
+
+
+if __name__ == '__main__':
+    unittest.main()
+    # if wiki_test:
+    #     # TODO move to Wikimedia
+    #     WikimediaTest.test_sparql_wrapper()
+
