@@ -1,0 +1,2 @@
+export const ids=["6824"];export const modules={7414:function(t,e,r){r.r(e),r.d(e,{MapDashboardStrategy:()=>o});var s=r(44249),a=r(57243),n=r(15093);let o=(0,s.Z)([(0,n.Mo)("map-dashboard-strategy")],(function(t,e){return{F:class extends e{constructor(...e){super(...e),t(this)}},d:[{kind:"method",static:!0,key:"generate",value:async function(t){return{views:[{strategy:t}]}}},{kind:"field",static:!0,key:"noEditor",value:()=>!0}]}}),a.fl)}};
+//# sourceMappingURL=6824.7334df0c37e74e50.js.map
