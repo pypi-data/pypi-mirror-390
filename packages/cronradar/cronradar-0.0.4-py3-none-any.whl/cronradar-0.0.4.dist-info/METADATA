@@ -1,0 +1,93 @@
+Metadata-Version: 2.4
+Name: cronradar
+Version: 0.0.4
+Summary: Dead-simple cron job monitoring with auto-registration. Two functions: ping() and sync_monitor(). Self-healing monitors.
+Home-page: https://github.com/cronradar/cronradar-python
+Author: Administrator
+Author-email: contact@cronradar.com
+License: Proprietary
+Project-URL: Documentation, https://cronradar.com/docs
+Project-URL: Source, https://github.com/cronradar/cronradar-python
+Project-URL: Tracker, https://github.com/cronradar/cronradar-python/issues
+Keywords: cron monitoring scheduler job task ping sync auto-register
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: System :: Monitoring
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-python
+Dynamic: summary
+
+# CronRadar Python SDK
+
+Monitor cron jobs with one function call.
+
+## Installation
+
+```bash
+pip install cronradar
+```
+
+## Usage
+
+```python
+import cronradar
+
+# After your cron job completes successfully
+cronradar.monitor('daily-backup')
+
+# With self-healing (auto-register if monitor doesn't exist)
+cronradar.monitor('daily-backup', schedule='0 2 * * *')
+```
+
+## Lifecycle Tracking
+
+**Option 1: Context Manager (Automatic)**
+```python
+with cronradar.job('daily-backup', schedule='0 2 * * *'):
+    run_backup()
+```
+
+**Option 2: Manual**
+```python
+cronradar.start_job('daily-backup')
+try:
+    run_backup()
+    cronradar.complete_job('daily-backup')
+except Exception as e:
+    cronradar.fail_job('daily-backup', str(e))
+    raise
+```
+
+## Configuration
+
+Set environment variable:
+- `CRONRADAR_API_KEY`: Your API key from cronradar.com
+
+## Documentation
+
+See [cronradar.com/docs](https://cronradar.com/docs) for full documentation.
+
+## License
+
+Proprietary - © 2025 CronRadar. All rights reserved.
