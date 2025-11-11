@@ -1,0 +1,31 @@
+# rchp
+
+Run the following command to install rchp:
+
+```
+pip install rchp
+```
+No dependencies need to be installed.
+
+rchp supports Python 3.10+
+
+The usage of its main function `parallel` is as follows:
+
+```python
+import rchp
+import time
+def task():
+    for i in range(20):
+        print(f"Task: {i}")
+rchp.parallel(func=task, worker=2, wait=False)
+for i in range(10):
+    print(f"Main: {i*i}")
+time.sleep(0.5)
+```
+
+`func` is the function to be parallelized.  
+`worker` is the number of threads.  
+`wait` indicates whether the main thread waits for the threads to complete their tasks.
+
+1. The first parameter does not accept functions with arguments.  
+2. If an exception is thrown within the function, loss of information may occur. Please ensure there are no errors in the function.
